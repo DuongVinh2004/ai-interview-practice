@@ -1,0 +1,10 @@
+{
+  "extends": "@ai-interview/tsconfig/react.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src", "e2e"]
+}
