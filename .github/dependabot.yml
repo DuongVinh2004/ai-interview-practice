@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # Maintain dependencies for pnpm monorepo
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    open-pull-requests-limit: 10
+    groups:
+      dependencies:
+        patterns:
+          - '*'
+
+  # Maintain GitHub Actions dependencies
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+
+  # Maintain Docker dependencies
+  - package-ecosystem: 'docker'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
