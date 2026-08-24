@@ -123,4 +123,19 @@ describe('CodeExecutionService (F002)', () => {
 
     expect(response.aiReview?.timeComplexity).toBe('O(n^2)');
   });
+
+  it('should fail closed if Judge0 is configured without API URL', async () => {
+    const unconfiguredJudge0 = new Judge0Provider({
+      get: jest.fn(() => ''),
+    } as any);
+
+    const result = await unconfiguredJudge0.executeCode('python', 'print("hello")', [
+      { id: 'tc-1', input: '', expectedOutput: 'hello', isHidden: false, order: 1 },
+    ]);
+
+    expect(result.status).toBe(SubmissionStatus.FAILED);
+    expect(result.allPassed).toBe(false);
+    expect(result.stderr).toContain('Judge0 API URL is not configured');
+    expect(result.testResults[0].passed).toBe(false);
+  });
 });

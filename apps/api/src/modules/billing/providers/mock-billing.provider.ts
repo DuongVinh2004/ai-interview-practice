@@ -13,6 +13,7 @@ export class MockBillingProvider implements BillingProvider {
     userId: string,
     userEmail: string,
     req: CreateCheckoutRequest,
+    _stripePriceId?: string,
   ): Promise<CheckoutResponse> {
     const mockSessionId = `mock_checkout_sess_${Date.now()}`;
     const baseSuccessUrl = req.successUrl || 'https://ai-interview.dev/billing/success';
@@ -36,6 +37,7 @@ export class MockBillingProvider implements BillingProvider {
   async handleWebhook(
     payload: any,
     _signature?: string,
+    _rawBody?: string,
   ): Promise<{ eventType: string; handled: boolean; data?: any }> {
     return {
       eventType: payload?.type || 'mock.event',

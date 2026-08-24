@@ -212,19 +212,26 @@ export class SkillAggregationService {
     ];
 
     for (const a of areas) {
-      const parent = await this.prisma.skillNode.upsert({
-        where: { slug: a.slug },
-        update: {},
-        create: {
-          slug: a.slug,
-          name: a.name,
-          nameVi: a.nameVi,
-          competencyArea: a.area as any,
-          level: 1,
-          weight: 1.0,
-          isActive: true,
-        },
-      });
+      let parent = await this.prisma.skillNode.findUnique({ where: { slug: a.slug } });
+      if (!parent) {
+        try {
+          parent = await this.prisma.skillNode.create({
+            data: {
+              slug: a.slug,
+              name: a.name,
+              nameVi: a.nameVi,
+              competencyArea: a.area as any,
+              level: 1,
+              weight: 1.0,
+              isActive: true,
+            },
+          });
+        } catch {
+          parent = await this.prisma.skillNode.findUnique({ where: { slug: a.slug } });
+        }
+      }
+
+      if (!parent) continue;
 
       const subCompetencies = [
         { name: `${a.name} Fundamentals`, slug: `${a.slug}-fundamentals`, nameVi: 'Kiến thức Nền tảng' },
@@ -235,21 +242,26 @@ export class SkillAggregationService {
 
       for (let i = 0; i < subCompetencies.length; i++) {
         const sub = subCompetencies[i];
-        await this.prisma.skillNode.upsert({
-          where: { slug: sub.slug },
-          update: {},
-          create: {
-            parentId: parent.id,
-            competencyArea: a.area as any,
-            slug: sub.slug,
-            name: sub.name,
-            nameVi: sub.nameVi,
-            level: 2,
-            weight: 1.0,
-            order: i,
-            isActive: true,
-          },
-        });
+        const existingSub = await this.prisma.skillNode.findUnique({ where: { slug: sub.slug } });
+        if (!existingSub) {
+          try {
+            await this.prisma.skillNode.create({
+              data: {
+                parentId: parent.id,
+                competencyArea: a.area as any,
+                slug: sub.slug,
+                name: sub.name,
+                nameVi: sub.nameVi,
+                level: 2,
+                weight: 1.0,
+                order: i,
+                isActive: true,
+              },
+            });
+          } catch {
+            // Ignore race condition on duplicate key
+          }
+        }
       }
     }
   }

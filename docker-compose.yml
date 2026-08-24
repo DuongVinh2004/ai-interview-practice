@@ -77,7 +77,7 @@ services:
       target: runner
     container_name: ai_interview_worker
     restart: unless-stopped
-    command: ['node', 'dist/src/worker.js']
+    command: ['node', 'dist/worker.js']
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_interview_practice}?schema=public

@@ -157,4 +157,29 @@ describe('BillingService (F014)', () => {
     const invalidPromo = await service.validatePromoCode('NONEXISTENT');
     expect(invalidPromo.valid).toBe(false);
   });
+
+  it('should verify Stripe webhook signature and reject forged signatures', async () => {
+    const stripeProvider = new StripeProvider({
+      get: jest.fn((k: string) => (k === 'STRIPE_WEBHOOK_SECRET' ? 'whsec_test_secret_123' : '')),
+    } as any);
+
+    const crypto = await import('crypto');
+    const timestamp = Math.floor(Date.now() / 1000).toString();
+    const payload = JSON.stringify({ id: 'evt_123', type: 'invoice.payment_succeeded' });
+    const signature = crypto
+      .createHmac('sha256', 'whsec_test_secret_123')
+      .update(`${timestamp}.${payload}`, 'utf8')
+      .digest('hex');
+
+    const header = `t=${timestamp},v1=${signature}`;
+    const result = await stripeProvider.handleWebhook(JSON.parse(payload), header, payload);
+    expect(result.handled).toBe(true);
+    expect(result.eventType).toBe('invoice.payment_succeeded');
+
+    // Forged signature rejection
+    const forgedHeader = `t=${timestamp},v1=forged_signature_hex`;
+    await expect(
+      stripeProvider.handleWebhook(JSON.parse(payload), forgedHeader, payload),
+    ).rejects.toThrow('Invalid Stripe webhook signature');
+  });
 });

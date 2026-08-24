@@ -4,7 +4,9 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { WebSocket, Server } from 'ws';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { VadEngineService } from '../services/vad-engine.service';
@@ -20,6 +22,7 @@ interface ClientSessionState {
   interviewId?: string;
   voiceSessionId?: string;
   userId?: string;
+  authenticatedUser?: any;
   isAiSpeaking: boolean;
   cancelAiStreaming: boolean;
   consecutiveSpeechFrames: number;
@@ -32,7 +35,13 @@ interface ClientSessionState {
   currentTurn: number;
 }
 
-@WebSocketGateway({ path: '/voice', cors: true })
+@WebSocketGateway({
+  path: '/voice',
+  cors: {
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'],
+    credentials: true,
+  },
+})
 export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(VoiceStreamingGateway.name);
   private readonly activeClients = new Map<WebSocket, ClientSessionState>();
@@ -44,12 +53,43 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     private readonly prisma: PrismaService,
     private readonly vad: VadEngineService,
     private readonly voiceProvider: MockVoiceProvider,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
-  handleConnection(client: WebSocket) {
+  handleConnection(client: WebSocket, req?: any) {
     this.logger.log('Client connected to Voice Gateway WebSocket.');
+
+    let authenticatedUser: any = null;
+    let userId: string | undefined = undefined;
+
+    // Try extracting and verifying JWT from handshake headers/query
+    try {
+      let token: string | undefined;
+      if (req?.url) {
+        const parsedUrl = new URL(req.url, 'http://localhost');
+        token = parsedUrl.searchParams.get('token') || undefined;
+      }
+      if (!token && req?.headers?.authorization) {
+        const authHeader = req.headers.authorization as string;
+        if (authHeader.startsWith('Bearer ')) {
+          token = authHeader.substring(7);
+        }
+      }
+      if (token) {
+        const secret = this.configService.get<string>('jwt.accessSecret') || this.configService.get<string>('JWT_ACCESS_SECRET');
+        authenticatedUser = this.jwtService.verify(token, { secret });
+        userId = authenticatedUser?.sub;
+        this.logger.log(`Authenticated WebSocket client: ${userId}`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Handshake JWT verification failed: ${err.message}`);
+    }
+
     this.activeClients.set(client, {
       ws: client,
+      userId,
+      authenticatedUser,
       isAiSpeaking: false,
       cancelAiStreaming: false,
       consecutiveSpeechFrames: 0,
@@ -129,6 +169,25 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   private async handleConnectVoice(client: WebSocket, state: ClientSessionState, payload: any) {
     state.interviewId = payload.interviewId;
 
+    if (!state.userId && payload.token) {
+      try {
+        const secret = this.configService.get<string>('jwt.accessSecret') || this.configService.get<string>('JWT_ACCESS_SECRET');
+        state.authenticatedUser = this.jwtService.verify(payload.token, { secret });
+        state.userId = state.authenticatedUser?.sub;
+      } catch (err: any) {
+        this.logger.warn(`Event JWT verification failed: ${err.message}`);
+      }
+    }
+
+    if (!state.userId) {
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Authentication required. Missing or invalid JWT token.',
+      });
+      client.close(1008, 'Unauthorized');
+      return;
+    }
+
     const interview = await this.prisma.interviewSession.findUnique({
       where: { id: payload.interviewId },
       include: {
@@ -146,7 +205,18 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       return;
     }
 
-    state.userId = interview.userId;
+    // Ownership authorization check: interview.userId must match authenticated userId (unless ADMIN)
+    if (interview.userId !== state.userId && state.authenticatedUser?.role !== 'ADMIN') {
+      this.logger.warn(
+        `Security violation: User ${state.userId} attempted to access interview ${interview.id} owned by ${interview.userId}`,
+      );
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Forbidden. You are not authorized to access this interview session.',
+      });
+      client.close(1008, 'Forbidden');
+      return;
+    }
 
     // Create or retrieve VoiceSession record
     const voiceSession = await this.prisma.voiceSession.upsert({

@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { WsAdapter } from '@nestjs/platform-ws';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { AllExceptionsFilter } from '../src/modules/platform/filters/all-exceptions.filter';
@@ -14,6 +15,7 @@ describe('AI Interview Practice API (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    app.useWebSocketAdapter(new WsAdapter(app));
     app.setGlobalPrefix('api/v1');
     app.useGlobalPipes(
       new ValidationPipe({

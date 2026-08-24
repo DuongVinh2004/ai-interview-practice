@@ -7,6 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@ai-interview/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
     },
   },
   server: {

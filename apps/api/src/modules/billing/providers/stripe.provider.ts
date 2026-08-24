@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as crypto from 'crypto';
 import { BillingProvider } from '../interfaces/billing-provider.interface';
 import {
   CreateCheckoutRequest,
@@ -22,6 +23,7 @@ export class StripeProvider implements BillingProvider {
     userId: string,
     userEmail: string,
     req: CreateCheckoutRequest,
+    stripePriceId?: string,
   ): Promise<CheckoutResponse> {
     const successUrl = req.successUrl || 'https://ai-interview.dev/billing/success';
     const cancelUrl = req.cancelUrl || 'https://ai-interview.dev/billing';
@@ -36,20 +38,27 @@ export class StripeProvider implements BillingProvider {
     }
 
     try {
+      const params: Record<string, string> = {
+        mode: 'subscription',
+        customer_email: userEmail,
+        'metadata[userId]': userId,
+        'metadata[planSlug]': req.planSlug,
+        success_url: successUrl,
+        cancel_url: cancelUrl,
+      };
+
+      if (stripePriceId) {
+        params['line_items[0][price]'] = stripePriceId;
+        params['line_items[0][quantity]'] = '1';
+      }
+
       const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${this.apiKey}`,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
-        body: new URLSearchParams({
-          mode: 'subscription',
-          customer_email: userEmail,
-          'metadata[userId]': userId,
-          'metadata[planSlug]': req.planSlug,
-          success_url: successUrl,
-          cancel_url: cancelUrl,
-        }),
+        body: new URLSearchParams(params),
       });
 
       const session = (await response.json()) as any;
@@ -95,12 +104,74 @@ export class StripeProvider implements BillingProvider {
     }
   }
 
+  verifyWebhookSignature(payloadString: string, signatureHeader?: string): boolean {
+    if (!this.webhookSecret) {
+      this.logger.warn('STRIPE_WEBHOOK_SECRET is not configured. Rejecting unverified webhook.');
+      return false;
+    }
+    if (!signatureHeader) {
+      return false;
+    }
+
+    try {
+      const parts = signatureHeader.split(',');
+      let timestamp = '';
+      const signatures: string[] = [];
+
+      for (const part of parts) {
+        const [key, value] = part.split('=');
+        if (key === 't') timestamp = value;
+        if (key === 'v1') signatures.push(value);
+      }
+
+      if (!timestamp || signatures.length === 0) {
+        return false;
+      }
+
+      // 5-minute timestamp tolerance check
+      const eventTime = parseInt(timestamp, 10);
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (isNaN(eventTime) || Math.abs(currentTime - eventTime) > 300) {
+        this.logger.warn(`Stripe webhook timestamp tolerance exceeded (${currentTime - eventTime}s)`);
+        return false;
+      }
+
+      const signedPayload = `${timestamp}.${payloadString}`;
+      const expectedSignature = crypto
+        .createHmac('sha256', this.webhookSecret)
+        .update(signedPayload, 'utf8')
+        .digest('hex');
+
+      return signatures.some(sig => {
+        try {
+          return crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSignature, 'hex'));
+        } catch {
+          return false;
+        }
+      });
+    } catch (err: any) {
+      this.logger.error(`Error verifying Stripe webhook signature: ${err.message}`);
+      return false;
+    }
+  }
+
   async handleWebhook(
     payload: any,
-    _signature?: string,
+    signature?: string,
+    rawBody?: string,
   ): Promise<{ eventType: string; handled: boolean; data?: any }> {
+    const payloadStr = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
+
+    if (this.webhookSecret) {
+      const isValid = this.verifyWebhookSignature(payloadStr, signature);
+      if (!isValid) {
+        this.logger.error('Invalid Stripe webhook signature verification');
+        throw new BadRequestException('Invalid Stripe webhook signature');
+      }
+    }
+
     const eventType = payload?.type || 'unknown';
-    this.logger.log(`Handling Stripe webhook event: ${eventType}`);
+    this.logger.log(`Handling verified Stripe webhook event: ${eventType}`);
     return {
       eventType,
       handled: true,

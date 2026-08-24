@@ -20,13 +20,40 @@ import {
   GenerateBlueprintRequestSchema,
 } from '@ai-interview/contracts';
 
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+];
+
 @Controller('documents')
 @UseGuards(JwtAuthGuard)
 export class DocumentParserController {
   constructor(private readonly parserService: DocumentParserService) {}
 
   @Post('parse-cv')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB max
+      },
+      fileFilter: (_req, file, callback) => {
+        const ext = file.originalname.toLowerCase();
+        if (
+          !ALLOWED_MIME_TYPES.includes(file.mimetype) &&
+          !ext.endsWith('.pdf') &&
+          !ext.endsWith('.docx') &&
+          !ext.endsWith('.txt')
+        ) {
+          return callback(
+            new BadRequestException('Invalid file type. Only PDF, DOCX, and TXT files are allowed.'),
+            false,
+          );
+        }
+        callback(null, true);
+      },
+    }),
+  )
   async parseCv(
     @CurrentUser('sub') userId: string,
     @UploadedFile() file?: Express.Multer.File,
@@ -85,8 +112,11 @@ export class DocumentParserController {
   }
 
   @Get('blueprints/:id')
-  async getBlueprint(@Param('id') id: string) {
-    return this.parserService.getBlueprint(id);
+  async getBlueprint(
+    @CurrentUser('sub') userId: string,
+    @Param('id') id: string,
+  ) {
+    return this.parserService.getBlueprint(userId, id);
   }
 
   @Delete(':id')

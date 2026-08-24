@@ -30,6 +30,7 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         createMany: jest.fn(),
         deleteMany: jest.fn(),
         update: jest.fn(),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       auditLog: {
         create: jest.fn(),
@@ -200,7 +201,7 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
   });
 
   describe('verifyRecoveryCodeLogin', () => {
-    it('completes login with a valid recovery code and marks it used', async () => {
+    it('completes login with a valid recovery code and atomically marks it used', async () => {
       const recoveryCode = 'ABCD-1234-EF';
       const codeHash = await bcrypt.hash(recoveryCode, 10);
 
@@ -225,7 +226,40 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
       const res = await service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode);
       expect(res.accessToken).toBeDefined();
       expect(res.user?.email).toBe('admin@example.com');
-      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.recoveryCode.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'rc-1', isUsed: false },
+        }),
+      );
+    });
+
+    it('rejects recovery code when race condition causes updateMany count === 0', async () => {
+      const recoveryCode = 'ABCD-1234-EF';
+      const codeHash = await bcrypt.hash(recoveryCode, 10);
+
+      jwtService.verify.mockReturnValue({
+        sub: 'user-1',
+        mfaPending: true,
+      });
+
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'user-1',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        mfaEnabled: true,
+        createdAt: new Date('2026-08-01T00:00:00Z'),
+        profile: { fullName: 'Admin' },
+        recoveryCodes: [
+          { id: 'rc-1', codeHash, isUsed: false },
+        ],
+      });
+
+      prisma.recoveryCode.updateMany.mockResolvedValueOnce({ count: 0 });
+
+      await expect(service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode)).rejects.toThrow(
+        'Invalid or already used recovery code',
+      );
     });
   });
 

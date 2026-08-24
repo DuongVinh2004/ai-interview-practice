@@ -131,7 +131,12 @@ export class BillingService {
     }
 
     const provider = this.getProvider();
-    const result = await provider.createCheckoutSession(userId, user.email, req);
+    const stripePriceId =
+      req.billingCycle === 'yearly'
+        ? plan.stripePriceIdYearly || plan.stripePriceIdMonthly
+        : plan.stripePriceIdMonthly;
+
+    const result = await provider.createCheckoutSession(userId, user.email, req, stripePriceId || undefined);
 
     // If Mock provider, activate subscription
     if (provider.name === 'mock') {

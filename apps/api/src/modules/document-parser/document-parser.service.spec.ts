@@ -200,5 +200,46 @@ describe('DocumentParser Module (F004)', () => {
       expect(blueprint.id).toBe('blueprint-uuid-1');
       expect(blueprint.gapSkills).toContain('Kafka');
     });
+
+    it('retrieves blueprint when requested by the resource owner', async () => {
+      mockPrisma.interviewBlueprint.findUnique.mockResolvedValueOnce({
+        id: 'bp-123',
+        parsedProfile: {
+          document: { userId: 'user-1' },
+        },
+        jdAnalysis: { userId: 'user-1' },
+      });
+
+      const res = await parserService.getBlueprint('user-1', 'bp-123');
+      expect(res.id).toBe('bp-123');
+    });
+
+    it('rejects cross-user blueprint retrieval (IDOR prevention)', async () => {
+      mockPrisma.interviewBlueprint.findUnique.mockResolvedValueOnce({
+        id: 'bp-victim',
+        parsedProfile: {
+          document: { userId: 'victim-user' },
+        },
+        jdAnalysis: { userId: 'victim-user' },
+      });
+
+      await expect(parserService.getBlueprint('attacker-user', 'bp-victim')).rejects.toThrow(
+        'You do not have access to this interview blueprint.',
+      );
+    });
+
+    it('rejects fake PDF upload with invalid magic bytes', async () => {
+      const corruptPdfBuffer = Buffer.from('NOT_A_REAL_PDF_DATA_STREAM');
+      await expect(
+        textExtractor.extractText(corruptPdfBuffer, 'pdf', 'malicious.pdf'),
+      ).rejects.toThrow('Invalid PDF file header. Missing %PDF signature.');
+    });
+
+    it('rejects fake DOCX upload with invalid magic bytes', async () => {
+      const corruptDocxBuffer = Buffer.from('NOT_A_REAL_DOCX_FILE_HEADER');
+      await expect(
+        textExtractor.extractText(corruptDocxBuffer, 'docx', 'malicious.docx'),
+      ).rejects.toThrow('Invalid DOCX file header. Missing ZIP/DOCX signature.');
+    });
   });
 });

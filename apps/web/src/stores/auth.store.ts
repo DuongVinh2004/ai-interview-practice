@@ -43,8 +43,20 @@ const safeRemoveItem = (key: string) => {
   }
 };
 
+const getStoredUser = (): UserDto | null => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const raw = localStorage.getItem('auth_user');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export const useAuthStore = create<AuthState>(set => ({
-  user: null,
+  user: getStoredUser(),
   accessToken: getStoredToken('access_token'),
   refreshToken: getStoredToken('refresh_token'),
   isAuthenticated: !!getStoredToken('access_token'),
@@ -52,10 +64,12 @@ export const useAuthStore = create<AuthState>(set => ({
   setAuth: (user, accessToken, refreshToken) => {
     safeSetItem('access_token', accessToken);
     safeSetItem('refresh_token', refreshToken);
+    safeSetItem('auth_user', JSON.stringify(user));
     set({ user, accessToken, refreshToken, isAuthenticated: true });
   },
 
   setUser: user => {
+    safeSetItem('auth_user', JSON.stringify(user));
     set({ user });
   },
 
@@ -67,6 +81,7 @@ export const useAuthStore = create<AuthState>(set => ({
   logout: () => {
     safeRemoveItem('access_token');
     safeRemoveItem('refresh_token');
+    safeRemoveItem('auth_user');
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 }));

@@ -8,6 +8,7 @@ import {
   UseGuards,
   Sse,
   HttpStatus,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiParam } from '@nestjs/swagger';
 import { Observable } from 'rxjs';
@@ -49,7 +50,7 @@ export class InterviewController {
   async getInterview(
     @CurrentUser('sub') userId: string,
     @CurrentUser('role') userRole: UserRole,
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND })) id: string,
   ) {
     return this.interviewService.getSession(userId, userRole, id);
   }
@@ -60,7 +61,7 @@ export class InterviewController {
   async getInterviewStatus(
     @CurrentUser('sub') userId: string,
     @CurrentUser('role') userRole: UserRole,
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND })) id: string,
   ) {
     return this.interviewService.getSessionStatus(userId, userRole, id);
   }

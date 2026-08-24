@@ -18,8 +18,22 @@ export class TextExtractorService {
 
     try {
       if (ext === 'pdf' || ext.includes('pdf')) {
+        // PDF Magic Bytes: %PDF
+        if (buffer.length < 4 || buffer.subarray(0, 4).toString('ascii') !== '%PDF') {
+          throw new BadRequestException('Invalid PDF file header. Missing %PDF signature.');
+        }
         return await this.extractFromPdf(buffer);
       } else if (ext === 'docx' || ext.includes('docx') || ext.includes('wordprocessingml')) {
+        // DOCX Magic Bytes: PK\x03\x04 (ZIP container)
+        if (
+          buffer.length < 4 ||
+          buffer[0] !== 0x50 ||
+          buffer[1] !== 0x4b ||
+          buffer[2] !== 0x03 ||
+          buffer[3] !== 0x04
+        ) {
+          throw new BadRequestException('Invalid DOCX file header. Missing ZIP/DOCX signature.');
+        }
         return await this.extractFromDocx(buffer);
       } else if (ext === 'text' || ext === 'txt' || ext.includes('plain')) {
         return buffer.toString('utf-8');
@@ -28,6 +42,9 @@ export class TextExtractorService {
         return buffer.toString('utf-8');
       }
     } catch (err: any) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
       this.logger.error(`Failed to extract text from file ${fileName || 'unnamed'}: ${err.message}`);
       throw new BadRequestException(`Unable to parse file content: ${err.message}`);
     }

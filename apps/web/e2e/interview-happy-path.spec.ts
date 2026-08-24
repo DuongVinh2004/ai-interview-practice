@@ -28,7 +28,7 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
 
     // 6. Enter Interview Room
     await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/);
-    await expect(page.getByText(/interview question 1 of 5/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 1/i })).toBeVisible();
 
     // 7. Wait for Question to be generated and displayed
     await expect(page.locator('#answer-textarea')).toBeVisible({ timeout: 15000 });
@@ -38,11 +38,14 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
       '#answer-textarea',
       'In a production TypeScript application, robust state management requires isolating client state from server cache, enforcing strict typing, and handling runtime API errors gracefully with error boundaries.',
     );
-    await page.click('button:has-text("Submit Answer")');
+    await page.click('button[type="submit"]');
 
-    // 9. Verify evaluation arrives
-    await expect(page.getByText(/evaluation & feedback/i)).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText(/technical accuracy/i)).toBeVisible();
-    await expect(page.getByText(/key strengths/i)).toBeVisible();
+    // 9. Verify evaluation completes and session advances to Turn 2
+    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 2/i })).toBeVisible({ timeout: 25000 });
+    await expect(page.getByText(/(lịch sử các lượt trước|past turns)/i)).toBeVisible();
+
+    // 10. Click past turn 1 accordion to inspect evaluation
+    await page.click('button:has-text("1")');
+    await expect(page.getByText(/(độ chính xác kỹ thuật|technical accuracy)/i)).toBeVisible();
   });
 });

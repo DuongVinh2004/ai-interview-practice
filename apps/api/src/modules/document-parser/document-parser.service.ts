@@ -207,17 +207,27 @@ export class DocumentParserService {
     });
   }
 
-  async getBlueprint(id: string) {
+  async getBlueprint(userId: string, id: string) {
     const blueprint = await this.prisma.interviewBlueprint.findUnique({
       where: { id },
       include: {
-        parsedProfile: true,
+        parsedProfile: {
+          include: { document: true },
+        },
         jdAnalysis: true,
       },
     });
     if (!blueprint) {
       throw new NotFoundException('Interview blueprint not found');
     }
+
+    const docOwnerId = blueprint.parsedProfile?.document?.userId;
+    const jdOwnerId = blueprint.jdAnalysis?.userId;
+
+    if (docOwnerId && docOwnerId !== userId && jdOwnerId && jdOwnerId !== userId) {
+      throw new ForbiddenException('You do not have access to this interview blueprint.');
+    }
+
     return blueprint;
   }
 

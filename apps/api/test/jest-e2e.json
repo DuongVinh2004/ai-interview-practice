@@ -6,7 +6,7 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "moduleNameMapper": {
-    "^@ai-interview/contracts$": "<rootDir>/../../packages/contracts/src"
+    "^@ai-interview/contracts$": "<rootDir>/../../../packages/contracts/src"
   },
   "testEnvironment": "node"
 }

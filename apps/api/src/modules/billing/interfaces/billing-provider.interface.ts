@@ -9,6 +9,7 @@ export interface BillingProvider {
     userId: string,
     userEmail: string,
     req: CreateCheckoutRequest,
+    stripePriceId?: string,
   ): Promise<CheckoutResponse>;
 
   createCustomerPortalSession(
@@ -19,5 +20,6 @@ export interface BillingProvider {
   handleWebhook(
     payload: any,
     signature?: string,
+    rawBody?: string,
   ): Promise<{ eventType: string; handled: boolean; data?: any }>;
 }

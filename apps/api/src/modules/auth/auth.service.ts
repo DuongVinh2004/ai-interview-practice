@@ -499,23 +499,30 @@ export class AuthService {
       );
     }
 
-    // Mark single-use recovery code as consumed
-    await this.prisma.$transaction([
-      this.prisma.recoveryCode.update({
-        where: { id: matchedCode.id },
-        data: { isUsed: true, usedAt: new Date() },
-      }),
-      this.prisma.auditLog.create({
-        data: {
-          userId: user.id,
-          action: AuditAction.MFA_RECOVERY_USED,
-          resource: 'recovery_code',
-          resourceId: matchedCode.id,
-          ipAddress,
-          userAgent,
-        },
-      }),
-    ]);
+    // Mark single-use recovery code as consumed atomically
+    const updateResult = await this.prisma.recoveryCode.updateMany({
+      where: { id: matchedCode.id, isUsed: false },
+      data: { isUsed: true, usedAt: new Date() },
+    });
+
+    if (updateResult.count === 0) {
+      throw new DomainException(
+        ErrorCode.MFA_INVALID_CODE,
+        'Invalid or already used recovery code',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: AuditAction.MFA_RECOVERY_USED,
+        resource: 'recovery_code',
+        resourceId: matchedCode.id,
+        ipAddress,
+        userAgent,
+      },
+    });
 
     this.logger.warn(`Single-use recovery code consumed for user ${user.id}`);
 

@@ -9,6 +9,7 @@ describe('UsageMeterService (F014)', () => {
 
   beforeEach(async () => {
     prismaMock = {
+      $transaction: jest.fn().mockImplementation(async (cb: any) => cb(prismaMock)),
       subscription: {
         findFirst: jest.fn().mockResolvedValue({
           id: 'sub-1',
@@ -58,6 +59,25 @@ describe('UsageMeterService (F014)', () => {
 
     expect(quota.allowed).toBe(false);
     expect(quota.remaining).toBe(0);
+  });
+
+  it('should atomically check and consume quota within transaction', async () => {
+    const consumed = await service.checkAndConsumeQuota('user-1', BillingMetric.SESSION_COUNT, 1);
+    expect(consumed.allowed).toBe(true);
+    expect(consumed.currentUsage).toBe(6);
+    expect(consumed.remaining).toBe(14);
+    expect(prismaMock.$transaction).toHaveBeenCalled();
+    expect(prismaMock.usageRecord.create).toHaveBeenCalled();
+  });
+
+  it('should reject quota consumption if requested amount exceeds remaining allowance', async () => {
+    prismaMock.usageRecord.aggregate.mockResolvedValueOnce({
+      _sum: { quantity: 20 },
+    });
+
+    await expect(
+      service.checkAndConsumeQuota('user-1', BillingMetric.SESSION_COUNT, 1),
+    ).rejects.toThrow('Monthly quota exceeded for SESSION_COUNT');
   });
 
   it('should record usage metrics in database', async () => {

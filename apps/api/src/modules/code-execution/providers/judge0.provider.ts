@@ -33,25 +33,116 @@ export class Judge0Provider implements SandboxProvider {
     const langId = LANGUAGE_ID_MAP[language.toLowerCase()] || 63;
 
     if (!this.apiUrl) {
-      this.logger.warn('Judge0 API URL not configured. Returning fallback mock response.');
+      this.logger.error('Judge0 API URL is not configured. Failing closed.');
       return {
-        status: SubmissionStatus.COMPLETED,
-        stdout: `[Judge0 Mock] Executed ${language} code successfully`,
-        stderr: null,
-        executionTimeMs: 42,
-        memoryUsageKb: 16384,
+        status: SubmissionStatus.FAILED,
+        stdout: '',
+        stderr: 'Judge0 API URL is not configured',
+        executionTimeMs: 0,
+        memoryUsageKb: 0,
         compileError: null,
         testResults: (testCases || []).map(tc => ({
           testCaseId: tc.id,
           input: tc.input,
           expectedOutput: tc.expectedOutput,
-          actualOutput: tc.expectedOutput,
-          passed: true,
-          executionTimeMs: 40,
-          memoryUsageKb: 16000,
-          errorMsg: null,
+          actualOutput: '',
+          passed: false,
+          executionTimeMs: 0,
+          memoryUsageKb: 0,
+          errorMsg: 'Judge0 API URL is not configured',
         })),
-        allPassed: true,
+        allPassed: false,
+      };
+    }
+
+    if (testCases && testCases.length > 0) {
+      const results: any[] = [];
+      let totalTime = 0;
+      let maxMemory = 0;
+      let overallStatus = SubmissionStatus.COMPLETED;
+      let compileErr: string | null = null;
+      let lastStdout = '';
+      let lastStderr: string | null = null;
+
+      for (const tc of testCases) {
+        try {
+          const response = await fetch(`${this.apiUrl}/submissions?wait=true`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(this.apiKey ? { 'X-Auth-Token': this.apiKey } : {}),
+            },
+            body: JSON.stringify({
+              source_code: Buffer.from(sourceCode).toString('base64'),
+              language_id: langId,
+              stdin: Buffer.from(tc.input || '').toString('base64'),
+              cpu_time_limit: 5,
+              memory_limit: 256000,
+            }),
+          });
+
+          const data = (await response.json()) as any;
+          const statusId = data.status?.id;
+
+          let caseStatus = SubmissionStatus.COMPLETED;
+          if (statusId === 5) caseStatus = SubmissionStatus.TIMEOUT;
+          else if (statusId === 6) caseStatus = SubmissionStatus.COMPILE_ERROR;
+          else if (statusId >= 7) caseStatus = SubmissionStatus.FAILED;
+
+          const stdout = data.stdout ? Buffer.from(data.stdout, 'base64').toString('utf8').trim() : '';
+          const stderr = data.stderr ? Buffer.from(data.stderr, 'base64').toString('utf8') : null;
+          const compileOutput = data.compile_output ? Buffer.from(data.compile_output, 'base64').toString('utf8') : null;
+
+          if (compileOutput) compileErr = compileOutput;
+          if (caseStatus !== SubmissionStatus.COMPLETED && overallStatus === SubmissionStatus.COMPLETED) {
+            overallStatus = caseStatus;
+          }
+
+          const executionTimeMs = Math.round((parseFloat(data.time) || 0.05) * 1000);
+          const memoryUsageKb = data.memory || 15000;
+          totalTime += executionTimeMs;
+          maxMemory = Math.max(maxMemory, memoryUsageKb);
+          lastStdout = stdout;
+          lastStderr = stderr;
+
+          const expected = tc.expectedOutput?.trim() || '';
+          const passed = caseStatus === SubmissionStatus.COMPLETED && stdout === expected;
+
+          results.push({
+            testCaseId: tc.id,
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            actualOutput: stdout,
+            passed,
+            executionTimeMs,
+            memoryUsageKb,
+            errorMsg: stderr || (passed ? null : `Expected: "${expected}", Actual: "${stdout}"`),
+          });
+        } catch (err: any) {
+          results.push({
+            testCaseId: tc.id,
+            input: tc.input,
+            expectedOutput: tc.expectedOutput,
+            actualOutput: '',
+            passed: false,
+            executionTimeMs: 0,
+            memoryUsageKb: 0,
+            errorMsg: err.message,
+          });
+        }
+      }
+
+      const allPassed = results.length > 0 && results.every(r => r.passed);
+
+      return {
+        status: overallStatus,
+        stdout: lastStdout,
+        stderr: lastStderr,
+        compileError: compileErr,
+        executionTimeMs: totalTime,
+        memoryUsageKb: maxMemory,
+        testResults: results,
+        allPassed,
       };
     }
 
