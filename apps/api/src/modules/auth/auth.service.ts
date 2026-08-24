@@ -106,7 +106,7 @@ export class AuthService {
     // If MFA is enabled, challenge with temporary MFA session token
     if (user.mfaEnabled) {
       const mfaSessionToken = this.jwtService.sign(
-        { sub: user.id, email: user.email, mfaPending: true },
+        { sub: user.id, email: user.email, tokenType: 'mfa_challenge', mfaPending: true },
         {
           secret: this.configService.get<string>('jwt.accessSecret'),
           expiresIn: '5m',
@@ -207,11 +207,35 @@ export class AuthService {
       );
     }
 
-    // Revoke old refresh token (Token rotation)
-    await this.prisma.refreshToken.update({
-      where: { id: storedToken.id },
+    // Atomic token rotation to prevent race condition replay (H-001)
+    const updateResult = await this.prisma.refreshToken.updateMany({
+      where: { id: storedToken.id, isRevoked: false },
       data: { isRevoked: true },
     });
+
+    if (updateResult.count === 0) {
+      this.logger.warn(
+        `Token race/reuse detected for user ${storedToken.userId}! Invalidating entire session family.`,
+      );
+      await this.prisma.refreshToken.updateMany({
+        where: { userId: storedToken.userId, isRevoked: false },
+        data: { isRevoked: true },
+      });
+      await this.prisma.auditLog.create({
+        data: {
+          userId: storedToken.userId,
+          action: AuditAction.TOKEN_REUSE_DETECTED,
+          resource: 'refresh_token',
+          resourceId: storedToken.id,
+          details: { reason: 'Concurrent rotation race or already revoked refresh token' },
+        },
+      });
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Suspicious activity detected. All active sessions have been revoked.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
 
     return this.generateAuthResponse(storedToken.user, true);
   }
@@ -273,7 +297,10 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
     });
 
     // Revoke all refresh tokens on password change
@@ -304,10 +331,11 @@ export class AuthService {
 
     const secret = TotpUtil.generateSecret(20);
     const otpauthUrl = TotpUtil.generateOtpAuthUrl(secret, user.email);
+    const encryptedSecret = TotpUtil.encryptSecret(secret, this.getMfaEncryptionKey());
 
     await this.prisma.user.update({
       where: { id: userId },
-      data: { mfaSecret: secret },
+      data: { mfaSecret: encryptedSecret },
     });
 
     await this.prisma.auditLog.create({
@@ -340,7 +368,8 @@ export class AuthService {
       );
     }
 
-    const isValid = TotpUtil.verifyToken(user.mfaSecret, code);
+    const plainSecret = TotpUtil.decryptSecret(user.mfaSecret, this.getMfaEncryptionKey());
+    const isValid = TotpUtil.verifyToken(plainSecret, code);
     if (!isValid) {
       throw new DomainException(
         ErrorCode.MFA_INVALID_CODE,
@@ -426,7 +455,8 @@ export class AuthService {
       throw new DomainException(ErrorCode.MFA_NOT_ENABLED, 'MFA is not enabled for this user');
     }
 
-    const isValid = TotpUtil.verifyToken(user.mfaSecret, code);
+    const plainSecret = TotpUtil.decryptSecret(user.mfaSecret, this.getMfaEncryptionKey());
+    const isValid = TotpUtil.verifyToken(plainSecret, code);
     if (!isValid) {
       throw new DomainException(
         ErrorCode.MFA_INVALID_CODE,
@@ -557,7 +587,11 @@ export class AuthService {
     }
 
     // Verify either TOTP code or an unused recovery code
-    let isCodeValid = user.mfaSecret ? TotpUtil.verifyToken(user.mfaSecret, code) : false;
+    let isCodeValid = false;
+    if (user.mfaSecret) {
+      const plainSecret = TotpUtil.decryptSecret(user.mfaSecret, this.getMfaEncryptionKey());
+      isCodeValid = TotpUtil.verifyToken(plainSecret, code);
+    }
 
     if (!isCodeValid) {
       const cleanCode = code.trim().toUpperCase();
@@ -601,6 +635,14 @@ export class AuthService {
     };
   }
 
+  private getMfaEncryptionKey(): string {
+    return (
+      this.configService.get<string>('MFA_ENCRYPTION_KEY') ||
+      this.configService.get<string>('jwt.accessSecret') ||
+      'mfa-encryption-fallback-key-32-chars-min'
+    );
+  }
+
   private async generateAuthResponse(user: any, mfaVerified = false): Promise<AuthResponse> {
     const isMfaActive = user.mfaEnabled || false;
     const payload = {
@@ -608,6 +650,8 @@ export class AuthService {
       email: user.email,
       role: user.role,
       status: user.status,
+      tokenType: 'access',
+      tokenVersion: user.tokenVersion || 0,
       mfaVerified: isMfaActive ? mfaVerified : true,
     };
 

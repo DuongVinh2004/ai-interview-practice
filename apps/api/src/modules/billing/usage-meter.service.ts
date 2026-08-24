@@ -1,4 +1,5 @@
 import { Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import {
@@ -69,69 +70,75 @@ export class UsageMeterService {
   }
 
   /**
-   * Atomic quota check and reservation inside an interactive transaction to prevent TOCTOU race conditions.
+   * Atomic quota check and reservation inside an interactive serializable transaction to prevent TOCTOU race conditions (H-002).
    */
   async checkAndConsumeQuota(
     userId: string,
     metric: BillingMetric,
     quantity = 1,
   ): Promise<{ allowed: boolean; currentUsage: number; limit: number; remaining: number }> {
-    return this.prisma.$transaction(async (tx: any) => {
-      const startOfMonth = new Date();
-      startOfMonth.setDate(1);
-      startOfMonth.setHours(0, 0, 0, 0);
+    return this.prisma.$transaction(
+      async (tx: any) => {
+        const startOfMonth = new Date();
+        startOfMonth.setDate(1);
+        startOfMonth.setHours(0, 0, 0, 0);
 
-      const subscription = await tx.subscription.findFirst({
-        where: { userId, status: 'ACTIVE' },
-        include: { plan: true },
-      });
+        const subscription = await tx.subscription.findFirst({
+          where: { userId, status: 'ACTIVE' },
+          include: { plan: true },
+        });
 
-      let limit = FREE_LIMITS[metric] || 10;
-      if (subscription) {
-        const limits = subscription.plan.limits as any;
-        if (metric === BillingMetric.SESSION_COUNT) {
-          limit = limits?.sessionsPerMonth || 20;
-        } else if (metric === BillingMetric.AI_TOKEN) {
-          limit = 200000;
-        } else if (metric === BillingMetric.AUDIO_MINUTE) {
-          limit = limits?.voiceMinutesPerMonth || 60;
+        let limit = FREE_LIMITS[metric] || 10;
+        if (subscription) {
+          const limits = subscription.plan.limits as any;
+          if (metric === BillingMetric.SESSION_COUNT) {
+            limit = limits?.sessionsPerMonth || 20;
+          } else if (metric === BillingMetric.AI_TOKEN) {
+            limit = 200000;
+          } else if (metric === BillingMetric.AUDIO_MINUTE) {
+            limit = limits?.voiceMinutesPerMonth || 60;
+          }
         }
-      }
 
-      const records = await tx.usageRecord.aggregate({
-        where: {
-          userId,
-          metric,
-          recordedAt: { gte: startOfMonth },
-        },
-        _sum: { quantity: true },
-      });
+        const records = await tx.usageRecord.aggregate({
+          where: {
+            userId,
+            metric,
+            recordedAt: { gte: startOfMonth },
+          },
+          _sum: { quantity: true },
+        });
 
-      const currentUsage = records._sum.quantity || 0;
-      if (currentUsage + quantity > limit) {
-        throw new DomainException(
-          ErrorCode.QUOTA_EXCEEDED,
-          `Monthly quota exceeded for ${metric}. Limit: ${limit}, Used: ${currentUsage}, Requested: ${quantity}`,
-          HttpStatus.FORBIDDEN,
-        );
-      }
+        const currentUsage = records._sum.quantity || 0;
+        if (currentUsage + quantity > limit) {
+          throw new DomainException(
+            ErrorCode.QUOTA_EXCEEDED,
+            `Monthly quota exceeded for ${metric}. Limit: ${limit}, Used: ${currentUsage}, Requested: ${quantity}`,
+            HttpStatus.FORBIDDEN,
+          );
+        }
 
-      await tx.usageRecord.create({
-        data: {
-          userId,
-          metric,
-          quantity,
-        },
-      });
+        await tx.usageRecord.create({
+          data: {
+            userId,
+            metric,
+            quantity,
+          },
+        });
 
-      const newUsage = currentUsage + quantity;
-      return {
-        allowed: true,
-        currentUsage: newUsage,
-        limit,
-        remaining: Math.max(0, limit - newUsage),
-      };
-    });
+        const newUsage = currentUsage + quantity;
+        return {
+          allowed: true,
+          currentUsage: newUsage,
+          limit,
+          remaining: Math.max(0, limit - newUsage),
+        };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        timeout: 10000,
+      },
+    );
   }
 
   async recordUsage(

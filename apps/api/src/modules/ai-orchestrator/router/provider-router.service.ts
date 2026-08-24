@@ -116,7 +116,7 @@ export class ProviderRouterService {
   }
 
   /**
-   * Checks and updates daily cost accumulator.
+   * Checks and updates daily cost accumulator (H-007).
    */
   private checkDailyBudget(costToAdd: number = 0): boolean {
     const currentDay = new Date().getUTCDate();
@@ -137,6 +137,23 @@ export class ProviderRouterService {
     return true;
   }
 
+  async syncDailyBudgetFromDb(): Promise<void> {
+    if (this.prisma) {
+      try {
+        const startOfDay = new Date();
+        startOfDay.setUTCHours(0, 0, 0, 0);
+        const agg = await this.prisma.aiRun.aggregate({
+          where: { createdAt: { gte: startOfDay } },
+          _sum: { costEstimate: true },
+        });
+        const dbTotal = agg._sum.costEstimate || 0;
+        this.currentDailyCostUsd = Math.max(this.currentDailyCostUsd, dbTotal);
+      } catch {
+        // Fallback to in-memory accumulator on DB read failure
+      }
+    }
+  }
+
   /**
    * Generic execution wrapper that tries providers in priority order with intelligent fallback.
    */
@@ -144,6 +161,7 @@ export class ProviderRouterService {
     operation: 'generateQuestion' | 'evaluateAnswer' | 'generateLearningPath',
     invokeFn: (provider: AiProvider) => Promise<AiExecutionResult<T>>,
   ): Promise<AiExecutionResult<T>> {
+    await this.syncDailyBudgetFromDb();
     const priorityChain = this.getPriorityChain();
     let lastError: any = null;
     let attemptedProviders = 0;

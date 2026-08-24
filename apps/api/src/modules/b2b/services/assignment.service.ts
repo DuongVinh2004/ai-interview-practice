@@ -79,22 +79,37 @@ export class AssignmentService {
 
     const assignments = await this.prisma.assignment.findMany({
       where: { cohortId },
+      include: {
+        sessions: {
+          where: { state: 'COMPLETED' },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
-    return assignments.map((a) => ({
-      id: a.id,
-      cohortId: a.cohortId,
-      title: a.title,
-      description: a.description,
-      status: a.status,
-      deadline: a.deadline,
-      config: a.config,
-      totalCandidates: cohort.members.length,
-      completedCandidates: 0,
-      averageScore: null,
-      createdAt: a.createdAt,
-      updatedAt: a.updatedAt,
-    }));
+    return assignments.map((a) => {
+      const completedSessions = a.sessions || [];
+      const completedCandidates = completedSessions.length;
+      let averageScore: number | null = null;
+      if (completedCandidates > 0) {
+        const sum = completedSessions.reduce((acc, s) => acc + (s.overallScore || 0), 0);
+        averageScore = Number((sum / completedCandidates).toFixed(1));
+      }
+
+      return {
+        id: a.id,
+        cohortId: a.cohortId,
+        title: a.title,
+        description: a.description,
+        status: a.status,
+        deadline: a.deadline,
+        config: a.config,
+        totalCandidates: cohort.members.length,
+        completedCandidates,
+        averageScore,
+        createdAt: a.createdAt,
+        updatedAt: a.updatedAt,
+      };
+    });
   }
 }

@@ -416,7 +416,43 @@ async function main() {
       create: plan,
     });
   }
-  console.log(`✅ Seeded ${subscriptionPlans.length} subscription plans`);
+  // 9. Seed Mentor Profile for Admin
+  const mentorProfile = await prisma.mentorProfile.upsert({
+    where: { userId: admin.id },
+    update: {
+      expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
+      bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
+      isActive: true,
+      rating: 4.9,
+      totalSessions: 24,
+    },
+    create: {
+      userId: admin.id,
+      expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
+      bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
+      isActive: true,
+      rating: 4.9,
+      totalSessions: 24,
+    },
+  });
+
+  for (let day = 1; day <= 5; day++) {
+    const existing = await prisma.mentorAvailability.findFirst({
+      where: { mentorId: mentorProfile.id, dayOfWeek: day },
+    });
+    if (!existing) {
+      await prisma.mentorAvailability.create({
+        data: {
+          mentorId: mentorProfile.id,
+          dayOfWeek: day,
+          startTime: '09:00',
+          endTime: '17:00',
+          isActive: true,
+        },
+      });
+    }
+  }
+  console.log('✅ Seeded demo mentor profile and availability slots');
 
   console.log('🎉 Database seed completed successfully!');
 }

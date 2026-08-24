@@ -29,7 +29,11 @@ export class StripeProvider implements BillingProvider {
     const cancelUrl = req.cancelUrl || 'https://ai-interview.dev/billing';
 
     if (!this.apiKey) {
-      this.logger.warn('Stripe API Key missing. Falling back to mock checkout session.');
+      if (process.env.NODE_ENV === 'production') {
+        this.logger.error('Stripe API Key missing in production environment');
+        throw new BadRequestException('Payment processing is currently unavailable in production');
+      }
+      this.logger.warn('Stripe API Key missing. Falling back to dev mock checkout session.');
       const mockSessionId = `mock_stripe_${Date.now()}`;
       return {
         checkoutUrl: `${successUrl}?session_id=${mockSessionId}`,
@@ -61,6 +65,10 @@ export class StripeProvider implements BillingProvider {
         body: new URLSearchParams(params),
       });
 
+      if (!response.ok) {
+        throw new Error(`Stripe API returned status ${response.status}`);
+      }
+
       const session = (await response.json()) as any;
       return {
         checkoutUrl: session.url || `${successUrl}?session_id=${session.id}`,
@@ -68,6 +76,9 @@ export class StripeProvider implements BillingProvider {
       };
     } catch (err: any) {
       this.logger.error(`Stripe checkout creation failed: ${err.message}`);
+      if (process.env.NODE_ENV === 'production') {
+        throw new BadRequestException('Failed to initialize payment checkout session');
+      }
       return {
         checkoutUrl: cancelUrl,
         sessionId: 'error_session',
@@ -95,6 +106,10 @@ export class StripeProvider implements BillingProvider {
           return_url: returnUrl,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Stripe Portal returned status ${response.status}`);
+      }
 
       const portal = (await response.json()) as any;
       return { url: portal.url || returnUrl };
@@ -162,12 +177,19 @@ export class StripeProvider implements BillingProvider {
   ): Promise<{ eventType: string; handled: boolean; data?: any }> {
     const payloadStr = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
 
-    if (this.webhookSecret) {
-      const isValid = this.verifyWebhookSignature(payloadStr, signature);
-      if (!isValid) {
-        this.logger.error('Invalid Stripe webhook signature verification');
-        throw new BadRequestException('Invalid Stripe webhook signature');
-      }
+    if (!this.webhookSecret) {
+      this.logger.error('STRIPE_WEBHOOK_SECRET is not configured. Rejecting unauthenticated webhook.');
+      throw new BadRequestException('Stripe webhook verification failed: missing webhook secret');
+    }
+
+    if (!signature) {
+      throw new BadRequestException('Missing stripe-signature header');
+    }
+
+    const isValid = this.verifyWebhookSignature(payloadStr, signature);
+    if (!isValid) {
+      this.logger.error('Invalid Stripe webhook signature verification');
+      throw new BadRequestException('Invalid Stripe webhook signature');
     }
 
     const eventType = payload?.type || 'unknown';

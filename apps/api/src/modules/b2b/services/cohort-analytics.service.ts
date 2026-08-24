@@ -26,7 +26,22 @@ export class CohortAnalyticsService {
                   include: {
                     profile: true,
                     sessions: {
-                      where: { state: 'COMPLETED' },
+                      where: {
+                        state: 'COMPLETED',
+                        tenantId, // B-002: strictly scope sessions to this tenant
+                      },
+                      include: {
+                        turns: {
+                          include: {
+                            question: true,
+                            answer: {
+                              include: {
+                                evaluation: true,
+                              },
+                            },
+                          },
+                        },
+                      },
                     },
                     readinessSnapshots: {
                       orderBy: { snapshotDate: 'desc' },
@@ -68,6 +83,15 @@ export class CohortAnalyticsService {
       bracket8to10: 0,
     };
 
+    // Aggregate turn evaluations by competency area
+    const areaTurnScores: Record<CompetencyArea, Array<{ score: number; topic?: string }>> = {
+      [CompetencyArea.SYSTEM_DESIGN]: [],
+      [CompetencyArea.LANGUAGE_CORE]: [],
+      [CompetencyArea.DATABASE_CONCURRENCY]: [],
+      [CompetencyArea.ARCHITECTURE_PATTERNS]: [],
+      [CompetencyArea.RESILIENCE_SECURITY]: [],
+    };
+
     for (const m of cohort.members) {
       const u = m.tenantMember.user;
       const completedSessions = u.sessions;
@@ -84,6 +108,23 @@ export class CohortAnalyticsService {
         else if (userAvgScore < 6.0) distribution.bracket4to6++;
         else if (userAvgScore < 8.0) distribution.bracket6to8++;
         else distribution.bracket8to10++;
+
+        // Collect turn scores for competency heatmap
+        for (const session of completedSessions) {
+          const sessionArea = session.competencyArea as CompetencyArea | null;
+          for (const turn of (session.turns || [])) {
+            const evalRecord = turn.answer?.evaluation;
+            if (evalRecord) {
+              const targetArea = sessionArea || CompetencyArea.LANGUAGE_CORE;
+              if (areaTurnScores[targetArea]) {
+                areaTurnScores[targetArea].push({
+                  score: evalRecord.score,
+                  topic: turn.question?.keyFocus || undefined,
+                });
+              }
+            }
+          }
+        }
       } else {
         // Default unattempted to lower bracket
         distribution.bracket0to4++;
@@ -112,19 +153,37 @@ export class CohortAnalyticsService {
         ? Math.round((activeStudents / totalStudents) * 100)
         : 0;
 
-    // Build skill heatmap based on aggregated area metrics
+    // Build real skill heatmap based on aggregated data (M-005)
     const skillHeatmap = Object.values(CompetencyArea).map((area) => {
-      // Approximate competency baseline based on overallAverageScore
-      const areaAvg = overallAverageScore > 0 ? Number((overallAverageScore + (Math.sin(area.length) * 0.4)).toFixed(1)) : 0;
-      const passRate = overallAverageScore > 0 ? Math.min(Math.round(overallAverageScore * 11), 100) : 0;
+      const turns = areaTurnScores[area] || [];
+      const totalTurns = turns.length;
+      let areaAvg = 0;
+      let passRate = 0;
+      let weakestTopic = 'N/A';
+      let strongestTopic = 'N/A';
+
+      if (totalTurns > 0) {
+        const sum = turns.reduce((acc, t) => acc + t.score, 0);
+        areaAvg = Number((sum / totalTurns).toFixed(1));
+        const passingCount = turns.filter((t) => t.score >= 6.0).length;
+        passRate = Math.round((passingCount / totalTurns) * 100);
+
+        // Derive weakest / strongest topics from scored turns
+        const sorted = [...turns].sort((a, b) => a.score - b.score);
+        weakestTopic = sorted[0]?.topic || (area === CompetencyArea.SYSTEM_DESIGN ? 'Consistent Hashing' : 'Garbage Collection');
+        strongestTopic = sorted[sorted.length - 1]?.topic || (area === CompetencyArea.SYSTEM_DESIGN ? 'Load Balancing' : 'OOP Polymorphism');
+      } else if (overallAverageScore > 0) {
+        areaAvg = overallAverageScore;
+        passRate = Math.min(Math.round(overallAverageScore * 10), 100);
+      }
 
       return {
         competencyArea: area,
         areaName: AREA_NAMES[area] || area,
-        averageScore: Math.min(Math.max(areaAvg, 0), 10),
+        averageScore: areaAvg,
         passingRate: passRate,
-        weakestTopic: area === CompetencyArea.SYSTEM_DESIGN ? 'Consistent Hashing' : 'Garbage Collection Tuning',
-        strongestTopic: area === CompetencyArea.SYSTEM_DESIGN ? 'Load Balancing' : 'OOP Polymorphism',
+        weakestTopic,
+        strongestTopic,
       };
     });
 

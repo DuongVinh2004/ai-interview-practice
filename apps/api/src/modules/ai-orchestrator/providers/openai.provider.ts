@@ -35,7 +35,7 @@ export class OpenAiProvider implements AiProvider {
     this.defaultModel = this.configService.get<string>('ai.openaiModel', 'gpt-4o');
 
     if (apiKey) {
-      this.client = new OpenAI({ apiKey });
+      this.client = new OpenAI({ apiKey, timeout: 25000 });
     }
   }
 
@@ -49,7 +49,7 @@ export class OpenAiProvider implements AiProvider {
           401,
         );
       }
-      this.client = new OpenAI({ apiKey });
+      this.client = new OpenAI({ apiKey, timeout: 25000 });
     }
     return this.client;
   }

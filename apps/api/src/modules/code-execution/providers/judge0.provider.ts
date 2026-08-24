@@ -30,7 +30,29 @@ export class Judge0Provider implements SandboxProvider {
     testCases?: TestCaseDto[],
     customInput?: string,
   ): Promise<ExecuteCodeResponse> {
-    const langId = LANGUAGE_ID_MAP[language.toLowerCase()] || 63;
+    const langId = LANGUAGE_ID_MAP[language.toLowerCase()];
+    if (!langId) {
+      this.logger.error(`Unsupported language requested: ${language}`);
+      return {
+        status: SubmissionStatus.FAILED,
+        stdout: '',
+        stderr: `Unsupported language: '${language}'. Supported: ${Object.keys(LANGUAGE_ID_MAP).join(', ')}`,
+        executionTimeMs: 0,
+        memoryUsageKb: 0,
+        compileError: null,
+        testResults: (testCases || []).map(tc => ({
+          testCaseId: tc.id,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput: '',
+          passed: false,
+          executionTimeMs: 0,
+          memoryUsageKb: 0,
+          errorMsg: `Unsupported language: '${language}'`,
+        })),
+        allPassed: false,
+      };
+    }
 
     if (!this.apiUrl) {
       this.logger.error('Judge0 API URL is not configured. Failing closed.');
@@ -68,6 +90,7 @@ export class Judge0Provider implements SandboxProvider {
         try {
           const response = await fetch(`${this.apiUrl}/submissions?wait=true`, {
             method: 'POST',
+            signal: AbortSignal.timeout(10000), // Bounded request deadline (H-012)
             headers: {
               'Content-Type': 'application/json',
               ...(this.apiKey ? { 'X-Auth-Token': this.apiKey } : {}),
@@ -80,6 +103,10 @@ export class Judge0Provider implements SandboxProvider {
               memory_limit: 256000,
             }),
           });
+
+          if (!response.ok) {
+            throw new Error(`Judge0 API returned HTTP ${response.status}`);
+          }
 
           const data = (await response.json()) as any;
           const statusId = data.status?.id;
@@ -149,6 +176,7 @@ export class Judge0Provider implements SandboxProvider {
     try {
       const response = await fetch(`${this.apiUrl}/submissions?wait=true`, {
         method: 'POST',
+        signal: AbortSignal.timeout(10000), // Bounded request deadline (H-012)
         headers: {
           'Content-Type': 'application/json',
           ...(this.apiKey ? { 'X-Auth-Token': this.apiKey } : {}),
@@ -161,6 +189,10 @@ export class Judge0Provider implements SandboxProvider {
           memory_limit: 256000,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Judge0 API returned HTTP ${response.status}`);
+      }
 
       const data = (await response.json()) as any;
       const statusId = data.status?.id;

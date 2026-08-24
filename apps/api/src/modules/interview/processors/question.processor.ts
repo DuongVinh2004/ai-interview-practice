@@ -101,14 +101,21 @@ export class QuestionProcessor extends WorkerHost {
           },
         });
 
-        await tx.interviewSession.update({
-          where: { id: sessionId },
+        const sessionUpdateResult = await tx.interviewSession.updateMany({
+          where: {
+            id: sessionId,
+            state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED] },
+          },
           data: {
             state: SessionState.ACTIVE,
             currentTurn: turnNumber,
             targetDifficulty: generatedQuestion.suggestedDifficulty || difficulty,
           },
         });
+
+        if (sessionUpdateResult.count === 0) {
+          this.logger.warn(`Session ${sessionId} is terminal (CANCELLED/COMPLETED). State not changed to ACTIVE.`);
+        }
 
         return q;
       });
@@ -144,8 +151,11 @@ export class QuestionProcessor extends WorkerHost {
         error.stack,
       );
       if (job.attemptsMade >= (job.opts.attempts || 3) - 1) {
-        await this.prisma.interviewSession.update({
-          where: { id: sessionId },
+        await this.prisma.interviewSession.updateMany({
+          where: {
+            id: sessionId,
+            state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED] },
+          },
           data: { state: SessionState.FAILED },
         });
         this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_FAILED, {

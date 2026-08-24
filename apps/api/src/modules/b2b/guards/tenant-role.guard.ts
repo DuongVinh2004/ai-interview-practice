@@ -44,19 +44,9 @@ export class TenantRoleGuard implements CanActivate {
     }
 
     if (!tenantId) {
-      // Find tenant where user has role
-      const member = await this.prisma.tenantMember.findFirst({
-        where: {
-          userId: user.sub || user.id,
-          role: { in: requiredRoles },
-        },
-      });
-      if (member) {
-        request.tenantId = member.tenantId;
-        request.tenantRole = member.role;
-        return true;
-      }
-      throw new ForbiddenException('Missing tenant context or insufficient tenant permissions');
+      throw new ForbiddenException(
+        'Explicit tenant context (x-tenant-id header or route param) is required for tenant-scoped operations',
+      );
     }
 
     const membership = await this.prisma.tenantMember.findUnique({

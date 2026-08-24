@@ -253,6 +253,28 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     const state = this.activeClients.get(client);
     if (!state) return;
 
+    // H-008: Reject unauthenticated binary frames / pre-auth buffer DoS
+    if (!state.userId || !state.voiceSessionId) {
+      this.logger.warn('Rejecting binary audio from unauthenticated or unestablished voice connection.');
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Authentication and voice:connect required before streaming audio.',
+      });
+      client.close(1008, 'Unauthorized audio frame stream');
+      return;
+    }
+
+    // Memory buffer cap (5 MB maximum per speech turn)
+    const MAX_TURN_BUFFER_BYTES = 5 * 1024 * 1024;
+    if (state.audioBytesReceived + pcmBuffer.length > MAX_TURN_BUFFER_BYTES) {
+      this.logger.warn(`Audio buffer limit exceeded for session ${state.voiceSessionId}`);
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Audio frame buffer limit exceeded (5 MB maximum).',
+      });
+      return;
+    }
+
     state.audioBytesReceived += pcmBuffer.length;
     state.audioBuffer.push(pcmBuffer);
 

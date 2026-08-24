@@ -67,6 +67,7 @@ model User {
   lockReason   String?       @map("lock_reason") @db.VarChar(255)
   mfaSecret    String?       @map("mfa_secret") @db.VarChar(255)
   mfaEnabled   Boolean       @default(false) @map("mfa_enabled")
+  tokenVersion Int           @default(0) @map("token_version")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
@@ -180,6 +181,8 @@ model InterviewSession {
   state            SessionState      @default(CREATED)
   sessionMode      SessionMode       @default(STANDARD) @map("session_mode")
   competencyArea   CompetencyArea?   @map("competency_area")
+  tenantId         String?           @map("tenant_id") @db.Uuid
+  assignmentId     String?           @map("assignment_id") @db.Uuid
   isSandbox        Boolean           @default(false) @map("is_sandbox")
   currentTurn      Int               @default(1) @map("current_turn")
   totalTurns       Int               @default(5) @map("total_turns")
@@ -192,6 +195,8 @@ model InterviewSession {
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   jobRole          JobRole           @relation(fields: [jobRoleId], references: [id], onDelete: Restrict)
   seniorityLevel   SeniorityLevel    @relation(fields: [seniorityLevelId], references: [id], onDelete: Restrict)
+  tenant           Tenant?           @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  assignment       Assignment?       @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
   technologies     SessionTechnology[]
   turns            InterviewTurn[]
   learningPath     LearningPath?
@@ -203,6 +208,8 @@ model InterviewSession {
   systemDesignSession SystemDesignSession?
 
   @@index([userId, createdAt(sort: Desc)])
+  @@index([tenantId])
+  @@index([assignmentId])
   @@index([state])
   @@index([sessionMode])
   @@map("interview_sessions")
@@ -378,8 +385,10 @@ model IdempotencyRecord {
   key            String   @id @db.VarChar(255)
   userId         String   @map("user_id") @db.Uuid
   resource       String   @db.VarChar(100)
-  responseStatus Int      @map("response_status")
-  responseBody   Json     @map("response_body")
+  requestHash    String?  @map("request_hash") @db.VarChar(64)
+  status         String   @default("COMPLETED") @db.VarChar(20) // IN_PROGRESS, COMPLETED, FAILED
+  responseStatus Int?     @map("response_status")
+  responseBody   Json?    @map("response_body")
   createdAt      DateTime @default(now()) @map("created_at")
   expiresAt      DateTime @map("expires_at")
 
@@ -1401,6 +1410,7 @@ model Tenant {
   cohorts        Cohort[]
   questionBanks  TenantQuestionBank[]
   apiKeys        TenantApiKey[]
+  sessions       InterviewSession[]
 
   @@map("tenants")
 }
@@ -1463,6 +1473,7 @@ model Assignment {
   updatedAt   DateTime         @updatedAt @map("updated_at")
 
   cohort      Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  sessions    InterviewSession[]
 
   @@index([cohortId])
   @@map("assignments")

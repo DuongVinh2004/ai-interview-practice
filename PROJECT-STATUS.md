@@ -7,16 +7,28 @@ Tài liệu này là **single source of truth** cho trạng thái triển khai d
 
 ---
 
-## 🛡️ BẢN VÁ BẢO MẬT & HARDENING (Ultra Strict Audit Remediation)
+## 🛡️ BẢN VÁ BẢO MẬT & HARDENING (Ultra-Strict Audit Remediation)
 
-- [x] **BLOCKER-001 (Voice Gateway WebSocket Security)**: Bắt buộc xác thực JWT trên kết nối WebSocket handshake và `voice:connect`. Kiểm tra quyền sở hữu phiên phỏng vấn (`interview.userId === authenticatedUser.id`), ngắt kết nối với mã `1008 Forbidden` nếu vi phạm. Thắt chặt CORS allowlist.
-- [x] **CRITICAL-001 (Document Blueprint IDOR / BOLA Prevention)**: Thêm xác thực quyền sở hữu `userId` trong `GET /documents/blueprints/:id` và `DocumentParserService.getBlueprint()`.
-- [x] **CRITICAL-002 (Stripe Webhook Signature Verification)**: Cài đặt xác thực chữ ký mật mã HMAC-SHA256 (`stripe-signature` timestamp & hash tolerance) với `STRIPE_WEBHOOK_SECRET`.
-- [x] **HIGH-001 (Atomic Billing Quota Enforcement)**: Thay thế TOCTOU bằng `UsageMeterService.checkAndConsumeQuota()` chạy trong interactive transaction.
-- [x] **HIGH-002 (Atomic Recovery Code Consumption)**: Áp dụng atomic conditional update (`WHERE id = ? AND isUsed = false`) ngăn chặn race condition khi sử dụng recovery code đồng thời.
-- [x] **HIGH-003 & HIGH-004 (Judge0 Sandbox Fail-Closed & Test Cases)**: Chuyển provider sang fail-closed khi thiếu URL/config, chạy và so sánh kết quả thực thi từng testcase với `expectedOutput`.
-- [x] **HIGH-005 (Secure Upload Boundary)**: Cấu hình Multer file size limit (5MB), MIME type filtering, và kiểm tra magic-bytes (PDF `%PDF-`, DOCX `PK\x03\x04`).
-- [x] **HIGH-006 (Stripe Checkout Line Items)**: Truyền đúng `stripePriceId` tương ứng với chu kỳ thanh toán vào `line_items` của checkout session.
+- [x] **BLOCKER-001 (MFA Challenge Token Separation & Strategy Hardening)**: Dùng `tokenType: 'mfa_challenge'` riêng biệt, từ chối toàn bộ request mang token MFA pending vào các protected API endpoints.
+- [x] **BLOCKER-002 (Multi-Tenant Session Isolation & Cohort Analytics)**: Bổ sung liên kết `tenantId` & `assignmentId` trong schema `InterviewSession`. Viết lại query cohort analytics để chỉ lọc session thuộc về tenant đó. Loại bỏ hoàn toàn công thức giả lập `Math.sin`.
+- [x] **BLOCKER-003 (Predictable Secrets Purged)**: Gỡ bỏ toàn bộ fallback secret mặc định trong `docker-compose.yml`, bắt buộc nạp secret an toàn qua environment.
+- [x] **CRITICAL-001 (Stripe Webhook Fail-Closed & Raw Body Verification)**: Bật `rawBody: true` trong NestJS bootstrap, xác thực chữ ký HMAC-SHA256 trên raw buffer bytes, fail-closed khi thiếu `STRIPE_WEBHOOK_SECRET`.
+- [x] **HIGH-001 (Atomic Refresh Token Rotation)**: Áp dụng conditional update `WHERE id = ? AND is_revoked = false` để loại trừ race condition và thu hồi toàn bộ token family khi phát hiện token reuse.
+- [x] **HIGH-002 (Serializable Quota Enforcement)**: Áp dụng `Serializable` transaction isolation level cho `checkAndConsumeQuota()` nhằm ngăn ngừa TOCTOU race conditions.
+- [x] **HIGH-003 (Atomic Request-Bound Idempotency)**: Hash payload SHA-256, đặt trạng thái reservation `IN_PROGRESS` ngăn chặn concurrent execution và phát hiện body conflicts.
+- [x] **HIGH-004 (Queue Dual-Write Resilience)**: Xử lý lỗi enqueue BullMQ thất bại một cách an toàn, cập nhật trạng thái session FAILED và trả lỗi rõ ràng.
+- [x] **HIGH-005 (CAS State Machine Invariants)**: Áp dụng Compare-And-Swap (`updateMany WHERE state NOT IN ('CANCELLED', 'COMPLETED')`) trong các worker processors để không hồi sinh session đã hủy.
+- [x] **HIGH-006 (Dynamic Total Turns Configuration)**: Hỗ trợ dynamic `totalTurns` (1–5) xuyên suốt lifecycle và evaluation processor thay vì hardcode 5 lượt.
+- [x] **HIGH-007 (Durable AI Daily Budget)**: Tính toán chi phí AI hàng ngày dựa trên tổng hợp thực tế từ database `aiRuns`.
+- [x] **HIGH-008 (Voice Gateway Pre-Auth Hardening)**: Từ chối và đóng socket khi nhận frame nhị phân trước khi xác thực, giới hạn dung lượng buffer 5MB/lượt.
+- [x] **HIGH-009 (CV Extraction Integrity)**: Loại bỏ hoàn toàn việc bịa đặt dữ liệu kinh nghiệm làm việc khi CV không có thông tin.
+- [x] **HIGH-010 (Production Stripe Fail-Closed)**: Ném lỗi `503` khi thiếu Stripe API key ở môi trường production, chỉ cho phép mock session ở môi trường dev/test.
+- [x] **HIGH-011 (Blueprint Ownership Validation)**: Xác thực quyền sở hữu `userId` khi liên kết blueprint vào session.
+- [x] **HIGH-012 & LOW-002 (Judge0 Hard Timeout & Language Validation)**: Thêm `AbortSignal.timeout(10000)`, kiểm tra `response.ok`, từ chối ngôn ngữ không hỗ trợ với lỗi validation rõ ràng.
+- [x] **MEDIUM-001 (CI Critical Security Gate)**: Cấu hình Trivy SCA scanner với `exit-code: 1` khi phát hiện lỗ hổng CRITICAL.
+- [x] **MEDIUM-003 (Token Version Invalidation)**: Tăng `tokenVersion` khi đổi mật khẩu để thu hồi tức thì toàn bộ JWT access token hiện hành.
+- [x] **MEDIUM-004 (Explicit Tenant Context)**: Bắt buộc header `x-tenant-id` hoặc URL param, loại bỏ cơ chế tự động chọn tenant gây nhầm lẫn.
+- [x] **MEDIUM-010 (AES-256-GCM MFA Secret Encryption)**: Mã hóa TOTP secret key ở trạng thái nghỉ (at-rest) trước khi lưu vào cơ sở dữ liệu.
 
 ---
 
@@ -44,21 +56,21 @@ Tài liệu này là **single source of truth** cho trạng thái triển khai d
 
 ### Interview Core (Epic E04)
 - [x] Session state machine: `CREATED → ACTIVE → EVALUATING → COMPLETED/CANCELLED/FAILED`
-- [x] 3 session modes: `STANDARD` (5 turns), `FOCUSED_REMEDIATION`, `QUICK_PRACTICE`
+- [x] 3 session modes: `STANDARD` (1-5 turns), `FOCUSED_REMEDIATION`, `QUICK_PRACTICE`
 - [x] Adaptive difficulty: score ≥ 7.5 → step up, ≤ 4.0 → step down
 - [x] Answer persistence before BullMQ enqueue (ADR 0004)
-- [x] `Idempotency-Key` HTTP header support
+- [x] `Idempotency-Key` HTTP header support with atomic reservation
 - [x] SSE real-time events + REST polling fallback (`/interviews/:id/status`)
 - [x] Sandbox mode (sessions don't affect progress)
 
 ### AI & Evaluation (Epics E06, E07, E08)
 - [x] Provider abstraction interface (`AiProvider`)
 - [x] 4 providers: `MockAiProvider` (deterministic), `GeminiProvider`, `OpenAiProvider`, `AnthropicProvider`
-- [x] Provider Router with circuit breakers (5 failures → 30s trip) + daily cost budget
+- [x] Provider Router with circuit breakers (5 failures → 30s trip) + durable daily cost budget
 - [x] Prompt Registry & version management
 - [x] AI Security Filter — pre-filter (injection detection) + post-filter (evidence verification, range check)
 - [x] Zod schema validation on all AI outputs
-- [x] Rubric scoring: Technical Accuracy, Depth, Clarity (weighted: 0.5/0.3/0.2)
+- [x] Rubric scoring: Technical Accuracy, Depth, Clarity (weighted: 0.4/0.3/0.3)
 - [x] Evidence extraction from candidate answers
 - [x] Confidence rating (0.0–1.0)
 - [x] Golden dataset v2 (12 benchmark cases) + adversarial eval suite

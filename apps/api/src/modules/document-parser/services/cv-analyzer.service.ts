@@ -99,39 +99,24 @@ export class CvAnalyzerService {
       }
     }
 
-    if (experienceList.length === 0) {
-      experienceList.push({
-        company: 'Software Solutions Corp',
-        role: targetRole,
-        duration: '2+ years',
-        responsibilities: ['Engineered scalable web applications and REST APIs', 'Collaborated with agile teams'],
-        projects: [
-          {
-            name: 'Cloud Infrastructure & Application Migration',
-            role: targetRole,
-            technologies: Array.from(skillsDetected).slice(0, 5),
-            description: 'Refactored monolith service into distributed microservices.',
-            highlights: ['Improved throughput by 35%', 'Reduced memory footprint'],
-          }
-        ]
-      });
-    }
-
     // 5. Education parsing
     const educationList: string[] = [];
     if (lowerText.includes('computer science') || lowerText.includes('bachelor') || lowerText.includes('đại học') || lowerText.includes('công nghệ thông tin')) {
       educationList.push('B.S. in Computer Science / Information Technology');
-    } else {
+    } else if (lowerText.includes('education') || lowerText.includes('học vấn')) {
       educationList.push('Higher Education in Technical / Engineering Field');
     }
 
-    const summary = `Candidate with ${seniorityLevel} level experience in ${targetRole}, proficient in ${Array.from(skillsDetected).slice(0, 6).join(', ')}.`;
+    const detectedSkills = Array.from(skillsDetected);
+    const summary = detectedSkills.length > 0
+      ? `Candidate with ${seniorityLevel} level background in ${targetRole}, skills: ${detectedSkills.slice(0, 6).join(', ')}.`
+      : `Profile extracted for ${targetRole} (${seniorityLevel}).`;
 
     return {
       fullName: '[CANDIDATE_NAME]',
       targetRole,
       seniorityLevel,
-      skills: Array.from(skillsDetected).length > 0 ? Array.from(skillsDetected) : ['TypeScript', 'Node.js', 'React', 'PostgreSQL'],
+      skills: detectedSkills,
       experience: experienceList,
       education: educationList,
       rawSummary: summary,

@@ -60,9 +60,13 @@ export function useTutor() {
 
       if (reader) {
         let accumulated = '';
-        while (true) {
+        let isDone = false;
+        while (!isDone) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            isDone = true;
+            break;
+          }
 
           const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n').filter(l => l.startsWith('data: '));

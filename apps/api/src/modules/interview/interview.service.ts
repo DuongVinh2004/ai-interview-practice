@@ -120,25 +120,45 @@ export class InterviewService {
 
     // Enqueue generation of 1st question with deterministic job ID
     const jobId = `question-${session.id}-turn-1`;
-    await this.questionQueue.add(
-      JobName.GENERATE_QUESTION,
-      {
-        sessionId: session.id,
-        turnId: firstTurn.id,
-        turnNumber: 1,
-        difficulty: 1,
-      },
-      {
-        jobId,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 },
-      },
-    );
+    try {
+      await this.questionQueue.add(
+        JobName.GENERATE_QUESTION,
+        {
+          sessionId: session.id,
+          turnId: firstTurn.id,
+          turnNumber: 1,
+          difficulty: 1,
+        },
+        {
+          jobId,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 1000 },
+        },
+      );
+    } catch (queueErr: any) {
+      this.logger.error(`Failed to enqueue question generation: ${queueErr.message}`);
+      await this.prisma.interviewSession.update({
+        where: { id: session.id },
+        data: { state: SessionState.FAILED },
+      });
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Failed to enqueue interview question generation. Please try again.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
 
     if (dto.blueprintId) {
+      // H-011: enforce blueprint ownership before linking
       await this.prisma.interviewBlueprint
-        .update({
-          where: { id: dto.blueprintId },
+        .updateMany({
+          where: {
+            id: dto.blueprintId,
+            OR: [
+              { jdAnalysis: { userId } },
+              { parsedProfile: { document: { userId } } },
+            ],
+          },
           data: { interviewId: session.id },
         })
         .catch(err => {
@@ -373,20 +393,33 @@ export class InterviewService {
 
     // 2. ENQUEUE EVALUATION BULLMQ JOB
     const jobId = `eval-${sessionId}-turn-${turn.turnNumber}`;
-    await this.evaluationQueue.add(
-      JobName.EVALUATE_ANSWER,
-      {
-        sessionId,
-        turnId: turn.id,
-        turnNumber: turn.turnNumber,
-        answerId: answer.id,
-      },
-      {
-        jobId,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 1000 },
-      },
-    );
+    try {
+      await this.evaluationQueue.add(
+        JobName.EVALUATE_ANSWER,
+        {
+          sessionId,
+          turnId: turn.id,
+          turnNumber: turn.turnNumber,
+          answerId: answer.id,
+        },
+        {
+          jobId,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 1000 },
+        },
+      );
+    } catch (queueErr: any) {
+      this.logger.error(`Failed to enqueue evaluation job: ${queueErr.message}`);
+      await this.prisma.interviewSession.update({
+        where: { id: sessionId },
+        data: { state: SessionState.FAILED },
+      });
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Failed to enqueue answer evaluation. Please retry your submission.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
 
     // 3. EMIT SSE EVENT
     this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_UPDATED, {

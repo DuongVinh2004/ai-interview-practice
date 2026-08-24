@@ -38,7 +38,7 @@ export class AnthropicProvider implements AiProvider {
     );
 
     if (apiKey) {
-      this.client = new Anthropic({ apiKey });
+      this.client = new Anthropic({ apiKey, timeout: 25000 });
     }
   }
 
@@ -52,7 +52,7 @@ export class AnthropicProvider implements AiProvider {
           401,
         );
       }
-      this.client = new Anthropic({ apiKey });
+      this.client = new Anthropic({ apiKey, timeout: 25000 });
     }
     return this.client;
   }

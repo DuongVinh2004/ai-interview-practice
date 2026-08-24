@@ -100,8 +100,9 @@ export class EvaluationProcessor extends WorkerHost {
         evaluationResult.score,
       );
 
-      // Persist Evaluation
-      const isFinalTurn = turnNumber >= 5;
+      // Persist Evaluation (H-006: dynamic totalTurns boundary)
+      const totalTurns = session.totalTurns && session.totalTurns >= 1 ? session.totalTurns : 5;
+      const isFinalTurn = turnNumber >= totalTurns;
 
       const evaluation = await this.prisma.$transaction(async tx => {
         const evalRecord = await tx.evaluation.upsert({
@@ -175,10 +176,13 @@ export class EvaluationProcessor extends WorkerHost {
           });
 
           const totalScore = allEvaluations.reduce((sum, e) => sum + e.score, 0);
-          const overallScore = Number((totalScore / allEvaluations.length).toFixed(1));
+          const overallScore = Number((totalScore / Math.max(allEvaluations.length, 1)).toFixed(1));
 
-          await tx.interviewSession.update({
-            where: { id: sessionId },
+          await tx.interviewSession.updateMany({
+            where: {
+              id: sessionId,
+              state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED] },
+            },
             data: {
               state: SessionState.COMPLETED,
               overallScore,
@@ -193,8 +197,11 @@ export class EvaluationProcessor extends WorkerHost {
             data: { difficulty: nextDifficulty },
           });
 
-          await tx.interviewSession.update({
-            where: { id: sessionId },
+          await tx.interviewSession.updateMany({
+            where: {
+              id: sessionId,
+              state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED] },
+            },
             data: {
               state: SessionState.ACTIVE,
               currentTurn: nextTurnNumber,

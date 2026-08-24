@@ -79,15 +79,15 @@ describe('AuthService (Unit)', () => {
       };
 
       prisma.refreshToken.findUnique.mockResolvedValue(mockStoredToken);
-      prisma.refreshToken.update.mockResolvedValue({ ...mockStoredToken, isRevoked: true });
+      prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
       prisma.refreshToken.create.mockResolvedValue({ id: 'token-uuid-2' });
 
       const res = await service.refreshTokens('valid-refresh-token-string');
 
       expect(res.accessToken).toBe('mock-jwt-access-token');
       expect(res.refreshToken).toBeDefined();
-      expect(prisma.refreshToken.update).toHaveBeenCalledWith({
-        where: { id: mockStoredToken.id },
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { id: mockStoredToken.id, isRevoked: false },
         data: { isRevoked: true },
       });
     });

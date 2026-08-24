@@ -145,4 +145,40 @@ export class TotpUtil {
 
     return Array.from(codes);
   }
+
+  /**
+   * Encrypts plain TOTP secret at rest with AES-256-GCM
+   */
+  static encryptSecret(plainSecret: string, encryptionKey: string): string {
+    const key = crypto.createHash('sha256').update(encryptionKey).digest();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    let encrypted = cipher.update(plainSecret, 'utf8', 'hex');
+    encrypted += cipher.final('hex');
+    const authTag = cipher.getAuthTag().toString('hex');
+    return `${iv.toString('hex')}:${authTag}:${encrypted}`;
+  }
+
+  /**
+   * Decrypts AES-256-GCM encrypted TOTP secret
+   */
+  static decryptSecret(encryptedPayload: string, encryptionKey: string): string {
+    if (!encryptedPayload || !encryptedPayload.includes(':')) {
+      return encryptedPayload;
+    }
+    try {
+      const [ivHex, authTagHex, cipherHex] = encryptedPayload.split(':');
+      if (!ivHex || !authTagHex || !cipherHex) {
+        return encryptedPayload;
+      }
+      const key = crypto.createHash('sha256').update(encryptionKey).digest();
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+      decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+      let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch {
+      return encryptedPayload;
+    }
+  }
 }

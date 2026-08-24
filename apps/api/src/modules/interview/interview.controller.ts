@@ -81,29 +81,35 @@ export class InterviewController {
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     if (idempotencyKey) {
-      const existing = await this.idempotencyService.checkKey(
+      const reservation = await this.idempotencyService.reserveKey(
         idempotencyKey,
         userId,
         `interview-answer-${sessionId}`,
+        dto,
       );
-      if (existing) {
-        return existing.responseBody;
+      if (reservation.isCached) {
+        return reservation.cachedResponse;
       }
     }
 
-    const result = await this.interviewService.submitAnswer(userId, sessionId, dto);
+    try {
+      const result = await this.interviewService.submitAnswer(userId, sessionId, dto);
 
-    if (idempotencyKey) {
-      await this.idempotencyService.saveKey(
-        idempotencyKey,
-        userId,
-        `interview-answer-${sessionId}`,
-        HttpStatus.OK,
-        result,
-      );
+      if (idempotencyKey) {
+        await this.idempotencyService.completeKey(
+          idempotencyKey,
+          HttpStatus.OK,
+          result,
+        );
+      }
+
+      return result;
+    } catch (err) {
+      if (idempotencyKey) {
+        await this.idempotencyService.releaseKey(idempotencyKey);
+      }
+      throw err;
     }
-
-    return result;
   }
 
   @Post(':id/turns/:turnNumber/re-evaluate')
