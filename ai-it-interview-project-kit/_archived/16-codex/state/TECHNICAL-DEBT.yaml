@@ -1,0 +1,12 @@
+schema_version: 1
+items: []
+# Deferred items must be non-blocking for current acceptance/release/security gates.
+# Example shape:
+# - id: DEBT-001
+#   source_task: AIP-___
+#   severity: LOW
+#   finding: "..."
+#   impact: "..."
+#   reason_deferred: "..."
+#   owner_or_followup: "AIP-___"
+#   status: OPEN

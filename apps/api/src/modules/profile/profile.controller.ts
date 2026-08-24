@@ -1,5 +1,5 @@
 import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ProfileService } from './profile.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -22,5 +22,18 @@ export class ProfileController {
   @ApiOperation({ summary: 'Update current user profile' })
   async updateProfile(@CurrentUser('sub') userId: string, @Body() dto: UpdateProfileRequestDto) {
     return this.profileService.updateProfile(userId, dto);
+  }
+
+  @Get('benchmarks')
+  @ApiOperation({ summary: 'Get candidate competency benchmark gap analysis vs industry standards' })
+  async getBenchmarks(@CurrentUser('sub') userId: string) {
+    return this.profileService.getBenchmarks(userId);
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Export complete user data payload (GDPR Data Portability AIP-047)' })
+  @ApiResponse({ status: 200, description: 'Complete GDPR-compliant JSON data export' })
+  async exportUserData(@CurrentUser('sub') userId: string) {
+    return this.profileService.exportUserData(userId);
   }
 }

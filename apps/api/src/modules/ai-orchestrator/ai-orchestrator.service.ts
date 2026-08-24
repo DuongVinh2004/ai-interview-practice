@@ -1,11 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { PromptRegistryService } from './prompt-registry/prompt-registry.service';
-import { MockAiProvider } from './providers/mock-ai.provider';
-import { ExternalAiProvider } from './providers/external-ai.provider';
+import { PromptRendererService } from './prompt-engine/prompt-renderer.service';
+import { AiSecurityFilterService } from './security/ai-security-filter.service';
+import { ProviderRouterService } from './router/provider-router.service';
 import {
-  AiProvider,
   QuestionPromptContext,
   EvaluationPromptContext,
   LearningPathPromptContext,
@@ -25,18 +24,17 @@ import { DomainException } from '../platform/filters/all-exceptions.filter';
 @Injectable()
 export class AiOrchestratorService {
   private readonly logger = new Logger(AiOrchestratorService.name);
-  private provider: AiProvider;
 
   constructor(
-    private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
     private readonly promptRegistry: PromptRegistryService,
-    private readonly mockProvider: MockAiProvider,
-    private readonly externalProvider: ExternalAiProvider,
+    private readonly promptRenderer: PromptRendererService,
+    private readonly securityFilter: AiSecurityFilterService,
+    private readonly routerService: ProviderRouterService,
   ) {
-    const configuredProvider = this.configService.get<string>('ai.provider', 'mock');
-    this.provider = configuredProvider === 'external' ? this.externalProvider : this.mockProvider;
-    this.logger.log(`AI Orchestrator initialized using [${this.provider.name}] provider`);
+    this.logger.log(
+      `AI Orchestrator initialized with ProviderRouter (Chain: ${this.routerService.getPriorityChain().join(' -> ')})`,
+    );
   }
 
   async generateQuestion(
@@ -44,12 +42,18 @@ export class AiOrchestratorService {
     context: QuestionPromptContext,
   ): Promise<GeneratedQuestionAi> {
     const promptRecord = await this.promptRegistry.getActivePrompt('question_generator');
+    const userPrompt = this.promptRenderer.renderQuestionPrompt(
+      promptRecord.userPromptTemplate,
+      context,
+    );
     const startTime = Date.now();
 
     try {
-      const result = await this.executeWithRetry(async () => {
-        return this.provider.generateQuestion(context, promptRecord.systemPrompt);
-      });
+      const result = await this.routerService.generateQuestion(
+        context,
+        promptRecord.systemPrompt,
+        userPrompt,
+      );
 
       const validated = GeneratedQuestionAiSchema.safeParse(result.data);
       if (!validated.success) {
@@ -77,7 +81,7 @@ export class AiOrchestratorService {
       await this.auditRun({
         sessionId,
         promptVersionId: promptRecord.id,
-        provider: this.provider.name,
+        provider: 'router',
         model: 'unknown',
         latencyMs: Date.now() - startTime,
         status: AiRunStatus.FAILED,
@@ -92,13 +96,35 @@ export class AiOrchestratorService {
     sessionId: string,
     context: EvaluationPromptContext,
   ): Promise<EvaluatedAnswerAi> {
-    const promptRecord = await this.promptRegistry.getActivePrompt('answer_evaluator');
     const startTime = Date.now();
 
-    try {
-      const result = await this.executeWithRetry(async () => {
-        return this.provider.evaluateAnswer(context, promptRecord.systemPrompt);
+    // 1. Pre-execution Safety Filter (Prompt injection, Protected traits, Verbosity spam)
+    const preFilterResult = this.securityFilter.preFilter(context);
+    if (!preFilterResult.isSafe && preFilterResult.directEvaluation) {
+      const filtered = this.securityFilter.postFilter(context, preFilterResult.directEvaluation);
+      await this.auditRun({
+        sessionId,
+        provider: 'security-filter',
+        model: 'heuristic-guard-v1',
+        latencyMs: Date.now() - startTime,
+        status: AiRunStatus.SUCCESS,
+        metadata: { safetyFlags: preFilterResult.safetyFlags },
       });
+      return filtered;
+    }
+
+    const promptRecord = await this.promptRegistry.getActivePrompt('answer_evaluator');
+    const userPrompt = this.promptRenderer.renderEvaluationPrompt(
+      promptRecord.userPromptTemplate,
+      context,
+    );
+
+    try {
+      const result = await this.routerService.evaluateAnswer(
+        context,
+        promptRecord.systemPrompt,
+        userPrompt,
+      );
 
       const validated = EvaluatedAnswerAiSchema.safeParse(result.data);
       if (!validated.success) {
@@ -107,6 +133,9 @@ export class AiOrchestratorService {
           `AI evaluation output validation failed: ${validated.error.message}`,
         );
       }
+
+      // 2. Post-execution Safety Filter (Verbatim Evidence Check, Deterministic Application Score Calculation)
+      const postProcessed = this.securityFilter.postFilter(context, validated.data);
 
       await this.auditRun({
         sessionId,
@@ -119,14 +148,15 @@ export class AiOrchestratorService {
         latencyMs: result.latencyMs || Date.now() - startTime,
         costEstimate: result.costEstimate,
         status: AiRunStatus.SUCCESS,
+        metadata: postProcessed.safetyFlags ? { safetyFlags: postProcessed.safetyFlags } : undefined,
       });
 
-      return validated.data;
+      return postProcessed;
     } catch (error: any) {
       await this.auditRun({
         sessionId,
         promptVersionId: promptRecord.id,
-        provider: this.provider.name,
+        provider: 'router',
         model: 'unknown',
         latencyMs: Date.now() - startTime,
         status: AiRunStatus.FAILED,
@@ -142,12 +172,18 @@ export class AiOrchestratorService {
     context: LearningPathPromptContext,
   ): Promise<GeneratedLearningPathAi> {
     const promptRecord = await this.promptRegistry.getActivePrompt('learning_path');
+    const userPrompt = this.promptRenderer.renderLearningPathPrompt(
+      promptRecord.userPromptTemplate,
+      context,
+    );
     const startTime = Date.now();
 
     try {
-      const result = await this.executeWithRetry(async () => {
-        return this.provider.generateLearningPath(context, promptRecord.systemPrompt);
-      });
+      const result = await this.routerService.generateLearningPath(
+        context,
+        promptRecord.systemPrompt,
+        userPrompt,
+      );
 
       const validated = GeneratedLearningPathAiSchema.safeParse(result.data);
       if (!validated.success) {
@@ -175,7 +211,7 @@ export class AiOrchestratorService {
       await this.auditRun({
         sessionId,
         promptVersionId: promptRecord.id,
-        provider: this.provider.name,
+        provider: 'router',
         model: 'unknown',
         latencyMs: Date.now() - startTime,
         status: AiRunStatus.FAILED,
@@ -184,25 +220,6 @@ export class AiOrchestratorService {
       });
       throw error;
     }
-  }
-
-  private async executeWithRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
-    let lastError: any;
-    for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
-      try {
-        return await fn();
-      } catch (error: any) {
-        lastError = error;
-        if (attempt <= maxRetries) {
-          const backoff = Math.pow(2, attempt) * 200;
-          this.logger.warn(
-            `AI invocation failed (attempt ${attempt}/${maxRetries + 1}). Retrying in ${backoff}ms... Error: ${error.message}`,
-          );
-          await new Promise(res => setTimeout(res, backoff));
-        }
-      }
-    }
-    throw lastError;
   }
 
   private async auditRun(data: {

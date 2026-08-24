@@ -1,11 +1,37 @@
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '../../lib/api-client';
 import { useAuthStore } from '../../stores/auth.store';
+import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent } from '../../components/ui/Card';
-import { PlayCircle, History, Sparkles, CheckCircle2, Award } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import { Spinner } from '../../components/ui/Spinner';
+import { CompetencyRadarChart } from '../../components/analytics/CompetencyRadarChart';
+import { ProgressTrendChart } from '../../components/analytics/ProgressTrendChart';
+import {
+  PlayCircle,
+  History,
+  Sparkles,
+  Award,
+  TrendingUp,
+  Target,
+  Zap,
+  CheckCircle2,
+} from 'lucide-react';
 
 export function DashboardPage() {
   const { user } = useAuthStore();
+  const { t } = useI18nStore();
+
+  const { data: radarData, isLoading: isLoadingRadar } = useQuery<any>({
+    queryKey: ['analytics-competency-radar'],
+    queryFn: () => apiClient('/analytics/competency-radar'),
+  });
+
+  const { data: progressData, isLoading: isLoadingProgress } = useQuery<any>({
+    queryKey: ['analytics-progress'],
+    queryFn: () => apiClient('/analytics/progress'),
+  });
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
@@ -23,9 +49,9 @@ export function DashboardPage() {
           seniority level and technology stack.
         </p>
 
-        <div className="flex gap-3 mt-6">
+        <div className="flex flex-wrap gap-3 mt-6">
           <Link to="/interviews/new">
-            <Button size="lg" variant="primary" className="gap-2">
+            <Button size="lg" variant="primary" className="gap-2 shadow-md">
               <PlayCircle className="h-5 w-5" />
               <span>Start New Interview</span>
             </Button>
@@ -37,6 +63,115 @@ export function DashboardPage() {
             </Button>
           </Link>
         </div>
+      </div>
+
+      {/* Analytics & Competency Section */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Competency Radar Card */}
+        <Card className="border-slate-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-emerald-600" />
+                <CardTitle className="text-base font-bold">
+                  {t.analytics.competencyRadarTitle}
+                </CardTitle>
+              </div>
+              {radarData?.totalEvaluatedTurns > 0 && (
+                <span className="text-xs bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-semibold border border-emerald-200">
+                  {radarData.totalEvaluatedTurns} turns evaluated
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">{t.analytics.competencyRadarSubtitle}</p>
+          </CardHeader>
+
+          <CardContent className="pt-2 flex flex-col items-center justify-center">
+            {isLoadingRadar ? (
+              <div className="py-20">
+                <Spinner size="md" />
+              </div>
+            ) : radarData?.competencies?.length > 0 ? (
+              <div className="w-full flex flex-col items-center space-y-4">
+                <CompetencyRadarChart competencies={radarData.competencies} size={300} />
+
+                {/* Strengths & Growth Areas */}
+                <div className="w-full grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
+                  <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-100">
+                    <span className="font-bold text-emerald-900 flex items-center gap-1 mb-1">
+                      <Zap className="h-3.5 w-3.5 text-emerald-600" />
+                      {t.analytics.topStrengths}
+                    </span>
+                    {radarData.topStrengths?.length > 0 ? (
+                      <ul className="list-disc list-inside text-emerald-800 space-y-0.5 text-[11px]">
+                        {radarData.topStrengths.map((s: string) => (
+                          <li key={s} className="truncate">{s}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-emerald-600">Complete more sessions</p>
+                    )}
+                  </div>
+
+                  <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-100">
+                    <span className="font-bold text-amber-900 flex items-center gap-1 mb-1">
+                      <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
+                      {t.analytics.growthAreas}
+                    </span>
+                    {radarData.growthAreas?.length > 0 ? (
+                      <ul className="list-disc list-inside text-amber-800 space-y-0.5 text-[11px]">
+                        {radarData.growthAreas.map((g: string) => (
+                          <li key={g} className="truncate">{g}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-amber-600">No major gaps detected</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 py-16 text-center">{t.analytics.noDataYet}</p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Progress Trends Card */}
+        <Card className="border-slate-200 shadow-sm flex flex-col justify-between">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-indigo-600" />
+              <CardTitle className="text-base font-bold">
+                {t.analytics.progressTitle}
+              </CardTitle>
+            </div>
+            <p className="text-xs text-slate-500">{t.analytics.progressSubtitle}</p>
+          </CardHeader>
+
+          <CardContent className="pt-2">
+            {isLoadingProgress ? (
+              <div className="py-20 flex justify-center">
+                <Spinner size="md" />
+              </div>
+            ) : progressData?.sessions?.length > 0 ? (
+              <ProgressTrendChart
+                sessions={progressData.sessions}
+                averageScore={progressData.averageScore}
+                highestScore={progressData.highestScore}
+                scoreVelocity={progressData.scoreVelocity}
+              />
+            ) : (
+              <div className="text-center py-16 space-y-3">
+                <p className="text-xs text-slate-400">{t.analytics.noDataYet}</p>
+                <Link to="/interviews/new">
+                  <Button size="sm" variant="secondary">
+                    Start Your First Session
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Feature Highlights */}

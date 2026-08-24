@@ -70,6 +70,8 @@ export class QuestionProcessor extends WorkerHost {
         turnNumber,
         difficulty,
         previousScore,
+        competencyArea: session.competencyArea || undefined,
+        sessionMode: session.sessionMode,
       });
 
       // Persist question and activate session

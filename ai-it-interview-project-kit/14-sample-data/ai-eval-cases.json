@@ -1,0 +1,29 @@
+{
+  "datasetId": "golden_demo_v1",
+  "version": "1.0.0",
+  "license": "synthetic-only",
+  "cases": [
+    {
+      "id": "golden_vi_strong_idempotency",
+      "locale": "vi-VN",
+      "questionId": "q_idempotency_001",
+      "answer": "Client gửi idempotency key. Server tạo idempotency record và payment trong cùng transaction, có unique constraint theo user và operation. Nếu key đang xử lý thì trả trạng thái phù hợp; nếu hoàn tất thì replay response. Tôi theo dõi duplicate rate và conflict.",
+      "expected": {
+        "scoreInterval": [85, 100],
+        "requiredEvidenceTerms": ["cùng transaction", "unique constraint", "replay response"],
+        "needsReview": false
+      }
+    },
+    {
+      "id": "golden_en_partial_idempotency",
+      "locale": "en-US",
+      "questionId": "q_idempotency_001",
+      "answer": "I would attach a random request ID and retry the API when it times out.",
+      "expected": {
+        "scoreInterval": [20, 50],
+        "requiredMissingConcepts": ["server-side persistence", "atomicity", "response replay"],
+        "needsReview": false
+      }
+    }
+  ]
+}

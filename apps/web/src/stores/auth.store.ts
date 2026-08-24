@@ -7,30 +7,66 @@ interface AuthState {
   refreshToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: UserDto, accessToken: string, refreshToken: string) => void;
+  setUser: (user: UserDto) => void;
   setAccessToken: (accessToken: string) => void;
   logout: () => void;
 }
 
+const getStoredToken = (key: string): string | null => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      return localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+const safeSetItem = (key: string, val: string) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.setItem(key, val);
+    } catch {
+      // ignore storage write errors
+    }
+  }
+};
+
+const safeRemoveItem = (key: string) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // ignore storage removal errors
+    }
+  }
+};
+
 export const useAuthStore = create<AuthState>(set => ({
   user: null,
-  accessToken: localStorage.getItem('access_token'),
-  refreshToken: localStorage.getItem('refresh_token'),
-  isAuthenticated: !!localStorage.getItem('access_token'),
+  accessToken: getStoredToken('access_token'),
+  refreshToken: getStoredToken('refresh_token'),
+  isAuthenticated: !!getStoredToken('access_token'),
 
   setAuth: (user, accessToken, refreshToken) => {
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshToken);
+    safeSetItem('access_token', accessToken);
+    safeSetItem('refresh_token', refreshToken);
     set({ user, accessToken, refreshToken, isAuthenticated: true });
   },
 
+  setUser: user => {
+    set({ user });
+  },
+
   setAccessToken: accessToken => {
-    localStorage.setItem('access_token', accessToken);
+    safeSetItem('access_token', accessToken);
     set({ accessToken, isAuthenticated: true });
   },
 
   logout: () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
+    safeRemoveItem('access_token');
+    safeRemoveItem('refresh_token');
     set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 }));

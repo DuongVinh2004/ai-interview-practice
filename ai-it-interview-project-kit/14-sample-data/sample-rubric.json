@@ -1,0 +1,45 @@
+{
+  "id": "rubric_idempotency",
+  "version": "1.0.0",
+  "status": "published",
+  "scoreRange": {"min": 0, "max": 100},
+  "criteria": [
+    {
+      "id": "idempotency_key",
+      "weight": 0.3,
+      "levels": {
+        "0": "Không đề cập khóa idempotency.",
+        "2": "Có khóa nhưng chưa nói phạm vi và lưu kết quả.",
+        "4": "Khóa theo actor/operation, lưu kết quả và xác định thời hạn."
+      }
+    },
+    {
+      "id": "atomicity",
+      "weight": 0.3,
+      "levels": {
+        "0": "Không xử lý cạnh tranh.",
+        "2": "Đề cập transaction hoặc unique constraint riêng lẻ.",
+        "4": "Kết hợp transaction, constraint và xử lý conflict rõ ràng."
+      }
+    },
+    {
+      "id": "failure_semantics",
+      "weight": 0.25,
+      "levels": {
+        "0": "Không phân biệt timeout và thất bại.",
+        "2": "Có retry nhưng thiếu trạng thái trung gian.",
+        "4": "Mô tả response replay, trạng thái đang xử lý và recovery."
+      }
+    },
+    {
+      "id": "observability",
+      "weight": 0.15,
+      "levels": {
+        "0": "Không có quan sát.",
+        "2": "Có log hoặc metric.",
+        "4": "Có trace ID, duplicate rate, conflict và cảnh báo."
+      }
+    }
+  ],
+  "calculation": "application_weighted_linear"
+}

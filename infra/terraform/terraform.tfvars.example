@@ -1,0 +1,13 @@
+aws_region            = "ap-southeast-1"
+environment           = "production"
+vpc_cidr              = "10.0.0.0/16"
+availability_zones    = ["ap-southeast-1a", "ap-southeast-1b"]
+db_instance_class     = "db.t4g.medium"
+db_name               = "ai_interview_practice"
+db_username           = "interview_admin"
+redis_node_type       = "cache.t4g.small"
+api_container_cpu     = 512
+api_container_memory  = 1024
+worker_container_cpu  = 512
+worker_container_memory = 1024
+domain_name           = "interview.example.com"

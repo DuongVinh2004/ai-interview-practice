@@ -1,0 +1,23 @@
+{
+  "id": "tax_backend_v1",
+  "version": "1.0.0",
+  "status": "published",
+  "locales": ["vi-VN", "en-US"],
+  "topics": [
+    {
+      "id": "backend_http",
+      "parentId": null,
+      "labels": {"vi-VN": "HTTP và thiết kế API", "en-US": "HTTP and API design"}
+    },
+    {
+      "id": "backend_data_concurrency",
+      "parentId": null,
+      "labels": {"vi-VN": "Dữ liệu và đồng thời", "en-US": "Data and concurrency"}
+    },
+    {
+      "id": "backend_reliability",
+      "parentId": null,
+      "labels": {"vi-VN": "Độ tin cậy hệ thống", "en-US": "System reliability"}
+    }
+  ]
+}

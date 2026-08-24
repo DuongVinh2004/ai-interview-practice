@@ -10,6 +10,7 @@ import {
   ErrorCode,
   UserRole,
   SessionState,
+  AuditAction,
 } from '@ai-interview/contracts';
 
 @Injectable()
@@ -122,4 +123,134 @@ export class LearningPathService {
       message: 'Learning path regeneration initiated',
     };
   }
+
+  /**
+   * Toggles the completion status of a specific learning recommendation item
+   */
+  async updateItemStatus(userId: string, sessionId: string, itemId: string, isCompleted: boolean) {
+    const session = await this.prisma.interviewSession.findUnique({
+      where: { id: sessionId },
+      include: { learningPath: true },
+    });
+
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (session.userId !== userId) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not own this interview session',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const item = await this.prisma.learningPathItem.findUnique({
+      where: { id: itemId },
+    });
+
+    if (!item || item.learningPathId !== session.learningPath?.id) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'Learning path item not found in this session',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const updatedItem = await this.prisma.learningPathItem.update({
+      where: { id: itemId },
+      data: {
+        isCompleted,
+        completedAt: isCompleted ? new Date() : null,
+      },
+    });
+
+    // Record audit log
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: AuditAction.LEARNING_GOAL_TOGGLED,
+        resource: 'learning_path_item',
+        resourceId: itemId,
+        details: {
+          sessionId,
+          itemId,
+          topic: item.topic,
+          isCompleted,
+        },
+      },
+    });
+
+    return {
+      id: updatedItem.id,
+      gap: updatedItem.gap,
+      topic: updatedItem.topic,
+      priority: updatedItem.priority,
+      recommendedAction: updatedItem.recommendedAction,
+      searchKeywords: updatedItem.searchKeywords || [],
+      order: updatedItem.order,
+      isCompleted: updatedItem.isCompleted,
+      completedAt: updatedItem.completedAt ? updatedItem.completedAt.toISOString() : null,
+    };
+  }
+
+  /**
+   * Aggregates all learning goals across the user's sessions
+   */
+  async getMyLearningGoals(userId: string) {
+    const learningPaths = await this.prisma.learningPath.findMany({
+      where: {
+        session: { userId },
+      },
+      include: {
+        session: {
+          select: {
+            id: true,
+            jobRole: { select: { name: true } },
+            seniorityLevel: { select: { name: true } },
+            completedAt: true,
+          },
+        },
+        items: {
+          orderBy: { order: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const allItems: any[] = [];
+    let completedCount = 0;
+
+    for (const lp of learningPaths) {
+      for (const item of lp.items) {
+        if (item.isCompleted) completedCount++;
+        allItems.push({
+          id: item.id,
+          sessionId: lp.sessionId,
+          roleName: lp.session.jobRole.name,
+          levelName: lp.session.seniorityLevel.name,
+          gap: item.gap,
+          topic: item.topic,
+          priority: item.priority,
+          recommendedAction: item.recommendedAction,
+          searchKeywords: item.searchKeywords || [],
+          isCompleted: item.isCompleted,
+          completedAt: item.completedAt ? item.completedAt.toISOString() : null,
+          createdAt: lp.createdAt.toISOString(),
+        });
+      }
+    }
+
+    return {
+      totalGoals: allItems.length,
+      completedGoals: completedCount,
+      completionRate: allItems.length > 0 ? Math.round((completedCount / allItems.length) * 100) : 0,
+      goals: allItems,
+    };
+  }
 }
+

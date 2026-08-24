@@ -1,0 +1,30 @@
+{
+  "id": "qpack_backend_mid_demo",
+  "version": "1.0.0",
+  "status": "published",
+  "locale": "vi-VN",
+  "taxonomyVersion": "1.0.0",
+  "questions": [
+    {
+      "id": "q_idempotency_001",
+      "type": "scenario",
+      "topicIds": ["backend_http", "backend_data_concurrency"],
+      "difficulty": "mid",
+      "estimatedMinutes": 8,
+      "prompt": "Một client gửi lại yêu cầu tạo thanh toán sau khi bị timeout. Bạn thiết kế API thế nào để tránh tạo hai giao dịch?",
+      "learningObjective": "Giải thích idempotency end-to-end và xử lý cạnh tranh.",
+      "rubric": {"id": "rubric_idempotency", "version": "1.0.0"}
+    },
+    {
+      "id": "q_queue_001",
+      "type": "system-design",
+      "topicIds": ["backend_data_concurrency", "backend_reliability"],
+      "difficulty": "mid",
+      "estimatedMinutes": 10,
+      "prompt": "Thiết kế worker đánh giá câu trả lời sao cho retry không tạo kết quả hoặc tính quota hai lần.",
+      "learningObjective": "Phân tích delivery semantics, transaction và quan sát vận hành.",
+      "rubric": {"id": "rubric_queue", "version": "1.0.0"}
+    }
+  ],
+  "provenance": {"kind": "synthetic", "reviewedBy": ["content-reviewer-demo"]}
+}

@@ -1,0 +1,20 @@
+{
+  "id": "plan_demo_001",
+  "userId": "usr_demo_candidate_001",
+  "sourceEvaluationIds": ["eval_demo_001"],
+  "locale": "vi-VN",
+  "status": "active",
+  "goals": [
+    {
+      "id": "goal_atomicity",
+      "title": "Làm chủ atomic idempotency",
+      "reason": "Câu trả lời chưa liên kết business transaction với idempotency record.",
+      "activities": [
+        {"type": "reading", "title": "Transaction và unique constraint", "estimatedMinutes": 25},
+        {"type": "practice", "title": "Thiết kế endpoint có retry đồng thời", "estimatedMinutes": 35}
+      ],
+      "successCheck": "Giải thích được race condition và viết pseudocode transaction."
+    }
+  ],
+  "createdAt": "2026-08-24T02:12:00.000Z"
+}

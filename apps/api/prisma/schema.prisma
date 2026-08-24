@@ -39,6 +39,24 @@ enum AiRunStatus {
   FAILED
 }
 
+enum SessionMode {
+  STANDARD
+  FOCUSED_REMEDIATION
+  QUICK_PRACTICE
+  CODING
+  BEHAVIORAL
+  VOICE_LIVE
+  SYSTEM_DESIGN
+}
+
+enum CompetencyArea {
+  SYSTEM_DESIGN
+  LANGUAGE_CORE
+  DATABASE_CONCURRENCY
+  ARCHITECTURE_PATTERNS
+  RESILIENCE_SECURITY
+}
+
 model User {
   id           String        @id @default(uuid()) @db.Uuid
   email        String        @unique @db.VarChar(255)
@@ -47,14 +65,35 @@ model User {
   status       UserStatus    @default(ACTIVE)
   lockedAt     DateTime?     @map("locked_at")
   lockReason   String?       @map("lock_reason") @db.VarChar(255)
+  mfaSecret    String?       @map("mfa_secret") @db.VarChar(255)
+  mfaEnabled   Boolean       @default(false) @map("mfa_enabled")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
-  profile      UserProfile?
-  refreshTokens RefreshToken[]
-  sessions     InterviewSession[]
-  auditLogs    AuditLog[]
-  idempotencies IdempotencyRecord[]
+  profile         UserProfile?
+  refreshTokens   RefreshToken[]
+  recoveryCodes   RecoveryCode[]
+  sessions        InterviewSession[]
+  auditLogs       AuditLog[]
+  idempotencies   IdempotencyRecord[]
+  subscriptions   Subscription[]
+  invoices        Invoice[]
+  usageRecords    UsageRecord[]
+  documents       UserDocument[]
+  jdAnalyses      JdAnalysis[]
+  tutorSessions   TutorSession[]
+  questionRetries QuestionRetry[]
+  flashcardDecks  FlashcardDeck[]
+  userStreak      UserStreak?
+  skillScores     SkillScore[]
+  readinessSnapshots ReadinessSnapshot[]
+  readinessMilestones ReadinessMilestone[]
+  publicPortfolio   PublicPortfolio?
+  userBadges        UserBadge[]
+  certificates      Certificate[]
+  mentorProfile     MentorProfile?
+  candidateLiveSessions LiveSession[]   @relation("CandidateUserSessions")
+  tenantMembers     TenantMember[]
 
   @@index([status])
   @@index([role])
@@ -139,6 +178,9 @@ model InterviewSession {
   jobRoleId        String            @map("job_role_id") @db.Uuid
   seniorityLevelId String            @map("seniority_level_id") @db.Uuid
   state            SessionState      @default(CREATED)
+  sessionMode      SessionMode       @default(STANDARD) @map("session_mode")
+  competencyArea   CompetencyArea?   @map("competency_area")
+  isSandbox        Boolean           @default(false) @map("is_sandbox")
   currentTurn      Int               @default(1) @map("current_turn")
   totalTurns       Int               @default(5) @map("total_turns")
   targetDifficulty Int               @default(1) @map("target_difficulty") // 1: Easy, 2: Medium, 3: Hard
@@ -154,9 +196,15 @@ model InterviewSession {
   turns            InterviewTurn[]
   learningPath     LearningPath?
   aiRuns           AiRun[]
+  shareTokens      ShareToken[]
+  codeSubmissions  CodeSubmission[]
+  codeTestCases    CodeTestCase[]
+  voiceSession     VoiceSession?
+  systemDesignSession SystemDesignSession?
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([state])
+  @@index([sessionMode])
   @@map("interview_sessions")
 }
 
@@ -173,17 +221,19 @@ model SessionTechnology {
 }
 
 model InterviewTurn {
-  id         String           @id @default(uuid()) @db.Uuid
-  sessionId  String           @map("session_id") @db.Uuid
-  turnNumber Int              @map("turn_number") // 1 to 5
-  difficulty Int              @default(1) // 1 to 3
-  status     String           @default("PENDING") @db.VarChar(30) // PENDING, QUESTION_READY, ANSWER_SUBMITTED, EVALUATED, FAILED
-  createdAt  DateTime         @default(now()) @map("created_at")
-  updatedAt  DateTime         @updatedAt @map("updated_at")
+  id               String           @id @default(uuid()) @db.Uuid
+  sessionId        String           @map("session_id") @db.Uuid
+  turnNumber       Int              @map("turn_number") // 1 to 5
+  difficulty       Int              @default(1) // 1 to 3
+  status           String           @default("PENDING") @db.VarChar(30) // PENDING, QUESTION_READY, ANSWER_SUBMITTED, EVALUATED, FAILED
+  isFollowUp       Boolean          @default(false) @map("is_follow_up")
+  parentTurnNumber Int?             @map("parent_turn_number")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
 
-  session    InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  question   Question?
-  answer     Answer?
+  session          InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question         Question?
+  answer           Answer?
 
   @@unique([sessionId, turnNumber])
   @@index([sessionId])
@@ -212,6 +262,7 @@ model Answer {
 
   turn        InterviewTurn @relation(fields: [turnId], references: [id], onDelete: Cascade)
   evaluation  Evaluation?
+  starEvaluation StarEvaluation?
 
   @@map("answers")
 }
@@ -256,6 +307,8 @@ model LearningPathItem {
   recommendedAction String       @map("recommended_action") @db.Text
   searchKeywords    Json         @map("search_keywords") // string[]
   order             Int          @default(0)
+  isCompleted       Boolean      @default(false) @map("is_completed")
+  completedAt       DateTime?    @map("completed_at")
 
   learningPath      LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
 
@@ -336,3 +389,1113 @@ model IdempotencyRecord {
   @@index([expiresAt])
   @@map("idempotency_records")
 }
+
+model ShareToken {
+  id           String           @id @default(uuid()) @db.Uuid
+  sessionId    String           @map("session_id") @db.Uuid
+  token        String           @unique @db.VarChar(64)
+  passcodeHash String?          @map("passcode_hash") @db.VarChar(255)
+  isRevoked    Boolean          @default(false) @map("is_revoked")
+  isAnonymized Boolean          @default(false) @map("is_anonymized")
+  expiresAt    DateTime?        @map("expires_at")
+  viewCount    Int              @default(0) @map("view_count")
+  lastViewedAt DateTime?        @map("last_viewed_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  session      InterviewSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  mentorFeedback MentorFeedback[]
+
+  @@index([sessionId])
+  @@index([token])
+  @@map("share_tokens")
+}
+
+model MentorFeedback {
+  id           String     @id @default(uuid()) @db.Uuid
+  shareTokenId String     @map("share_token_id") @db.Uuid
+  turnNumber   Int?       @map("turn_number")
+  mentorName   String     @map("mentor_name") @db.VarChar(100)
+  comment      String     @db.Text
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  shareToken   ShareToken @relation(fields: [shareTokenId], references: [id], onDelete: Cascade)
+
+  @@index([shareTokenId])
+  @@map("mentor_feedbacks")
+}
+
+model RecoveryCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  codeHash  String    @map("code_hash") @db.VarChar(255)
+  isUsed    Boolean   @default(false) @map("is_used")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("recovery_codes")
+}
+
+// ----------------------------------------------------
+// F013: Semantic Cache & LLM Fallback Router Models
+// ----------------------------------------------------
+
+model SemanticCache {
+  id              String   @id @default(uuid()) @db.Uuid
+  promptHash      String   @unique @map("prompt_hash") @db.VarChar(64)
+  promptText      String   @map("prompt_text") @db.Text
+  embedding       Float[]
+  responsePayload Json     @map("response_payload")
+  metadata        Json?
+  hitCount        Int      @default(0) @map("hit_count")
+  ttlSeconds      Int      @default(86400) @map("ttl_seconds")
+  createdAt       DateTime @default(now()) @map("created_at")
+  lastUsedAt      DateTime @default(now()) @map("last_used_at")
+
+  @@index([promptHash])
+  @@map("semantic_cache")
+}
+
+model ProviderHealthLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  providerName String   @map("provider_name") @db.VarChar(50)
+  status       String   @db.VarChar(20) // HEALTHY, DEGRADED, DOWN
+  latencyMs    Int      @map("latency_ms")
+  errorRate    Float    @map("error_rate")
+  timestamp    DateTime @default(now())
+
+  @@index([providerName, timestamp(sort: Desc)])
+  @@map("provider_health_logs")
+}
+
+model RoutingDecision {
+  id             String   @id @default(uuid()) @db.Uuid
+  requestId      String   @map("request_id") @db.VarChar(100)
+  taskType       String   @map("task_type") @db.VarChar(50)
+  chosenProvider String   @map("chosen_provider") @db.VarChar(50)
+  reason         String   @db.VarChar(100) // COST, LATENCY, FAILOVER, CACHE_MISS
+  costUsd        Float    @default(0) @map("cost_usd")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([requestId])
+  @@map("routing_decisions")
+}
+
+// ----------------------------------------------------
+// F002: Live Coding & Execution Sandbox Models
+// ----------------------------------------------------
+
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  COMPILE_ERROR
+  TIMEOUT
+}
+
+model CodeSubmission {
+  id              String           @id @default(uuid()) @db.Uuid
+  sessionId       String           @map("session_id") @db.Uuid
+  turnNumber      Int              @map("turn_number")
+  language        String           @db.VarChar(30)
+  sourceCode      String           @map("source_code") @db.Text
+  status          SubmissionStatus @default(PENDING)
+  timeComplexity  String?          @map("time_complexity") @db.VarChar(50)
+  spaceComplexity String?          @map("space_complexity") @db.VarChar(50)
+  aiFeedback      String?          @map("ai_feedback") @db.Text
+  aiReview        Json?            @map("ai_review")
+  executionTimeMs Int?             @map("execution_time_ms")
+  memoryUsageKb   Int?             @map("memory_usage_kb")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  session          InterviewSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  executionResults CodeExecutionResult[]
+
+  @@index([sessionId, turnNumber])
+  @@map("code_submissions")
+}
+
+model CodeTestCase {
+  id             String            @id @default(uuid()) @db.Uuid
+  sessionId      String?           @map("session_id") @db.Uuid
+  turnNumber     Int?              @map("turn_number")
+  input          String            @db.Text
+  expectedOutput String            @map("expected_output") @db.Text
+  isHidden       Boolean           @default(false) @map("is_hidden")
+  order          Int               @default(0)
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  session        InterviewSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("code_test_cases")
+}
+
+model CodeExecutionResult {
+  id              String           @id @default(uuid()) @db.Uuid
+  submissionId    String           @map("submission_id") @db.Uuid
+  testCaseId      String?          @map("test_case_id") @db.Uuid
+  status          SubmissionStatus @default(COMPLETED)
+  stdout          String?          @db.Text
+  stderr          String?          @db.Text
+  actualOutput    String?          @map("actual_output") @db.Text
+  passed          Boolean          @default(false)
+  executionTimeMs Int?             @map("execution_time_ms")
+  memoryUsageKb   Int?             @map("memory_usage_kb")
+  executedAt      DateTime         @default(now()) @map("executed_at")
+
+  submission      CodeSubmission   @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([submissionId])
+  @@map("code_execution_results")
+}
+
+// ----------------------------------------------------
+// F007: Behavioral Interview & STAR Assessment Models
+// ----------------------------------------------------
+
+enum BehavioralCategory {
+  LEADERSHIP
+  TEAMWORK
+  PROBLEM_SOLVING
+  COMMUNICATION
+  ADAPTABILITY
+}
+
+model BehavioralCompetency {
+  id          String             @id @default(uuid()) @db.Uuid
+  slug        String             @unique @db.VarChar(50)
+  name        String             @db.VarChar(100)
+  nameVi      String             @map("name_vi") @db.VarChar(100)
+  description String?            @db.Text
+  category    BehavioralCategory @default(LEADERSHIP)
+  isActive    Boolean            @default(true) @map("is_active")
+  order       Int                @default(1)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  questions   BehavioralQuestionTemplate[]
+
+  @@map("behavioral_competencies")
+}
+
+model BehavioralQuestionTemplate {
+  id             String               @id @default(uuid()) @db.Uuid
+  competencyId   String               @map("competency_id") @db.Uuid
+  companyPreset  String               @default("GENERAL") @map("company_preset") @db.VarChar(50)
+  templateText   String               @map("template_text") @db.Text
+  templateTextVi String               @map("template_text_vi") @db.Text
+  followUpPrompts Json?               @map("follow_up_prompts")
+  difficulty     Int                  @default(1)
+  createdAt      DateTime             @default(now()) @map("created_at")
+
+  competency     BehavioralCompetency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+
+  @@index([competencyId])
+  @@index([companyPreset])
+  @@map("behavioral_question_templates")
+}
+
+model StarEvaluation {
+  id                    String   @id @default(uuid()) @db.Uuid
+  answerId              String   @unique @map("answer_id") @db.Uuid
+  situationText         String?  @map("situation_text") @db.Text
+  taskText              String?  @map("task_text") @db.Text
+  actionText            String?  @map("action_text") @db.Text
+  resultText            String?  @map("result_text") @db.Text
+  situationScore        Float    @map("situation_score") // 0 - 4
+  taskScore             Float    @map("task_score")      // 0 - 4
+  actionScore           Float    @map("action_score")    // 0 - 4
+  resultScore           Float    @map("result_score")    // 0 - 4
+  structureScore        Float    @map("structure_score") // 0 - 2
+  totalScore            Float    @map("total_score")     // 0 - 10
+  feedback              String   @db.Text
+  probingQuestionsAsked Json?    @map("probing_questions_asked")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  answer                Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+
+  @@map("star_evaluations")
+}
+
+// ----------------------------------------------------
+// F014: Subscription & Billing Models
+// ----------------------------------------------------
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  CANCELED
+  UNPAID
+}
+
+enum InvoiceStatus {
+  DRAFT
+  OPEN
+  PAID
+  VOID
+  UNCOLLECTIBLE
+}
+
+enum BillingMetric {
+  AI_TOKEN
+  AUDIO_MINUTE
+  SESSION_COUNT
+}
+
+model SubscriptionPlan {
+  id                   String         @id @default(uuid()) @db.Uuid
+  slug                 String         @unique @db.VarChar(50) // free, pro, team, enterprise
+  name                 String         @db.VarChar(100)
+  nameVi               String         @map("name_vi") @db.VarChar(100)
+  description          String?        @db.Text
+  priceMonthly         Decimal        @default(0) @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly          Decimal        @default(0) @map("price_yearly") @db.Decimal(10, 2)
+  currency             String         @default("USD") @db.VarChar(10)
+  features             Json           // string[]
+  limits               Json           // { sessionsPerMonth, voiceMinutesPerMonth, allowLiveCoding, allowSystemDesign, mentorFeedbackLimit }
+  stripePriceIdMonthly String?        @map("stripe_price_id_monthly") @db.VarChar(100)
+  stripePriceIdYearly  String?        @map("stripe_price_id_yearly") @db.VarChar(100)
+  isActive             Boolean        @default(true) @map("is_active")
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  subscriptions        Subscription[]
+
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                 String             @id @default(uuid()) @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  planId             String             @map("plan_id") @db.Uuid
+  status             SubscriptionStatus @default(ACTIVE)
+  provider           String             @default("MOCK") @db.VarChar(50) // STRIPE, PAYOS, MOCK
+  providerSubId      String?            @unique @map("provider_sub_id") @db.VarChar(100)
+  currentPeriodStart DateTime           @default(now()) @map("current_period_start")
+  currentPeriodEnd   DateTime           @map("current_period_end")
+  cancelAtPeriodEnd  Boolean            @default(false) @map("cancel_at_period_end")
+  canceledAt         DateTime?          @map("canceled_at")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan               SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices           Invoice[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  subscriptionId  String?       @map("subscription_id") @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  amountTotal     Decimal       @map("amount_total") @db.Decimal(10, 2)
+  currency        String        @default("USD") @db.VarChar(10)
+  status          InvoiceStatus @default(PAID)
+  stripeInvoiceId String?       @map("stripe_invoice_id") @db.VarChar(100)
+  pdfUrl          String?       @map("pdf_url") @db.Text
+  issuedAt        DateTime      @default(now()) @map("issued_at")
+  paidAt          DateTime?     @map("paid_at")
+
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@map("invoices")
+}
+
+model UsageRecord {
+  id         String        @id @default(uuid()) @db.Uuid
+  userId     String        @map("user_id") @db.Uuid
+  metric     BillingMetric
+  quantity   Int           @default(1)
+  recordedAt DateTime      @default(now()) @map("recorded_at")
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, metric, recordedAt])
+  @@map("usage_records")
+}
+
+model PromoCode {
+  id            String    @id @default(uuid()) @db.Uuid
+  code          String    @unique @db.VarChar(50)
+  discountType  String    @map("discount_type") @db.VarChar(20) // PERCENTAGE, FIXED
+  discountValue Decimal   @map("discount_value") @db.Decimal(10, 2)
+  maxUses       Int       @default(100) @map("max_uses")
+  usedCount     Int       @default(0) @map("used_count")
+  isActive      Boolean   @default(true) @map("is_active")
+  expiresAt     DateTime? @map("expires_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  @@map("promo_codes")
+}
+
+// ---- F004: JD & Resume Parsing ----
+model UserDocument {
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  fileName      String        @map("file_name") @db.VarChar(255)
+  fileType      String        @map("file_type") @db.VarChar(10) // pdf, docx, text
+  rawText       String        @map("raw_text") @db.Text
+  status        String        @default("PARSED") @db.VarChar(20) // UPLOADED, PARSING, PARSED, FAILED
+  expiresAt     DateTime      @map("expires_at") // 30-day TTL
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parsedProfile ParsedProfile?
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+  @@map("user_documents")
+}
+
+model ParsedProfile {
+  id             String       @id @default(uuid()) @db.Uuid
+  documentId     String       @unique @map("document_id") @db.Uuid
+  fullName       String?      @map("full_name") @db.VarChar(200) // PII — masked in AI context
+  targetRole     String?      @map("target_role") @db.VarChar(200)
+  seniorityLevel String?      @map("seniority_level") @db.VarChar(50)
+  skills         Json         // string[]
+  experience     Json         // ParsedExperience[]
+  education      Json         // string[]
+  rawSummary     String?      @map("raw_summary") @db.Text
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  document       UserDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  blueprints     InterviewBlueprint[]
+
+  @@map("parsed_profiles")
+}
+
+model JdAnalysis {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  rawJdText        String   @map("raw_jd_text") @db.Text
+  roleTitle        String?  @map("role_title") @db.VarChar(200)
+  requiredSkills   Json     @map("required_skills")  // string[]
+  preferredSkills  Json     @map("preferred_skills") // string[]
+  responsibilities Json     // string[]
+  seniorityLevel   String?  @map("seniority_level") @db.VarChar(50)
+  companyContext   String?  @map("company_context") @db.Text
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blueprints       InterviewBlueprint[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("jd_analyses")
+}
+
+model InterviewBlueprint {
+  id              String        @id @default(uuid()) @db.Uuid
+  parsedProfileId String        @map("parsed_profile_id") @db.Uuid
+  jdAnalysisId    String        @map("jd_analysis_id") @db.Uuid
+  interviewId     String?       @unique @map("interview_id") @db.Uuid // linked when session starts
+  matchedSkills   Json          @map("matched_skills")  // string[]
+  gapSkills       Json          @map("gap_skills")      // string[]
+  matchPercentage Float         @default(0) @map("match_percentage")
+  topics          Json          // BlueprintTopic[] — {topic, weight, reason, sampleQuestions, cvReference}
+  recommendations Json          // string[]
+  targetRole      String        @map("target_role") @db.VarChar(200)
+  targetLevel     String        @map("target_level") @db.VarChar(50)
+  createdAt       DateTime      @default(now()) @map("created_at")
+
+  parsedProfile   ParsedProfile @relation(fields: [parsedProfileId], references: [id], onDelete: Cascade)
+  jdAnalysis      JdAnalysis    @relation(fields: [jdAnalysisId], references: [id], onDelete: Cascade)
+
+  @@index([parsedProfileId])
+  @@index([jdAnalysisId])
+  @@map("interview_blueprints")
+}
+
+// ---- F006: Socratic AI Tutor ----
+enum TutorRole {
+  USER
+  AI_TUTOR
+  SYSTEM
+}
+
+model TutorSession {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @map("user_id") @db.Uuid
+  interviewId String         @map("interview_id") @db.Uuid
+  turnNumber  Int            @map("turn_number") // which interview turn this tutor session targets
+  turnCount   Int            @default(0) @map("turn_count") // messages exchanged (max 20)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    TutorMessage[]
+
+  @@unique([userId, interviewId, turnNumber])
+  @@index([userId])
+  @@map("tutor_sessions")
+}
+
+model TutorMessage {
+  id         String       @id @default(uuid()) @db.Uuid
+  sessionId  String       @map("session_id") @db.Uuid
+  role       TutorRole
+  content    String       @db.Text
+  references Json?        // documentation links, concept map nodes
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  session    TutorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("tutor_messages")
+}
+
+model QuestionRetry {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  interviewId    String   @map("interview_id") @db.Uuid
+  turnNumber     Int      @map("turn_number")
+  originalAnswer String   @map("original_answer") @db.Text
+  retryAnswer    String   @map("retry_answer") @db.Text
+  originalScore  Float    @map("original_score")
+  retryScore     Float    @map("retry_score")
+  improvement    Float    @default(0) // retryScore - originalScore
+  feedback       Json     // AI structured feedback for retry
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, interviewId, turnNumber]) // one retry per turn
+  @@index([userId])
+  @@map("question_retries")
+}
+
+// ---- F005: Spaced Repetition Flashcards ----
+enum CardType {
+  CONCEPT
+  CODE_SNIPPET
+  SCENARIO
+  MCQ
+}
+
+enum CardState {
+  NEW
+  LEARNING
+  REVIEW
+  RELEARNING
+}
+
+model FlashcardDeck {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @map("user_id") @db.Uuid
+  name        String      @db.VarChar(200)
+  description String?     @db.Text
+  tags        String[]
+  cardCount   Int         @default(0) @map("card_count")
+  dueCount    Int         @default(0) @map("due_count") // denormalized for list perf
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  flashcards  Flashcard[]
+
+  @@index([userId])
+  @@map("flashcard_decks")
+}
+
+model Flashcard {
+  id            String        @id @default(uuid()) @db.Uuid
+  deckId        String        @map("deck_id") @db.Uuid
+  type          CardType      @default(CONCEPT)
+  frontContent  String        @map("front_content") @db.Text
+  backContent   String        @map("back_content") @db.Text
+  metadata      Json?         // { sourceInterviewId, sourceTurnNumber, aiGenerated }
+  // FSRS v4 State
+  due           DateTime      @default(now())
+  stability     Float         @default(0)     // S: memory stability
+  difficulty    Float         @default(0)     // D: intrinsic difficulty (1-10)
+  elapsedDays   Int           @default(0) @map("elapsed_days")
+  scheduledDays Int           @default(0) @map("scheduled_days")
+  reps          Int           @default(0)     // number of successful reviews
+  lapses        Int           @default(0)     // number of "Again" ratings
+  state         CardState     @default(NEW)
+  lastReview    DateTime?     @map("last_review")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  deck          FlashcardDeck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  reviewLogs    ReviewLog[]
+
+  @@index([deckId, due])
+  @@index([deckId, state])
+  @@map("flashcards")
+}
+
+model ReviewLog {
+  id            String    @id @default(uuid()) @db.Uuid
+  flashcardId   String    @map("flashcard_id") @db.Uuid
+  rating        Int       // 1: Again, 2: Hard, 3: Good, 4: Easy
+  state         CardState // state BEFORE review
+  due           DateTime  // scheduled due AFTER review
+  stability     Float     // S after review
+  difficulty    Float     // D after review
+  elapsedDays   Int       @map("elapsed_days")
+  lastElapsed   Int       @map("last_elapsed")
+  scheduledDays Int       @map("scheduled_days")
+  reviewedAt    DateTime  @default(now()) @map("reviewed_at")
+  durationMs    Int       @map("duration_ms") // time spent on card
+
+  flashcard     Flashcard @relation(fields: [flashcardId], references: [id], onDelete: Cascade)
+
+  @@index([flashcardId, reviewedAt(sort: Desc)])
+  @@index([reviewedAt])
+  @@map("review_logs")
+}
+
+model UserStreak {
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @unique @map("user_id") @db.Uuid
+  currentStreak  Int       @default(0) @map("current_streak")
+  longestStreak  Int       @default(0) @map("longest_streak")
+  lastReviewDate DateTime? @map("last_review_date") @db.Date
+  totalReviews   Int       @default(0) @map("total_reviews")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_streaks")
+}
+
+// ---- F001: Voice Streaming ----
+enum VoiceSessionStatus {
+  CONNECTING
+  ACTIVE
+  COMPLETED
+  FAILED
+}
+
+enum SpeakerRole {
+  USER
+  AI
+}
+
+model VoiceSession {
+  id            String             @id @default(uuid()) @db.Uuid
+  interviewId   String             @unique @map("interview_id") @db.Uuid
+  status        VoiceSessionStatus @default(CONNECTING)
+  startedAt     DateTime           @default(now()) @map("started_at")
+  endedAt       DateTime?          @map("ended_at")
+  audioUrl      String?            @map("audio_url") @db.Text // S3 URL for recording
+  totalDuration Int?               @map("total_duration") // seconds
+  createdAt     DateTime           @default(now()) @map("created_at")
+
+  interviewSession InterviewSession @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  transcripts      VoiceTranscript[]
+  metrics          VoiceSessionMetric?
+
+  @@map("voice_sessions")
+}
+
+model VoiceTranscript {
+  id             String       @id @default(uuid()) @db.Uuid
+  voiceSessionId String       @map("voice_session_id") @db.Uuid
+  speaker        SpeakerRole
+  text           String       @db.Text
+  startTimeMs    Int          @map("start_time_ms")
+  endTimeMs      Int          @map("end_time_ms")
+  isFinal        Boolean      @default(true) @map("is_final")
+  turnNumber     Int?         @map("turn_number")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  voiceSession   VoiceSession @relation(fields: [voiceSessionId], references: [id], onDelete: Cascade)
+
+  @@index([voiceSessionId, startTimeMs])
+  @@map("voice_transcripts")
+}
+
+model VoiceSessionMetric {
+  id             String       @id @default(uuid()) @db.Uuid
+  voiceSessionId String       @unique @map("voice_session_id") @db.Uuid
+  avgLatencyMs   Int          @map("avg_latency_ms")
+  p95LatencyMs   Int          @map("p95_latency_ms")
+  packetLossRate Float        @map("packet_loss_rate")
+  interruptions  Int          @default(0)
+  totalChunks    Int          @default(0) @map("total_chunks")
+
+  voiceSession   VoiceSession @relation(fields: [voiceSessionId], references: [id], onDelete: Cascade)
+
+  @@map("voice_session_metrics")
+}
+
+// ----------------------------------------------------
+// F008: Skill Graph & Candidate Benchmark Models
+// ----------------------------------------------------
+
+model SkillNode {
+  id             String          @id @default(uuid()) @db.Uuid
+  parentId       String?         @map("parent_id") @db.Uuid
+  competencyArea CompetencyArea? @map("competency_area")
+  slug           String          @unique @db.VarChar(100)
+  name           String          @db.VarChar(200)
+  nameVi         String?         @map("name_vi") @db.VarChar(200)
+  description    String?         @db.Text
+  level          Int             @default(1) // 1=area, 2=sub-competency, 3=topic
+  weight         Float           @default(1.0)
+  isActive       Boolean         @default(true) @map("is_active")
+  order          Int             @default(0)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  parent         SkillNode?      @relation("SkillHierarchy", fields: [parentId], references: [id])
+  children       SkillNode[]     @relation("SkillHierarchy")
+  skillScores    SkillScore[]
+
+  @@index([parentId])
+  @@index([competencyArea])
+  @@index([level, isActive])
+  @@map("skill_nodes")
+}
+
+model SkillScore {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  skillNodeId     String    @map("skill_node_id") @db.Uuid
+  rawScore        Float     @map("raw_score")
+  weightedScore   Float     @map("weighted_score") // exponential decay weighted
+  evidenceCount   Int       @map("evidence_count")
+  lastEvaluatedAt DateTime  @map("last_evaluated_at")
+  rubricVersion   String    @map("rubric_version") @db.VarChar(50)
+  calculatedAt    DateTime  @default(now()) @map("calculated_at")
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  skillNode       SkillNode @relation(fields: [skillNodeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, skillNodeId])
+  @@index([userId])
+  @@index([skillNodeId])
+  @@index([weightedScore])
+  @@map("skill_scores")
+}
+
+model BenchmarkSnapshot {
+  id            String   @id @default(uuid()) @db.Uuid
+  skillNodeId   String   @map("skill_node_id") @db.Uuid
+  jobRoleSlug   String?  @map("job_role_slug") @db.VarChar(50)
+  senioritySlug String?  @map("seniority_slug") @db.VarChar(50)
+  cohortSize    Int      @map("cohort_size")
+  p25           Float
+  p50           Float
+  p75           Float
+  p90           Float
+  mean          Float
+  stdDev        Float    @map("std_dev")
+  calculatedAt  DateTime @default(now()) @map("calculated_at")
+
+  @@unique([skillNodeId, jobRoleSlug, senioritySlug])
+  @@index([skillNodeId])
+  @@map("benchmark_snapshots")
+}
+
+// ----------------------------------------------------
+// F003: System Design Interactive Whiteboard Models
+// ----------------------------------------------------
+
+model SystemDesignSession {
+  id             String            @id @default(uuid()) @db.Uuid
+  interviewId    String            @unique @map("interview_id") @db.Uuid
+  initialPrompt  String?           @map("initial_prompt") @db.Text
+  finalCanvasUrl String?           @map("final_canvas_url") @db.Text
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  interviewSession InterviewSession @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  snapshots        CanvasSnapshot[]
+  evaluation       DesignEvaluation?
+
+  @@map("system_design_sessions")
+}
+
+model CanvasSnapshot {
+  id              String              @id @default(uuid()) @db.Uuid
+  sessionId       String              @map("session_id") @db.Uuid
+  imageUrl        String              @map("image_url") @db.Text
+  canvasStateJson Json?               @map("canvas_state_json")
+  elapsedSeconds  Int                 @map("elapsed_seconds")
+  aiAnalysis      Json?               @map("ai_analysis")
+  createdAt       DateTime            @default(now()) @map("created_at")
+
+  session         SystemDesignSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, elapsedSeconds])
+  @@map("canvas_snapshots")
+}
+
+model DesignEvaluation {
+  id                   String              @id @default(uuid()) @db.Uuid
+  sessionId            String              @unique @map("session_id") @db.Uuid
+  requirementsScore    Float?              @map("requirements_score")
+  highLevelScore       Float?              @map("high_level_score")
+  componentDetailScore Float?              @map("component_detail_score")
+  scalabilityScore     Float?              @map("scalability_score")
+  dataModelScore       Float?              @map("data_model_score")
+  overallScore         Float               @map("overall_score")
+  feedback             String?             @db.Text
+  createdAt            DateTime            @default(now()) @map("created_at")
+
+  session              SystemDesignSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("design_evaluations")
+}
+
+// ----------------------------------------------------
+// F009: AI Interview Readiness Score Models
+// ----------------------------------------------------
+
+model ReadinessWeightProfile {
+  id             String         @id @default(uuid()) @db.Uuid
+  jobRoleSlug    String         @map("job_role_slug") @db.VarChar(50)
+  competencyArea CompetencyArea @map("competency_area")
+  weight         Float          // Sum per role = 1.0
+  isActive       Boolean        @default(true) @map("is_active")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  @@unique([jobRoleSlug, competencyArea])
+  @@map("readiness_weight_profiles")
+}
+
+model TierDefinition {
+  id                 String   @id @default(uuid()) @db.Uuid
+  slug               String   @unique @db.VarChar(50)
+  name               String   @db.VarChar(100)
+  nameVi             String   @map("name_vi") @db.VarChar(100)
+  minReadinessScore  Float    @map("min_readiness_score")
+  minCompetencyScore Float    @map("min_competency_score")
+  order              Int      @default(0)
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("tier_definitions")
+}
+
+model ReadinessSnapshot {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  jobRoleSlug      String   @map("job_role_slug") @db.VarChar(50)
+  readinessScore   Float    @map("readiness_score") // 0.0 - 100.0
+  tierSlug         String   @map("tier_slug") @db.VarChar(50)
+  confidenceLow    Float    @map("confidence_low")
+  confidenceHigh   Float    @map("confidence_high")
+  competencyScores Json     @map("competency_scores")
+  velocityData     Json?    @map("velocity_data")
+  evidenceCount    Int      @map("evidence_count")
+  snapshotDate     DateTime @default(now()) @map("snapshot_date")
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, jobRoleSlug, snapshotDate(sort: Desc)])
+  @@map("readiness_snapshots")
+}
+
+model ReadinessMilestone {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  jobRoleSlug    String   @map("job_role_slug") @db.VarChar(50)
+  milestoneType  String   @map("milestone_type") @db.VarChar(20)
+  achievedAt     DateTime @default(now()) @map("achieved_at")
+  readinessScore Float    @map("readiness_score")
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, jobRoleSlug, milestoneType])
+  @@index([userId])
+  @@map("readiness_milestones")
+}
+
+// ----------------------------------------------------
+// F010: Portfolio & Certificates Models
+// ----------------------------------------------------
+
+enum BadgeLevel {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+}
+
+enum CertificateStatus {
+  GENERATING
+  ISSUED
+  REVOKED
+  EXPIRED
+}
+
+model PublicPortfolio {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @map("user_id") @db.Uuid
+  username         String   @unique @db.VarChar(30)
+  isPublic         Boolean  @default(false) @map("is_public")
+  displayName      String?  @map("display_name") @db.VarChar(100)
+  showRealName     Boolean  @default(true) @map("show_real_name")
+  showBio          Boolean  @default(true) @map("show_bio")
+  showSkills       Boolean  @default(true) @map("show_skills")
+  showBadges       Boolean  @default(true) @map("show_badges")
+  showCertificates Boolean  @default(true) @map("show_certificates")
+  showHistory      Boolean  @default(false) @map("show_history")
+  customBio        String?  @map("custom_bio") @db.Text
+  ogImageUrl       String?  @map("og_image_url") @db.VarChar(500)
+  viewCount        Int      @default(0) @map("view_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([username])
+  @@map("public_portfolios")
+}
+
+model UserBadge {
+  id             String         @id @default(uuid()) @db.Uuid
+  userId         String         @map("user_id") @db.Uuid
+  competencyArea CompetencyArea @map("competency_area")
+  level          BadgeLevel
+  score          Float
+  evidenceCount  Int            @map("evidence_count")
+  earnedAt       DateTime       @default(now()) @map("earned_at")
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, competencyArea, level])
+  @@index([userId])
+  @@map("user_badges")
+}
+
+model Certificate {
+  id             String            @id @default(uuid()) @db.Uuid
+  userId         String            @map("user_id") @db.Uuid
+  competencyArea CompetencyArea?   @map("competency_area")
+  type           String            @db.VarChar(20) // COMPETENCY, OVERALL, TIER
+  score          Float
+  tierSlug       String?           @map("tier_slug") @db.VarChar(50)
+  status         CertificateStatus @default(GENERATING)
+  signatureHash  String            @map("signature_hash") @db.VarChar(128)
+  fileUrl        String?           @map("file_url") @db.VarChar(500)
+  qrCodeUrl      String?           @map("qr_code_url") @db.VarChar(500)
+  issuedAt       DateTime?         @map("issued_at")
+  expiresAt      DateTime?         @map("expires_at") // 1 year default
+  revokedAt      DateTime?         @map("revoked_at")
+  revokeReason   String?           @map("revoke_reason") @db.VarChar(255)
+  downloadCount  Int               @default(0) @map("download_count")
+  verifyCount    Int               @default(0) @map("verify_count")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("certificates")
+}
+
+// ----------------------------------------------------
+// F012: Mentor Co-Pilot Models
+// ----------------------------------------------------
+
+enum LiveSessionStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+model MentorProfile {
+  id             String               @id @default(uuid()) @db.Uuid
+  userId         String               @unique @map("user_id") @db.Uuid
+  expertiseAreas String[]             @map("expertise_areas")
+  rating         Float                @default(0.0)
+  totalSessions  Int                  @default(0) @map("total_sessions")
+  bio            String?              @db.Text
+  isActive       Boolean              @default(true) @map("is_active")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  user           User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availabilities MentorAvailability[]
+  sessions       LiveSession[]
+
+  @@map("mentor_profiles")
+}
+
+model MentorAvailability {
+  id        String        @id @default(uuid()) @db.Uuid
+  mentorId  String        @map("mentor_id") @db.Uuid
+  dayOfWeek Int           @map("day_of_week") // 0=Sun, 6=Sat
+  startTime String        @map("start_time") @db.VarChar(5) // HH:mm
+  endTime   String        @map("end_time") @db.VarChar(5)
+  isActive  Boolean       @default(true) @map("is_active")
+
+  mentor    MentorProfile @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId])
+  @@map("mentor_availabilities")
+}
+
+model LiveSession {
+  id              String            @id @default(uuid()) @db.Uuid
+  mentorId        String            @map("mentor_id") @db.Uuid
+  candidateId     String            @map("candidate_id") @db.Uuid
+  scheduledAt     DateTime          @map("scheduled_at")
+  status          LiveSessionStatus @default(SCHEDULED)
+  roomToken       String?           @map("room_token") @db.VarChar(500)
+  transcriptUrl   String?           @map("transcript_url") @db.Text
+  aiNotesJson     Json?             @map("ai_notes_json")
+  mentorNotes     String?           @map("mentor_notes") @db.Text
+  candidateRating Int?              @map("candidate_rating") // 1-5
+  startedAt       DateTime?         @map("started_at")
+  endedAt         DateTime?         @map("ended_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  mentor          MentorProfile     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+  candidate       User              @relation("CandidateUserSessions", fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([mentorId, scheduledAt])
+  @@index([candidateId])
+  @@index([status])
+  @@map("live_sessions")
+}
+
+// ----------------------------------------------------
+// F011: B2B Multi-Tenant Dashboard Models
+// ----------------------------------------------------
+
+enum TenantRole {
+  TENANT_ADMIN
+  INSTRUCTOR
+  STUDENT
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+model Tenant {
+  id             String               @id @default(uuid()) @db.Uuid
+  name           String               @db.VarChar(200)
+  domain         String?              @unique @db.VarChar(200)
+  slug           String               @unique @db.VarChar(50)
+  brandingConfig Json?                @map("branding_config") // { logoUrl, primaryColor, accentColor, companyName }
+  subscriptionId String?              @map("subscription_id") @db.Uuid
+  isActive       Boolean              @default(true) @map("is_active")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  updatedAt      DateTime             @updatedAt @map("updated_at")
+
+  members        TenantMember[]
+  cohorts        Cohort[]
+  questionBanks  TenantQuestionBank[]
+  apiKeys        TenantApiKey[]
+
+  @@map("tenants")
+}
+
+model TenantMember {
+  id       String         @id @default(uuid()) @db.Uuid
+  tenantId String         @map("tenant_id") @db.Uuid
+  userId   String         @map("user_id") @db.Uuid
+  role     TenantRole     @default(STUDENT)
+  joinedAt DateTime       @default(now()) @map("joined_at")
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cohorts  CohortMember[]
+
+  @@unique([tenantId, userId])
+  @@index([userId])
+  @@map("tenant_members")
+}
+
+model Cohort {
+  id          String         @id @default(uuid()) @db.Uuid
+  tenantId    String         @map("tenant_id") @db.Uuid
+  name        String         @db.VarChar(200)
+  description String?        @db.Text
+  isActive    Boolean        @default(true) @map("is_active")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  members     CohortMember[]
+  assignments Assignment[]
+
+  @@index([tenantId])
+  @@map("cohorts")
+}
+
+model CohortMember {
+  id             String       @id @default(uuid()) @db.Uuid
+  cohortId       String       @map("cohort_id") @db.Uuid
+  tenantMemberId String       @map("tenant_member_id") @db.Uuid
+  enrolledAt     DateTime     @default(now()) @map("enrolled_at")
+
+  cohort         Cohort       @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  tenantMember   TenantMember @relation(fields: [tenantMemberId], references: [id], onDelete: Cascade)
+
+  @@unique([cohortId, tenantMemberId])
+  @@map("cohort_members")
+}
+
+model Assignment {
+  id          String           @id @default(uuid()) @db.Uuid
+  cohortId    String           @map("cohort_id") @db.Uuid
+  title       String           @db.VarChar(200)
+  description String?          @db.Text
+  status      AssignmentStatus @default(DRAFT)
+  deadline    DateTime?
+  config      Json             // { sessionMode, difficulty, questionBankId, targetScore, rubricId }
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+
+  cohort      Cohort           @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+
+  @@index([cohortId])
+  @@map("assignments")
+}
+
+model TenantQuestionBank {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String   @db.VarChar(200)
+  questions Json     // Array of custom questions
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_question_banks")
+}
+
+model TenantApiKey {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  keyHash   String    @unique @map("key_hash") @db.VarChar(255)
+  name      String    @db.VarChar(100)
+  lastUsed  DateTime? @map("last_used")
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("tenant_api_keys")
+}
+
+
+
+

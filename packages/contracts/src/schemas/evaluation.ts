@@ -17,6 +17,10 @@ export const EvaluationDtoSchema = z.object({
   improvements: z.array(z.string()),
   conciseFeedback: z.string(),
   evidence: z.array(z.string()),
+  confidence: z.number().min(0).max(1).default(0.85),
+  missingConcepts: z.array(z.string()).default([]),
+  needsReview: z.boolean().default(false),
+  safetyFlags: z.array(z.string()).optional(),
   createdAt: z.string(),
 });
 

@@ -208,7 +208,215 @@ async function main() {
       create: pv,
     });
   }
-  console.log(`✅ Seeded ${promptVersions.length} prompt versions`);
+  // 7. Seed Behavioral Competencies & Question Templates (F007)
+  const behavioralCompetencies = [
+    {
+      slug: 'leadership',
+      name: 'Leadership & Initiative',
+      nameVi: 'Lãnh đạo & Tiên phong',
+      description: 'Ability to lead initiatives, take ownership, and guide team members to success.',
+      category: 'LEADERSHIP' as const,
+      order: 1,
+    },
+    {
+      slug: 'teamwork',
+      name: 'Teamwork & Collaboration',
+      nameVi: 'Làm việc nhóm & Hợp tác',
+      description: 'Effective collaboration across cross-functional teams and managing diverse perspectives.',
+      category: 'TEAMWORK' as const,
+      order: 2,
+    },
+    {
+      slug: 'problem-solving',
+      name: 'Problem Solving & Conflict Resolution',
+      nameVi: 'Giải quyết vấn đề & Xử lý xung đột',
+      description: 'Navigating technical and interpersonal challenges with structured analytical reasoning.',
+      category: 'PROBLEM_SOLVING' as const,
+      order: 3,
+    },
+    {
+      slug: 'communication',
+      name: 'Communication & Influence',
+      nameVi: 'Giao tiếp & Thuyết phục',
+      description: 'Articulating complex technical concepts clearly to diverse stakeholders.',
+      category: 'COMMUNICATION' as const,
+      order: 4,
+    },
+    {
+      slug: 'adaptability',
+      name: 'Adaptability & Continuous Learning',
+      nameVi: 'Thích ứng & Học hỏi liên tục',
+      description: 'Embracing rapid changes in requirements, tech stacks, and shifting priorities.',
+      category: 'ADAPTABILITY' as const,
+      order: 5,
+    },
+  ];
+
+  for (const comp of behavioralCompetencies) {
+    const createdComp = await prisma.behavioralCompetency.upsert({
+      where: { slug: comp.slug },
+      update: {
+        name: comp.name,
+        nameVi: comp.nameVi,
+        description: comp.description,
+        category: comp.category,
+        order: comp.order,
+        isActive: true,
+      },
+      create: comp,
+    });
+
+    // Seed preset templates for each competency
+    const templates = [
+      {
+        companyPreset: 'GENERAL',
+        templateText: `Tell me about a time when you demonstrated ${comp.name.toLowerCase()} in a critical project milestone.`,
+        templateTextVi: `Hãy kể về một lần bạn thể hiện ${comp.nameVi.toLowerCase()} trong một cột mốc quan trọng của dự án.`,
+        difficulty: 1,
+      },
+      {
+        companyPreset: 'AMAZON_LEADERSHIP',
+        templateText: `Give an example of a situation where you had to make a tough trade-off upholding customer obsession and high standards.`,
+        templateTextVi: `Nêu một ví dụ về tình huống bạn phải đưa ra quyết định đánh đổi khó khăn để đảm bảo chất lượng và đặt khách hàng lên hàng đầu.`,
+        difficulty: 2,
+      },
+      {
+        companyPreset: 'GOOGLE_GOOGLINESS',
+        templateText: `Describe how you handled ambiguity and conflicting opinions when driving an unproven architectural decision.`,
+        templateTextVi: `Mô tả cách bạn xử lý sự bất định và các ý kiến trái chiều khi thúc đẩy một quyết định kiến trúc mới chưa từng thử nghiệm.`,
+        difficulty: 2,
+      },
+    ];
+
+    for (const tpl of templates) {
+      const existing = await prisma.behavioralQuestionTemplate.findFirst({
+        where: { competencyId: createdComp.id, companyPreset: tpl.companyPreset },
+      });
+      if (!existing) {
+        await prisma.behavioralQuestionTemplate.create({
+          data: {
+            competencyId: createdComp.id,
+            companyPreset: tpl.companyPreset,
+            templateText: tpl.templateText,
+            templateTextVi: tpl.templateTextVi,
+            difficulty: tpl.difficulty,
+          },
+        });
+      }
+    }
+  }
+  console.log(`✅ Seeded ${behavioralCompetencies.length} behavioral competencies and templates`);
+
+  // 8. Seed Subscription Plans (F014)
+  const subscriptionPlans = [
+    {
+      slug: 'free',
+      name: 'Free Tier',
+      nameVi: 'Gói Miễn Phí',
+      description: 'Essential practice for developers starting interview prep.',
+      priceMonthly: 0,
+      priceYearly: 0,
+      currency: 'USD',
+      features: ['5 interview sessions / month', 'Standard AI feedback', 'Live coding sandbox', 'Community access'],
+      limits: {
+        sessionsPerMonth: 5,
+        voiceMinutesPerMonth: 0,
+        allowLiveCoding: true,
+        allowSystemDesign: false,
+        mentorFeedbackLimit: 1,
+      },
+      isActive: true,
+    },
+    {
+      slug: 'pro',
+      name: 'Pro Tier',
+      nameVi: 'Gói Chuyên Nghiệp',
+      description: 'Comprehensive practice for active job seekers targeting top tech companies.',
+      priceMonthly: 9.99,
+      priceYearly: 99.99,
+      currency: 'USD',
+      features: [
+        '50 interview sessions / month',
+        '60 voice streaming minutes / month',
+        'Live coding + System design whiteboard',
+        'Detailed STAR behavioral assessment',
+        '10 mentor share review links',
+      ],
+      limits: {
+        sessionsPerMonth: 50,
+        voiceMinutesPerMonth: 60,
+        allowLiveCoding: true,
+        allowSystemDesign: true,
+        mentorFeedbackLimit: 10,
+      },
+      isActive: true,
+    },
+    {
+      slug: 'team',
+      name: 'Team & University',
+      nameVi: 'Gói Nhóm & Trường Học',
+      description: 'For bootcamps, universities, and engineering teams training candidates.',
+      priceMonthly: 29.99,
+      priceYearly: 299.99,
+      currency: 'USD',
+      features: [
+        '500 interview sessions / month',
+        '300 voice minutes / month',
+        'All interview modes (Coding, Behavioral, System Design)',
+        'Unlimited mentor reviews and analytics',
+      ],
+      limits: {
+        sessionsPerMonth: 500,
+        voiceMinutesPerMonth: 300,
+        allowLiveCoding: true,
+        allowSystemDesign: true,
+        mentorFeedbackLimit: 100,
+      },
+      isActive: true,
+    },
+    {
+      slug: 'enterprise',
+      name: 'Enterprise Tier',
+      nameVi: 'Gói Doanh Nghiệp',
+      description: 'Custom solutions for high-volume hiring and enterprise assessment.',
+      priceMonthly: 99.99,
+      priceYearly: 999.99,
+      currency: 'USD',
+      features: [
+        'Unlimited interview sessions',
+        'Unlimited voice minutes',
+        'Custom rubrics & SLA guarantee (99.9%)',
+        'Dedicated account manager',
+      ],
+      limits: {
+        sessionsPerMonth: 99999,
+        voiceMinutesPerMonth: 99999,
+        allowLiveCoding: true,
+        allowSystemDesign: true,
+        mentorFeedbackLimit: 9999,
+      },
+      isActive: true,
+    },
+  ];
+
+  for (const plan of subscriptionPlans) {
+    await prisma.subscriptionPlan.upsert({
+      where: { slug: plan.slug },
+      update: {
+        name: plan.name,
+        nameVi: plan.nameVi,
+        description: plan.description,
+        priceMonthly: plan.priceMonthly,
+        priceYearly: plan.priceYearly,
+        currency: plan.currency,
+        features: plan.features,
+        limits: plan.limits,
+        isActive: true,
+      },
+      create: plan,
+    });
+  }
+  console.log(`✅ Seeded ${subscriptionPlans.length} subscription plans`);
 
   console.log('🎉 Database seed completed successfully!');
 }

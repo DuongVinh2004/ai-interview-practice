@@ -27,8 +27,9 @@ export async function apiClient<T = any>(
   const { idempotencyKey, skipAuth, headers = {}, ...customConfig } = options;
   const authStore = useAuthStore.getState();
 
+  const isFormData = customConfig.body instanceof FormData;
   const reqHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     ...(headers as Record<string, string>),
   };
 
@@ -97,3 +98,44 @@ export async function apiClient<T = any>(
 
   return (data && typeof data === 'object' && 'data' in data ? data.data : data) as T;
 }
+
+apiClient.get = async <T = any>(endpoint: string, options: RequestOptions = {}) => {
+  const data = await apiClient<T>(endpoint, { ...options, method: 'GET' });
+  return { data };
+};
+
+apiClient.post = async <T = any>(endpoint: string, body?: any, options: RequestOptions = {}) => {
+  const isFormData = body instanceof FormData;
+  const data = await apiClient<T>(endpoint, {
+    ...options,
+    method: 'POST',
+    body: isFormData ? body : JSON.stringify(body),
+  });
+  return { data };
+};
+
+apiClient.put = async <T = any>(endpoint: string, body?: any, options: RequestOptions = {}) => {
+  const isFormData = body instanceof FormData;
+  const data = await apiClient<T>(endpoint, {
+    ...options,
+    method: 'PUT',
+    body: isFormData ? body : JSON.stringify(body),
+  });
+  return { data };
+};
+
+apiClient.delete = async <T = any>(endpoint: string, options: RequestOptions = {}) => {
+  const data = await apiClient<T>(endpoint, { ...options, method: 'DELETE' });
+  return { data };
+};
+
+apiClient.patch = async <T = any>(endpoint: string, body?: any, options: RequestOptions = {}) => {
+  const isFormData = body instanceof FormData;
+  const data = await apiClient<T>(endpoint, {
+    ...options,
+    method: 'PATCH',
+    body: isFormData ? body : JSON.stringify(body),
+  });
+  return { data };
+};
+

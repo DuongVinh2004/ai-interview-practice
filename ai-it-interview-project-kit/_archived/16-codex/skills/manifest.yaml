@@ -1,0 +1,50 @@
+schema_version: 1
+control_plane_protocol: "16-codex/SUPERVISOR-PROTOCOL.md"
+skills:
+  - id: antigravity-supervisor
+    path: "16-codex/skills/antigravity-supervisor/SKILL.md"
+    trigger: "Any Antigravity execution/review loop"
+    mandatory_for_execution: true
+  - id: execution-prompt-compiler
+    path: "16-codex/skills/execution-prompt-compiler/SKILL.md"
+    trigger: "A new EXECUTE/CORRECT/VERIFY/COMMIT prompt is needed"
+  - id: repository-state-inspector
+    path: "16-codex/skills/repository-state-inspector/SKILL.md"
+    trigger: "Task start, chat resume, state uncertainty, pre-commit"
+  - id: task-dependency-resolver
+    path: "16-codex/skills/task-dependency-resolver/SKILL.md"
+    trigger: "Before implementing or when prerequisite uncertainty appears"
+  - id: scope-and-deviation-guard
+    path: "16-codex/skills/scope-and-deviation-guard/SKILL.md"
+    trigger: "Any implementation/correction diff review"
+  - id: root-cause-debugger
+    path: "16-codex/skills/root-cause-debugger/SKILL.md"
+    trigger: "FAIL/BLOCKED or independent material defect"
+  - id: corrective-prompt-engine
+    path: "16-codex/skills/corrective-prompt-engine/SKILL.md"
+    trigger: "Validated defect is actionable"
+  - id: loop-convergence-controller
+    path: "16-codex/skills/loop-convergence-controller/SKILL.md"
+    trigger: "Any correction attempt or repeated failure class"
+  - id: verification-and-test-guardian
+    path: "16-codex/skills/verification-and-test-guardian/SKILL.md"
+    trigger: "Before PASS/commit and after behavior correction"
+  - id: handoff-state-manager
+    path: "16-codex/skills/handoff-state-manager/SKILL.md"
+    trigger: "End of Anti run/review/commit or chat transition"
+review_profiles:
+  - id: auth-security
+    path: "16-codex/review-profiles/auth-security.md"
+    activates_on: [auth, authorization, ownership, session, token, mfa, admin, sensitive_data]
+  - id: concurrency-idempotency
+    path: "16-codex/review-profiles/concurrency-idempotency.md"
+    activates_on: [concurrency, idempotency, queue, worker, retry, state_transition, token_rotation]
+  - id: migration-contracts
+    path: "16-codex/review-profiles/migration-contracts.md"
+    activates_on: [database, migration, index, api_contract, event_contract, sse, provider_contract]
+  - id: ai-evaluation
+    path: "16-codex/review-profiles/ai-evaluation.md"
+    activates_on: [ai, scoring, evaluation, prompt, rubric, provider, model]
+  - id: frontend-accessibility
+    path: "16-codex/review-profiles/frontend-accessibility.md"
+    activates_on: [frontend, ux, accessibility, bilingual, interview_room, results]

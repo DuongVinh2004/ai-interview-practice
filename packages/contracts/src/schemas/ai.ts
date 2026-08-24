@@ -21,6 +21,10 @@ export const EvaluatedAnswerAiSchema = z.object({
   improvements: z.array(z.string()).min(1, 'At least one improvement suggestion is required'),
   conciseFeedback: z.string().min(5, 'Concise feedback is required'),
   evidence: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1).default(0.85),
+  missingConcepts: z.array(z.string()).default([]),
+  needsReview: z.boolean().default(false),
+  safetyFlags: z.array(z.string()).optional(),
 });
 
 export type EvaluatedAnswerAi = z.infer<typeof EvaluatedAnswerAiSchema>;

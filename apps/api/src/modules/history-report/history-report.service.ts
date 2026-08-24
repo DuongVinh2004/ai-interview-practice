@@ -1,13 +1,17 @@
 import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
-import { ErrorCode, UserRole, SessionState } from '@ai-interview/contracts';
+import { ErrorCode, UserRole, SessionState, SessionMode } from '@ai-interview/contracts';
 
 export interface HistoryFilterOptions {
   page?: number;
   limit?: number;
   state?: SessionState;
   jobRoleId?: string;
+  sessionMode?: SessionMode;
+  search?: string;
+  minScore?: number;
+  maxScore?: number;
 }
 
 @Injectable()
@@ -25,6 +29,30 @@ export class HistoryReportService {
     }
     if (options.jobRoleId) {
       where.jobRoleId = options.jobRoleId;
+    }
+    if (options.sessionMode) {
+      where.sessionMode = options.sessionMode;
+    }
+    if (options.minScore !== undefined || options.maxScore !== undefined) {
+      where.overallScore = {};
+      if (options.minScore !== undefined) where.overallScore.gte = options.minScore;
+      if (options.maxScore !== undefined) where.overallScore.lte = options.maxScore;
+    }
+    if (options.search && options.search.trim()) {
+      const q = options.search.trim();
+      where.OR = [
+        { jobRole: { name: { contains: q, mode: 'insensitive' } } },
+        { seniorityLevel: { name: { contains: q, mode: 'insensitive' } } },
+        {
+          technologies: {
+            some: {
+              technology: {
+                name: { contains: q, mode: 'insensitive' },
+              },
+            },
+          },
+        },
+      ];
     }
 
     const [total, sessions] = await Promise.all([
@@ -49,6 +77,9 @@ export class HistoryReportService {
       items: sessions.map(s => ({
         id: s.id,
         state: s.state,
+        sessionMode: s.sessionMode,
+        competencyArea: s.competencyArea,
+        isSandbox: s.isSandbox,
         currentTurn: s.currentTurn,
         totalTurns: s.totalTurns,
         targetDifficulty: s.targetDifficulty,
@@ -161,7 +192,9 @@ export class HistoryReportService {
         answer: t.answer
           ? {
               content: t.answer.content,
-              submittedAt: t.answer.submittedAt.toISOString(),
+              submittedAt: t.answer.submittedAt
+                ? t.answer.submittedAt.toISOString()
+                : new Date().toISOString(),
               evaluation: t.answer.evaluation
                 ? {
                     score: t.answer.evaluation.score,

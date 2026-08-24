@@ -1,0 +1,78 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "SLO & Error Budget Monitoring",
+      "type": "row"
+    },
+    {
+      "id": 2,
+      "title": "API Availability SLI (Target: 99.9%)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "(1 - (sum(rate(http_requests_total{status_code=~\"5..\"}[30d])) / sum(rate(http_requests_total[30d])))) * 100",
+          "legendFormat": "30-Day Availability"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 98,
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Read Latency SLI (% ≤ 300ms, Target: 95%)",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 1 },
+      "targets": [
+        {
+          "expr": "(sum(rate(http_request_duration_seconds_bucket{le=\"0.3\"}[30d])) / sum(rate(http_request_duration_seconds_count[30d]))) * 100",
+          "legendFormat": "Latency ≤ 300ms"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "max": 100,
+          "min": 90,
+          "unit": "percent"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Error Budget Burn Rate (1h vs 6h vs 24h)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 1 },
+      "targets": [
+        {
+          "expr": "(sum(rate(http_requests_total{status_code=~\"5..\"}[1h])) / sum(rate(http_requests_total[1h]))) / 0.001",
+          "legendFormat": "1h Burn Rate (1.0 = 100% budget consumed in 30d)"
+        },
+        {
+          "expr": "(sum(rate(http_requests_total{status_code=~\"5..\"}[6h])) / sum(rate(http_requests_total[6h]))) / 0.001",
+          "legendFormat": "6h Burn Rate"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ai-interview", "slo", "sre"],
+  "title": "AI Interview - SLO & Error Budget",
+  "uid": "ai-interview-slo-error-budget",
+  "version": 1
+}

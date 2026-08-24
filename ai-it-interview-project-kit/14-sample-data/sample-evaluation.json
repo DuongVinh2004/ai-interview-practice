@@ -1,0 +1,33 @@
+{
+  "id": "eval_demo_001",
+  "sessionId": "ses_demo_001",
+  "questionId": "q_idempotency_001",
+  "answerVersion": 1,
+  "status": "completed",
+  "rubric": {"id": "rubric_idempotency", "version": "1.0.0"},
+  "promptVersion": "answer-eval@1.0.0",
+  "schemaVersion": "evaluation@1.0.0",
+  "provider": {"name": "deterministic-mock", "model": "mock-v1"},
+  "criteria": [
+    {
+      "criterionId": "idempotency_key",
+      "level": 4,
+      "confidence": 0.92,
+      "evidence": ["client gửi idempotency key và server lưu response theo user cùng operation"],
+      "rationale": "Nêu đúng phạm vi khóa và replay kết quả."
+    },
+    {
+      "criterionId": "atomicity",
+      "level": 2,
+      "confidence": 0.78,
+      "evidence": ["dùng unique constraint cho idempotency key"],
+      "missing": ["transaction bao quanh business record và idempotency record"],
+      "rationale": "Có constraint nhưng chưa chứng minh atomicity."
+    }
+  ],
+  "overallScore": 73,
+  "overallConfidence": 0.81,
+  "needsReview": false,
+  "generatedAt": "2026-08-24T02:10:00.000Z",
+  "traceId": "trace_demo_001"
+}

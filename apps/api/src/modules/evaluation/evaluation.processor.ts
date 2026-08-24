@@ -1,18 +1,23 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job, Queue } from 'bullmq';
-import { Logger } from '@nestjs/common';
+import { Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { SseService } from '../platform/sse/sse.service';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 import { DifficultyCalculator } from '../ai-orchestrator/difficulty/difficulty.calculator';
 import { QueueName, JobName, SessionState, SseEventType } from '@ai-interview/contracts';
+import { MetricsService } from '../platform/metrics/metrics.service';
+import { TelemetryService } from '../platform/telemetry/telemetry.service';
+
+import { StarRubric } from './rubrics/star-rubric';
 
 interface EvaluateAnswerJobData {
   sessionId: string;
   turnId: string;
   turnNumber: number;
   answerId: string;
+  traceparent?: string;
 }
 
 @Processor(QueueName.ANSWER_EVALUATION)
@@ -27,6 +32,8 @@ export class EvaluationProcessor extends WorkerHost {
     private readonly questionQueue: Queue,
     @InjectQueue(QueueName.LEARNING_PATH)
     private readonly learningPathQueue: Queue,
+    @Optional() private readonly metricsService?: MetricsService,
+    @Optional() private readonly telemetryService?: TelemetryService,
   ) {
     super();
   }
@@ -36,7 +43,17 @@ export class EvaluationProcessor extends WorkerHost {
       return;
     }
 
-    const { sessionId, turnId, turnNumber, answerId } = job.data;
+    const { sessionId, turnId, turnNumber, answerId, traceparent } = job.data;
+    const startTime = Date.now();
+
+    if (job.timestamp) {
+      const lagSeconds = (Date.now() - job.timestamp) / 1000;
+      this.metricsService?.bullmqQueueLagSeconds.observe(
+        { queue: QueueName.ANSWER_EVALUATION, job_name: job.name },
+        lagSeconds,
+      );
+    }
+
     this.logger.log(
       `Processing answer evaluation for session ${sessionId}, turn ${turnNumber} (Job ${job.id})`,
     );
@@ -55,6 +72,11 @@ export class EvaluationProcessor extends WorkerHost {
 
     if (!session || !session.turns[0] || !session.turns[0].question || !session.turns[0].answer) {
       this.logger.error(`Session, turn, question, or answer missing for job ${job.id}`);
+      this.metricsService?.bullmqJobsTotal.inc({
+        queue: QueueName.ANSWER_EVALUATION,
+        job_name: job.name,
+        status: 'failed',
+      });
       return;
     }
 
@@ -102,6 +124,40 @@ export class EvaluationProcessor extends WorkerHost {
             evidence: evaluationResult.evidence,
           },
         });
+
+        if (session.sessionMode === 'BEHAVIORAL') {
+          const starResult = StarRubric.evaluate(answer.content);
+          await tx.starEvaluation.upsert({
+            where: { answerId },
+            update: {
+              situationText: starResult.extracted.situationText,
+              taskText: starResult.extracted.taskText,
+              actionText: starResult.extracted.actionText,
+              resultText: starResult.extracted.resultText,
+              situationScore: starResult.scores.situationScore,
+              taskScore: starResult.scores.taskScore,
+              actionScore: starResult.scores.actionScore,
+              resultScore: starResult.scores.resultScore,
+              structureScore: starResult.scores.structureScore,
+              totalScore: starResult.scores.totalScore,
+              feedback: starResult.feedback,
+            },
+            create: {
+              answerId,
+              situationText: starResult.extracted.situationText,
+              taskText: starResult.extracted.taskText,
+              actionText: starResult.extracted.actionText,
+              resultText: starResult.extracted.resultText,
+              situationScore: starResult.scores.situationScore,
+              taskScore: starResult.scores.taskScore,
+              actionScore: starResult.scores.actionScore,
+              resultScore: starResult.scores.resultScore,
+              structureScore: starResult.scores.structureScore,
+              totalScore: starResult.scores.totalScore,
+              feedback: starResult.feedback,
+            },
+          });
+        }
 
         await tx.interviewTurn.update({
           where: { id: turnId },
@@ -154,6 +210,27 @@ export class EvaluationProcessor extends WorkerHost {
         `Evaluation saved for session ${sessionId} turn ${turnNumber}. Score: ${evaluationResult.score}/10.`,
       );
 
+      // Record business & worker metrics
+      const durationSec = (Date.now() - startTime) / 1000;
+      this.metricsService?.bullmqJobsTotal.inc({
+        queue: QueueName.ANSWER_EVALUATION,
+        job_name: job.name,
+        status: 'completed',
+      });
+      this.metricsService?.bullmqJobDurationSeconds.observe(
+        { queue: QueueName.ANSWER_EVALUATION, job_name: job.name },
+        durationSec,
+      );
+      this.metricsService?.evaluationsTotal.inc({
+        role: session.jobRole.name,
+        level: session.seniorityLevel.name,
+        pass_fail: evaluationResult.score >= 6.0 ? 'pass' : 'fail',
+      });
+      this.metricsService?.evaluationScoreDistribution.observe(
+        { role: session.jobRole.name, level: session.seniorityLevel.name },
+        evaluationResult.score,
+      );
+
       // Emit SSE Evaluation event
       this.sseService.emitSessionEvent(sessionId, SseEventType.EVALUATION_COMPLETED, {
         sessionId,
@@ -167,6 +244,9 @@ export class EvaluationProcessor extends WorkerHost {
           improvements: evaluation.improvements,
           conciseFeedback: evaluation.conciseFeedback,
           evidence: evaluation.evidence,
+          confidence: evaluationResult.confidence || 0.85,
+          missingConcepts: evaluationResult.missingConcepts || [],
+          needsReview: evaluationResult.needsReview || false,
           createdAt: evaluation.createdAt.toISOString(),
         },
       });
@@ -187,6 +267,7 @@ export class EvaluationProcessor extends WorkerHost {
               turnId: nextTurn.id,
               turnNumber: nextTurnNumber,
               difficulty: nextDifficulty,
+              traceparent,
             },
             {
               jobId: nextJobId,
@@ -200,7 +281,7 @@ export class EvaluationProcessor extends WorkerHost {
         const lpJobId = `lp-${sessionId}`;
         await this.learningPathQueue.add(
           JobName.GENERATE_LEARNING_PATH,
-          { sessionId },
+          { sessionId, traceparent },
           {
             jobId: lpJobId,
             attempts: 3,
@@ -216,12 +297,22 @@ export class EvaluationProcessor extends WorkerHost {
 
       return evaluation;
     } catch (error: any) {
+      const durationSec = (Date.now() - startTime) / 1000;
+      this.metricsService?.bullmqJobsTotal.inc({
+        queue: QueueName.ANSWER_EVALUATION,
+        job_name: job.name,
+        status: 'failed',
+      });
+      this.metricsService?.bullmqJobDurationSeconds.observe(
+        { queue: QueueName.ANSWER_EVALUATION, job_name: job.name },
+        durationSec,
+      );
+
       this.logger.error(
         `Error evaluating answer for session ${sessionId}: ${error.message}`,
         error.stack,
       );
       if (job.attemptsMade >= (job.opts.attempts || 3) - 1) {
-        // Keep already saved answer intact, set session status to FAILED
         await this.prisma.interviewSession.update({
           where: { id: sessionId },
           data: { state: SessionState.FAILED },

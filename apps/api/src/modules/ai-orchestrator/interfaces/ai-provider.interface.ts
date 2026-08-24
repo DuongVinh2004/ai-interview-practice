@@ -11,6 +11,8 @@ export interface QuestionPromptContext {
   turnNumber: number;
   difficulty: number;
   previousScore?: number;
+  competencyArea?: string;
+  sessionMode?: string;
 }
 
 export interface EvaluationPromptContext {
@@ -52,15 +54,18 @@ export interface AiProvider {
   generateQuestion(
     context: QuestionPromptContext,
     systemPrompt: string,
+    userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedQuestionAi>>;
 
   evaluateAnswer(
     context: EvaluationPromptContext,
     systemPrompt: string,
+    userPrompt?: string,
   ): Promise<AiExecutionResult<EvaluatedAnswerAi>>;
 
   generateLearningPath(
     context: LearningPathPromptContext,
     systemPrompt: string,
+    userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedLearningPathAi>>;
 }

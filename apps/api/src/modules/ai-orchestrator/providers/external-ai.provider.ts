@@ -1,5 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
+import { ProviderRouterService } from '../router/provider-router.service';
 import {
   AiProvider,
   QuestionPromptContext,
@@ -11,65 +11,38 @@ import {
   GeneratedQuestionAi,
   EvaluatedAnswerAi,
   GeneratedLearningPathAi,
-  ErrorCode,
 } from '@ai-interview/contracts';
-import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
+/**
+ * @deprecated Use `ProviderRouterService` or specific providers (`GeminiProvider`, `OpenAiProvider`, `AnthropicProvider`) directly.
+ */
 @Injectable()
 export class ExternalAiProvider implements AiProvider {
   readonly name = 'external';
-  private readonly logger = new Logger(ExternalAiProvider.name);
 
-  constructor(private readonly configService: ConfigService) {}
-
-  private validateCredentials() {
-    const openaiKey = this.configService.get<string>('ai.openaiApiKey');
-    const anthropicKey = this.configService.get<string>('ai.anthropicApiKey');
-    const geminiKey = this.configService.get<string>('ai.geminiApiKey');
-
-    if (!openaiKey && !anthropicKey && !geminiKey) {
-      throw new DomainException(
-        ErrorCode.AI_GENERATION_FAILED,
-        'External AI Provider is enabled but no API keys (OPENAI_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY) are configured in the environment.',
-        500,
-      );
-    }
-  }
+  constructor(private readonly routerService: ProviderRouterService) {}
 
   async generateQuestion(
     context: QuestionPromptContext,
     systemPrompt: string,
+    userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedQuestionAi>> {
-    this.validateCredentials();
-    // External API invocation placeholder
-    throw new DomainException(
-      ErrorCode.AI_GENERATION_FAILED,
-      'External AI invocation failed: External API connection not configured for live calls in this environment.',
-      500,
-    );
+    return this.routerService.generateQuestion(context, systemPrompt, userPrompt);
   }
 
   async evaluateAnswer(
     context: EvaluationPromptContext,
     systemPrompt: string,
+    userPrompt?: string,
   ): Promise<AiExecutionResult<EvaluatedAnswerAi>> {
-    this.validateCredentials();
-    throw new DomainException(
-      ErrorCode.AI_EVALUATION_FAILED,
-      'External AI invocation failed: External API connection not configured for live calls in this environment.',
-      500,
-    );
+    return this.routerService.evaluateAnswer(context, systemPrompt, userPrompt);
   }
 
   async generateLearningPath(
     context: LearningPathPromptContext,
     systemPrompt: string,
+    userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedLearningPathAi>> {
-    this.validateCredentials();
-    throw new DomainException(
-      ErrorCode.AI_GENERATION_FAILED,
-      'External AI invocation failed: External API connection not configured for live calls in this environment.',
-      500,
-    );
+    return this.routerService.generateLearningPath(context, systemPrompt, userPrompt);
   }
 }

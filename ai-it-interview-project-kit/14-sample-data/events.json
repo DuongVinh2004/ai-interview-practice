@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "event-envelope@1.0.0",
+  "events": [
+    {
+      "id": "evt_demo_001",
+      "type": "interview.answer.submitted.v1",
+      "occurredAt": "2026-08-24T02:05:00.000Z",
+      "traceId": "trace_demo_001",
+      "actorId": "usr_demo_candidate_001",
+      "aggregate": {"type": "interviewSession", "id": "ses_demo_001", "version": 4},
+      "data": {"questionId": "q_idempotency_001", "answerVersion": 1, "idempotencyKeyHash": "sha256:synthetic-demo"}
+    },
+    {
+      "id": "evt_demo_002",
+      "type": "evaluation.completed.v1",
+      "occurredAt": "2026-08-24T02:10:00.000Z",
+      "traceId": "trace_demo_001",
+      "actorId": "worker:evaluation",
+      "aggregate": {"type": "evaluation", "id": "eval_demo_001", "version": 1},
+      "data": {"sessionId": "ses_demo_001", "questionId": "q_idempotency_001", "needsReview": false}
+    }
+  ]
+}

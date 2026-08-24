@@ -1,0 +1,89 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "AI Provider Reliability & Token Cost",
+      "type": "row"
+    },
+    {
+      "id": 2,
+      "title": "AI Provider Request Volume & Success Rate",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(rate(ai_provider_requests_total[5m])) by (provider, status)",
+          "legendFormat": "{{provider}} - {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "AI Provider Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(ai_provider_latency_seconds_bucket[5m])) by (le, provider))",
+          "legendFormat": "{{provider}} p95 latency (s)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Daily Token Consumption by Model",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum(increase(ai_tokens_total[1h])) by (provider, model)",
+          "legendFormat": "{{provider}} {{model}} tokens/hr"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Estimated Cumulative Spend ($/day)",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum(increase(ai_estimated_cost_usd_total[24h]))",
+          "legendFormat": "Spend 24h ($)"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "Circuit Breaker Status (0=Closed, 1=Half-Open, 2=Open)",
+      "type": "state-timeline",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 9 },
+      "targets": [
+        {
+          "expr": "ai_circuit_breaker_state",
+          "legendFormat": "{{provider}}:{{operation}}"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ai-interview", "ai-operations", "cost"],
+  "title": "AI Interview - AI Reliability & Spend",
+  "uid": "ai-interview-ai-reliability-spend",
+  "version": 1
+}

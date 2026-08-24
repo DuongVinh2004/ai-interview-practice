@@ -9,9 +9,17 @@ export const LearningPathItemDtoSchema = z.object({
   recommendedAction: z.string(),
   searchKeywords: z.array(z.string()),
   order: z.number().int().nonnegative(),
+  isCompleted: z.boolean().default(false),
+  completedAt: z.string().nullable().optional(),
 });
 
 export type LearningPathItemDto = z.infer<typeof LearningPathItemDtoSchema>;
+
+export const UpdateLearningPathItemDtoSchema = z.object({
+  isCompleted: z.boolean(),
+});
+
+export type UpdateLearningPathItemDto = z.infer<typeof UpdateLearningPathItemDtoSchema>;
 
 export const LearningPathDtoSchema = z.object({
   id: z.string().uuid(),
@@ -25,3 +33,4 @@ export const LearningPathDtoSchema = z.object({
 });
 
 export type LearningPathDto = z.infer<typeof LearningPathDtoSchema>;
+

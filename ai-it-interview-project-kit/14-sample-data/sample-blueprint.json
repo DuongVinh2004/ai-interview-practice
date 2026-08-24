@@ -1,0 +1,17 @@
+{
+  "id": "bp_backend_mid_v1",
+  "version": "1.0.0",
+  "status": "published",
+  "role": "backend-engineer",
+  "seniority": "mid",
+  "locale": "vi-VN",
+  "durationMinutes": 35,
+  "questionCount": 4,
+  "distribution": [
+    {"topicId": "backend_http", "weight": 0.25},
+    {"topicId": "backend_data_concurrency", "weight": 0.5},
+    {"topicId": "backend_reliability", "weight": 0.25}
+  ],
+  "questionTypes": ["conceptual", "scenario", "system-design"],
+  "prohibitedMethods": ["emotion-inference", "personality-inference", "hiring-recommendation"]
+}

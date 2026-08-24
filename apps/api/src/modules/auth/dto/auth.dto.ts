@@ -57,3 +57,48 @@ export class ChangePasswordRequestDto {
   })
   newPassword!: string;
 }
+
+export class MfaEnableRequestDto {
+  @ApiProperty({ example: '123456', description: '6-digit TOTP verification code' })
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{6}$/, { message: 'TOTP code must be 6 digits' })
+  code!: string;
+}
+
+export class MfaVerifyRequestDto {
+  @ApiProperty({ description: 'MFA session token received during initial login' })
+  @IsString()
+  @IsNotEmpty()
+  mfaSessionToken!: string;
+
+  @ApiProperty({ example: '123456', description: '6-digit TOTP code' })
+  @IsString()
+  @IsNotEmpty()
+  @Matches(/^\d{6}$/, { message: 'TOTP code must be 6 digits' })
+  code!: string;
+}
+
+export class MfaRecoveryVerifyRequestDto {
+  @ApiProperty({ description: 'MFA session token received during initial login' })
+  @IsString()
+  @IsNotEmpty()
+  mfaSessionToken!: string;
+
+  @ApiProperty({ example: 'ABCD-1234-EF', description: 'Single-use backup recovery code' })
+  @IsString()
+  @IsNotEmpty()
+  recoveryCode!: string;
+}
+
+export class MfaDisableRequestDto {
+  @ApiProperty({ example: 'Password123' })
+  @IsString()
+  @IsNotEmpty()
+  password!: string;
+
+  @ApiProperty({ example: '123456' })
+  @IsString()
+  @IsNotEmpty()
+  code!: string;
+}

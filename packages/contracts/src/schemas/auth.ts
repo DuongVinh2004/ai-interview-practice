@@ -48,6 +48,7 @@ export const UserDtoSchema = z.object({
   email: z.string().email(),
   role: z.nativeEnum(UserRole),
   status: z.nativeEnum(UserStatus),
+  mfaEnabled: z.boolean().default(false),
   createdAt: z.string(),
   profile: z
     .object({
@@ -64,10 +65,12 @@ export const UserDtoSchema = z.object({
 export type UserDto = z.infer<typeof UserDtoSchema>;
 
 export const AuthResponseSchema = z.object({
-  user: UserDtoSchema,
-  accessToken: z.string(),
-  refreshToken: z.string(),
-  expiresIn: z.number(),
+  user: UserDtoSchema.optional(),
+  accessToken: z.string().optional(),
+  refreshToken: z.string().optional(),
+  expiresIn: z.number().optional(),
+  mfaRequired: z.boolean().optional(),
+  mfaSessionToken: z.string().optional(),
 });
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
@@ -77,8 +80,54 @@ export const JwtPayloadSchema = z.object({
   email: z.string().email(),
   role: z.nativeEnum(UserRole),
   status: z.nativeEnum(UserStatus),
+  mfaVerified: z.boolean().optional(),
   iat: z.number().optional(),
   exp: z.number().optional(),
 });
 
 export type JwtPayload = z.infer<typeof JwtPayloadSchema>;
+
+export const MfaSetupResponseSchema = z.object({
+  secret: z.string(),
+  otpauthUrl: z.string(),
+  issuer: z.string(),
+  accountName: z.string(),
+});
+
+export type MfaSetupResponse = z.infer<typeof MfaSetupResponseSchema>;
+
+export const MfaEnableDtoSchema = z.object({
+  code: z.string().length(6, 'TOTP verification code must be 6 digits'),
+});
+
+export type MfaEnableDto = z.infer<typeof MfaEnableDtoSchema>;
+
+export const MfaEnableResponseSchema = z.object({
+  success: z.boolean(),
+  mfaEnabled: z.boolean(),
+  recoveryCodes: z.array(z.string()),
+  message: z.string(),
+});
+
+export type MfaEnableResponse = z.infer<typeof MfaEnableResponseSchema>;
+
+export const MfaVerifyDtoSchema = z.object({
+  mfaSessionToken: z.string().min(1, 'MFA session token is required'),
+  code: z.string().length(6, 'TOTP verification code must be 6 digits'),
+});
+
+export type MfaVerifyDto = z.infer<typeof MfaVerifyDtoSchema>;
+
+export const MfaRecoveryVerifyDtoSchema = z.object({
+  mfaSessionToken: z.string().min(1, 'MFA session token is required'),
+  recoveryCode: z.string().min(8, 'Recovery code is required'),
+});
+
+export type MfaRecoveryVerifyDto = z.infer<typeof MfaRecoveryVerifyDtoSchema>;
+
+export const MfaDisableDtoSchema = z.object({
+  password: z.string().min(1, 'Password is required to disable MFA'),
+  code: z.string().min(6, 'TOTP code or recovery code is required'),
+});
+
+export type MfaDisableDto = z.infer<typeof MfaDisableDtoSchema>;

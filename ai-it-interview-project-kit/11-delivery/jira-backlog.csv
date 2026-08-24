@@ -1,0 +1,65 @@
+key,epic,summary,priority,owner_role,depends_on,acceptance_evidence,milestone
+AIP-001,E01,Verify official repository baseline,P0,Repository Steward,,signed baseline inventory,M0
+AIP-002,E01,Make bootstrap command deterministic,P0,Platform Owner,AIP-001,clean clone bootstrap log,M0
+AIP-003,E01,Align README claims with evidence,P1,Repository Steward,AIP-001,reviewed documentation diff,M0
+AIP-004,E01,Make CI run all declared quality gates,P0,Platform Owner,AIP-002,green protected-branch checks,M0
+AIP-005,E01,Add local one-command verification,P1,Platform Owner,AIP-002,repeatable verification output,M0
+AIP-006,E02,Model refresh-token session families,P0,Backend Security Owner,AIP-001,reviewed schema and threat delta,M0
+AIP-007,E02,Implement refresh rotation and reuse detection,P0,Backend Security Owner,AIP-006,concurrent replay integration tests,M0
+AIP-008,E02,Implement session inventory and revoke all,P1,Backend Owner,AIP-007,E2E session management evidence,M0
+AIP-009,E02,Harden password reset and enumeration controls,P0,Backend Security Owner,AIP-001,negative auth test report,M0
+AIP-010,E02,Complete user-resource ownership matrix,P0,Backend Security Owner,AIP-001,cross-user negative tests,M0
+AIP-011,E03,Define privileged roles and permissions,P0,Security Owner,AIP-001,approved IAM matrix,M0
+AIP-012,E03,Implement TOTP enrollment and verification,P0,Backend Security Owner,AIP-011,MFA integration tests,M0
+AIP-013,E03,Implement hashed one-time recovery codes,P0,Backend Security Owner,AIP-012,reuse and regeneration tests,M0
+AIP-014,E03,Require MFA and step-up on admin routes,P0,Backend Security Owner,AIP-012,MFA bypass E2E report,M0
+AIP-015,E03,Audit privileged actions and recovery,P0,Security Owner,AIP-014,audit completeness tests,M0
+AIP-016,E04,Document executable interview state machine,P0,Backend Owner,AIP-001,transition table and unit tests,M0
+AIP-017,E04,Add optimistic concurrency to session mutations,P0,Backend Owner,AIP-016,parallel mutation tests,M0
+AIP-018,E04,Make answer submission idempotent,P0,Backend Owner,AIP-016,duplicate request integration tests,M0
+AIP-019,E04,Make evaluation finalization idempotent,P0,Backend Owner,AIP-018,worker crash and duplicate tests,M0
+AIP-020,E04,Implement dead-letter and safe replay workflow,P1,Platform Owner,AIP-019,poison-job game day,M0
+AIP-021,E05,Version taxonomy and interview blueprints,P1,Content Platform Owner,AIP-001,version pinning tests,M1
+AIP-022,E05,Version question packs and rubrics,P0,Content Platform Owner,AIP-021,immutable publish tests,M1
+AIP-023,E05,Implement author-review-publish separation,P0,Content Platform Owner,AIP-022,permission and audit E2E,M1
+AIP-024,E05,Review VI and EN semantic equivalence,P1,Content Owner,AIP-022,bilingual review evidence,M1
+AIP-025,E06,Define evaluation JSON schemas,P0,AI Quality Owner,AIP-022,approved contract fixtures,M1
+AIP-026,E06,Compute weighted score in application code,P0,Backend Owner,AIP-025,criterion boundary unit tests,M1
+AIP-027,E06,Store prompt rubric model and schema versions,P0,Backend Owner,AIP-025,persistence integration tests,M1
+AIP-028,E06,Implement bounded validation repair and fallback,P0,AI Platform Owner,AIP-025,malformed-output tests,M1
+AIP-029,E06,Align deterministic mock with provider contract,P1,AI Platform Owner,AIP-025,provider contract suite,M1
+AIP-030,E07,Create VI and EN golden-set specification,P0,AI Quality Owner,AIP-025,reviewed dataset schema,M1
+AIP-031,E07,Label representative answer cases,P0,Content Owner,AIP-030,dual-review adjudication log,M1
+AIP-032,E07,Create prompt-injection adversarial suite,P0,Security AI Owner,AIP-030,adversarial case report,M1
+AIP-033,E07,Implement reproducible AI eval runner,P0,AI Quality Owner,AIP-030,versioned eval report,M1
+AIP-034,E07,Set promotion thresholds and slice gates,P0,AI Quality Owner,AIP-033,approved quality ADR,M1
+AIP-035,E08,Run provider selection benchmark,P0,AI Platform Owner,AIP-034,provider scorecard raw evidence,M2
+AIP-036,E08,Approve provider privacy and security gate,P0,Privacy Security Owner,AIP-035,DPA and risk decision,M2
+AIP-037,E08,Implement selected provider adapter,P0,AI Platform Owner,AIP-036,contract and failure tests,M2
+AIP-038,E08,Implement circuit breaker quota and cost guard,P0,AI Platform Owner,AIP-037,outage and spend tests,M2
+AIP-039,E08,Load-test provider queue and recovery,P1,Performance Owner,AIP-038,load and recovery report,M2
+AIP-040,E09,Build evidence-based results experience,P0,Frontend Owner,AIP-028,critical journey E2E,M3
+AIP-041,E09,Build actionable learning-path workflow,P1,Product Backend Owner,AIP-040,user acceptance report,M3
+AIP-042,E09,Implement feedback report and re-evaluation,P1,Product Owner,AIP-040,linked-evaluation audit test,M3
+AIP-043,E10,Complete VI and EN interface localization,P0,Frontend Owner,AIP-024,bilingual E2E report,M3
+AIP-044,E10,Meet keyboard and screen-reader requirements,P0,Accessibility Owner,AIP-040,manual WCAG report,M3
+AIP-045,E10,Make timers and live updates accessible,P0,Accessibility Owner,AIP-040,assistive-tech evidence,M3
+AIP-046,E11,Implement consent and privacy notices,P0,Privacy Owner,AIP-001,approved bilingual notices,M3
+AIP-047,E11,Implement user data export,P1,Backend Privacy Owner,AIP-010,authorized export E2E,M3
+AIP-048,E11,Implement deletion and retention jobs,P0,Backend Privacy Owner,AIP-047,deletion verification report,M3
+AIP-049,E11,Complete processing inventory and DPIA,P0,Privacy Owner,AIP-036,approved assessment,M4
+AIP-050,E12,Add secret dependency SAST and license scans,P0,Security Owner,AIP-004,blocking scan checks,M0
+AIP-051,E12,Add IaC and container scans,P0,Security Platform Owner,AIP-050,blocking scan checks,M4
+AIP-052,E12,Publish security policy and response contact,P1,Security Owner,AIP-050,reviewed SECURITY.md,M4
+AIP-053,E12,Run pre-launch penetration test,P0,Security Owner,AIP-051,closed critical findings,M5
+AIP-054,E13,Define production cloud decision gate,P0,Platform Owner,AIP-005,approved platform ADR,M4
+AIP-055,E13,Implement reviewed Terraform modules,P0,Platform Owner,AIP-054,reproducible plan and apply,M4
+AIP-056,E13,Add drift detection and policy checks,P1,Platform Owner,AIP-055,scheduled drift evidence,M4
+AIP-057,E14,Propagate traces across API queue and provider,P0,Observability Owner,AIP-019,trace walkthrough,M4
+AIP-058,E14,Build SLO dashboards and burn alerts,P0,SRE Owner,AIP-057,game-day alert evidence,M4
+AIP-059,E14,Add AI quality cost and safety monitoring,P0,AI Operations Owner,AIP-038,monitoring acceptance report,M4
+AIP-060,E15,Implement encrypted PITR backups,P0,Data Platform Owner,AIP-055,backup integrity evidence,M4
+AIP-061,E15,Run isolated restore drill,P0,Data Platform Owner,AIP-060,measured RPO and RTO,M4
+AIP-062,E15,Run dependency and provider outage game day,P1,SRE Owner,AIP-058,recovery timeline report,M4
+AIP-063,E16,Assemble production release dossier,P0,Release Owner,AIP-049|AIP-053|AIP-061,approved release evidence,M5
+AIP-064,E16,Launch canary pilot and observe error budget,P0,Release Owner,AIP-063,go-no-go and observation record,M5

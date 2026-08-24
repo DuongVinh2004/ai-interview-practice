@@ -1,0 +1,26 @@
+requirement_id,requirement_summary,design_source,verification,evidence_id,release_gate
+FR-AUTH-01,Secure candidate registration and login,09-security-privacy/AUTH-SESSION-MFA.md,auth integration and E2E,EV-003,mandatory
+FR-AUTH-02,Mandatory MFA for privileged admins,09-security-privacy/AUTH-SESSION-MFA.md,MFA bypass recovery and step-up E2E,EV-003,mandatory
+FR-IAM-01,Least-privilege ownership authorization,09-security-privacy/IAM-OWNERSHIP.md,cross-user negative matrix,EV-003,mandatory
+FR-INT-01,Version-pinned interview creation,02-domain/INTERVIEW-LIFECYCLE.md,state and persistence tests,EV-002,mandatory
+FR-INT-02,Idempotent answer submission,07-contracts/ERRORS-AND-IDEMPOTENCY.md,duplicate and concurrency integration,EV-002,mandatory
+FR-INT-03,Resumable legal state transitions,02-domain/INTERVIEW-LIFECYCLE.md,state machine and E2E,EV-002,mandatory
+FR-AI-01,Provider-independent structured evaluation,07-contracts/AI-PROVIDER-CONTRACT.md,contract suite,EV-004,mandatory
+FR-AI-02,Rubric evidence and confidence,08-ai-evaluation/ANSWER-EVALUATION.md,golden-set faithfulness,EV-004,mandatory
+FR-AI-03,Safe degraded provider behavior,08-ai-evaluation/COST-LATENCY-GOVERNANCE.md,outage and recovery test,EV-004,mandatory
+FR-AI-04,Practice-only non-hiring boundary,08-ai-evaluation/AI-AUTHORITY-BOUNDARY.md,adversarial and UX review,EV-004,mandatory
+FR-CONTENT-01,Reviewed immutable content versions,08-ai-evaluation/PROMPT-AND-RUBRIC-VERSIONING.md,author-review-publish integration,EV-002,mandatory
+FR-LEARN-01,Actionable learning plan,02-domain/LEARNING-PATH.md,critical journey E2E,EV-002,mandatory
+FR-PRIV-01,User export and deletion,09-security-privacy/PRIVACY-COMPLIANCE.md,authorized lifecycle E2E,EV-011,mandatory
+NFR-SCALE-01,Horizontal API and worker scaling,05-architecture/SCALABILITY-HA-SLO.md,load stress and queue recovery,EV-006,mandatory
+NFR-HA-01,Core monthly availability objective,13-operations/SLO-ALERTING.md,SLO dashboard and game day,EV-009,mandatory
+NFR-PERF-01,Core and submission latency objectives,13-operations/SLO-ALERTING.md,production-like load test,EV-006,mandatory
+NFR-SEC-01,OWASP-aligned security baseline,09-security-privacy/SECURITY-BASELINE.md,scans review and penetration test,EV-007,mandatory
+NFR-A11Y-01,WCAG 2.2 AA critical journeys,10-testing/ACCESSIBILITY-E2E.md,automated and manual assessment,EV-005,mandatory
+NFR-I18N-01,Semantically equivalent VI and EN,04-ux/ACCESSIBILITY-AND-BILINGUAL.md,bilingual content and E2E review,EV-005,mandatory
+NFR-DATA-01,Compatible tested migrations,06-data/MIGRATION-AND-COMPATIBILITY.md,empty and upgrade rehearsal,EV-008,mandatory
+NFR-DR-01,Measured backup restore targets,06-data/BACKUP-AND-DR.md,isolated restore drill,EV-010,mandatory
+NFR-OBS-01,Correlated logs metrics and traces,13-operations/OBSERVABILITY.md,trace walkthrough and alert game day,EV-009,mandatory
+NFR-CICD-01,Immutable gated artifact promotion,13-operations/CI-CD.md,pipeline provenance and release record,EV-012,mandatory
+NFR-IAC-01,Reviewed reproducible infrastructure,05-architecture/IAC-AND-PLATFORM.md,IaC plan apply and drift evidence,EV-012,mandatory
+NFR-MAINT-01,Enforced module and contract boundaries,05-architecture/MAINTAINABILITY.md,architecture and contract tests,EV-002,mandatory

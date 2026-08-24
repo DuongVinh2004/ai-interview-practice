@@ -1,7 +1,9 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
-import { UserRole, UserStatus, ErrorCode, AuditAction } from '@ai-interview/contracts';
+import { UserRole, UserStatus, ErrorCode, AuditAction, AiRunStatus } from '@ai-interview/contracts';
+import { ProviderRouterService } from '../ai-orchestrator/router/provider-router.service';
+import { SemanticCacheService } from '../ai-orchestrator/cache/semantic-cache.service';
 
 export interface AdminUserQueryOptions {
   page?: number;
@@ -11,11 +13,23 @@ export interface AdminUserQueryOptions {
   status?: UserStatus;
 }
 
+export interface AdminAiRunQueryOptions {
+  page?: number;
+  limit?: number;
+  provider?: string;
+  status?: AiRunStatus;
+  sessionId?: string;
+}
+
 @Injectable()
 export class AdminService {
   private readonly logger = new Logger(AdminService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly providerRouter: ProviderRouterService,
+    private readonly semanticCache: SemanticCacheService,
+  ) {}
 
   async listUsers(options: AdminUserQueryOptions) {
     const page = Math.max(1, options.page || 1);
@@ -188,4 +202,210 @@ export class AdminService {
       status: updated.status,
     };
   }
+
+  async listAiRuns(options: AdminAiRunQueryOptions) {
+    const page = Math.max(1, options.page || 1);
+    const limit = Math.min(100, Math.max(1, options.limit || 20));
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (options.provider) {
+      where.provider = options.provider;
+    }
+    if (options.status) {
+      where.status = options.status;
+    }
+    if (options.sessionId) {
+      where.sessionId = options.sessionId;
+    }
+
+    const [total, runs] = await Promise.all([
+      this.prisma.aiRun.count({ where }),
+      this.prisma.aiRun.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          promptVersion: {
+            select: {
+              slug: true,
+              version: true,
+            },
+          },
+        },
+      }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      items: runs.map(r => ({
+        id: r.id,
+        sessionId: r.sessionId,
+        promptSlug: r.promptVersion?.slug || 'unknown',
+        promptVersion: r.promptVersion?.version || 1,
+        provider: r.provider,
+        model: r.model,
+        promptTokens: r.promptTokens,
+        completionTokens: r.completionTokens,
+        totalTokens: r.totalTokens,
+        latencyMs: r.latencyMs,
+        costEstimate: r.costEstimate,
+        status: r.status,
+        metadata: r.metadata,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    };
+  }
+
+  async getAiMetrics() {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const [totalRuns, successRuns, failedRuns, todayRuns] = await Promise.all([
+      this.prisma.aiRun.count(),
+      this.prisma.aiRun.count({ where: { status: 'SUCCESS' } }),
+      this.prisma.aiRun.count({ where: { status: 'FAILED' } }),
+      this.prisma.aiRun.findMany({
+        where: { createdAt: { gte: today } },
+        select: {
+          provider: true,
+          promptTokens: true,
+          completionTokens: true,
+          totalTokens: true,
+          costEstimate: true,
+          latencyMs: true,
+        },
+      }),
+    ]);
+
+    const dailyCostUsd = todayRuns.reduce((sum, r) => sum + (r.costEstimate || 0), 0);
+    const dailyTokens = todayRuns.reduce((sum, r) => sum + (r.totalTokens || 0), 0);
+    const avgLatencyMs =
+      todayRuns.length > 0
+        ? Math.round(todayRuns.reduce((sum, r) => sum + r.latencyMs, 0) / todayRuns.length)
+        : 0;
+
+    const circuitBreakerStates = this.providerRouter.getCircuitBreakerStates();
+    const dailyBudgetUsd = this.providerRouter.getDailyBudgetUsd();
+
+    return {
+      totalRuns,
+      successRuns,
+      failedRuns,
+      successRate: totalRuns > 0 ? Math.round((successRuns / totalRuns) * 100) : 100,
+      todayRunsCount: todayRuns.length,
+      todayTokens: dailyTokens,
+      todayCostUsd: Number(dailyCostUsd.toFixed(4)),
+      dailyBudgetUsd,
+      budgetUsedPercentage:
+        dailyBudgetUsd > 0 ? Number(((dailyCostUsd / dailyBudgetUsd) * 100).toFixed(1)) : 0,
+      avgLatencyMs,
+      circuitBreakerStates,
+    };
+  }
+
+  async listPromptVersions() {
+    const versions = await this.prisma.promptVersion.findMany({
+      orderBy: [{ slug: 'asc' }, { version: 'desc' }],
+    });
+
+    return versions.map(v => ({
+      id: v.id,
+      slug: v.slug,
+      version: v.version,
+      systemPrompt: v.systemPrompt,
+      userPromptTemplate: v.userPromptTemplate,
+      isActive: v.isActive,
+      createdAt: v.createdAt.toISOString(),
+    }));
+  }
+
+  async activatePromptVersion(adminId: string, versionId: string) {
+    const target = await this.prisma.promptVersion.findUnique({
+      where: { id: versionId },
+    });
+
+    if (!target) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'Prompt version not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Atomic transaction: deactivate previous active versions for this slug, then activate target
+    await this.prisma.$transaction([
+      this.prisma.promptVersion.updateMany({
+        where: { slug: target.slug, isActive: true },
+        data: { isActive: false },
+      }),
+      this.prisma.promptVersion.update({
+        where: { id: versionId },
+        data: { isActive: true },
+      }),
+    ]);
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: adminId,
+        action: AuditAction.PROMPT_VERSION_ACTIVATED,
+        resource: 'prompt_version',
+        resourceId: versionId,
+        details: { slug: target.slug, version: target.version },
+      },
+    });
+
+    this.logger.log(`Prompt version ${target.slug} v${target.version} activated by admin ${adminId}`);
+
+    return {
+      id: target.id,
+      slug: target.slug,
+      version: target.version,
+      isActive: true,
+    };
+  }
+
+  async getLlmHealth() {
+    const circuitBreakerStates = this.providerRouter.getCircuitBreakerStates();
+    const priorityChain = this.providerRouter.getPriorityChain();
+    const dailyCost = this.providerRouter.getCurrentDailyCostUsd();
+    const dailyBudget = this.providerRouter.getDailyBudgetUsd();
+
+    return {
+      providers: priorityChain.map(name => ({
+        name,
+        state: circuitBreakerStates[name] || 'CLOSED',
+        isAvailable: true,
+      })),
+      priorityChain,
+      dailyCostUsd: dailyCost,
+      dailyBudgetUsd: dailyBudget,
+      isBudgetExceeded: dailyCost >= dailyBudget,
+    };
+  }
+
+  async clearSemanticCache() {
+    const clearedCount = await this.semanticCache.invalidateAll();
+    return {
+      success: true,
+      clearedEntriesCount: clearedCount,
+      message: `Cleared ${clearedCount} semantic cache entries`,
+    };
+  }
+
+  async getSemanticCacheMetrics() {
+    return this.semanticCache.getMetrics();
+  }
 }
+
+

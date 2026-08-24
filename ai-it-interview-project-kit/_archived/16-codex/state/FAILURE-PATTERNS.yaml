@@ -1,0 +1,10 @@
+schema_version: 1
+patterns: []
+# Add only evidence-backed recurring patterns.
+# Example shape:
+# - id: ANTI-PATTERN-001
+#   failure_class: TEST_WEAKENING
+#   evidence_ref: "AIP-___ handoff / commit / diff"
+#   observed_behavior: "Changed expected status to match broken implementation."
+#   future_guard: "Require requirement anchor before modifying the expectation."
+#   occurrences: 2

@@ -17,7 +17,11 @@ import { IdempotencyService } from '../platform/guards/idempotency.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UserRole } from '@ai-interview/contracts';
-import { CreateInterviewRequestDto, SubmitAnswerRequestDto } from './dto/interview.dto';
+import {
+  CreateInterviewRequestDto,
+  SubmitAnswerRequestDto,
+  ReEvaluateTurnRequestDto,
+} from './dto/interview.dto';
 
 @ApiTags('Interviews')
 @ApiBearerAuth()
@@ -101,10 +105,36 @@ export class InterviewController {
     return result;
   }
 
+  @Post(':id/turns/:turnNumber/re-evaluate')
+  @ApiOperation({ summary: 'Request re-evaluation for a specific turn answer' })
+  @ApiParam({ name: 'id', description: 'Interview session ID' })
+  @ApiParam({ name: 'turnNumber', description: 'Turn number (1-5)' })
+  async reEvaluateTurn(
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('role') userRole: UserRole,
+    @Param('id') sessionId: string,
+    @Param('turnNumber') turnNumber: string,
+    @Body() dto: ReEvaluateTurnRequestDto,
+  ) {
+    return this.interviewService.reEvaluateTurn(
+      userId,
+      userRole,
+      sessionId,
+      parseInt(turnNumber, 10),
+      dto,
+    );
+  }
+
   @Sse(':id/events')
   @ApiOperation({ summary: 'Server-Sent Events stream for real-time interview progression' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
-  sseInterviewEvents(@Param('id') sessionId: string): Observable<{ data: SseSessionEvent }> {
+  async sseInterviewEvents(
+    @CurrentUser('sub') userId: string,
+    @CurrentUser('role') userRole: UserRole,
+    @Param('id') sessionId: string,
+  ): Promise<Observable<{ data: SseSessionEvent }>> {
+    await this.interviewService.assertSessionAccess(userId, userRole, sessionId);
     return this.sseService.getSessionEventStream(sessionId);
   }
 }
+

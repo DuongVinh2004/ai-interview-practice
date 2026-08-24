@@ -13,8 +13,16 @@ import {
   ErrorCode,
   UserRole,
   DifficultyLevel,
+  AuditAction,
+  SessionMode,
+  CompetencyArea,
 } from '@ai-interview/contracts';
-import { CreateInterviewRequestDto, SubmitAnswerRequestDto } from './dto/interview.dto';
+import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
+import {
+  CreateInterviewRequestDto,
+  SubmitAnswerRequestDto,
+  ReEvaluateTurnRequestDto,
+} from './dto/interview.dto';
 
 @Injectable()
 export class InterviewService {
@@ -23,6 +31,7 @@ export class InterviewService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sseService: SseService,
+    private readonly aiOrchestrator: AiOrchestratorService,
     @InjectQueue(QueueName.QUESTION_GENERATION)
     private readonly questionQueue: Queue,
     @InjectQueue(QueueName.ANSWER_EVALUATION)
@@ -57,15 +66,26 @@ export class InterviewService {
       );
     }
 
-    // Create session, technologies join, and 5 turn rows
+    const totalTurns =
+      dto.totalTurns && dto.totalTurns >= 1 && dto.totalTurns <= 5 ? dto.totalTurns : 5;
+    const sessionMode = dto.sessionMode || SessionMode.STANDARD;
+    const isSandbox = dto.isSandbox || false;
+    const competencyArea = dto.competencyArea || null;
+
+    const turnIndices = Array.from({ length: totalTurns }, (_, i) => i + 1);
+
+    // Create session, technologies join, and turn rows
     const session = await this.prisma.interviewSession.create({
       data: {
         userId,
         jobRoleId: dto.jobRoleId,
         seniorityLevelId: dto.seniorityLevelId,
         state: SessionState.CREATED,
+        sessionMode,
+        competencyArea,
+        isSandbox,
         currentTurn: 1,
-        totalTurns: 5,
+        totalTurns,
         targetDifficulty: 1,
         technologies: {
           create: dto.technologyIds.map(techId => ({
@@ -73,7 +93,7 @@ export class InterviewService {
           })),
         },
         turns: {
-          create: [1, 2, 3, 4, 5].map(turnNum => ({
+          create: turnIndices.map(turnNum => ({
             turnNumber: turnNum,
             difficulty: 1,
             status: 'PENDING',
@@ -115,6 +135,17 @@ export class InterviewService {
       },
     );
 
+    if (dto.blueprintId) {
+      await this.prisma.interviewBlueprint
+        .update({
+          where: { id: dto.blueprintId },
+          data: { interviewId: session.id },
+        })
+        .catch(err => {
+          this.logger.warn(`Could not link blueprint ${dto.blueprintId}: ${err.message}`);
+        });
+    }
+
     this.logger.log(
       `Session ${session.id} created. Question 1 generation enqueued (Job: ${jobId})`,
     );
@@ -123,6 +154,24 @@ export class InterviewService {
       sessionId: session.id,
       state: session.state,
       currentTurn: 1,
+    });
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action:
+          sessionMode === SessionMode.FOCUSED_REMEDIATION
+            ? AuditAction.REMEDIATION_SESSION_STARTED
+            : AuditAction.SESSION_CREATED,
+        resource: 'interview_session',
+        resourceId: session.id,
+        details: {
+          sessionMode,
+          competencyArea,
+          totalTurns,
+          isSandbox,
+        },
+      },
     });
 
     return this.mapToSessionDto(session);
@@ -169,6 +218,29 @@ export class InterviewService {
     }
 
     return this.mapToSessionDto(session);
+  }
+
+  async assertSessionAccess(userId: string, userRole: UserRole, sessionId: string): Promise<void> {
+    const session = await this.prisma.interviewSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, userId: true },
+    });
+
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (session.userId !== userId && userRole !== UserRole.ADMIN) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not have permission to access this session',
+        HttpStatus.FORBIDDEN,
+      );
+    }
   }
 
   async getSessionStatus(userId: string, userRole: UserRole, sessionId: string) {
@@ -333,11 +405,146 @@ export class InterviewService {
     };
   }
 
+  async reEvaluateTurn(
+    userId: string,
+    userRole: UserRole,
+    sessionId: string,
+    turnNumber: number,
+    dto?: ReEvaluateTurnRequestDto,
+  ) {
+    await this.assertSessionAccess(userId, userRole, sessionId);
+
+    const session = await this.prisma.interviewSession.findUnique({
+      where: { id: sessionId },
+      include: {
+        jobRole: true,
+        seniorityLevel: true,
+        turns: {
+          where: { turnNumber },
+          include: {
+            question: true,
+            answer: {
+              include: {
+                evaluation: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!session) {
+      throw new DomainException(ErrorCode.SESSION_NOT_FOUND, 'Interview session not found');
+    }
+
+    const turn = session.turns[0];
+    if (!turn || !turn.question || !turn.answer || !turn.answer.evaluation) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        `Turn ${turnNumber} is not in an evaluated state or has no answer to re-evaluate`,
+      );
+    }
+
+    const oldScore = turn.answer.evaluation.score;
+
+    // Invoke AI Orchestrator to evaluate answer with clean prompts and deterministic scoring
+    const evalResult = await this.aiOrchestrator.evaluateAnswer(sessionId, {
+      role: session.jobRole.name,
+      level: session.seniorityLevel.name,
+      question: turn.question.content,
+      keyFocus: turn.question.keyFocus || undefined,
+      expectedPoints: (turn.question.expectedPoints as string[]) || undefined,
+      answer: turn.answer.content,
+    });
+
+    const updatedEval = await this.prisma.evaluation.update({
+      where: { answerId: turn.answer.id },
+      data: {
+        score: evalResult.score,
+        rubricScores: evalResult.rubricScores as any,
+        strengths: evalResult.strengths,
+        improvements: evalResult.improvements,
+        conciseFeedback: evalResult.conciseFeedback,
+        evidence: evalResult.evidence,
+      },
+    });
+
+    // Recalculate overall score across all completed turn evaluations
+    const allEvaluations = await this.prisma.evaluation.findMany({
+      where: { answer: { turn: { sessionId } } },
+    });
+
+    const overallScore =
+      allEvaluations.length > 0
+        ? Number(
+            (allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length).toFixed(1),
+          )
+        : null;
+
+    if (overallScore !== null) {
+      await this.prisma.interviewSession.update({
+        where: { id: sessionId },
+        data: { overallScore },
+      });
+    }
+
+    // Emit SSE event
+    this.sseService.emitSessionEvent(sessionId, SseEventType.EVALUATION_COMPLETED, {
+      sessionId,
+      turnNumber,
+      evaluation: {
+        id: updatedEval.id,
+        score: updatedEval.score,
+        rubricScores: updatedEval.rubricScores,
+        conciseFeedback: updatedEval.conciseFeedback,
+      },
+      overallScore,
+    });
+
+    // Audit log re-evaluation
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: AuditAction.EVALUATION_RE_EVALUATED,
+        resource: 'evaluation',
+        resourceId: updatedEval.id,
+        details: {
+          sessionId,
+          turnNumber,
+          oldScore,
+          newScore: updatedEval.score,
+          reason: dto?.reason,
+        },
+      },
+    });
+
+    this.logger.log(
+      `Turn ${turnNumber} of session ${sessionId} re-evaluated by user ${userId}. Score changed from ${oldScore} to ${updatedEval.score}`,
+    );
+
+    return {
+      id: updatedEval.id,
+      answerId: updatedEval.answerId,
+      score: updatedEval.score,
+      rubricScores: updatedEval.rubricScores,
+      strengths: updatedEval.strengths,
+      improvements: updatedEval.improvements,
+      conciseFeedback: updatedEval.conciseFeedback,
+      evidence: updatedEval.evidence,
+      overallScore,
+      createdAt: (updatedEval.createdAt || new Date()).toISOString(),
+    };
+  }
+
+
   private mapToSessionDto(session: any) {
     return {
       id: session.id,
       userId: session.userId,
       state: session.state,
+      sessionMode: session.sessionMode,
+      competencyArea: session.competencyArea,
+      isSandbox: session.isSandbox,
       currentTurn: session.currentTurn,
       totalTurns: session.totalTurns,
       targetDifficulty: session.targetDifficulty as DifficultyLevel,
@@ -380,6 +587,8 @@ export class InterviewService {
               recommendedAction: item.recommendedAction,
               searchKeywords: item.searchKeywords || [],
               order: item.order,
+              isCompleted: item.isCompleted || false,
+              completedAt: item.completedAt ? item.completedAt.toISOString() : null,
             })),
             createdAt: session.learningPath.createdAt.toISOString(),
             updatedAt: session.learningPath.updatedAt.toISOString(),
@@ -397,6 +606,8 @@ export class InterviewService {
       turnNumber: turn.turnNumber,
       difficulty: turn.difficulty as DifficultyLevel,
       status: turn.status,
+      isFollowUp: turn.isFollowUp || false,
+      parentTurnNumber: turn.parentTurnNumber || null,
       question: turn.question
         ? {
             id: turn.question.id,

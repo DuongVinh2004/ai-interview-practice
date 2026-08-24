@@ -1,0 +1,17 @@
+{
+  "id": "usr_demo_candidate_001",
+  "email": "candidate.demo@example.test",
+  "displayName": "Demo Candidate",
+  "locale": "vi-VN",
+  "roles": ["candidate"],
+  "status": "active",
+  "emailVerified": true,
+  "mfa": {
+    "required": false,
+    "enrolled": false
+  },
+  "preferences": {
+    "reducedMotion": false,
+    "feedbackDetail": "standard"
+  }
+}

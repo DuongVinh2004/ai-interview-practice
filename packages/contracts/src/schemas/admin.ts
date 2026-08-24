@@ -11,11 +11,19 @@ export const UserQueryDtoSchema = z.object({
 
 export type UserQueryDto = z.infer<typeof UserQueryDtoSchema>;
 
-export const UpdateProfileDtoSchema = z.object({
-  fullName: z.string().min(2).max(100).optional(),
-  targetRole: z.string().max(100).optional(),
-  targetLevel: z.string().max(50).optional(),
-  bio: z.string().max(500).optional(),
+
+export const AiRunQueryDtoSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(20),
+  provider: z.string().optional(),
+  status: z.enum(['SUCCESS', 'FAILED']).optional(),
+  sessionId: z.string().uuid().optional(),
 });
 
-export type UpdateProfileDto = z.infer<typeof UpdateProfileDtoSchema>;
+export type AiRunQueryDto = z.infer<typeof AiRunQueryDtoSchema>;
+
+export const PromptVersionActivateDtoSchema = z.object({
+  versionId: z.string().uuid(),
+});
+
+export type PromptVersionActivateDto = z.infer<typeof PromptVersionActivateDtoSchema>;

@@ -1,0 +1,60 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "BullMQ Queues & Worker Processing",
+      "type": "row"
+    },
+    {
+      "id": 2,
+      "title": "Job Throughput (Jobs/sec by status)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 1 },
+      "targets": [
+        {
+          "expr": "sum(rate(bullmq_jobs_total[1m])) by (queue, status)",
+          "legendFormat": "{{queue}} - {{status}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Job Execution Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 1 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(bullmq_job_duration_seconds_bucket[5m])) by (le, queue))",
+          "legendFormat": "{{queue}} p95 execution (s)"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Queue Lag / Waiting Latency (p95)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(bullmq_queue_lag_seconds_bucket[5m])) by (le, queue))",
+          "legendFormat": "{{queue}} p95 wait lag (s)"
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["ai-interview", "bullmq", "workers"],
+  "title": "AI Interview - BullMQ Queues",
+  "uid": "ai-interview-bullmq-queues",
+  "version": 1
+}
