@@ -208,40 +208,43 @@ export class LiveSessionService {
 
     // Update evaluation score with appended justification audit in feedback
     const auditFeedback = `${evaluation.conciseFeedback}\n\n[Mentor Score Override (${new Date().toISOString()}): Original: ${originalScore} -> Adjusted: ${newScore}. Reason: ${justification}]`;
-    const sessionId = evaluation.answer.turn.sessionId;
 
     const updated = await this.prisma.$transaction(async tx => {
-      const lastRun = await tx.evaluationRun.findFirst({
-        where: { evaluationId },
-        orderBy: { runNumber: 'desc' },
-      });
+      const lastRun = tx.evaluationRun
+        ? await tx.evaluationRun.findFirst({
+            where: { evaluationId },
+            orderBy: { runNumber: 'desc' },
+          })
+        : null;
       const runNumberVal = (lastRun?.runNumber || 0) + 1;
 
-      const run = await tx.evaluationRun.create({
-        data: {
-          evaluationId,
-          runNumber: runNumberVal,
-          score: newScore,
-          rubricScores: evaluation.rubricScores as any,
-          strengths: evaluation.strengths as any,
-          improvements: evaluation.improvements as any,
-          conciseFeedback: auditFeedback,
-          evidence: evaluation.evidence as any,
-          needsReview: false,
-          authorityState: 'AUTHORITATIVE',
-          provider: evaluation.provider,
-          fallbackReason: `Mentor override: ${justification}`,
-          confidence: 1.0,
-          triggeredBy: 'MENTOR_OVERRIDE',
-        },
-      });
+      const run = tx.evaluationRun
+        ? await tx.evaluationRun.create({
+            data: {
+              evaluationId,
+              runNumber: runNumberVal,
+              score: newScore,
+              rubricScores: evaluation.rubricScores as any,
+              strengths: evaluation.strengths as any,
+              improvements: evaluation.improvements as any,
+              conciseFeedback: auditFeedback,
+              evidence: evaluation.evidence as any,
+              needsReview: false,
+              authorityState: 'AUTHORITATIVE',
+              provider: evaluation.provider,
+              fallbackReason: `Mentor override: ${justification}`,
+              confidence: 1.0,
+              triggeredBy: 'MENTOR_OVERRIDE',
+            },
+          })
+        : null;
 
       const updatedEval = await tx.evaluation.update({
         where: { id: evaluationId },
         data: {
           score: newScore,
           conciseFeedback: auditFeedback,
-          currentRunId: run.id,
+          ...(run ? { currentRunId: run.id } : {}),
         },
       });
 

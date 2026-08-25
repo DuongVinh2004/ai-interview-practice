@@ -1,7 +1,7 @@
 import { ExecutionContext, HttpStatus } from '@nestjs/common';
 import { MfaStepUpGuard } from '../guards/mfa-step-up.guard';
 import { ErrorCode, UserRole } from '@ai-interview/contracts';
-import { DomainException } from '../../../platform/filters/all-exceptions.filter';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
 describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
   let guard: MfaStepUpGuard;
@@ -30,7 +30,7 @@ describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
     const context = createMockContext(undefined);
     await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
     await expect(guard.canActivate(context)).rejects.toMatchObject({
-      errorCode: ErrorCode.UNAUTHORIZED,
+      code: ErrorCode.UNAUTHORIZED,
     });
   });
 
@@ -40,7 +40,7 @@ describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
     await expect(guard.canActivate(context)).rejects.toMatchObject({
-      errorCode: ErrorCode.MFA_STEP_UP_REQUIRED,
+      code: ErrorCode.MFA_STEP_UP_REQUIRED,
     });
   });
 
@@ -50,7 +50,7 @@ describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
     await expect(guard.canActivate(context)).rejects.toMatchObject({
-      errorCode: ErrorCode.MFA_STEP_UP_REQUIRED,
+      code: ErrorCode.MFA_STEP_UP_REQUIRED,
     });
   });
 

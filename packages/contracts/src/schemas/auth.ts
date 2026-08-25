@@ -71,6 +71,8 @@ export const AuthResponseSchema = z.object({
   expiresIn: z.number().optional(),
   mfaRequired: z.boolean().optional(),
   mfaSessionToken: z.string().optional(),
+  forceMfaSetup: z.boolean().optional(),
+  message: z.string().optional(),
 });
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;

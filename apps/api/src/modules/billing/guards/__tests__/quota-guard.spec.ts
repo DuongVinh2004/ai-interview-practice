@@ -43,7 +43,7 @@ describe('QuotaGuard (F-007 Enforcement)', () => {
 
     await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
     await expect(guard.canActivate(context)).rejects.toMatchObject({
-      errorCode: ErrorCode.QUOTA_EXCEEDED,
+      code: ErrorCode.QUOTA_EXCEEDED,
       status: HttpStatus.FORBIDDEN,
     });
   });

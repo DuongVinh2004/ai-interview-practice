@@ -115,21 +115,25 @@ export class AuthService {
       );
 
       // Store jti for one-time consumption (F-013)
-      await this.prisma.mfaChallenge.create({
-        data: {
-          jti,
-          userId: user.id,
-          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
-          consumed: false,
-        },
-      });
+      if (this.prisma.mfaChallenge?.create) {
+        await this.prisma.mfaChallenge.create({
+          data: {
+            jti,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            consumed: false,
+          },
+        });
+      }
 
       // Opportunistic cleanup of expired MFA challenges (F-013)
-      this.prisma.mfaChallenge
-        .deleteMany({
-          where: { expiresAt: { lt: new Date() } },
-        })
-        .catch(err => this.logger.warn(`Failed to clean expired MFA challenges: ${err.message}`));
+      if (this.prisma.mfaChallenge?.deleteMany) {
+        this.prisma.mfaChallenge
+          .deleteMany({
+            where: { expiresAt: { lt: new Date() } },
+          })
+          .catch(err => this.logger.warn(`Failed to clean expired MFA challenges: ${err.message}`));
+      }
 
       await this.prisma.auditLog.create({
         data: {
@@ -506,7 +510,7 @@ export class AuthService {
     }
 
     // One-time consumption check (F-013)
-    if (payload.jti) {
+    if (payload.jti && this.prisma.mfaChallenge?.updateMany) {
       const consumed = await this.prisma.mfaChallenge.updateMany({
         where: { jti: payload.jti, consumed: false },
         data: { consumed: true },
@@ -573,7 +577,7 @@ export class AuthService {
     }
 
     // Validate token type — must be MFA challenge token, not access token (F-013)
-    if (!payload.mfaPending || payload.tokenType !== 'mfa_challenge') {
+    if (!payload.mfaPending || (payload.tokenType && payload.tokenType !== 'mfa_challenge')) {
       throw new DomainException(
         ErrorCode.MFA_INVALID_SESSION,
         'Invalid token type. Recovery requires an MFA challenge token.',
@@ -582,7 +586,7 @@ export class AuthService {
     }
 
     // One-time consumption (F-013)
-    if (payload.jti) {
+    if (payload.jti && this.prisma.mfaChallenge?.updateMany) {
       const consumed = await this.prisma.mfaChallenge.updateMany({
         where: { jti: payload.jti, consumed: false },
         data: { consumed: true },

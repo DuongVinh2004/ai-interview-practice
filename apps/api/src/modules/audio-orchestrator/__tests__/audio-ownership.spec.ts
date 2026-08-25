@@ -76,7 +76,7 @@ describe('Audio Ownership and IDOR Prevention (F-008)', () => {
         'session-user-b',
       ),
     ).rejects.toMatchObject({
-      errorCode: ErrorCode.FORBIDDEN,
+      code: ErrorCode.FORBIDDEN,
       status: HttpStatus.FORBIDDEN,
     });
   });

@@ -18,6 +18,9 @@ describe('AudioOrchestratorService', () => {
       aiRun: {
         create: jest.fn().mockResolvedValue({ id: 'test-run-id' }),
       },
+      interviewSession: {
+        findUnique: jest.fn().mockResolvedValue({ id: 'session-123', userId: 'user-1' }),
+      },
     };
 
     mockConfigService = {
@@ -54,6 +57,7 @@ describe('AudioOrchestratorService', () => {
     it('successfully transcribes audio with mock provider and records aiRun', async () => {
       const dummyBuffer = Buffer.alloc(32000, 1); // 2 seconds of audio
       const result = await service.transcribeAudio(
+        'user-1',
         dummyBuffer,
         'audio/webm',
         'test.webm',
@@ -87,7 +91,7 @@ describe('AudioOrchestratorService', () => {
       mockOpenAiProvider.transcribe.mockRejectedValue(new Error('OpenAI Rate Limited'));
 
       const dummyBuffer = Buffer.alloc(16000, 2);
-      const result = await service.transcribeAudio(dummyBuffer, 'audio/wav', 'test.wav', 'vi');
+      const result = await service.transcribeAudio('user-1', dummyBuffer, 'audio/wav', 'test.wav', 'vi');
 
       expect(result).toBeDefined();
       expect(result.provider).toBe('mock');
@@ -98,6 +102,7 @@ describe('AudioOrchestratorService', () => {
   describe('synthesizeSpeech', () => {
     it('synthesizes speech into valid audio buffer with mock provider', async () => {
       const result = await service.synthesizeSpeech(
+        'user-1',
         'Welcome to your system design interview.',
         AudioVoice.ALLOY,
         1.0,
@@ -113,7 +118,7 @@ describe('AudioOrchestratorService', () => {
     });
 
     it('throws validation error when text is empty', async () => {
-      await expect(service.synthesizeSpeech('', AudioVoice.NOVA, 1.0)).rejects.toThrow();
+      await expect(service.synthesizeSpeech('user-1', '', AudioVoice.NOVA, 1.0)).rejects.toThrow();
     });
   });
 

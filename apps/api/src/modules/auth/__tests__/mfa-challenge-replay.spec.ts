@@ -1,5 +1,5 @@
 import { ErrorCode } from '@ai-interview/contracts';
-import { DomainException } from '../../../platform/filters/all-exceptions.filter';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
 describe('MFA Challenge Single-Use & Token Type Verification (F-013)', () => {
   it('MUST require jti on MFA challenge token to consume single-use challenge', () => {

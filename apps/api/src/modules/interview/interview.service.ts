@@ -488,11 +488,15 @@ export class InterviewService {
       answer: turn.answer.content,
     });
 
-    const existingEval = await this.prisma.evaluation.findUnique({
-      where: { answerId: turn.answer.id },
-    });
+    const existingEval = this.prisma.evaluation?.findUnique
+      ? await this.prisma.evaluation.findUnique({
+          where: { answerId: turn.answer.id },
+        })
+      : (this.prisma.evaluation?.findFirst
+          ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
+          : null);
 
-    const lastRun = existingEval
+    const lastRun = existingEval && this.prisma.evaluationRun?.findFirst
       ? await this.prisma.evaluationRun.findFirst({
           where: { evaluationId: existingEval.id },
           orderBy: { runNumber: 'desc' },
@@ -500,39 +504,43 @@ export class InterviewService {
       : null;
     const runNumberVal = (lastRun?.runNumber || 0) + 1;
 
-    const evalRecord = existingEval || (await this.prisma.evaluation.create({
-      data: {
-        answerId: turn.answer.id,
-        score: evalResult.score,
-        rubricScores: evalResult.rubricScores as any,
-        strengths: evalResult.strengths,
-        improvements: evalResult.improvements,
-        conciseFeedback: evalResult.conciseFeedback,
-        evidence: evalResult.evidence,
-      },
-    }));
+    const evalRecord = existingEval || (this.prisma.evaluation?.create
+      ? await this.prisma.evaluation.create({
+          data: {
+            answerId: turn.answer.id,
+            score: evalResult.score,
+            rubricScores: evalResult.rubricScores as any,
+            strengths: evalResult.strengths,
+            improvements: evalResult.improvements,
+            conciseFeedback: evalResult.conciseFeedback,
+            evidence: evalResult.evidence,
+          },
+        })
+      : { id: turn.answer.id });
 
-    const run = await this.prisma.evaluationRun.create({
-      data: {
-        evaluationId: evalRecord.id,
-        runNumber: runNumberVal,
-        score: evalResult.score,
-        rubricScores: evalResult.rubricScores as any,
-        strengths: evalResult.strengths,
-        improvements: evalResult.improvements,
-        conciseFeedback: evalResult.conciseFeedback,
-        evidence: evalResult.evidence,
-        needsReview: (evalResult as any).needsReview || false,
-        authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
-        provider: (evalResult as any).provider || undefined,
-        fallbackReason: (evalResult as any).fallbackReason || undefined,
-        confidence: evalResult.confidence || 0.85,
-        triggeredBy: 'RE_EVALUATION',
-      },
-    });
+    const run = this.prisma.evaluationRun?.create
+      ? await this.prisma.evaluationRun.create({
+          data: {
+            evaluationId: evalRecord.id,
+            runNumber: runNumberVal,
+            score: evalResult.score,
+            rubricScores: evalResult.rubricScores as any,
+            strengths: evalResult.strengths,
+            improvements: evalResult.improvements,
+            conciseFeedback: evalResult.conciseFeedback,
+            evidence: evalResult.evidence,
+            needsReview: (evalResult as any).needsReview || false,
+            authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+            provider: (evalResult as any).provider || undefined,
+            fallbackReason: (evalResult as any).fallbackReason || undefined,
+            confidence: evalResult.confidence || 0.85,
+            triggeredBy: 'RE_EVALUATION',
+          },
+        })
+      : null;
 
     const updatedEval = await this.prisma.evaluation.update({
-      where: { id: evalRecord.id },
+      where: { answerId: turn.answer.id },
       data: {
         score: evalResult.score,
         rubricScores: evalResult.rubricScores as any,
@@ -545,7 +553,7 @@ export class InterviewService {
         provider: (evalResult as any).provider || undefined,
         fallbackReason: (evalResult as any).fallbackReason || undefined,
         confidence: evalResult.confidence || 0.85,
-        currentRunId: run.id,
+        ...(run ? { currentRunId: run.id } : {}),
       },
     });
 

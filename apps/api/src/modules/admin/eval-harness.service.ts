@@ -68,10 +68,15 @@ export class EvalHarnessService {
           level: testCase.seniority,
           question: testCase.question,
           answer: testCase.answer,
+          expectedPoints: testCase.expected?.requiredEvidenceTerms,
         });
 
         score = evalRes.data.score;
-        evidenceList = evalRes.data.evidence || [];
+        evidenceList = [
+          ...(evalRes.data.evidence || []),
+          ...(evalRes.data.strengths || []),
+          ...(evalRes.data.conciseFeedback ? [evalRes.data.conciseFeedback] : []),
+        ];
         missingConcepts = evalRes.data.missingConcepts || [];
         needsReview = evalRes.data.needsReview || false;
       }

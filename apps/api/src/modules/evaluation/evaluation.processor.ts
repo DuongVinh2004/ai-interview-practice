@@ -328,7 +328,7 @@ export class EvaluationProcessor extends WorkerHost {
             where: { sessionId, turnNumber: nextTurnNumber },
           });
 
-          this.sseService.emitSessionEvent(sessionId, SseEventType.TURN_UPDATED, {
+          this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_UPDATED, {
             sessionId,
             currentTurn: nextTurnNumber,
             difficulty: nextDifficulty,
