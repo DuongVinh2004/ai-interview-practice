@@ -80,6 +80,15 @@ export class EvaluationProcessor extends WorkerHost {
       return;
     }
 
+    // Pre-execution guard: Skip processing if session is already in a terminal state
+    const terminalStates = [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED];
+    if (terminalStates.includes(session.state as SessionState)) {
+      this.logger.warn(
+        `Session ${sessionId} is in terminal state ${session.state}. Skipping answer evaluation.`,
+      );
+      return;
+    }
+
     const turn = session.turns[0];
     const question = turn.question!;
     const answer = turn.answer!;
@@ -114,6 +123,11 @@ export class EvaluationProcessor extends WorkerHost {
             improvements: evaluationResult.improvements,
             conciseFeedback: evaluationResult.conciseFeedback,
             evidence: evaluationResult.evidence,
+            needsReview: evaluationResult.needsReview || false,
+            authorityState: evaluationResult.needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+            provider: (evaluationResult as any).provider || undefined,
+            fallbackReason: (evaluationResult as any).fallbackReason || undefined,
+            confidence: evaluationResult.confidence || 0.85,
           },
           create: {
             answerId,
@@ -123,6 +137,11 @@ export class EvaluationProcessor extends WorkerHost {
             improvements: evaluationResult.improvements,
             conciseFeedback: evaluationResult.conciseFeedback,
             evidence: evaluationResult.evidence,
+            needsReview: evaluationResult.needsReview || false,
+            authorityState: evaluationResult.needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+            provider: (evaluationResult as any).provider || undefined,
+            fallbackReason: (evaluationResult as any).fallbackReason || undefined,
+            confidence: evaluationResult.confidence || 0.85,
           },
         });
 

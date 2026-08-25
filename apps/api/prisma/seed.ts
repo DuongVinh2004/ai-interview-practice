@@ -6,53 +6,53 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  const adminEmail = process.env.DEMO_ADMIN_EMAIL || 'admin@example.com';
-  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || 'Admin@123456';
-  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL || 'candidate@example.com';
-  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD || 'Candidate@123456';
+  if (process.env.NODE_ENV === 'production') {
+    console.warn('⚠️  NODE_ENV is set to production. Skipping demo user credential seeding for security.');
+  }
+
+  const isProduction = process.env.NODE_ENV === 'production';
+  const adminEmail = process.env.DEMO_ADMIN_EMAIL || (isProduction ? undefined : 'admin@example.com');
+  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || (isProduction ? undefined : 'Admin@123456');
+  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL || (isProduction ? undefined : 'candidate@example.com');
+  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD || (isProduction ? undefined : 'Candidate@123456');
 
   const passwordSalt = 10;
-  const adminPasswordHash = await bcrypt.hash(adminPassword, passwordSalt);
-  const candidatePasswordHash = await bcrypt.hash(candidatePassword, passwordSalt);
 
-  // 1. Seed Demo Admin
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash: adminPasswordHash,
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      profile: {
-        create: {
-          fullName: 'System Administrator',
-          targetRole: 'Administrator',
-          targetLevel: 'Staff',
-          bio: 'Demo administrator account',
+  // 1. Seed Demo Admin (only in non-production or if explicit env vars are provided)
+  if (adminEmail && adminPassword) {
+    const adminPasswordHash = await bcrypt.hash(adminPassword, passwordSalt);
+    const admin = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {},
+      create: {
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        profile: {
+          create: {
+            fullName: 'System Administrator',
+            targetRole: 'Administrator',
+            targetLevel: 'Staff',
+            bio: 'Demo administrator account',
+          },
         },
       },
-    },
-  });
-  console.log(`✅ Admin user seeded: ${admin.email}`);
+    });
+    console.log(`✅ Admin user seeded: ${admin.email}`);
+  }
 
-  // 2. Seed Demo Candidate
-  const candidate = await prisma.user.upsert({
-    where: { email: candidateEmail },
-    update: {
-      passwordHash: candidatePasswordHash,
-      role: UserRole.CANDIDATE,
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      email: candidateEmail,
-      passwordHash: candidatePasswordHash,
-      role: UserRole.CANDIDATE,
-      status: UserStatus.ACTIVE,
+  // 2. Seed Demo Candidate (only in non-production or if explicit env vars are provided)
+  if (candidateEmail && candidatePassword) {
+    const candidatePasswordHash = await bcrypt.hash(candidatePassword, passwordSalt);
+    const candidate = await prisma.user.upsert({
+      where: { email: candidateEmail },
+      update: {},
+      create: {
+        email: candidateEmail,
+        passwordHash: candidatePasswordHash,
+        role: UserRole.CANDIDATE,
+        status: UserStatus.ACTIVE,
       profile: {
         create: {
           fullName: 'Demo Candidate',

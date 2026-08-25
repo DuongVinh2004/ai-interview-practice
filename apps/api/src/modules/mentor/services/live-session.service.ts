@@ -181,35 +181,60 @@ export class LiveSessionService {
       throw new ForbiddenException('Only registered mentors can perform score overrides');
     }
 
+    const candidateUserId = evaluation.answer.turn.session.userId;
+    const assignment = await this.prisma.liveSession.findFirst({
+      where: {
+        mentorId: mentorProfile.id,
+        candidateId: candidateUserId,
+      },
+    });
+
+    if (!assignment) {
+      throw new ForbiddenException('You are not the designated mentor for this candidate\'s session');
+    }
+
     const originalScore = evaluation.score;
 
     // Update evaluation score with appended justification audit in feedback
     const auditFeedback = `${evaluation.conciseFeedback}\n\n[Mentor Score Override (${new Date().toISOString()}): Original: ${originalScore} -> Adjusted: ${newScore}. Reason: ${justification}]`;
-
-    const updated = await this.prisma.evaluation.update({
-      where: { id: evaluationId },
-      data: {
-        score: newScore,
-        conciseFeedback: auditFeedback,
-      },
-    });
-
-    // Update session overall score if needed
     const sessionId = evaluation.answer.turn.sessionId;
-    const allEvaluations = await this.prisma.evaluation.findMany({
-      where: {
-        answer: { turn: { sessionId } },
-      },
-    });
 
-    if (allEvaluations.length > 0) {
-      const avgScore =
-        allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length;
-      await this.prisma.interviewSession.update({
-        where: { id: sessionId },
-        data: { overallScore: Number(avgScore.toFixed(1)) },
+    const updated = await this.prisma.$transaction(async tx => {
+      const updatedEval = await tx.evaluation.update({
+        where: { id: evaluationId },
+        data: {
+          score: newScore,
+          conciseFeedback: auditFeedback,
+        },
       });
-    }
+
+      const allEvaluations = await tx.evaluation.findMany({
+        where: {
+          answer: { turn: { sessionId } },
+        },
+      });
+
+      if (allEvaluations.length > 0) {
+        const avgScore =
+          allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length;
+        await tx.interviewSession.update({
+          where: { id: sessionId },
+          data: { overallScore: Number(avgScore.toFixed(1)) },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: mentorUserId,
+          action: 'EVALUATION_OVERRIDDEN',
+          resource: 'evaluation',
+          resourceId: evaluationId,
+          details: { originalScore, newScore, justification, mentorId: mentorProfile.id },
+        },
+      });
+
+      return updatedEval;
+    });
 
     return {
       evaluationId: updated.id,

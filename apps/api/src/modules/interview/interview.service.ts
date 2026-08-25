@@ -365,7 +365,7 @@ export class InterviewService {
       );
     }
 
-    // 1. PERSIST ANSWER TO DATABASE FIRST
+    // 1. PERSIST ANSWER TO DATABASE FIRST WITH CAS STATE TRANSITION
     const answer = await this.prisma.$transaction(async tx => {
       const createdAnswer = await tx.answer.create({
         data: {
@@ -379,10 +379,18 @@ export class InterviewService {
         data: { status: 'ANSWER_SUBMITTED' },
       });
 
-      await tx.interviewSession.update({
-        where: { id: sessionId },
+      const sessionUpdate = await tx.interviewSession.updateMany({
+        where: { id: sessionId, state: SessionState.ACTIVE },
         data: { state: SessionState.EVALUATING },
       });
+
+      if (sessionUpdate.count === 0) {
+        throw new DomainException(
+          ErrorCode.INVALID_STATE_TRANSITION,
+          'Interview session is no longer in ACTIVE state (concurrent state modification)',
+          HttpStatus.CONFLICT,
+        );
+      }
 
       return createdAnswer;
     });
@@ -409,15 +417,8 @@ export class InterviewService {
         },
       );
     } catch (queueErr: any) {
-      this.logger.error(`Failed to enqueue evaluation job: ${queueErr.message}`);
-      await this.prisma.interviewSession.update({
-        where: { id: sessionId },
-        data: { state: SessionState.FAILED },
-      });
-      throw new DomainException(
-        ErrorCode.INTERNAL_SERVER_ERROR,
-        'Failed to enqueue answer evaluation. Please retry your submission.',
-        HttpStatus.SERVICE_UNAVAILABLE,
+      this.logger.warn(
+        `Failed to enqueue evaluation job immediately: ${queueErr.message}. Session ${sessionId} remains in EVALUATING state for background recovery.`,
       );
     }
 

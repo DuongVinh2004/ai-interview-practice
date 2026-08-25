@@ -282,9 +282,19 @@ export class FlashcardService {
     if (!session) throw new NotFoundException('Interview session not found');
     if (session.userId !== userId) throw new ForbiddenException('Access denied');
 
-    // Find or create Deck
+    // Find or validate/create Deck
     let targetDeckId = dto.deckId;
-    if (!targetDeckId) {
+    if (targetDeckId) {
+      const existingDeck = await this.prisma.flashcardDeck.findUnique({
+        where: { id: targetDeckId },
+      });
+      if (!existingDeck) {
+        throw new NotFoundException('Target flashcard deck not found');
+      }
+      if (existingDeck.userId !== userId) {
+        throw new ForbiddenException('Access denied: you do not own the specified flashcard deck');
+      }
+    } else {
       const roleName = session.jobRole?.name || 'Interview';
       const dateStr = new Date().toLocaleDateString('vi-VN');
       const newDeck = await this.prisma.flashcardDeck.create({

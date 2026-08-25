@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { MockVisionProvider } from '../providers/mock-vision.provider';
 import { DesignEvaluationDto } from '@ai-interview/contracts';
@@ -15,7 +15,19 @@ export class DesignEvaluationService {
   /**
    * Evaluate full system design whiteboard session
    */
-  async evaluateSession(interviewId: string): Promise<DesignEvaluationDto> {
+  async evaluateSession(userId: string, interviewId: string): Promise<DesignEvaluationDto> {
+    const interview = await this.prisma.interviewSession.findUnique({
+      where: { id: interviewId },
+    });
+
+    if (!interview) {
+      throw new NotFoundException(`Interview session ${interviewId} not found`);
+    }
+
+    if (interview.userId !== userId) {
+      throw new ForbiddenException('Access to this system design session is forbidden');
+    }
+
     const session = await this.prisma.systemDesignSession.findUnique({
       where: { interviewId },
       include: {

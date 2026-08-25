@@ -63,6 +63,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       status: user.status as any,
       tokenVersion: user.tokenVersion,
       tokenType: 'access',
+      mfaVerified: payload.mfaVerified ?? false,
     };
   }
 }

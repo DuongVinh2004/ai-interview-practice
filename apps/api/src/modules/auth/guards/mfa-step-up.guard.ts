@@ -16,8 +16,8 @@ export class MfaStepUpGuard implements CanActivate {
       );
     }
 
-    // Step-up is required for Admins or users with MFA enabled
-    if (user.role === UserRole.ADMIN && user.mfaVerified === false) {
+    // Step-up is strictly required: user must have verified multi-factor auth (mfaVerified === true)
+    if (!user.mfaVerified) {
       throw new DomainException(
         ErrorCode.MFA_STEP_UP_REQUIRED,
         'This sensitive action requires verified multi-factor authentication (Step-Up)',

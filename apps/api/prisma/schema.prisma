@@ -119,6 +119,7 @@ model UserProfile {
 model RefreshToken {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
+  familyId  String   @default(uuid()) @map("family_id") @db.Uuid
   tokenHash String   @unique @map("token_hash") @db.VarChar(255)
   isRevoked Boolean  @default(false) @map("is_revoked")
   expiresAt DateTime @map("expires_at")
@@ -127,6 +128,7 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([familyId])
   @@map("refresh_tokens")
 }
 
@@ -283,6 +285,11 @@ model Evaluation {
   improvements    Json     // string[]
   conciseFeedback String   @map("concise_feedback") @db.Text
   evidence        Json     // string[]
+  needsReview     Boolean  @default(false) @map("needs_review")
+  authorityState  String   @default("AUTHORITATIVE") @map("authority_state") @db.VarChar(30)
+  provider        String?  @db.VarChar(50)
+  fallbackReason  String?  @map("fallback_reason") @db.VarChar(255)
+  confidence      Float?
   createdAt       DateTime @default(now()) @map("created_at")
 
   answer          Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
@@ -453,6 +460,8 @@ model RecoveryCode {
 
 model SemanticCache {
   id              String   @id @default(uuid()) @db.Uuid
+  namespace       String?  @db.VarChar(100)
+  userId          String?  @map("user_id") @db.Uuid
   promptHash      String   @unique @map("prompt_hash") @db.VarChar(64)
   promptText      String   @map("prompt_text") @db.Text
   embedding       Float[]
@@ -464,6 +473,8 @@ model SemanticCache {
   lastUsedAt      DateTime @default(now()) @map("last_used_at")
 
   @@index([promptHash])
+  @@index([namespace])
+  @@index([userId])
   @@map("semantic_cache")
 }
 
@@ -746,6 +757,15 @@ model PromoCode {
   createdAt     DateTime  @default(now()) @map("created_at")
 
   @@map("promo_codes")
+}
+
+model StripeEvent {
+  id        String   @id @db.VarChar(255) // Stripe event ID (evt_xxx)
+  eventType String   @map("event_type") @db.VarChar(100)
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("stripe_events")
 }
 
 // ---- F004: JD & Resume Parsing ----

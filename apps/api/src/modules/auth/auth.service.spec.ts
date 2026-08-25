@@ -103,6 +103,7 @@ describe('AuthService (Unit)', () => {
       const compromisedToken = {
         id: 'token-uuid-revoked',
         userId: mockUser.id,
+        familyId: 'family-uuid-1',
         isRevoked: true, // ALREADY REVOKED
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         user: mockUser,
@@ -114,9 +115,9 @@ describe('AuthService (Unit)', () => {
         DomainException,
       );
 
-      // Verify all active tokens were invalidated
+      // Verify compromised session family was invalidated
       expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
-        where: { userId: mockUser.id, isRevoked: false },
+        where: { familyId: 'family-uuid-1', isRevoked: false },
         data: { isRevoked: true },
       });
 

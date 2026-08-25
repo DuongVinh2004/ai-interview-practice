@@ -45,12 +45,14 @@ export class DocumentParserService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
+    const scrubbedRawText = this.scrubPii(rawText);
+
     const doc = await this.prisma.userDocument.create({
       data: {
         userId,
         fileName: req.fileName,
         fileType: req.fileType,
-        rawText,
+        rawText: scrubbedRawText,
         status: 'PARSED',
         expiresAt,
       },
@@ -72,9 +74,25 @@ export class DocumentParserService {
     });
 
     return {
-      document: doc,
+      document: {
+        ...doc,
+        rawText: undefined,
+      },
       parsedProfile: profile,
     };
+  }
+
+  private scrubPii(text: string): string {
+    // Mask emails
+    let scrubbed = text.replace(/[\w.-]+@[\w.-]+\.\w+/g, '[EMAIL_REDACTED]');
+    // Mask phone numbers (formats with country codes, dashes, parentheses)
+    scrubbed = scrubbed.replace(
+      /(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g,
+      '[PHONE_REDACTED]',
+    );
+    // Mask SSN / national ID numbers
+    scrubbed = scrubbed.replace(/\b\d{3}-\d{2}-\d{4}\b|\b\d{9,12}\b/g, '[ID_REDACTED]');
+    return scrubbed;
   }
 
   /**
@@ -177,7 +195,16 @@ export class DocumentParserService {
   async getUserDocuments(userId: string) {
     return this.prisma.userDocument.findMany({
       where: { userId },
-      include: { parsedProfile: true },
+      select: {
+        id: true,
+        userId: true,
+        fileName: true,
+        fileType: true,
+        status: true,
+        expiresAt: true,
+        createdAt: true,
+        parsedProfile: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

@@ -49,9 +49,9 @@ export class MockSandboxProvider implements SandboxProvider {
       const actualOutput = tc.expectedOutput;
       return {
         testCaseId: tc.id,
-        input: tc.input,
-        expectedOutput: tc.expectedOutput,
-        actualOutput,
+        input: tc.isHidden ? '[HIDDEN]' : tc.input,
+        expectedOutput: tc.isHidden ? '[HIDDEN]' : tc.expectedOutput,
+        actualOutput: tc.isHidden ? '[HIDDEN]' : actualOutput,
         passed: true,
         executionTimeMs: Math.floor(Math.random() * 20) + 10,
         memoryUsageKb: Math.floor(Math.random() * 5000) + 12000,

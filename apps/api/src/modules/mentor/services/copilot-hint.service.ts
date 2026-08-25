@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CompetencyArea } from '@ai-interview/contracts';
 
@@ -16,7 +16,31 @@ export interface ProbingHint {
 export class CopilotHintService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getProbingHints(sessionId: string, topic?: string): Promise<{ sessionId: string; currentTurnTopic: string; hints: ProbingHint[] }> {
+  async getProbingHints(
+    sessionId: string,
+    topic?: string,
+    userId?: string,
+  ): Promise<{ sessionId: string; currentTurnTopic: string; hints: ProbingHint[] }> {
+    if (userId) {
+      const liveSession = await this.prisma.liveSession.findUnique({
+        where: { id: sessionId },
+        include: { mentor: true },
+      });
+
+      if (liveSession) {
+        if (liveSession.mentor.userId !== userId) {
+          throw new ForbiddenException('Only the designated mentor can view co-pilot probing hints');
+        }
+      } else {
+        const mentorProfile = await this.prisma.mentorProfile.findUnique({
+          where: { userId },
+        });
+        if (!mentorProfile) {
+          throw new ForbiddenException('Only registered mentors can access co-pilot hints');
+        }
+      }
+    }
+
     // 1. Fetch any context from interview turns or live session
     const turns = await this.prisma.interviewTurn.findMany({
       where: { sessionId },

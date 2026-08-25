@@ -13,9 +13,9 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
   let bookingService: BookingService;
   let liveSessionService: LiveSessionService;
   let copilotHintService: CopilotHintService;
-  let prisma: any;
+  let prisma: PrismaService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     user: {
       findUnique: jest.fn(),
     },
@@ -48,6 +48,10 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
     interviewTurn: {
       findMany: jest.fn(),
     },
+    auditLog: {
+      create: jest.fn(),
+    },
+    $transaction: jest.fn(cb => (typeof cb === 'function' ? cb(mockPrisma) : Promise.all(cb))),
   };
 
   beforeEach(async () => {
@@ -233,6 +237,9 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         answer: {
           turn: {
             sessionId: 'session-parent-1',
+            session: {
+              userId: 'candidate-1',
+            },
           },
         },
       });
@@ -240,6 +247,12 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
       mockPrisma.mentorProfile.findUnique.mockResolvedValue({
         id: 'mentor-1',
         userId: mentorUserId,
+      });
+
+      mockPrisma.liveSession.findFirst.mockResolvedValue({
+        id: 'live-1',
+        mentorId: 'mentor-1',
+        candidateId: 'candidate-1',
       });
 
       mockPrisma.evaluation.update.mockResolvedValue({

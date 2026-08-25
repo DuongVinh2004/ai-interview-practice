@@ -16,6 +16,9 @@ describe('SemanticCacheService (F013)', () => {
 
     prismaMock = {
       semanticCache: {
+        findFirst: jest.fn().mockImplementation(({ where }) => {
+          return Promise.resolve(mockDbCache.find(e => e.promptHash === where.promptHash) || null);
+        }),
         findUnique: jest.fn().mockImplementation(({ where }) => {
           return Promise.resolve(mockDbCache.find(e => e.promptHash === where.promptHash) || null);
         }),

@@ -141,50 +141,57 @@ export class BillingService {
     // If Mock provider, activate subscription
     if (provider.name === 'mock') {
       const now = new Date();
-      const nextMonth = new Date();
-      nextMonth.setMonth(nextMonth.getMonth() + 1);
-
-      const existingSub = await this.prisma.subscription.findFirst({
-        where: { userId },
-      });
-
-      let subId = existingSub?.id;
-      if (existingSub) {
-        await this.prisma.subscription.update({
-          where: { id: existingSub.id },
-          data: {
-            planId: plan.id,
-            status: SubscriptionStatus.ACTIVE as any,
-            currentPeriodStart: now,
-            currentPeriodEnd: nextMonth,
-            cancelAtPeriodEnd: false,
-          },
-        });
+      const periodEnd = new Date();
+      const isYearly = req.billingCycle === 'yearly';
+      if (isYearly) {
+        periodEnd.setFullYear(periodEnd.getFullYear() + 1);
       } else {
-        const created = await this.prisma.subscription.create({
-          data: {
-            userId,
-            planId: plan.id,
-            status: SubscriptionStatus.ACTIVE as any,
-            provider: 'MOCK',
-            currentPeriodStart: now,
-            currentPeriodEnd: nextMonth,
-          },
-        });
-        subId = created.id;
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
       }
 
-      // Create initial invoice
-      await this.prisma.invoice.create({
-        data: {
-          userId,
-          subscriptionId: subId,
-          amountTotal: plan.priceMonthly,
-          currency: 'USD',
-          status: 'PAID',
-          pdfUrl: 'https://ai-interview.dev/mock-invoice.pdf',
-          paidAt: now,
-        },
+      await this.prisma.$transaction(async tx => {
+        const existingSub = await tx.subscription.findFirst({
+          where: { userId },
+        });
+
+        let subId = existingSub?.id;
+        if (existingSub) {
+          await tx.subscription.update({
+            where: { id: existingSub.id },
+            data: {
+              planId: plan.id,
+              status: SubscriptionStatus.ACTIVE as any,
+              currentPeriodStart: now,
+              currentPeriodEnd: periodEnd,
+              cancelAtPeriodEnd: false,
+            },
+          });
+        } else {
+          const created = await tx.subscription.create({
+            data: {
+              userId,
+              planId: plan.id,
+              status: SubscriptionStatus.ACTIVE as any,
+              provider: 'MOCK',
+              currentPeriodStart: now,
+              currentPeriodEnd: periodEnd,
+            },
+          });
+          subId = created.id;
+        }
+
+        // Create initial invoice
+        await tx.invoice.create({
+          data: {
+            userId,
+            subscriptionId: subId,
+            amountTotal: isYearly ? plan.priceYearly : plan.priceMonthly,
+            currency: 'USD',
+            status: 'PAID',
+            pdfUrl: 'https://ai-interview.dev/mock-invoice.pdf',
+            paidAt: now,
+          },
+        });
       });
     }
 

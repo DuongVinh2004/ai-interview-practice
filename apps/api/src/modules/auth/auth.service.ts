@@ -166,13 +166,13 @@ export class AuthService {
       );
     }
 
-    // Token reuse / Replay attack detection
+    // Token reuse / Replay attack detection (family-scoped revocation)
     if (storedToken.isRevoked) {
       this.logger.warn(
-        `Token reuse detected for user ${storedToken.userId}! Invalidating entire session family.`,
+        `Token reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
       );
       await this.prisma.refreshToken.updateMany({
-        where: { userId: storedToken.userId, isRevoked: false },
+        where: { familyId: storedToken.familyId, isRevoked: false },
         data: { isRevoked: true },
       });
       await this.prisma.auditLog.create({
@@ -181,12 +181,12 @@ export class AuthService {
           action: AuditAction.TOKEN_REUSE_DETECTED,
           resource: 'refresh_token',
           resourceId: storedToken.id,
-          details: { reason: 'Revoked refresh token was presented for rotation' },
+          details: { reason: 'Revoked refresh token was presented for rotation', familyId: storedToken.familyId },
         },
       });
       throw new DomainException(
         ErrorCode.UNAUTHORIZED,
-        'Suspicious activity detected. All active sessions have been revoked.',
+        'Suspicious activity detected. The session family has been revoked.',
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -215,10 +215,10 @@ export class AuthService {
 
     if (updateResult.count === 0) {
       this.logger.warn(
-        `Token race/reuse detected for user ${storedToken.userId}! Invalidating entire session family.`,
+        `Token race/reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
       );
       await this.prisma.refreshToken.updateMany({
-        where: { userId: storedToken.userId, isRevoked: false },
+        where: { familyId: storedToken.familyId, isRevoked: false },
         data: { isRevoked: true },
       });
       await this.prisma.auditLog.create({
@@ -227,32 +227,53 @@ export class AuthService {
           action: AuditAction.TOKEN_REUSE_DETECTED,
           resource: 'refresh_token',
           resourceId: storedToken.id,
-          details: { reason: 'Concurrent rotation race or already revoked refresh token' },
+          details: { reason: 'Concurrent rotation race or already revoked refresh token', familyId: storedToken.familyId },
         },
       });
       throw new DomainException(
         ErrorCode.UNAUTHORIZED,
-        'Suspicious activity detected. All active sessions have been revoked.',
+        'Suspicious activity detected. The session family has been revoked.',
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    return this.generateAuthResponse(storedToken.user, true);
+    return this.generateAuthResponse(storedToken.user, true, storedToken.familyId);
   }
 
   async logout(userId: string, refreshTokenString?: string): Promise<void> {
     if (refreshTokenString) {
       const tokenHash = this.hashToken(refreshTokenString);
-      await this.prisma.refreshToken.updateMany({
-        where: { userId, tokenHash },
-        data: { isRevoked: true },
-      });
+      const token = await this.prisma.refreshToken.findUnique({ where: { tokenHash } });
+      if (token && token.userId === userId) {
+        await this.prisma.refreshToken.updateMany({
+          where: { familyId: token.familyId, isRevoked: false },
+          data: { isRevoked: true },
+        });
+      } else {
+        await this.prisma.refreshToken.updateMany({
+          where: { userId, tokenHash },
+          data: { isRevoked: true },
+        });
+      }
     } else {
       await this.prisma.refreshToken.updateMany({
         where: { userId, isRevoked: false },
         data: { isRevoked: true },
       });
     }
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true },
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+      }),
+    ]);
   }
 
   async getMe(userId: string): Promise<UserDto> {
@@ -393,9 +414,13 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.recoveryCode.deleteMany({ where: { userId } }),
       this.prisma.recoveryCode.createMany({ data: hashedCodes }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true },
+      }),
       this.prisma.user.update({
         where: { id: userId },
-        data: { mfaEnabled: true },
+        data: { mfaEnabled: true, tokenVersion: { increment: 1 } },
       }),
       this.prisma.auditLog.create({
         data: {
@@ -636,14 +661,24 @@ export class AuthService {
   }
 
   private getMfaEncryptionKey(): string {
-    return (
-      this.configService.get<string>('MFA_ENCRYPTION_KEY') ||
-      this.configService.get<string>('jwt.accessSecret') ||
-      'mfa-encryption-fallback-key-32-chars-min'
-    );
+    const key = this.configService.get<string>('MFA_ENCRYPTION_KEY');
+    if (!key) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: MFA_ENCRYPTION_KEY must be configured in production');
+      }
+      return (
+        this.configService.get<string>('jwt.accessSecret') ||
+        'dev-mfa-encryption-fallback-key-32-chars-min'
+      );
+    }
+    return key;
   }
 
-  private async generateAuthResponse(user: any, mfaVerified = false): Promise<AuthResponse> {
+  private async generateAuthResponse(
+    user: any,
+    mfaVerified = false,
+    familyId?: string,
+  ): Promise<AuthResponse> {
     const isMfaActive = user.mfaEnabled || false;
     const payload = {
       sub: user.id,
@@ -665,10 +700,12 @@ export class AuthService {
 
     const refreshDays = 7;
     const expiresAt = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1000);
+    const tokenFamilyId = familyId || crypto.randomUUID();
 
     await this.prisma.refreshToken.create({
       data: {
         userId: user.id,
+        familyId: tokenFamilyId,
         tokenHash,
         expiresAt,
       },

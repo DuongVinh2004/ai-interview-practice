@@ -53,6 +53,15 @@ export class QuestionProcessor extends WorkerHost {
       return;
     }
 
+    // Pre-execution guard: Skip processing if session is already in a terminal state
+    const terminalStates = [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED];
+    if (terminalStates.includes(session.state as SessionState)) {
+      this.logger.warn(
+        `Session ${sessionId} is in terminal state ${session.state}. Skipping question generation.`,
+      );
+      return;
+    }
+
     // Determine previous score if any
     let previousScore: number | undefined;
     if (turnNumber > 1) {
@@ -75,7 +84,7 @@ export class QuestionProcessor extends WorkerHost {
       });
 
       // Persist question and activate session
-      const question = await this.prisma.$transaction(async tx => {
+      const { question, isTerminal } = await this.prisma.$transaction(async tx => {
         const q = await tx.question.upsert({
           where: { turnId },
           update: {
@@ -113,12 +122,17 @@ export class QuestionProcessor extends WorkerHost {
           },
         });
 
-        if (sessionUpdateResult.count === 0) {
+        const terminal = sessionUpdateResult.count === 0;
+        if (terminal) {
           this.logger.warn(`Session ${sessionId} is terminal (CANCELLED/COMPLETED). State not changed to ACTIVE.`);
         }
 
-        return q;
+        return { question: q, isTerminal: terminal };
       });
+
+      if (isTerminal) {
+        return question;
+      }
 
       this.logger.log(
         `Question generated successfully for turn ${turnNumber} (Session: ${sessionId})`,

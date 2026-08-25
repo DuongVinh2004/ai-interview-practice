@@ -88,10 +88,10 @@ describe('BillingService (F014)', () => {
             return Promise.resolve({
               code: 'PROMO20',
               discountType: 'PERCENTAGE',
-              discountValue: 20,
+              discountValue: 20.0,
               isActive: true,
-              usedCount: 0,
               maxUses: 100,
+              usedCount: 5,
             });
           }
           return Promise.resolve(null);
@@ -100,6 +100,7 @@ describe('BillingService (F014)', () => {
       auditLog: {
         create: jest.fn().mockResolvedValue({ id: 'log-1' }),
       },
+      $transaction: jest.fn(cb => (typeof cb === 'function' ? cb(prismaMock) : Promise.all(cb))),
     };
 
     const module: TestingModule = await Test.createTestingModule({

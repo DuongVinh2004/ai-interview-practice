@@ -1,5 +1,6 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../platform/prisma/prisma.service';
 import * as crypto from 'crypto';
 import { BillingProvider } from '../interfaces/billing-provider.interface';
 import {
@@ -14,7 +15,10 @@ export class StripeProvider implements BillingProvider {
   private readonly apiKey: string;
   private readonly webhookSecret: string;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    @Optional() private readonly prisma?: PrismaService,
+  ) {
     this.apiKey = this.configService.get<string>('STRIPE_SECRET_KEY', '');
     this.webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET', '');
   }
@@ -193,11 +197,188 @@ export class StripeProvider implements BillingProvider {
     }
 
     const eventType = payload?.type || 'unknown';
-    this.logger.log(`Handling verified Stripe webhook event: ${eventType}`);
+    const eventId = payload?.id;
+    const data = payload?.data?.object;
+
+    this.logger.log(`Handling verified Stripe webhook event: ${eventType} (ID: ${eventId || 'n/a'})`);
+
+    if (this.prisma && eventId) {
+      const existingEvent = await this.prisma.stripeEvent.findUnique({
+        where: { id: eventId },
+      });
+
+      if (existingEvent?.processed) {
+        this.logger.log(`Stripe event ${eventId} has already been processed. Skipping duplicate execution.`);
+        return {
+          eventType,
+          handled: true,
+          data,
+        };
+      }
+    }
+
+    // Process database side-effects based on verified event type
+    if (this.prisma && data) {
+      try {
+        switch (eventType) {
+          case 'checkout.session.completed': {
+            const userId = data.metadata?.userId || data.client_reference_id;
+            const planSlug = data.metadata?.planSlug;
+            const billingCycle = data.metadata?.billingCycle || 'monthly';
+
+            if (userId && planSlug) {
+              const plan = await this.prisma.subscriptionPlan.findUnique({
+                where: { slug: planSlug },
+              });
+
+              if (plan) {
+                const now = new Date();
+                const periodEnd = new Date();
+                if (billingCycle === 'yearly') {
+                  periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+                } else {
+                  periodEnd.setMonth(periodEnd.getMonth() + 1);
+                }
+
+                const providerSubId = data.subscription || data.id;
+
+                await this.prisma.$transaction(async tx => {
+                  const existingSub = await tx.subscription.findFirst({
+                    where: { userId },
+                  });
+
+                  let subId = existingSub?.id;
+                  if (existingSub) {
+                    await tx.subscription.update({
+                      where: { id: existingSub.id },
+                      data: {
+                        planId: plan.id,
+                        status: 'ACTIVE',
+                        provider: 'STRIPE',
+                        providerSubId,
+                        currentPeriodStart: now,
+                        currentPeriodEnd: periodEnd,
+                        cancelAtPeriodEnd: false,
+                      },
+                    });
+                  } else {
+                    const created = await tx.subscription.create({
+                      data: {
+                        userId,
+                        planId: plan.id,
+                        status: 'ACTIVE',
+                        provider: 'STRIPE',
+                        providerSubId,
+                        currentPeriodStart: now,
+                        currentPeriodEnd: periodEnd,
+                      },
+                    });
+                    subId = created.id;
+                  }
+
+                  const amount = data.amount_total
+                    ? data.amount_total / 100
+                    : Number(billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly);
+
+                  await tx.invoice.create({
+                    data: {
+                      userId,
+                      subscriptionId: subId,
+                      amountTotal: amount,
+                      currency: data.currency?.toUpperCase() || 'USD',
+                      status: 'PAID',
+                      pdfUrl: data.invoice_pdf || 'https://ai-interview.dev/invoice.pdf',
+                      paidAt: now,
+                    },
+                  });
+
+                  if (eventId) {
+                    await tx.stripeEvent.upsert({
+                      where: { id: eventId },
+                      update: { processed: true },
+                      create: { id: eventId, eventType, processed: true },
+                    });
+                  }
+                });
+              }
+            }
+            break;
+          }
+
+          case 'invoice.payment_succeeded': {
+            const providerSubId = data.subscription;
+            if (providerSubId) {
+              const sub = await this.prisma.subscription.findFirst({
+                where: { providerSubId },
+              });
+
+              if (sub) {
+                const now = new Date();
+                const periodEnd = new Date();
+                periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+                await this.prisma.$transaction(async tx => {
+                  await tx.subscription.update({
+                    where: { id: sub.id },
+                    data: { status: 'ACTIVE', currentPeriodEnd: periodEnd },
+                  });
+
+                  await tx.invoice.create({
+                    data: {
+                      userId: sub.userId,
+                      subscriptionId: sub.id,
+                      amountTotal: data.amount_paid ? data.amount_paid / 100 : 0,
+                      currency: data.currency?.toUpperCase() || 'USD',
+                      status: 'PAID',
+                      pdfUrl: data.hosted_invoice_url || data.invoice_pdf,
+                      paidAt: now,
+                    },
+                  });
+
+                  if (eventId) {
+                    await tx.stripeEvent.upsert({
+                      where: { id: eventId },
+                      update: { processed: true },
+                      create: { id: eventId, eventType, processed: true },
+                    });
+                  }
+                });
+              }
+            }
+            break;
+          }
+
+          case 'invoice.payment_failed': {
+            const providerSubId = data.subscription;
+            if (providerSubId) {
+              await this.prisma.subscription.updateMany({
+                where: { providerSubId },
+                data: { status: 'PAST_DUE' },
+              });
+            }
+            break;
+          }
+
+          case 'customer.subscription.deleted': {
+            const providerSubId = data.id;
+            if (providerSubId) {
+              await this.prisma.subscription.updateMany({
+                where: { providerSubId },
+                data: { status: 'CANCELED', canceledAt: new Date() },
+              });
+            }
+            break;
+          }
+        }
+      } catch (dbErr: any) {
+        this.logger.error(`Error processing webhook state transition: ${dbErr.message}`, dbErr.stack);
+      }
+    }
+
     return {
       eventType,
       handled: true,
-      data: payload?.data?.object,
+      data,
     };
   }
 }

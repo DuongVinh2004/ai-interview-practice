@@ -80,7 +80,10 @@ export class LiveSessionController {
 
   @Get('sessions/:id/copilot-hints')
   @ApiOperation({ summary: 'Fetch real-time AI probing question suggestions for mentor' })
-  async getCopilotHints(@Param('id') sessionId: string) {
-    return this.copilotHintService.getProbingHints(sessionId);
+  async getCopilotHints(
+    @CurrentUser('sub') userId: string,
+    @Param('id') sessionId: string,
+  ) {
+    return this.copilotHintService.getProbingHints(sessionId, undefined, userId);
   }
 }

@@ -30,6 +30,15 @@ export class CodeExecutionService {
     if (judge0Url) {
       return this.judge0Sandbox;
     }
+    if (process.env.NODE_ENV === 'production') {
+      this.logger.error('Code execution sandbox (Judge0) is not configured in production environment!');
+      throw new DomainException(
+        ErrorCode.CODE_EXECUTION_FAILED,
+        'Code execution engine is not configured in production environment',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    this.logger.warn('Using MockSandboxProvider — results are simulated and non-authoritative');
     return this.mockSandbox;
   }
 
@@ -192,7 +201,27 @@ export class CodeExecutionService {
     };
   }
 
-  async getSubmissions(sessionId: string): Promise<CodeSubmissionResponse[]> {
+  async getSubmissions(userId: string, sessionId: string): Promise<CodeSubmissionResponse[]> {
+    const session = await this.prisma.interviewSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (session.userId !== userId) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'Access to this interview session is forbidden',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const submissions = await this.prisma.codeSubmission.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },

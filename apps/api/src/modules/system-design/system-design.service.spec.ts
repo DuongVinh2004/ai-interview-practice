@@ -12,6 +12,9 @@ describe('SystemDesign Services (F003)', () => {
   let visionProvider: MockVisionProvider;
 
   const mockPrisma = {
+    interviewSession: {
+      findUnique: jest.fn(),
+    },
     systemDesignSession: {
       upsert: jest.fn(),
       findUnique: jest.fn(),
@@ -49,6 +52,11 @@ describe('SystemDesign Services (F003)', () => {
   describe('Canvas Session Lifecycle', () => {
     it('initializes a system design whiteboard session', async () => {
       const interviewId = 'int-123';
+      const userId = 'user-123';
+      mockPrisma.interviewSession.findUnique.mockResolvedValue({
+        id: interviewId,
+        userId,
+      });
       mockPrisma.systemDesignSession.upsert.mockResolvedValue({
         id: 'sd-123',
         interviewId,
@@ -57,13 +65,18 @@ describe('SystemDesign Services (F003)', () => {
         evaluation: null,
       });
 
-      const session = await canvasService.initSession(interviewId, 'Design a URL Shortener');
+      const session = await canvasService.initSession(userId, interviewId, 'Design a URL Shortener');
       expect(session.id).toBe('sd-123');
       expect(session.initialPrompt).toBe('Design a URL Shortener');
     });
 
     it('persists a canvas snapshot and updates latest canvas URL', async () => {
       const interviewId = 'int-123';
+      const userId = 'user-123';
+      mockPrisma.interviewSession.findUnique.mockResolvedValue({
+        id: interviewId,
+        userId,
+      });
       mockPrisma.systemDesignSession.findUnique.mockResolvedValue({
         id: 'sd-123',
         interviewId,
@@ -78,6 +91,7 @@ describe('SystemDesign Services (F003)', () => {
       mockPrisma.systemDesignSession.update.mockResolvedValue({});
 
       const snapshot = await canvasService.saveSnapshot(
+        userId,
         interviewId,
         'data:image/png;base64,sample',
         { elements: [] },
@@ -96,6 +110,11 @@ describe('SystemDesign Services (F003)', () => {
   describe('Multimodal Vision Analysis', () => {
     it('performs deterministic analysis with detected components and rubric scores', async () => {
       const interviewId = 'int-123';
+      const userId = 'user-123';
+      mockPrisma.interviewSession.findUnique.mockResolvedValue({
+        id: interviewId,
+        userId,
+      });
       mockPrisma.systemDesignSession.findUnique.mockResolvedValue({
         id: 'sd-123',
         interviewId,
@@ -103,7 +122,7 @@ describe('SystemDesign Services (F003)', () => {
       });
       mockPrisma.canvasSnapshot.update.mockResolvedValue({});
 
-      const analysis = await analyzerService.analyzeSnapshot(interviewId, 'data:image/png;base64,test');
+      const analysis = await analyzerService.analyzeSnapshot(userId, interviewId, 'data:image/png;base64,test');
       expect(analysis.detectedComponents).toContain('Load Balancer');
       expect(analysis.detectedComponents).toContain('API Gateway');
       expect(analysis.rubricScores.requirements).toBeGreaterThanOrEqual(8.0);
@@ -115,6 +134,11 @@ describe('SystemDesign Services (F003)', () => {
   describe('5-Dimension Design Rubric Scoring', () => {
     it('calculates weighted composite score correctly across the 5 dimensions', async () => {
       const interviewId = 'int-123';
+      const userId = 'user-123';
+      mockPrisma.interviewSession.findUnique.mockResolvedValue({
+        id: interviewId,
+        userId,
+      });
       mockPrisma.systemDesignSession.findUnique.mockResolvedValue({
         id: 'sd-123',
         interviewId,
@@ -134,7 +158,7 @@ describe('SystemDesign Services (F003)', () => {
         createdAt: new Date(),
       });
 
-      const result = await evaluationService.evaluateSession(interviewId);
+      const result = await evaluationService.evaluateSession(userId, interviewId);
       expect(result.id).toBe('eval-1');
       expect(result.overallScore).toBe(8.3);
       expect(result.rubricBreakdown).toBeDefined();

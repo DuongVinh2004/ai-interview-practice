@@ -37,7 +37,10 @@ export class CodeExecutionController {
   @Get(':id/code/submissions')
   @ApiOperation({ summary: 'List code submissions for an interview session' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
-  async getSubmissions(@Param('id') sessionId: string) {
-    return this.codeExecutionService.getSubmissions(sessionId);
+  async getSubmissions(
+    @CurrentUser('sub') userId: string,
+    @Param('id') sessionId: string,
+  ) {
+    return this.codeExecutionService.getSubmissions(userId, sessionId);
   }
 }
