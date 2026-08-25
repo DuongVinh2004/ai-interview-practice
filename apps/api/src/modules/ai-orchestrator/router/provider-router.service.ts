@@ -363,38 +363,15 @@ export class ProviderRouterService {
     systemPrompt: string,
     userPrompt?: string,
   ): Promise<AiExecutionResult<EvaluatedAnswerAi>> {
-    const cacheKey = `eval:${context.question}:${context.answer}:${context.level}`;
-
-    if (this.semanticCacheService?.isCacheEnabled()) {
-      const cached = await this.semanticCacheService.get<EvaluatedAnswerAi>(cacheKey, undefined, {
-        namespace: 'evaluations',
-      });
-      if (cached.hit && cached.data) {
-        return {
-          data: cached.data,
-          provider: 'semantic_cache',
-          model: 'semantic-cache',
-          latencyMs: 15,
-          promptTokens: 0,
-          completionTokens: 0,
-          costEstimate: 0,
-        };
-      }
-    }
+    // SECURITY: Semantic cache disabled for evaluations to prevent cross-user leakage
+    // and ensure each evaluation uses current prompt/rubric/model version.
+    // See audit finding F-009.
 
     const result = await this.executeWithFallback('evaluateAnswer', provider =>
       provider.evaluateAnswer(context, systemPrompt, userPrompt),
     );
 
-    if (this.semanticCacheService?.isCacheEnabled() && result.data && result.provider !== 'mock') {
-      await this.semanticCacheService.set(
-        cacheKey,
-        result.data,
-        { operation: 'evaluateAnswer' },
-        86400,
-        { namespace: 'evaluations' },
-      );
-    }
+    // Cache set removed for evaluations (F-009)
 
     return result;
   }

@@ -286,30 +286,38 @@ export function LoginPage() {
               </form>
 
               {/* Quick 1-Click Demo Logins */}
-              <div className="pt-4 border-t border-slate-100 space-y-2.5">
-                <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                  <span>{t.auth.orDivider}</span>
+              {import.meta.env.DEV && (
+                <div className="pt-4 border-t border-slate-100 space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
+                    <span>{t.auth.orDivider}</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickLogin(
+                        import.meta.env.VITE_DEMO_CANDIDATE_EMAIL || '',
+                        import.meta.env.VITE_DEMO_CANDIDATE_PASSWORD || '',
+                      )}
+                      className="text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                    >
+                      ⚡ Demo Candidate
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleQuickLogin(
+                        import.meta.env.VITE_DEMO_ADMIN_EMAIL || '',
+                        import.meta.env.VITE_DEMO_ADMIN_PASSWORD || '',
+                      )}
+                      className="text-xs font-semibold text-purple-700 hover:bg-purple-50 hover:border-purple-300"
+                    >
+                      🛡️ Demo Admin
+                    </Button>
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuickLogin('candidate@example.com', 'Candidate@123456')}
-                    className="text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
-                  >
-                    ⚡ Demo Candidate
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleQuickLogin('admin@example.com', 'Admin@123456')}
-                    className="text-xs font-semibold text-purple-700 hover:bg-purple-50 hover:border-purple-300"
-                  >
-                    🛡️ Demo Admin
-                  </Button>
-                </div>
-              </div>
+              )}
             </>
           )}
         </CardContent>

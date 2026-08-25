@@ -6,21 +6,17 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  if (process.env.NODE_ENV === 'production') {
-    console.warn(
-      '⚠️  NODE_ENV is set to production. Skipping demo user credential seeding for security.',
-    );
-  }
+  const adminEmail = process.env.DEMO_ADMIN_EMAIL;
+  const adminPassword = process.env.DEMO_ADMIN_PASSWORD;
+  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL;
+  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD;
 
-  const isProduction = process.env.NODE_ENV === 'production';
-  const adminEmail =
-    process.env.DEMO_ADMIN_EMAIL || (isProduction ? undefined : 'admin@example.com');
-  const adminPassword =
-    process.env.DEMO_ADMIN_PASSWORD || (isProduction ? undefined : 'Admin@123456');
-  const candidateEmail =
-    process.env.DEMO_CANDIDATE_EMAIL || (isProduction ? undefined : 'candidate@example.com');
-  const candidatePassword =
-    process.env.DEMO_CANDIDATE_PASSWORD || (isProduction ? undefined : 'Candidate@123456');
+  if (!adminEmail || !adminPassword) {
+    console.warn('⚠️  DEMO_ADMIN_EMAIL and DEMO_ADMIN_PASSWORD not set. Skipping admin seed.');
+  }
+  if (!candidateEmail || !candidatePassword) {
+    console.warn('⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.');
+  }
 
   const passwordSalt = 10;
 

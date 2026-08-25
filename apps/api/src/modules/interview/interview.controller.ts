@@ -17,7 +17,8 @@ import { SseService, SseSessionEvent } from '../platform/sse/sse.service';
 import { IdempotencyService } from '../platform/guards/idempotency.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UserRole } from '@ai-interview/contracts';
+import { UserRole, BillingMetric } from '@ai-interview/contracts';
+import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
 import {
   CreateInterviewRequestDto,
   SubmitAnswerRequestDto,
@@ -36,6 +37,8 @@ export class InterviewController {
   ) {}
 
   @Post()
+  @UseGuards(QuotaGuard)
+  @RequireQuota(BillingMetric.SESSION_COUNT)
   @ApiOperation({ summary: 'Create a new 5-turn interview session' })
   async createInterview(
     @CurrentUser('sub') userId: string,

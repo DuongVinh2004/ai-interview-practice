@@ -188,10 +188,13 @@ export class LiveSessionService {
     }
 
     const candidateUserId = evaluation.answer.turn.session.userId;
+    const sessionId = evaluation.answer.turn.sessionId;
     const assignment = await this.prisma.liveSession.findFirst({
       where: {
         mentorId: mentorProfile.id,
         candidateId: candidateUserId,
+        // Only allow override from active/in-progress live sessions, not historical ones (F-005)
+        status: { in: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'] },
       },
     });
 
@@ -208,17 +211,44 @@ export class LiveSessionService {
     const sessionId = evaluation.answer.turn.sessionId;
 
     const updated = await this.prisma.$transaction(async tx => {
+      const lastRun = await tx.evaluationRun.findFirst({
+        where: { evaluationId },
+        orderBy: { runNumber: 'desc' },
+      });
+      const runNumberVal = (lastRun?.runNumber || 0) + 1;
+
+      const run = await tx.evaluationRun.create({
+        data: {
+          evaluationId,
+          runNumber: runNumberVal,
+          score: newScore,
+          rubricScores: evaluation.rubricScores as any,
+          strengths: evaluation.strengths as any,
+          improvements: evaluation.improvements as any,
+          conciseFeedback: auditFeedback,
+          evidence: evaluation.evidence as any,
+          needsReview: false,
+          authorityState: 'AUTHORITATIVE',
+          provider: evaluation.provider,
+          fallbackReason: `Mentor override: ${justification}`,
+          confidence: 1.0,
+          triggeredBy: 'MENTOR_OVERRIDE',
+        },
+      });
+
       const updatedEval = await tx.evaluation.update({
         where: { id: evaluationId },
         data: {
           score: newScore,
           conciseFeedback: auditFeedback,
+          currentRunId: run.id,
         },
       });
 
       const allEvaluations = await tx.evaluation.findMany({
         where: {
           answer: { turn: { sessionId } },
+          authorityState: 'AUTHORITATIVE',
         },
       });
 

@@ -17,6 +17,9 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
+import { BillingMetric } from '@ai-interview/contracts';
 import { AudioOrchestratorService } from './audio-orchestrator.service';
 import {
   SynthesizeSpeechRequestDto,
@@ -44,12 +47,13 @@ const ALLOWED_AUDIO_MIMES = new Set([
 
 @ApiTags('Audio')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, QuotaGuard)
 @Controller('audio')
 export class AudioController {
   constructor(private readonly audioOrchestratorService: AudioOrchestratorService) {}
 
   @Post('transcribe')
+  @RequireQuota(BillingMetric.AUDIO_MINUTE)
   @ApiOperation({ summary: 'Transcribe audio recording to text via Whisper STT' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -72,6 +76,7 @@ export class AudioController {
     }),
   )
   async transcribeAudio(
+    @CurrentUser('sub') userId: string,
     @UploadedFile() file?: Express.Multer.File,
     @Query('language') language?: string,
     @Query('sessionId') sessionId?: string,
@@ -97,6 +102,7 @@ export class AudioController {
     }
 
     const result = await this.audioOrchestratorService.transcribeAudio(
+      userId,
       file.buffer,
       file.mimetype,
       file.originalname || 'audio.webm',
@@ -114,12 +120,15 @@ export class AudioController {
   }
 
   @Post('synthesize')
+  @RequireQuota(BillingMetric.AUDIO_MINUTE)
   @ApiOperation({ summary: 'Synthesize text into speech audio base64 stream via OpenAI TTS' })
   async synthesizeSpeech(
+    @CurrentUser('sub') userId: string,
     @Body() dto: SynthesizeSpeechRequestDto,
     @Query('sessionId') sessionId?: string,
   ): Promise<SynthesizeSpeechResponseDto> {
     const result = await this.audioOrchestratorService.synthesizeSpeech(
+      userId,
       dto.text,
       dto.voice,
       dto.speed,

@@ -1,86 +1,72 @@
 import { ExecutionContext, HttpStatus } from '@nestjs/common';
 import { MfaStepUpGuard } from '../guards/mfa-step-up.guard';
-import { UserRole, ErrorCode } from '@ai-interview/contracts';
-import { DomainException } from '../../platform/filters/all-exceptions.filter';
+import { ErrorCode, UserRole } from '@ai-interview/contracts';
+import { DomainException } from '../../../platform/filters/all-exceptions.filter';
 
-describe('MfaStepUpGuard (P1-001)', () => {
+describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
   let guard: MfaStepUpGuard;
+  let mockPrisma: any;
 
   beforeEach(() => {
-    guard = new MfaStepUpGuard();
+    mockPrisma = {
+      user: {
+        findUnique: jest.fn(),
+      },
+    };
+    guard = new MfaStepUpGuard(mockPrisma as any);
   });
 
-  const createMockContext = (user: any): ExecutionContext => ({
+  const createMockContext = (user?: any): ExecutionContext => ({
     switchToHttp: () => ({
-      getRequest: (() => ({ user })) as any,
-      getResponse: jest.fn() as any,
-      getNext: jest.fn() as any,
+      getRequest: () => ({ user }),
+      getResponse: () => ({}),
+      getNext: () => ({}),
     }),
-    getClass: jest.fn() as any,
-    getHandler: jest.fn() as any,
-    getArgs: jest.fn() as any,
-    getArgByIndex: jest.fn() as any,
-    switchToRpc: jest.fn() as any,
-    switchToWs: jest.fn() as any,
-    getType: jest.fn() as any,
+    getHandler: () => ({}),
+    getClass: () => ({}),
+  } as any);
+
+  it('MUST throw UNAUTHORIZED when no user is attached to request', async () => {
+    const context = createMockContext(undefined);
+    await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
+    await expect(guard.canActivate(context)).rejects.toMatchObject({
+      errorCode: ErrorCode.UNAUTHORIZED,
+    });
   });
 
-  it('should throw UNAUTHORIZED if user is missing on request', () => {
-    const context = createMockContext(null);
-    expect(() => guard.canActivate(context)).toThrow(
-      new DomainException(
-        ErrorCode.UNAUTHORIZED,
-        'Authentication required',
-        HttpStatus.UNAUTHORIZED,
-      ),
-    );
+  it('MUST reject Admin who has not enabled MFA (F-002 enforcement)', async () => {
+    const context = createMockContext({ sub: 'admin-1', role: UserRole.ADMIN, mfaVerified: false });
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: false });
+
+    await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
+    await expect(guard.canActivate(context)).rejects.toMatchObject({
+      errorCode: ErrorCode.MFA_STEP_UP_REQUIRED,
+    });
   });
 
-  it('should FAIL-CLOSED (throw MFA_STEP_UP_REQUIRED) if mfaVerified is undefined', () => {
-    const user = {
-      sub: 'user-123',
-      email: 'admin@example.com',
-      role: UserRole.ADMIN,
-      // mfaVerified is omitted / undefined
-    };
-    const context = createMockContext(user);
+  it('MUST reject user with MFA enabled when session is not verified (mfaVerified === false)', async () => {
+    const context = createMockContext({ sub: 'user-1', role: UserRole.CANDIDATE, mfaVerified: false });
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: true });
 
-    expect(() => guard.canActivate(context)).toThrow(
-      new DomainException(
-        ErrorCode.MFA_STEP_UP_REQUIRED,
-        'This sensitive action requires verified multi-factor authentication (Step-Up)',
-        HttpStatus.FORBIDDEN,
-      ),
-    );
+    await expect(guard.canActivate(context)).rejects.toThrow(DomainException);
+    await expect(guard.canActivate(context)).rejects.toMatchObject({
+      errorCode: ErrorCode.MFA_STEP_UP_REQUIRED,
+    });
   });
 
-  it('should FAIL-CLOSED (throw MFA_STEP_UP_REQUIRED) if mfaVerified is false', () => {
-    const user = {
-      sub: 'user-123',
-      email: 'admin@example.com',
-      role: UserRole.ADMIN,
-      mfaVerified: false,
-    };
-    const context = createMockContext(user);
+  it('MUST allow verified user (mfaEnabled === true && mfaVerified === true)', async () => {
+    const context = createMockContext({ sub: 'admin-1', role: UserRole.ADMIN, mfaVerified: true });
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: true });
 
-    expect(() => guard.canActivate(context)).toThrow(
-      new DomainException(
-        ErrorCode.MFA_STEP_UP_REQUIRED,
-        'This sensitive action requires verified multi-factor authentication (Step-Up)',
-        HttpStatus.FORBIDDEN,
-      ),
-    );
+    const result = await guard.canActivate(context);
+    expect(result).toBe(true);
   });
 
-  it('should ALLOW access if mfaVerified is explicitly true', () => {
-    const user = {
-      sub: 'user-123',
-      email: 'admin@example.com',
-      role: UserRole.ADMIN,
-      mfaVerified: true,
-    };
-    const context = createMockContext(user);
+  it('MUST allow Candidate without MFA if step-up is not configured for non-sensitive role', async () => {
+    const context = createMockContext({ sub: 'candidate-1', role: UserRole.CANDIDATE, mfaVerified: false });
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: false });
 
-    expect(guard.canActivate(context)).toBe(true);
+    const result = await guard.canActivate(context);
+    expect(result).toBe(true);
   });
 });

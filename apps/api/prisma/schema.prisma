@@ -290,11 +290,43 @@ model Evaluation {
   provider        String?  @db.VarChar(50)
   fallbackReason  String?  @map("fallback_reason") @db.VarChar(255)
   confidence      Float?
+  currentRunId    String?  @map("current_run_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at")
 
   answer          Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  runs            EvaluationRun[]
 
   @@map("evaluations")
+}
+
+// Immutable evaluation run history (F-010 audit finding)
+model EvaluationRun {
+  id              String   @id @default(uuid()) @db.Uuid
+  evaluationId    String   @map("evaluation_id") @db.Uuid
+  runNumber       Int      @map("run_number")
+  score           Float
+  rubricScores    Json     @map("rubric_scores")
+  strengths       Json
+  improvements    Json
+  conciseFeedback String   @map("concise_feedback") @db.Text
+  evidence        Json
+  needsReview     Boolean  @default(false) @map("needs_review")
+  authorityState  String   @default("AUTHORITATIVE") @map("authority_state") @db.VarChar(30)
+  provider        String?  @db.VarChar(50)
+  model           String?  @db.VarChar(100)
+  fallbackReason  String?  @map("fallback_reason") @db.VarChar(255)
+  confidence      Float?
+  promptVersionId String?  @map("prompt_version_id") @db.Uuid
+  rubricVersion   String?  @map("rubric_version") @db.VarChar(50)
+  triggeredBy     String   @default("SYSTEM") @map("triggered_by") @db.VarChar(30)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  evaluation      Evaluation     @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+
+  @@unique([evaluationId, runNumber])
+  @@index([evaluationId])
+  @@map("evaluation_runs")
 }
 
 model LearningPath {
@@ -341,6 +373,7 @@ model PromptVersion {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   aiRuns             AiRun[]
+  evaluationRuns     EvaluationRun[]
 
   @@unique([slug, version])
   @@map("prompt_versions")
@@ -1527,6 +1560,16 @@ model TenantApiKey {
   @@map("tenant_api_keys")
 }
 
+// One-time MFA challenge token tracking (F-013 audit finding)
+model MfaChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  jti       String   @unique @db.VarChar(50)
+  userId    String   @map("user_id") @db.Uuid
+  consumed  Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
-
-
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("mfa_challenges")
+}

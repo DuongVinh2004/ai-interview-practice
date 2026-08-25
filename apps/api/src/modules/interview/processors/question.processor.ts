@@ -167,17 +167,21 @@ export class QuestionProcessor extends WorkerHost {
         error.stack,
       );
       if (job.attemptsMade >= (job.opts.attempts || 3) - 1) {
-        await this.prisma.interviewSession.updateMany({
+        const failResult = await this.prisma.interviewSession.updateMany({
           where: {
             id: sessionId,
             state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED] },
           },
           data: { state: SessionState.FAILED },
         });
-        this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_FAILED, {
-          sessionId,
-          reason: 'Failed to generate interview question after retries.',
-        });
+        if (failResult.count > 0) {
+          this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_FAILED, {
+            sessionId,
+            reason: 'Failed to generate interview question after retries.',
+          });
+        } else {
+          this.logger.warn(`Session ${sessionId} already in terminal state. Skipping SESSION_FAILED event.`);
+        }
       }
       throw error;
     }

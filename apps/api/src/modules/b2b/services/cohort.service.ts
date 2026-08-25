@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { TenantRole, UserRole, UserStatus } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CohortService {
@@ -137,10 +138,9 @@ export class CohortService {
         });
 
         if (!user) {
-          const tempPasswordHash = crypto
-            .createHash('sha256')
-            .update(`temp_${Date.now()}_${email}`)
-            .digest('hex');
+          // Generate cryptographically secure random password with bcrypt (F-015)
+          const tempPassword = crypto.randomBytes(32).toString('base64url');
+          const tempPasswordHash = await bcrypt.hash(tempPassword, 10);
 
           user = await this.prisma.user.create({
             data: {

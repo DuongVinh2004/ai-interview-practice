@@ -41,7 +41,7 @@ jobs:
 
       - name: Run Semgrep Security Rules
         run: |
-          semgrep scan --config auto --config p/security-audit --config p/owasp-top-ten --error --json --output semgrep-report.json || true
+          semgrep scan --config auto --config p/security-audit --config p/owasp-top-ten --error --json --output semgrep-report.json
           semgrep scan --config auto --config p/owasp-top-ten --error
 
   vulnerability-and-iac-scan:

@@ -105,13 +105,31 @@ export class AuthService {
 
     // If MFA is enabled, challenge with temporary MFA session token
     if (user.mfaEnabled) {
+      const jti = crypto.randomUUID();
       const mfaSessionToken = this.jwtService.sign(
-        { sub: user.id, email: user.email, tokenType: 'mfa_challenge', mfaPending: true },
+        { sub: user.id, email: user.email, tokenType: 'mfa_challenge', mfaPending: true, jti },
         {
           secret: this.configService.get<string>('jwt.accessSecret'),
           expiresIn: '5m',
         },
       );
+
+      // Store jti for one-time consumption (F-013)
+      await this.prisma.mfaChallenge.create({
+        data: {
+          jti,
+          userId: user.id,
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+          consumed: false,
+        },
+      });
+
+      // Opportunistic cleanup of expired MFA challenges (F-013)
+      this.prisma.mfaChallenge
+        .deleteMany({
+          where: { expiresAt: { lt: new Date() } },
+        })
+        .catch(err => this.logger.warn(`Failed to clean expired MFA challenges: ${err.message}`));
 
       await this.prisma.auditLog.create({
         data: {
@@ -142,6 +160,16 @@ export class AuthService {
         userAgent,
       },
     });
+
+    // Enforce: Admin must setup MFA if not yet enabled
+    if (user.role === UserRole.ADMIN && !user.mfaEnabled) {
+      const authResponse = await this.generateAuthResponse(user);
+      return {
+        ...authResponse,
+        forceMfaSetup: true,
+        message: 'Administrator accounts require MFA. Please configure MFA before proceeding.',
+      };
+    }
 
     return this.generateAuthResponse(user);
   }
@@ -477,6 +505,21 @@ export class AuthService {
       );
     }
 
+    // One-time consumption check (F-013)
+    if (payload.jti) {
+      const consumed = await this.prisma.mfaChallenge.updateMany({
+        where: { jti: payload.jti, consumed: false },
+        data: { consumed: true },
+      });
+      if (consumed.count === 0) {
+        throw new DomainException(
+          ErrorCode.MFA_INVALID_SESSION,
+          'MFA challenge token already used or expired',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+    }
+
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
       include: { profile: true },
@@ -527,6 +570,30 @@ export class AuthService {
         'MFA verification session has expired. Please sign in again.',
         HttpStatus.UNAUTHORIZED,
       );
+    }
+
+    // Validate token type — must be MFA challenge token, not access token (F-013)
+    if (!payload.mfaPending || payload.tokenType !== 'mfa_challenge') {
+      throw new DomainException(
+        ErrorCode.MFA_INVALID_SESSION,
+        'Invalid token type. Recovery requires an MFA challenge token.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    // One-time consumption (F-013)
+    if (payload.jti) {
+      const consumed = await this.prisma.mfaChallenge.updateMany({
+        where: { jti: payload.jti, consumed: false },
+        data: { consumed: true },
+      });
+      if (consumed.count === 0) {
+        throw new DomainException(
+          ErrorCode.MFA_INVALID_SESSION,
+          'MFA challenge token already used or expired',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
     }
 
     const user = await this.prisma.user.findUnique({
@@ -693,7 +760,7 @@ export class AuthService {
       status: user.status,
       tokenType: 'access',
       tokenVersion: user.tokenVersion || 0,
-      mfaVerified: isMfaActive ? mfaVerified : true,
+      mfaVerified: mfaVerified,
     };
 
     const accessToken = this.jwtService.sign(payload, {

@@ -95,3 +95,12 @@ jobs:
 
       - name: Build All Workspaces
         run: pnpm build
+
+      - name: Run Playwright E2E Tests
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+        run: |
+          pnpm --filter web exec playwright install --with-deps chromium
+          pnpm --filter web test:e2e

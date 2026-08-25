@@ -488,9 +488,21 @@ export class InterviewService {
       answer: turn.answer.content,
     });
 
-    const updatedEval = await this.prisma.evaluation.update({
+    const existingEval = await this.prisma.evaluation.findUnique({
       where: { answerId: turn.answer.id },
+    });
+
+    const lastRun = existingEval
+      ? await this.prisma.evaluationRun.findFirst({
+          where: { evaluationId: existingEval.id },
+          orderBy: { runNumber: 'desc' },
+        })
+      : null;
+    const runNumberVal = (lastRun?.runNumber || 0) + 1;
+
+    const evalRecord = existingEval || (await this.prisma.evaluation.create({
       data: {
+        answerId: turn.answer.id,
         score: evalResult.score,
         rubricScores: evalResult.rubricScores as any,
         strengths: evalResult.strengths,
@@ -498,11 +510,51 @@ export class InterviewService {
         conciseFeedback: evalResult.conciseFeedback,
         evidence: evalResult.evidence,
       },
+    }));
+
+    const run = await this.prisma.evaluationRun.create({
+      data: {
+        evaluationId: evalRecord.id,
+        runNumber: runNumberVal,
+        score: evalResult.score,
+        rubricScores: evalResult.rubricScores as any,
+        strengths: evalResult.strengths,
+        improvements: evalResult.improvements,
+        conciseFeedback: evalResult.conciseFeedback,
+        evidence: evalResult.evidence,
+        needsReview: (evalResult as any).needsReview || false,
+        authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+        provider: (evalResult as any).provider || undefined,
+        fallbackReason: (evalResult as any).fallbackReason || undefined,
+        confidence: evalResult.confidence || 0.85,
+        triggeredBy: 'RE_EVALUATION',
+      },
+    });
+
+    const updatedEval = await this.prisma.evaluation.update({
+      where: { id: evalRecord.id },
+      data: {
+        score: evalResult.score,
+        rubricScores: evalResult.rubricScores as any,
+        strengths: evalResult.strengths,
+        improvements: evalResult.improvements,
+        conciseFeedback: evalResult.conciseFeedback,
+        evidence: evalResult.evidence,
+        needsReview: (evalResult as any).needsReview || false,
+        authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+        provider: (evalResult as any).provider || undefined,
+        fallbackReason: (evalResult as any).fallbackReason || undefined,
+        confidence: evalResult.confidence || 0.85,
+        currentRunId: run.id,
+      },
     });
 
     // Recalculate overall score across all completed turn evaluations
     const allEvaluations = await this.prisma.evaluation.findMany({
-      where: { answer: { turn: { sessionId } } },
+      where: {
+        answer: { turn: { sessionId } },
+        authorityState: 'AUTHORITATIVE',  // Only count authoritative evaluations (F-011)
+      },
     });
 
     const overallScore =

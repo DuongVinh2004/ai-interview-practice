@@ -2,6 +2,8 @@ import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
+import { BillingMetric } from '@ai-interview/contracts';
 import { CanvasService } from './services/canvas.service';
 import { DesignAnalyzerService } from './services/design-analyzer.service';
 import { DesignEvaluationService } from './services/design-evaluation.service';
@@ -45,6 +47,8 @@ export class SystemDesignController {
   }
 
   @Post('analyze')
+  @UseGuards(JwtAuthGuard, QuotaGuard)
+  @RequireQuota(BillingMetric.AI_TOKEN)
   @ApiOperation({ summary: 'Trigger multimodal AI vision analysis on canvas diagram' })
   async analyzeCanvas(
     @CurrentUser('sub') userId: string,
