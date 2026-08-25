@@ -126,7 +126,7 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              {c.name.split(' & ')[0]}
+              {(c.name || c.competency || '').split(' & ')[0]}
             </text>
           );
         })}
@@ -135,7 +135,7 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
       {/* Hover Info Tooltip */}
       {hoveredIndex !== null && competencies[hoveredIndex] && (
         <div className="absolute bottom-1 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg border border-slate-700 flex items-center gap-2 animate-fade-in pointer-events-none">
-          <span className="font-semibold">{competencies[hoveredIndex].name}:</span>
+          <span className="font-semibold">{competencies[hoveredIndex].name || competencies[hoveredIndex].competency}:</span>
           <span className="text-emerald-400 font-bold font-mono">
             {competencies[hoveredIndex].score.toFixed(1)} / 10
           </span>

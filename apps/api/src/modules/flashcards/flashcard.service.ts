@@ -15,13 +15,18 @@ import {
   AutoGenerateFlashcardsDto,
 } from './dto/flashcard.dto';
 import { CardType, CardState, FlashcardStatsDto } from '@ai-interview/contracts';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class FlashcardService {
   private readonly logger = new Logger(FlashcardService.name);
   private readonly fsrs = new FSRSEngine();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
+  ) {}
 
   // 1. Deck Operations
   async createDeck(userId: string, dto: CreateDeckDto) {
@@ -212,6 +217,12 @@ export class FlashcardService {
 
     // Update UserStreak
     await this.updateUserStreak(userId, now);
+
+    this.eventEmitter?.emit('flashcard.reviewed', {
+      userId,
+      cardId,
+      rating: dto.rating,
+    });
 
     return { card: updatedCard, log: reviewLog };
   }

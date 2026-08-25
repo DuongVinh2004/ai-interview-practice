@@ -7,11 +7,11 @@ import { useI18nStore } from '../../stores/i18n.store';
 import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
-import { Spinner } from '../../components/ui/Spinner';
-import { History, PlayCircle, ChevronRight, Calendar, Search, X, ChevronLeft } from 'lucide-react';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { History, PlayCircle, ChevronRight, Calendar, Search, X, ChevronLeft, ShieldCheck } from 'lucide-react';
 
 export function HistoryPage() {
-  const { t } = useI18nStore();
+  const { t, language } = useI18nStore();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [sessionMode, setSessionMode] = useState<string>('');
@@ -59,27 +59,38 @@ export function HistoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
+      {/* Formative Practice Disclaimer */}
+      <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex items-center gap-3 text-xs text-emerald-900 shadow-xs">
+        <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
+        <p>
+          {language === 'vi'
+            ? 'Lịch sử lưu trữ toàn bộ các lượt luyện tập và báo cáo rubric nhằm theo dõi sự tiến bộ kỹ thuật qua thời gian.'
+            : 'Archive of all formative practice sessions and rubric reports for longitudinal skill tracking.'}
+        </p>
+      </div>
+
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <History className="h-6 w-6 text-indigo-600" />
-            <span>Your Interview History</span>
+            <span>{language === 'vi' ? 'Lịch Sử Luyện Tập Phỏng Vấn' : 'Your Interview History'}</span>
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Review past mock interviews, score progression, and drill results
+            {language === 'vi'
+              ? 'Xem lại bảng điểm rubric, trích dẫn bằng chứng và lộ trình củng cố kỹ năng'
+              : 'Review past mock interviews, score progression, and drill results'}
           </p>
         </div>
         <Link to="/interviews/new">
-          <Button className="gap-2">
-            <PlayCircle className="h-4 w-4" />
+          <Button className="gap-2" leftIcon={<PlayCircle className="h-4 w-4" />}>
             <span>{t.nav.newInterview}</span>
           </Button>
         </Link>
       </div>
 
       {/* Filter & Search Bar */}
-      <Card className="border-slate-200 shadow-sm p-4 bg-slate-50/50">
+      <Card className="border-slate-200 shadow-xs p-4 bg-slate-50/50">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
@@ -92,7 +103,8 @@ export function HistoryPage() {
                   setPage(1);
                 }}
                 placeholder={t.historyFilters.searchPlaceholder}
-                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                aria-label="Search interviews"
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-lg text-xs sm:text-sm focus:ring-2 focus:ring-emerald-500 focus:outline-none"
               />
             </div>
             {hasActiveFilters && (
@@ -116,7 +128,8 @@ export function HistoryPage() {
                 setSessionMode(e.target.value);
                 setPage(1);
               }}
-              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              aria-label="Filter by session mode"
+              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             >
               <option value="">{t.historyFilters.allModes}</option>
               <option value="STANDARD">{t.practice.standard}</option>
@@ -131,13 +144,14 @@ export function HistoryPage() {
                 setStatus(e.target.value);
                 setPage(1);
               }}
-              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              aria-label="Filter by state"
+              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             >
               <option value="">{t.historyFilters.allStates}</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="ACTIVE">In Progress (Active)</option>
-              <option value="CREATED">Created</option>
-              <option value="FAILED">Failed</option>
+              <option value="COMPLETED">{language === 'vi' ? 'Đã hoàn thành' : 'Completed'}</option>
+              <option value="ACTIVE">{language === 'vi' ? 'Đang diễn ra' : 'In Progress'}</option>
+              <option value="CREATED">{language === 'vi' ? 'Mới khởi tạo' : 'Created'}</option>
+              <option value="FAILED">{language === 'vi' ? 'Không thành công' : 'Failed'}</option>
             </select>
 
             {/* Score filter */}
@@ -147,7 +161,8 @@ export function HistoryPage() {
                 setScoreTier(e.target.value);
                 setPage(1);
               }}
-              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              aria-label="Filter by score tier"
+              className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             >
               <option value="">{t.historyFilters.allScores}</option>
               <option value="high">{t.historyFilters.highScore}</option>
@@ -160,9 +175,10 @@ export function HistoryPage() {
 
       {/* Results List */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Spinner size="lg" />
-          <p className="text-sm text-slate-500">Loading interview records...</p>
+        <div className="space-y-3">
+          <Skeleton variant="card" height={90} />
+          <Skeleton variant="card" height={90} />
+          <Skeleton variant="card" height={90} />
         </div>
       ) : sessions.length === 0 ? (
         <Card className="text-center py-16">
@@ -199,7 +215,7 @@ export function HistoryPage() {
                 <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-sm text-slate-900">
+                      <span className="font-bold text-sm text-slate-900">
                         {s.jobRole.name} • {s.seniorityLevel.name}
                       </span>
                       <Badge variant={s.state === 'COMPLETED' ? 'success' : 'default'}>
@@ -244,7 +260,7 @@ export function HistoryPage() {
                         <span className="text-[10px] text-slate-400 block uppercase font-medium">
                           Score
                         </span>
-                        <span className="font-bold text-base text-emerald-700">
+                        <span className="font-bold text-base text-emerald-700 font-mono">
                           {formatScore(s.overallScore)}/10
                         </span>
                       </div>

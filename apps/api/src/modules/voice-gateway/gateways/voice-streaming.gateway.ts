@@ -4,14 +4,19 @@ import {
   OnGatewayConnection,
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
-import { Logger, UnauthorizedException } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { WebSocket, Server } from 'ws';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { VadEngineService } from '../services/vad-engine.service';
 import { MockVoiceProvider } from '../providers/mock-voice.provider';
+import { DeepgramSttProvider } from '../providers/deepgram-stt.provider';
+import { ElevenLabsTtsProvider } from '../providers/elevenlabs-tts.provider';
+import { SentenceChunkerService } from '../services/sentence-chunker.service';
+import { SttStreamSession, TtsStreamSession } from '../interfaces/voice-provider.interface';
 import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/contracts';
+import { Subscription } from 'rxjs';
 
 interface ClientSessionState {
   ws: WebSocket;
@@ -29,6 +34,11 @@ interface ClientSessionState {
   bargeInCount: number;
   startedAt: Date;
   currentTurn: number;
+  sttSession?: SttStreamSession;
+  sttSubscription?: Subscription;
+  ttsSession?: TtsStreamSession;
+  ttsSubscription?: Subscription;
+  lastCandidateSpeechTime?: number;
 }
 
 @WebSocketGateway({
@@ -52,6 +62,9 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     private readonly prisma: PrismaService,
     private readonly vad: VadEngineService,
     private readonly voiceProvider: MockVoiceProvider,
+    private readonly deepgramStt: DeepgramSttProvider,
+    private readonly elevenLabsTts: ElevenLabsTtsProvider,
+    private readonly chunker: SentenceChunkerService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
@@ -62,7 +75,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     let authenticatedUser: any = null;
     let userId: string | undefined = undefined;
 
-    // Try extracting and verifying JWT from handshake headers/query
+    // Extract & verify JWT
     try {
       let token: string | undefined;
       if (req?.url) {
@@ -125,8 +138,14 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   async handleDisconnect(client: WebSocket) {
     this.logger.log('Client disconnected from Voice Gateway.');
     const state = this.activeClients.get(client);
-    if (state && state.voiceSessionId) {
-      await this.finalizeVoiceSession(state);
+    if (state) {
+      if (state.sttSubscription) state.sttSubscription.unsubscribe();
+      if (state.sttSession) state.sttSession.close();
+      if (state.ttsSubscription) state.ttsSubscription.unsubscribe();
+      if (state.ttsSession) state.ttsSession.close();
+      if (state.voiceSessionId) {
+        await this.finalizeVoiceSession(state);
+      }
     }
     this.activeClients.delete(client);
   }
@@ -208,11 +227,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       return;
     }
 
-    // Ownership authorization check: interview.userId must match authenticated userId (unless ADMIN)
     if (interview.userId !== state.userId && state.authenticatedUser?.role !== 'ADMIN') {
-      this.logger.warn(
-        `Security violation: User ${state.userId} attempted to access interview ${interview.id} owned by ${interview.userId}`,
-      );
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
         message: 'Forbidden. You are not authorized to access this interview session.',
@@ -221,7 +236,6 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       return;
     }
 
-    // Create or retrieve VoiceSession record
     const voiceSession = await this.prisma.voiceSession.upsert({
       where: { interviewId: payload.interviewId },
       create: {
@@ -237,6 +251,22 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
     state.voiceSessionId = voiceSession.id;
 
+    // Initialize Deepgram STT Stream Session
+    const sttStream = this.deepgramStt.createSttStream(24000);
+    state.sttSession = sttStream;
+    state.sttSubscription = sttStream.events.subscribe(async event => {
+      if (!event.isFinal) {
+        this.sendJson(client, {
+          type: VoiceEventType.INTERIM_TRANSCRIPT,
+          speaker: SpeakerRole.USER,
+          text: event.text,
+          confidence: event.confidence,
+        });
+      } else {
+        await this.handleCandidateFinalTranscript(client, state, event.text);
+      }
+    });
+
     this.sendJson(client, {
       type: VoiceEventType.CONNECTED,
       sessionId: voiceSession.id,
@@ -244,7 +274,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       sampleRate: 24000,
     });
 
-    // Initial interviewer question
+    // Initial question
     const firstTurn = interview.turns[0];
     const initialQuestion =
       firstTurn?.question?.content ||
@@ -257,11 +287,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     const state = this.activeClients.get(client);
     if (!state) return;
 
-    // H-008: Reject unauthenticated binary frames / pre-auth buffer DoS
     if (!state.userId || !state.voiceSessionId) {
-      this.logger.warn(
-        'Rejecting binary audio from unauthenticated or unestablished voice connection.',
-      );
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
         message: 'Authentication and voice:connect required before streaming audio.',
@@ -270,10 +296,8 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       return;
     }
 
-    // Memory buffer cap (5 MB maximum per speech turn)
     const MAX_TURN_BUFFER_BYTES = 5 * 1024 * 1024;
     if (state.audioBytesReceived + pcmBuffer.length > MAX_TURN_BUFFER_BYTES) {
-      this.logger.warn(`Audio buffer limit exceeded for session ${state.voiceSessionId}`);
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
         message: 'Audio frame buffer limit exceeded (5 MB maximum).',
@@ -284,7 +308,12 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     state.audioBytesReceived += pcmBuffer.length;
     state.audioBuffer.push(pcmBuffer);
 
-    // VAD frame evaluation
+    // Relay audio chunk to live STT engine
+    if (state.sttSession) {
+      state.sttSession.sendAudioChunk(pcmBuffer);
+    }
+
+    // VAD frame evaluation for barge-in detection
     const vadResult = this.vad.processFrame(pcmBuffer, {
       consecutiveSpeechFrames: state.consecutiveSpeechFrames,
       consecutiveSilenceFrames: state.consecutiveSilenceFrames,
@@ -304,6 +333,11 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     state.cancelAiStreaming = true;
     state.isAiSpeaking = false;
 
+    if (state.ttsSession) {
+      state.ttsSession.close();
+      state.ttsSession = undefined;
+    }
+
     this.logger.log(`Barge-in interrupt triggered on session ${state.voiceSessionId}`);
     this.sendJson(client, {
       type: VoiceEventType.INTERRUPT,
@@ -311,40 +345,36 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     });
   }
 
-  async handleStopSpeaking(client: WebSocket, state: ClientSessionState) {
-    const totalAudio = Buffer.concat(state.audioBuffer);
-    state.audioBuffer = [];
+  private async handleCandidateFinalTranscript(
+    client: WebSocket,
+    state: ClientSessionState,
+    transcriptText: string,
+  ) {
+    if (!transcriptText || transcriptText.trim() === '') return;
 
-    // Perform STT
-    const transcript = await this.voiceProvider.transcribeAudio(totalAudio, state.currentTurn);
-
-    // Record candidate transcript in database
     if (state.voiceSessionId) {
       await this.prisma.voiceTranscript.create({
         data: {
           voiceSessionId: state.voiceSessionId,
           speaker: SpeakerRole.USER,
-          text: transcript,
+          text: transcriptText,
           isFinal: true,
           startTimeMs: 0,
-          endTimeMs: Math.round((totalAudio.length / (24000 * 2)) * 1000),
+          endTimeMs: transcriptText.length * 40,
           turnNumber: state.currentTurn,
         },
       });
     }
 
-    // Emit final transcript update to client
     this.sendJson(client, {
       type: VoiceEventType.FINAL_TRANSCRIPT,
       speaker: SpeakerRole.USER,
-      text: transcript,
+      text: transcriptText,
       turnNumber: state.currentTurn,
     });
 
-    // Advance turn and formulate AI response
     state.currentTurn += 1;
-    const aiResponseText = this.generateAiFollowUp(transcript, state.currentTurn);
-
+    const aiResponseText = this.generateAiFollowUp(transcriptText, state.currentTurn);
     await this.streamAiVoiceResponse(client, state, aiResponseText);
   }
 
@@ -352,7 +382,6 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     state.isAiSpeaking = true;
     state.cancelAiStreaming = false;
 
-    // Record AI transcript in database
     if (state.voiceSessionId) {
       await this.prisma.voiceTranscript.create({
         data: {
@@ -373,20 +402,30 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       text,
     });
 
-    // Stream audio chunks
-    await this.voiceProvider.generateMockAudioChunks(
-      text,
-      (audioChunk, isLast) => {
+    // Create low-latency TTS stream session
+    const ttsSession = this.elevenLabsTts.createStreamingSession();
+    state.ttsSession = ttsSession;
+
+    ttsSession.audioStream.subscribe({
+      next: (audioChunk: Buffer) => {
         if (!state.cancelAiStreaming && client.readyState === WebSocket.OPEN) {
           state.audioBytesSent += audioChunk.length;
           client.send(audioChunk, { binary: true });
         }
       },
-      () => state.cancelAiStreaming,
-    );
+      complete: () => {
+        state.isAiSpeaking = false;
+        this.sendJson(client, { type: VoiceEventType.AI_SPEAKING_END });
+      },
+    });
 
-    state.isAiSpeaking = false;
-    this.sendJson(client, { type: VoiceEventType.AI_SPEAKING_END });
+    // Segment text sentences using SentenceChunkerService for ultra-low TTFB (< 500ms)
+    const sentences = this.chunker.segmentText(text);
+    for (const sentence of sentences) {
+      if (state.cancelAiStreaming) break;
+      ttsSession.sendText(sentence);
+    }
+    ttsSession.flush();
   }
 
   private generateAiFollowUp(candidateAnswer: string, turnNumber: number): string {

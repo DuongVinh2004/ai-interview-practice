@@ -4,6 +4,8 @@ import { BillingService } from './billing.service';
 import { UsageMeterService } from './usage-meter.service';
 import { MockBillingProvider } from './providers/mock-billing.provider';
 import { StripeProvider } from './providers/stripe.provider';
+import { PayosProvider } from './providers/payos.provider';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { SubscriptionStatus } from '@ai-interview/contracts';
 
@@ -110,6 +112,8 @@ describe('BillingService (F014)', () => {
         BillingService,
         MockBillingProvider,
         StripeProvider,
+        PayosProvider,
+        { provide: EventEmitter2, useValue: { emit: jest.fn() } },
         {
           provide: UsageMeterService,
           useValue: { checkQuota: jest.fn(), recordUsage: jest.fn(), getUsageSummary: jest.fn() },

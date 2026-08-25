@@ -92,6 +92,9 @@ describe('System Design Whiteboard Components (F003)', () => {
       overallScore: 8.4,
       feedback: 'Excellent horizontal scaling strategy with Redis and Kafka.',
       detectedComponents: ['API Gateway', 'PostgreSQL', 'Redis'],
+      strengths: ['Good caching', 'Decoupled services'],
+      bottlenecks: ['Single DB instance'],
+      recommendations: ['Add DB replicas'],
       createdAt: new Date().toISOString(),
     };
 

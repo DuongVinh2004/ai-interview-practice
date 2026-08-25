@@ -10,7 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { RubricBreakdown } from '../../components/interview/RubricBreakdown';
 import { MentorFeedbackList } from '../../components/share/MentorFeedbackList';
-import { Award, Globe, Printer, BookOpen, AlertCircle, User } from 'lucide-react';
+import { Award, Globe, Printer, BookOpen, AlertCircle, User, ShieldCheck } from 'lucide-react';
 
 export function PublicSharedResultPage() {
   const { token } = useParams<{ token: string }>();
@@ -122,6 +122,19 @@ export function PublicSharedResultPage() {
             <Printer className="h-4 w-4" />
             <span>{t.share.printPdf}</span>
           </Button>
+        </div>
+
+        {/* Formative Practice Disclaimer Alert */}
+        <div className="bg-emerald-50/80 border border-emerald-200 p-4 rounded-2xl flex items-start gap-3 text-xs text-emerald-900 shadow-xs">
+          <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block text-emerald-950 text-sm">
+              Practice Assessment Report • Mentorship & Learning Artifact
+            </span>
+            <p className="mt-0.5 text-emerald-800 leading-relaxed">
+              This report is shared for peer mentoring and developmental feedback. All scores are formative and reflect practice session performance.
+            </p>
+          </div>
         </div>
 
         {/* Candidate & Scorecard Header */}

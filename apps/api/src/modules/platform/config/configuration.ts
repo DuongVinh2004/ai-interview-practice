@@ -49,3 +49,45 @@ export const featuresConfig = registerAs('features', () => ({
   spacedRepetition: process.env.FEATURE_SPACED_REPETITION === 'true',
   voiceStreaming: process.env.FEATURE_VOICE_STREAMING === 'true',
 }));
+
+export const storageConfig = registerAs('storage', () => ({
+  provider: process.env.STORAGE_PROVIDER || 'mock',
+  awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  awsRegion: process.env.AWS_REGION || 'ap-southeast-1',
+  awsS3Bucket: process.env.AWS_S3_BUCKET || 'ai-interview-bucket',
+  r2Endpoint: process.env.R2_ENDPOINT || '',
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID || '',
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '',
+  r2Bucket: process.env.R2_BUCKET || 'ai-interview-r2',
+  publicCdnUrl: process.env.STORAGE_PUBLIC_CDN_URL || '',
+}));
+
+export const emailConfig = registerAs('email', () => ({
+  provider: process.env.EMAIL_PROVIDER || 'mock',
+  resendApiKey: process.env.RESEND_API_KEY || '',
+  defaultFrom: process.env.EMAIL_DEFAULT_FROM || 'AI Interview <noreply@ai-interview.com>',
+}));
+
+export const billingConfig = registerAs('billing', () => ({
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+  payosClientId: process.env.PAYOS_CLIENT_ID || '',
+  payosApiKey: process.env.PAYOS_API_KEY || '',
+  payosChecksumKey: process.env.PAYOS_CHECKSUM_KEY || '',
+}));
+
+export const voiceConfig = registerAs('voice', () => ({
+  sttProvider: process.env.VOICE_STT_PROVIDER || 'mock',
+  ttsProvider: process.env.VOICE_TTS_PROVIDER || 'mock',
+  deepgramApiKey: process.env.DEEPGRAM_API_KEY || '',
+  elevenlabsApiKey: process.env.ELEVENLABS_API_KEY || '',
+  elevenlabsVoiceId: process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM',
+}));
+
+export const visionConfig = registerAs('vision', () => ({
+  provider: process.env.VISION_PROVIDER || 'mock',
+  openaiApiKey: process.env.OPENAI_API_KEY || '',
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
+}));
+

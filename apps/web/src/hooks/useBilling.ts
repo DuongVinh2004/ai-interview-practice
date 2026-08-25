@@ -153,6 +153,14 @@ export function useBilling() {
       }),
   });
 
+  const payosCheckoutMutation = useMutation<any, Error, any>({
+    mutationFn: (data: any) =>
+      apiClient<any>('/billing/payos/checkout', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+  });
+
   const cancelMutation = useMutation<SubscriptionResponse, Error, void>({
     mutationFn: () =>
       apiClient<SubscriptionResponse>('/billing/cancel', {
@@ -177,6 +185,8 @@ export function useBilling() {
     isLoadingInvoices: invoicesQuery.isLoading,
     createCheckout: checkoutMutation.mutateAsync,
     isCreatingCheckout: checkoutMutation.isPending,
+    createPayosCheckout: payosCheckoutMutation.mutateAsync,
+    isCreatingPayosCheckout: payosCheckoutMutation.isPending,
     cancelSubscription: cancelMutation.mutateAsync,
     isCancelingSubscription: cancelMutation.isPending,
   };

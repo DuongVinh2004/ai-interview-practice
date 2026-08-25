@@ -4,6 +4,8 @@ import { useAuthStore } from '../../stores/auth.store';
 import { useI18nStore } from '../../stores/i18n.store';
 import { UserRole } from '@ai-interview/contracts';
 import { Button } from '../ui/Button';
+import { XpProgressWidget } from '../../features/gamification/components/XpProgressWidget';
+import { useGamificationStore } from '../../stores/gamification.store';
 import {
   Bot,
   LogOut,
@@ -25,9 +27,12 @@ import {
   Menu,
   X,
   ChevronDown,
-  Sparkles,
   Shield,
-  Layers,
+  LayoutDashboard,
+  MoreHorizontal,
+  Volume2,
+  VolumeX,
+  Trophy,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -37,21 +42,18 @@ export function Navbar() {
   const location = useLocation();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [practiceOpen, setPracticeOpen] = useState(false);
-  const [growthOpen, setGrowthOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  const practiceRef = useRef<HTMLDivElement>(null);
-  const growthRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
   const adminRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
   // Close menus on route change
   useEffect(() => {
     setMobileMenuOpen(false);
-    setPracticeOpen(false);
-    setGrowthOpen(false);
+    setMoreMenuOpen(false);
     setAdminOpen(false);
     setUserMenuOpen(false);
   }, [location.pathname]);
@@ -59,11 +61,8 @@ export function Navbar() {
   // Click outside to close dropdowns
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (practiceRef.current && !practiceRef.current.contains(event.target as Node)) {
-        setPracticeOpen(false);
-      }
-      if (growthRef.current && !growthRef.current.contains(event.target as Node)) {
-        setGrowthOpen(false);
+      if (moreRef.current && !moreRef.current.contains(event.target as Node)) {
+        setMoreMenuOpen(false);
       }
       if (adminRef.current && !adminRef.current.contains(event.target as Node)) {
         setAdminOpen(false);
@@ -76,6 +75,20 @@ export function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Escape key to close open menus
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMobileMenuOpen(false);
+        setMoreMenuOpen(false);
+        setAdminOpen(false);
+        setUserMenuOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleLogout = () => {
     logout();
     navigate('/login');
@@ -86,27 +99,29 @@ export function Navbar() {
   };
 
   const isAdmin = user?.role === UserRole.ADMIN;
+  const isTenantUser = Boolean((user as any)?.tenantId);
 
-  const isPracticeActive =
-    location.pathname === '/interviews/new' ||
+  // Active state helpers
+  const isDashboardActive = location.pathname === '/';
+  const isPracticeActive = location.pathname.startsWith('/interviews');
+  const isProgressActive =
+    location.pathname.startsWith('/readiness') || location.pathname.startsWith('/skills');
+  const isHistoryActive = location.pathname === '/history';
+  const isMoreActive =
     location.pathname.startsWith('/flashcards') ||
-    location.pathname === '/history';
-
-  const isGrowthActive =
-    location.pathname.startsWith('/skills') ||
-    location.pathname.startsWith('/readiness') ||
-    location.pathname.startsWith('/profile/portfolio-settings');
-
+    location.pathname.startsWith('/mentors') ||
+    location.pathname.startsWith('/mentor') ||
+    location.pathname.startsWith('/b2b');
   const isAdminActive = location.pathname.startsWith('/admin');
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        {/* Left: Brand & Desktop Navigation */}
+        {/* Brand & Primary Navigation */}
         <div className="flex items-center gap-6">
           <Link
             to="/"
-            className="flex items-center gap-2.5 font-extrabold text-lg text-slate-900 hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2.5 font-extrabold text-lg text-slate-900 hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
           >
             <div className="bg-emerald-600 text-white p-1.5 rounded-xl shadow-xs">
               <Bot className="h-5 w-5" />
@@ -115,169 +130,144 @@ export function Navbar() {
           </Link>
 
           {isAuthenticated && (
-            <nav className="hidden lg:flex items-center gap-1">
-              {/* Direct Link: New Interview */}
+            <nav className="hidden lg:flex items-center gap-1" aria-label="Main Navigation">
+              {/* 1. Dashboard */}
+              <Link
+                to="/"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  isDashboardActive
+                    ? 'bg-emerald-50 text-emerald-800 font-bold'
+                    : 'text-slate-700 hover:text-emerald-700 hover:bg-slate-50'
+                }`}
+              >
+                <LayoutDashboard className="h-4 w-4 text-emerald-600" />
+                <span>{language === 'vi' ? 'Tổng quan' : 'Dashboard'}</span>
+              </Link>
+
+              {/* 2. Practice (Primary Action) */}
               <Link
                 to="/interviews/new"
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  location.pathname === '/interviews/new'
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
+                  isPracticeActive
+                    ? 'bg-emerald-50 text-emerald-800 font-bold'
+                    : 'text-slate-700 hover:text-emerald-700 hover:bg-slate-50'
                 }`}
               >
                 <PlayCircle className="h-4 w-4 text-emerald-600" />
                 <span>{t.nav.newInterview}</span>
               </Link>
 
-              {/* Dropdown: Practice */}
-              <div className="relative" ref={practiceRef}>
+              {/* 3. Progress (Readiness & Skills) */}
+              <Link
+                to="/readiness"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  isProgressActive
+                    ? 'bg-emerald-50 text-emerald-800 font-bold'
+                    : 'text-slate-700 hover:text-emerald-700 hover:bg-slate-50'
+                }`}
+              >
+                <Target className="h-4 w-4 text-amber-600" />
+                <span>{t.nav.readiness}</span>
+              </Link>
+
+              {/* 4. History */}
+              <Link
+                to="/history"
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
+                  isHistoryActive
+                    ? 'bg-emerald-50 text-emerald-800 font-bold'
+                    : 'text-slate-700 hover:text-emerald-700 hover:bg-slate-50'
+                }`}
+              >
+                <History className="h-4 w-4 text-slate-600" />
+                <span>{t.nav.history}</span>
+              </Link>
+
+              {/* 5. More Practice / Advanced Tools Dropdown */}
+              <div className="relative" ref={moreRef}>
                 <button
                   type="button"
                   onClick={() => {
-                    setPracticeOpen(!practiceOpen);
-                    setGrowthOpen(false);
+                    setMoreMenuOpen(!moreMenuOpen);
                     setAdminOpen(false);
+                    setUserMenuOpen(false);
                   }}
                   className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                    isPracticeActive
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
+                    isMoreActive
+                      ? 'bg-emerald-50 text-emerald-800'
+                      : 'text-slate-700 hover:text-emerald-700 hover:bg-slate-50'
                   }`}
+                  aria-expanded={moreMenuOpen}
+                  aria-haspopup="true"
                 >
-                  <Layers className="h-3.5 w-3.5" />
-                  <span>{t.nav.practiceMenu}</span>
+                  <MoreHorizontal className="h-4 w-4 text-slate-500" />
+                  <span>{language === 'vi' ? 'Mở rộng' : 'More'}</span>
                   <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
                 </button>
 
-                {practiceOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-52 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50 animate-slide-up">
-                    <Link
-                      to="/interviews/new"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
-                    >
-                      <PlayCircle className="h-4 w-4 text-emerald-600" />
-                      <span>{t.nav.newInterview}</span>
-                    </Link>
+                {moreMenuOpen && (
+                  <div className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-slide-up">
+                    <div className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                      {language === 'vi' ? 'Công cụ luyện tập nâng cao' : 'Advanced Practice'}
+                    </div>
+
                     <Link
                       to="/flashcards"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                     >
                       <BookOpen className="h-4 w-4 text-indigo-600" />
                       <span>{t.nav.flashcards}</span>
                     </Link>
-                    <Link
-                      to="/history"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
-                    >
-                      <History className="h-4 w-4 text-slate-600" />
-                      <span>{t.nav.history}</span>
-                    </Link>
-                  </div>
-                )}
-              </div>
 
-              {/* Dropdown: Growth & Skills */}
-              <div className="relative" ref={growthRef}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGrowthOpen(!growthOpen);
-                    setPracticeOpen(false);
-                    setAdminOpen(false);
-                  }}
-                  className={`flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                    isGrowthActive
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
-                  }`}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>{t.nav.growthMenu}</span>
-                  <ChevronDown className="h-3 w-3 opacity-60 ml-0.5" />
-                </button>
-
-                {growthOpen && (
-                  <div className="absolute top-full left-0 mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50 animate-slide-up">
                     <Link
                       to="/skills"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                     >
                       <GitBranch className="h-4 w-4 text-emerald-600" />
                       <span>{t.nav.skills}</span>
                     </Link>
+
                     <Link
-                      to="/readiness"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                      to="/mentors"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                     >
-                      <Target className="h-4 w-4 text-amber-600" />
-                      <span>{t.nav.readiness}</span>
+                      <Video className="h-4 w-4 text-rose-600" />
+                      <span>{t.nav.mentors}</span>
                     </Link>
-                    <Link
-                      to="/profile/portfolio-settings"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
-                    >
-                      <Award className="h-4 w-4 text-purple-600" />
-                      <span>{t.nav.portfolio}</span>
-                    </Link>
+
+                    {(isTenantUser || isAdmin) && (
+                      <>
+                        <div className="border-t border-slate-100 my-1" />
+                        <Link
+                          to="/b2b/dashboard"
+                          className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                        >
+                          <Building className="h-4 w-4 text-sky-600" />
+                          <span>{t.nav.b2b}</span>
+                        </Link>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
 
-              {/* Direct: Mentors */}
-              <Link
-                to="/mentors"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  location.pathname.startsWith('/mentors') ||
-                  location.pathname.startsWith('/mentor')
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
-                }`}
-              >
-                <Video className="h-3.5 w-3.5 text-slate-600" />
-                <span>{t.nav.mentors}</span>
-              </Link>
-
-              {/* Direct: B2B */}
-              <Link
-                to="/b2b/dashboard"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  location.pathname.startsWith('/b2b')
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
-                }`}
-              >
-                <Building className="h-3.5 w-3.5 text-slate-600" />
-                <span>{t.nav.b2b}</span>
-              </Link>
-
-              {/* Direct: Pricing */}
-              <Link
-                to="/pricing"
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  location.pathname === '/pricing'
-                    ? 'bg-emerald-50 text-emerald-700'
-                    : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
-                }`}
-              >
-                <CreditCard className="h-3.5 w-3.5 text-slate-600" />
-                <span>{t.nav.pricing}</span>
-              </Link>
-
-              {/* Admin Dropdown */}
+              {/* Admin Menu (Privileged Roles Only) */}
               {isAdmin && (
                 <div className="relative ml-1 pl-1 border-l border-slate-200" ref={adminRef}>
                   <button
                     type="button"
                     onClick={() => {
                       setAdminOpen(!adminOpen);
-                      setPracticeOpen(false);
-                      setGrowthOpen(false);
+                      setMoreMenuOpen(false);
+                      setUserMenuOpen(false);
                     }}
                     className={`flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg transition-colors ${
                       isAdminActive
-                        ? 'bg-purple-100 text-purple-800'
+                        ? 'bg-purple-100 text-purple-900'
                         : 'text-purple-700 hover:bg-purple-50'
                     }`}
+                    aria-expanded={adminOpen}
+                    aria-haspopup="true"
                   >
                     <Shield className="h-3.5 w-3.5" />
                     <span>{t.nav.admin}</span>
@@ -285,31 +275,31 @@ export function Navbar() {
                   </button>
 
                   {adminOpen && (
-                    <div className="absolute top-full left-0 mt-1.5 w-48 bg-white rounded-xl shadow-lg border border-purple-100 py-1.5 z-50 animate-slide-up">
+                    <div className="absolute top-full left-0 mt-1.5 w-48 bg-white rounded-xl shadow-xl border border-purple-100 py-1.5 z-50 animate-slide-up">
                       <Link
                         to="/admin/users"
-                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-800"
+                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-900"
                       >
                         <Users className="h-3.5 w-3.5 text-purple-600" />
                         <span>{t.nav.users}</span>
                       </Link>
                       <Link
                         to="/admin/ai-runs"
-                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-800"
+                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-900"
                       >
                         <Activity className="h-3.5 w-3.5 text-purple-600" />
                         <span>{t.nav.aiTelemetry}</span>
                       </Link>
                       <Link
                         to="/admin/prompts"
-                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-800"
+                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-900"
                       >
                         <FileText className="h-3.5 w-3.5 text-purple-600" />
                         <span>{t.nav.prompts}</span>
                       </Link>
                       <Link
                         to="/admin/ai-eval"
-                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-800"
+                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-purple-50 hover:text-purple-900"
                       >
                         <TestTube className="h-3.5 w-3.5 text-purple-600" />
                         <span>{t.nav.evalHarness}</span>
@@ -322,13 +312,13 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right: Language toggle & User profile / Auth buttons */}
+        {/* Right Section: Language switcher & User profile / Auth buttons */}
         <div className="flex items-center gap-2.5">
-          {/* Bilingual Language Switcher */}
+          {/* Language Switcher */}
           <button
             type="button"
             onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
             title="Switch Language / Chuyển đổi ngôn ngữ"
           >
             <Globe className="h-3.5 w-3.5 text-slate-500" />
@@ -336,13 +326,22 @@ export function Navbar() {
           </button>
 
           {isAuthenticated ? (
-            <div className="flex items-center gap-2">
-              {/* User Profile Dropdown */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Gamification Level & Streak Widget */}
+              <XpProgressWidget />
+
+              {/* User Menu Dropdown */}
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded-full transition-colors"
+                  onClick={() => {
+                    setUserMenuOpen(!userMenuOpen);
+                    setMoreMenuOpen(false);
+                    setAdminOpen(false);
+                  }}
+                  className="flex items-center gap-2 text-xs text-slate-700 bg-slate-100 hover:bg-slate-200/80 px-2.5 py-1.5 rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                  aria-expanded={userMenuOpen}
+                  aria-haspopup="true"
                 >
                   <div className="h-5 w-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold">
                     {(user?.profile?.fullName || user?.email || 'U')[0].toUpperCase()}
@@ -359,30 +358,76 @@ export function Navbar() {
                 </button>
 
                 {userMenuOpen && (
-                  <div className="absolute right-0 top-full mt-1.5 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1.5 z-50 animate-slide-up">
+                  <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 py-1.5 z-50 animate-slide-up">
                     <div className="px-3.5 py-2 border-b border-slate-100">
                       <p className="text-xs font-bold text-slate-900 truncate">
-                        {user?.profile?.fullName || 'User'}
+                        {user?.profile?.fullName || 'Candidate'}
                       </p>
                       <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
                     </div>
 
                     <Link
+                      to="/gamification/badges"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                    >
+                      <Trophy className="h-3.5 w-3.5 text-amber-500" />
+                      <span>{language === 'vi' ? 'Huy hiệu & Thành tựu' : 'Badges & Achievements'}</span>
+                    </Link>
+
+                    <Link
+                      to="/gamification/leaderboard"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                    >
+                      <Award className="h-3.5 w-3.5 text-emerald-600" />
+                      <span>{language === 'vi' ? 'Bảng xếp hạng' : 'Leaderboard'}</span>
+                    </Link>
+
+                    <Link
                       to="/profile"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                     >
                       <User className="h-3.5 w-3.5 text-slate-400" />
                       <span>{t.nav.profile}</span>
                     </Link>
+
+                    <Link
+                      to="/profile/portfolio-settings"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
+                    >
+                      <Shield className="h-3.5 w-3.5 text-slate-400" />
+                      <span>{t.nav.portfolio}</span>
+                    </Link>
+
                     <Link
                       to="/billing"
-                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-600"
+                      className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                     >
                       <CreditCard className="h-3.5 w-3.5 text-slate-400" />
                       <span>{t.nav.billing}</span>
                     </Link>
 
-                    <div className="border-t border-slate-100 my-1"></div>
+                    <div className="border-t border-slate-100 my-1" />
+
+                    {/* Quick SFX Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => useGamificationStore.getState().toggleSfx()}
+                      className="w-full flex items-center justify-between px-3.5 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        {useGamificationStore.getState().sfxMuted ? (
+                          <VolumeX className="h-3.5 w-3.5 text-slate-400" />
+                        ) : (
+                          <Volume2 className="h-3.5 w-3.5 text-emerald-600" />
+                        )}
+                        <span>{language === 'vi' ? 'Hiệu ứng âm thanh' : 'Sound Effects'}</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">
+                        {useGamificationStore.getState().sfxMuted ? 'Muted' : 'On'}
+                      </span>
+                    </button>
+
+                    <div className="border-t border-slate-100 my-1" />
 
                     <button
                       type="button"
@@ -400,8 +445,9 @@ export function Navbar() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors"
-                aria-label="Open mobile navigation"
+                className="lg:hidden p-2 rounded-lg text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
+                aria-label="Toggle mobile menu"
+                aria-expanded={mobileMenuOpen}
               >
                 {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </button>
@@ -423,33 +469,40 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Drawer Navigation */}
+      {/* Mobile Drawer Navigation (375px responsive optimized) */}
       {mobileMenuOpen && isAuthenticated && (
-        <div className="lg:hidden fixed inset-0 top-16 z-50 bg-slate-900/50 backdrop-blur-xs flex flex-col justify-between">
-          <div className="bg-white border-b border-slate-200 p-4 space-y-4 max-h-[80vh] overflow-y-auto shadow-2xl">
-            {/* Practice Section */}
+        <div className="lg:hidden fixed inset-0 top-16 z-50 bg-slate-900/50 backdrop-blur-xs flex flex-col justify-between animate-fade-in">
+          <div className="bg-white border-b border-slate-200 p-4 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl">
+            {/* Primary Candidate Navigation */}
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3">
-                {t.nav.practiceMenu}
+                {language === 'vi' ? 'Hành trình Luyện tập' : 'Candidate Practice'}
               </span>
               <div className="mt-1 space-y-1">
                 <Link
+                  to="/"
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  <LayoutDashboard className="h-4 w-4 text-emerald-600" />
+                  <span>{language === 'vi' ? 'Tổng quan' : 'Dashboard'}</span>
+                </Link>
+                <Link
                   to="/interviews/new"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   <PlayCircle className="h-4 w-4 text-emerald-600" />
                   <span>{t.nav.newInterview}</span>
                 </Link>
                 <Link
-                  to="/flashcards"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
+                  to="/readiness"
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
                 >
-                  <BookOpen className="h-4 w-4 text-indigo-600" />
-                  <span>{t.nav.flashcards}</span>
+                  <Target className="h-4 w-4 text-amber-600" />
+                  <span>{t.nav.readiness}</span>
                 </Link>
                 <Link
                   to="/history"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   <History className="h-4 w-4 text-slate-600" />
                   <span>{t.nav.history}</span>
@@ -457,59 +510,36 @@ export function Navbar() {
               </div>
             </div>
 
-            {/* Growth Section */}
+            {/* Advanced Practice Section */}
             <div>
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3">
-                {t.nav.growthMenu}
+                {language === 'vi' ? 'Tính năng Mở rộng' : 'Advanced Tools'}
               </span>
               <div className="mt-1 space-y-1">
                 <Link
+                  to="/flashcards"
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
+                >
+                  <BookOpen className="h-4 w-4 text-indigo-600" />
+                  <span>{t.nav.flashcards}</span>
+                </Link>
+                <Link
                   to="/skills"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   <GitBranch className="h-4 w-4 text-emerald-600" />
                   <span>{t.nav.skills}</span>
                 </Link>
                 <Link
-                  to="/readiness"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
-                >
-                  <Target className="h-4 w-4 text-amber-600" />
-                  <span>{t.nav.readiness}</span>
-                </Link>
-                <Link
-                  to="/profile/portfolio-settings"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
-                >
-                  <Award className="h-4 w-4 text-purple-600" />
-                  <span>{t.nav.portfolio}</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Community & Enterprise */}
-            <div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 px-3">
-                {t.nav.communityMenu} & B2B
-              </span>
-              <div className="mt-1 space-y-1">
-                <Link
                   to="/mentors"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
                 >
-                  <Video className="h-4 w-4 text-slate-600" />
+                  <Video className="h-4 w-4 text-rose-600" />
                   <span>{t.nav.mentors}</span>
                 </Link>
                 <Link
-                  to="/b2b/dashboard"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
-                >
-                  <Building className="h-4 w-4 text-slate-600" />
-                  <span>{t.nav.b2b}</span>
-                </Link>
-                <Link
                   to="/pricing"
-                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-700"
+                  className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800"
                 >
                   <CreditCard className="h-4 w-4 text-slate-600" />
                   <span>{t.nav.pricing}</span>
@@ -574,3 +604,5 @@ export function Navbar() {
     </header>
   );
 }
+
+export default Navbar;

@@ -12,7 +12,7 @@ import {
   CardDescription,
 } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { Spinner } from '../../components/ui/Spinner';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { CompetencyRadarChart } from '../../components/analytics/CompetencyRadarChart';
 import { ProgressTrendChart } from '../../components/analytics/ProgressTrendChart';
 import {
@@ -26,7 +26,9 @@ import {
   CheckCircle2,
   BookOpen,
   ArrowRight,
-  Shield,
+  ShieldCheck,
+  Compass,
+  FileCheck,
 } from 'lucide-react';
 
 export function DashboardPage() {
@@ -43,8 +45,24 @@ export function DashboardPage() {
     queryFn: () => apiClient('/analytics/progress'),
   });
 
+  const isFirstTimeUser =
+    Number(radarData?.totalEvaluatedTurns || 0) === 0 &&
+    (!progressData?.sessions || progressData.sessions.length === 0);
+
   return (
     <div className="max-w-6xl mx-auto space-y-8">
+      {/* Formative Practice Platform Banner */}
+      <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs text-emerald-900 shadow-xs">
+        <div className="flex items-center gap-2.5">
+          <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
+          <p>
+            {language === 'vi'
+              ? 'Nền tảng luyện tập phỏng vấn kỹ thuật AI — Dữ liệu phân tích và điểm số chỉ nhằm mục đích tự học và phát triển năng lực cá nhân.'
+              : 'AI Technical Interview Practice Platform — All readiness analytics and scores are formative tools for self-improvement.'}
+          </p>
+        </div>
+      </div>
+
       {/* Welcome Hero Banner */}
       <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-lg border border-slate-700/50">
         <div className="relative z-10 max-w-2xl space-y-4">
@@ -94,6 +112,76 @@ export function DashboardPage() {
         <div className="absolute -right-16 -top-16 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-32 -bottom-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
       </div>
+
+      {/* FIRST-TIME CANDIDATE ONBOARDING EMPTY STATE */}
+      {isFirstTimeUser && (
+        <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50/50 via-white to-indigo-50/30 shadow-md p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-emerald-100 pb-6">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Compass className="h-5 w-5 text-emerald-600" />
+                <h3 className="text-lg sm:text-xl font-bold text-slate-900">
+                  {language === 'vi' ? '3 Bước Khởi Đầu Luyện Tập' : '3 Steps to Master Your Practice'}
+                </h3>
+              </div>
+              <p className="text-xs text-slate-600">
+                {language === 'vi'
+                  ? 'Quy trình đơn giản, hiệu quả giúp bạn làm quen và tự tin trước kỳ phỏng vấn'
+                  : 'A streamlined workflow designed to build interview reflexes and confidence'}
+              </p>
+            </div>
+            <Link to="/interviews/new">
+              <Button size="md" variant="primary" leftIcon={<PlayCircle className="h-4 w-4" />}>
+                <span>{language === 'vi' ? 'Bắt đầu Lượt Đầu Tiên' : 'Launch First Session'}</span>
+              </Button>
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="h-7 w-7 rounded-lg bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center">
+                1
+              </div>
+              <h4 className="font-bold text-sm text-slate-900">
+                {language === 'vi' ? 'Chọn Mục Tiêu Nghề Nghiệp' : 'Set Your Target Stack'}
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {language === 'vi'
+                  ? 'Lựa chọn vị trí (Frontend, Backend, Fullstack), cấp bậc và 1-5 công nghệ trọng tâm.'
+                  : 'Pick your engineering track, seniority, and up to 5 core technologies.'}
+              </p>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="h-7 w-7 rounded-lg bg-indigo-100 text-indigo-800 font-bold text-xs flex items-center justify-center">
+                2
+              </div>
+              <h4 className="font-bold text-sm text-slate-900">
+                {language === 'vi' ? 'Trả Lời 5 Câu Hỏi Thích Ứng' : 'Answer 5 Adaptive Questions'}
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {language === 'vi'
+                  ? 'AI tự động điều chỉnh độ khó Dễ / Vừa / Khó theo chất lượng câu trả lời của bạn.'
+                  : 'AI orchestrator dynamically scales difficulty based on your explanation depth.'}
+              </p>
+            </div>
+
+            <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
+              <div className="h-7 w-7 rounded-lg bg-purple-100 text-purple-800 font-bold text-xs flex items-center justify-center">
+                3
+              </div>
+              <h4 className="font-bold text-sm text-slate-900">
+                {language === 'vi' ? 'Nhận Lộ Trình Cải Thiện' : 'Personalized Remediation'}
+              </h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                {language === 'vi'
+                  ? 'Nhận báo cáo phân tích rubric 3 chiều, trích dẫn bằng chứng và danh sách chủ đề cần ôn tập.'
+                  : 'Review deterministic rubric scoring, evidence quotes, and targeted flashcards.'}
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Quick Launch Action Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -239,8 +327,8 @@ export function DashboardPage() {
           <CardContent className="pt-2 flex flex-col items-center justify-center flex-1">
             {isLoadingRadar ? (
               <div className="py-20 flex flex-col items-center gap-2">
-                <Spinner size="md" />
-                <span className="text-xs text-slate-400">Loading radar data...</span>
+                <Skeleton variant="circular" width={180} height={180} />
+                <span className="text-xs text-slate-400 mt-2">Loading radar data...</span>
               </div>
             ) : radarData?.competencies?.length > 0 ? (
               <div className="w-full flex flex-col items-center space-y-4">
@@ -320,8 +408,8 @@ export function DashboardPage() {
           <CardContent className="pt-2 flex-1 flex flex-col justify-center">
             {isLoadingProgress ? (
               <div className="py-20 flex flex-col items-center justify-center gap-2">
-                <Spinner size="md" />
-                <span className="text-xs text-slate-400">Loading progress trend...</span>
+                <Skeleton variant="rectangular" height={160} />
+                <span className="text-xs text-slate-400 mt-2">Loading progress trend...</span>
               </div>
             ) : progressData?.sessions?.length > 0 ? (
               <ProgressTrendChart
@@ -345,7 +433,7 @@ export function DashboardPage() {
         </Card>
       </div>
 
-      {/* Highlights / Features Banner */}
+      {/* Value Proposition Highlights */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
         <Card className="border-slate-200">
           <CardContent className="p-5 space-y-2">
@@ -382,7 +470,7 @@ export function DashboardPage() {
         <Card className="border-slate-200">
           <CardContent className="p-5 space-y-2">
             <div className="bg-purple-100 text-purple-800 p-2 rounded-xl w-fit">
-              <Shield className="h-5 w-5" />
+              <FileCheck className="h-5 w-5" />
             </div>
             <h3 className="font-bold text-sm text-slate-900">
               {language === 'vi' ? 'Lộ Trình Học Tập Cá Nhân Hóa' : 'Custom Action Roadmap'}

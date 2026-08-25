@@ -1,5 +1,6 @@
 import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import {
@@ -11,9 +12,12 @@ import {
   CreateCheckoutRequest,
   CheckoutResponse,
   SubscriptionStatus,
+  CreatePayosPaymentDto,
+  PayosPaymentResponseDto,
 } from '@ai-interview/contracts';
 import { MockBillingProvider } from './providers/mock-billing.provider';
 import { StripeProvider } from './providers/stripe.provider';
+import { PayosProvider } from './providers/payos.provider';
 import { UsageMeterService } from './usage-meter.service';
 
 @Injectable()
@@ -25,7 +29,9 @@ export class BillingService {
     private readonly configService: ConfigService,
     private readonly mockBilling: MockBillingProvider,
     private readonly stripeBilling: StripeProvider,
+    private readonly payosProvider: PayosProvider,
     private readonly usageMeter: UsageMeterService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   private getProvider() {
@@ -304,4 +310,185 @@ export class BillingService {
       code: promo.code,
     };
   }
+
+  async createPayosPayment(userId: string, req: CreatePayosPaymentDto): Promise<PayosPaymentResponseDto> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, 'User not found', HttpStatus.NOT_FOUND);
+    }
+
+    const plan = await this.prisma.subscriptionPlan.findUnique({
+      where: { slug: req.planSlug },
+    });
+
+    if (!plan) {
+      throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, 'Subscription plan not found', HttpStatus.NOT_FOUND);
+    }
+
+    const isYearly = req.billingCycle === 'yearly';
+    // Convert USD plan price to VND (~25,400 VND/USD rate) or use fixed VND packages
+    const baseUsdPrice = isYearly ? Number(plan.priceYearly) : Number(plan.priceMonthly);
+    const amountVnd = Math.round(baseUsdPrice * 25400);
+
+    const orderCode = Number(`${Date.now()}`.slice(-6)) + Math.floor(Math.random() * 1000);
+    const returnUrl = req.returnUrl || `${process.env.APP_URL || 'http://localhost:5173'}/billing?success=true`;
+    const cancelUrl = req.cancelUrl || `${process.env.APP_URL || 'http://localhost:5173'}/billing?canceled=true`;
+
+    const description = `AI INT ${plan.slug.toUpperCase()}`;
+
+    const paymentResponse = await this.payosProvider.createPaymentLink({
+      orderCode,
+      amount: amountVnd,
+      description,
+      returnUrl,
+      cancelUrl,
+      items: [
+        {
+          name: `${plan.name} (${isYearly ? 'Yearly' : 'Monthly'})`,
+          quantity: 1,
+          price: amountVnd,
+        },
+      ],
+    });
+
+    // Record audit log
+    await this.prisma.auditLog.create({
+      data: {
+        userId,
+        action: AuditAction.SUBSCRIPTION_CREATED,
+        resource: 'subscription_payos',
+        resourceId: plan.id,
+        details: { orderCode, amountVnd, planSlug: plan.slug, billingCycle: req.billingCycle },
+      },
+    });
+
+    return paymentResponse;
+  }
+
+  async handlePayosWebhook(webhookBody: any): Promise<{ success: boolean; message: string }> {
+    this.logger.log(`Processing PayOS VietQR Webhook notification`);
+
+    const verifiedData = this.payosProvider.verifyWebhookData(webhookBody);
+    if (!verifiedData) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Invalid PayOS webhook signature or payload',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const { orderCode, amount, code } = verifiedData;
+    if (code !== '00') {
+      this.logger.warn(`PayOS transaction code not success: ${code}`);
+      return { success: false, message: `Transaction failed with code ${code}` };
+    }
+
+    // Find audit log with matching orderCode to locate user and plan
+    const audit = await this.prisma.auditLog.findFirst({
+      where: {
+        action: AuditAction.SUBSCRIPTION_CREATED,
+        resource: 'subscription_payos',
+        details: {
+          path: ['orderCode'],
+          equals: orderCode,
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (audit && audit.userId) {
+      const userId: string = audit.userId;
+      const details = audit.details as any;
+      const planSlug = details?.planSlug || 'pro';
+      const isYearly = details?.billingCycle === 'yearly';
+
+      const plan = await this.prisma.subscriptionPlan.findUnique({
+        where: { slug: planSlug },
+      });
+
+      if (plan) {
+        const now = new Date();
+        const periodEnd = new Date();
+        if (isYearly) {
+          periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+        } else {
+          periodEnd.setMonth(periodEnd.getMonth() + 1);
+        }
+
+        let subId: string | undefined;
+
+        await this.prisma.$transaction(async tx => {
+          const existingSub = await tx.subscription.findFirst({
+            where: { userId },
+          });
+
+          if (existingSub) {
+            const updated = await tx.subscription.update({
+              where: { id: existingSub.id },
+              data: {
+                planId: plan.id,
+                status: SubscriptionStatus.ACTIVE as any,
+                provider: 'PAYOS',
+                currentPeriodStart: now,
+                currentPeriodEnd: periodEnd,
+                cancelAtPeriodEnd: false,
+              },
+            });
+            subId = updated.id;
+          } else {
+            const created = await tx.subscription.create({
+              data: {
+                userId,
+                planId: plan.id,
+                status: SubscriptionStatus.ACTIVE as any,
+                provider: 'PAYOS',
+                currentPeriodStart: now,
+                currentPeriodEnd: periodEnd,
+              },
+            });
+            subId = created.id;
+          }
+
+          // Create paid Invoice
+          await tx.invoice.create({
+            data: {
+              userId,
+              subscriptionId: subId,
+              amountTotal: amount,
+              currency: 'VND',
+              status: 'PAID',
+              pdfUrl: `https://ai-interview.dev/invoices/payos-${orderCode}.pdf`,
+              paidAt: now,
+            },
+          });
+        });
+
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          include: { profile: true },
+        });
+
+        // Emit billing.payment_succeeded event to send confirmation receipt email
+        this.eventEmitter.emit('billing.payment_succeeded', {
+          userId,
+          email: user?.email || '',
+          userName: user?.profile?.fullName || 'Valued Member',
+          planName: plan.name,
+          amount,
+          currency: 'VND',
+          paymentMethod: 'VietQR (PayOS)',
+          invoiceId: `INV-PAYOS-${orderCode}`,
+          paidAt: now.toISOString().split('T')[0],
+        });
+
+        this.logger.log(`Successfully activated PayOS VietQR subscription for user ${userId}`);
+      }
+    }
+
+    return { success: true, message: 'PayOS webhook processed successfully' };
+  }
 }
+

@@ -12,15 +12,26 @@ import {
 } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
-import { Check, Sparkles, Zap, Shield, Rocket } from 'lucide-react';
+import { VietQrCheckoutModal } from '../../components/billing/VietQrCheckoutModal';
+import { Check, Sparkles, Zap, Shield, Rocket, QrCode } from 'lucide-react';
 
 export function PricingPage() {
-  const { plans, isLoadingPlans, subscription, createCheckout, isCreatingCheckout } = useBilling();
+  const {
+    plans,
+    isLoadingPlans,
+    subscription,
+    createCheckout,
+    isCreatingCheckout,
+    createPayosCheckout,
+    isCreatingPayosCheckout,
+  } = useBilling();
   const { language } = useI18nStore();
   const { isAuthenticated } = useAuthStore();
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [selectedPlanSlug, setSelectedPlanSlug] = useState<string | null>(null);
+  const [payosData, setPayosData] = useState<any | null>(null);
+  const [showVietQrModal, setShowVietQrModal] = useState<boolean>(false);
 
   const handleSelectPlan = async (planSlug: string) => {
     if (!isAuthenticated) {
@@ -44,6 +55,27 @@ export function PricingPage() {
       }
     } catch (err) {
       console.error('Checkout failed', err);
+    }
+  };
+
+  const handlePayosCheckout = async (planSlug: string) => {
+    if (!isAuthenticated) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      return;
+    }
+    if (planSlug === 'free') return;
+    setSelectedPlanSlug(planSlug);
+    try {
+      const response = await createPayosCheckout({
+        planSlug,
+        billingCycle,
+      });
+      setPayosData(response);
+      setShowVietQrModal(true);
+    } catch (err) {
+      console.error('PayOS checkout failed', err);
     }
   };
 
@@ -217,26 +249,60 @@ export function PricingPage() {
                 </div>
 
                 {/* Call to action button */}
-                <Button
-                  variant={isPopular ? 'primary' : 'outline'}
-                  size="md"
-                  onClick={() => handleSelectPlan(plan.slug)}
-                  disabled={isCurrent || (isCreatingCheckout && selectedPlanSlug === plan.slug)}
-                  isLoading={isCreatingCheckout && selectedPlanSlug === plan.slug}
-                  className="w-full font-bold shadow-xs"
-                  data-testid={`select-plan-${plan.slug}`}
-                >
-                  {isCurrent
-                    ? 'Active Plan'
-                    : plan.slug === 'free'
-                      ? 'Free Forever'
-                      : `Upgrade to ${plan.name}`}
-                </Button>
+                <div className="space-y-2">
+                  <Button
+                    variant={isPopular ? 'primary' : 'outline'}
+                    size="md"
+                    onClick={() => handleSelectPlan(plan.slug)}
+                    disabled={isCurrent || (isCreatingCheckout && selectedPlanSlug === plan.slug)}
+                    isLoading={isCreatingCheckout && selectedPlanSlug === plan.slug}
+                    className="w-full font-bold shadow-xs"
+                    data-testid={`select-plan-${plan.slug}`}
+                  >
+                    {isCurrent
+                      ? 'Active Plan'
+                      : plan.slug === 'free'
+                        ? 'Free Forever'
+                        : `Upgrade to ${plan.name}`}
+                  </Button>
+
+                  {plan.slug !== 'free' && !isCurrent && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePayosCheckout(plan.slug)}
+                      disabled={isCreatingPayosCheckout && selectedPlanSlug === plan.slug}
+                      isLoading={isCreatingPayosCheckout && selectedPlanSlug === plan.slug}
+                      className="w-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50 border-emerald-300"
+                    >
+                      <QrCode className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                      <span>{language === 'vi' ? 'Thanh toán VietQR' : 'Pay with VietQR'}</span>
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      {/* VietQR Checkout Modal */}
+      {showVietQrModal && payosData && (
+        <VietQrCheckoutModal
+          isOpen={showVietQrModal}
+          onClose={() => {
+            setShowVietQrModal(false);
+            setPayosData(null);
+          }}
+          paymentData={payosData}
+          onPaymentSuccess={() => {
+            setShowVietQrModal(false);
+            if (typeof window !== 'undefined') {
+              window.location.href = '/billing?payment=success';
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -15,6 +15,11 @@ import {
   jwtConfig,
   aiConfig,
   featuresConfig,
+  storageConfig,
+  emailConfig,
+  billingConfig,
+  voiceConfig,
+  visionConfig,
 } from './config/configuration';
 
 @Global()
@@ -23,7 +28,19 @@ import {
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
-      load: [appConfig, dbConfig, redisConfig, jwtConfig, aiConfig, featuresConfig],
+      load: [
+        appConfig,
+        dbConfig,
+        redisConfig,
+        jwtConfig,
+        aiConfig,
+        featuresConfig,
+        storageConfig,
+        emailConfig,
+        billingConfig,
+        voiceConfig,
+        visionConfig,
+      ],
     }),
     PrismaModule,
     RedisModule,

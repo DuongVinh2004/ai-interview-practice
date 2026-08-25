@@ -4,6 +4,7 @@ import { ComponentPalette, SystemComponentItem } from './ComponentPalette';
 import { DesignFeedbackPanel } from './DesignFeedbackPanel';
 import { CanvasTimelapse } from './CanvasTimelapse';
 import { DesignEvaluationReport } from './DesignEvaluationReport';
+import { VisualAnnotationOverlay } from '../../components/whiteboard/VisualAnnotationOverlay';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { Pen, Square, ArrowRight, Camera, CheckCircle2, Trash2 } from 'lucide-react';
@@ -295,6 +296,11 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
                 <span className="text-xs font-bold text-slate-800 truncate">{el.label}</span>
               </div>
             ))}
+
+            {/* Multimodal AI Vision Bounding Box Annotations Overlay */}
+            <VisualAnnotationOverlay
+              annotations={(evaluation as any)?.annotations || (analysisResult as any)?.annotations || []}
+            />
           </div>
 
           {/* Time-Lapse Slider */}

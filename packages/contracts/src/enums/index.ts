@@ -33,12 +33,14 @@ export enum QueueName {
   QUESTION_GENERATION = 'question-generation',
   ANSWER_EVALUATION = 'answer-evaluation',
   LEARNING_PATH = 'learning-path',
+  EMAIL = 'email',
 }
 
 export enum JobName {
   GENERATE_QUESTION = 'generate-question',
   EVALUATE_ANSWER = 'evaluate-answer',
   GENERATE_LEARNING_PATH = 'generate-learning-path',
+  SEND_EMAIL = 'send-email',
 }
 
 export enum SseEventType {
@@ -241,6 +243,12 @@ export enum AuditAction {
   SUBSCRIPTION_UPDATED = 'SUBSCRIPTION_UPDATED',
   SUBSCRIPTION_CANCELED = 'SUBSCRIPTION_CANCELED',
   INVOICE_PAID = 'INVOICE_PAID',
+  FILE_UPLOADED = 'FILE_UPLOADED',
+  FILE_DELETED = 'FILE_DELETED',
+  PAYMENT_LINK_CREATED = 'PAYMENT_LINK_CREATED',
+  PAYOS_WEBHOOK_RECEIVED = 'PAYOS_WEBHOOK_RECEIVED',
+  DIAGRAM_EVALUATED = 'DIAGRAM_EVALUATED',
+  EMAIL_DISPATCHED = 'EMAIL_DISPATCHED',
 }
 
 export enum ErrorCode {
@@ -318,3 +326,14 @@ export enum AssignmentStatus {
   PUBLISHED = 'PUBLISHED',
   CLOSED = 'CLOSED',
 }
+
+export enum XpSource {
+  INTERVIEW_COMPLETE = 'INTERVIEW_COMPLETE',
+  FLASHCARD_REVIEW = 'FLASHCARD_REVIEW',
+  CODING_SUBMIT = 'CODING_SUBMIT',
+  STAR_COMPLETE = 'STAR_COMPLETE',
+  STREAK_BONUS = 'STREAK_BONUS',
+  BADGE_UNLOCK = 'BADGE_UNLOCK',
+  DAILY_LOGIN = 'DAILY_LOGIN',
+}
+

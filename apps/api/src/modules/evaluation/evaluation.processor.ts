@@ -9,6 +9,7 @@ import { DifficultyCalculator } from '../ai-orchestrator/difficulty/difficulty.c
 import { QueueName, JobName, SessionState, SseEventType } from '@ai-interview/contracts';
 import { MetricsService } from '../platform/metrics/metrics.service';
 import { TelemetryService } from '../platform/telemetry/telemetry.service';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { StarRubric } from './rubrics/star-rubric';
 
@@ -34,6 +35,7 @@ export class EvaluationProcessor extends WorkerHost {
     private readonly learningPathQueue: Queue,
     @Optional() private readonly metricsService?: MetricsService,
     @Optional() private readonly telemetryService?: TelemetryService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {
     super();
   }
@@ -321,6 +323,15 @@ export class EvaluationProcessor extends WorkerHost {
         },
       });
 
+      // Emit domain event for gamification engine
+      this.eventEmitter?.emit('evaluation.completed', {
+        userId: session.userId,
+        sessionId,
+        turnNumber,
+        score: evaluationResult.score,
+        sessionMode: session.sessionMode,
+      });
+
       if (!isFinalTurn) {
         if (didTransition) {
           const nextTurnNumber = turnNumber + 1;
@@ -374,6 +385,14 @@ export class EvaluationProcessor extends WorkerHost {
           this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_UPDATED, {
             sessionId,
             state: SessionState.COMPLETED,
+          });
+
+          // Emit interview.completed for gamification XP & Badges
+          this.eventEmitter?.emit('interview.completed', {
+            userId: session.userId,
+            sessionId,
+            overallScore: evaluationResult.score,
+            sessionMode: session.sessionMode,
           });
         } else {
           this.logger.warn(

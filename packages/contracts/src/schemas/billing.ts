@@ -79,3 +79,52 @@ export const InvoiceDtoSchema = z.object({
   paidAt: z.string().datetime().nullable().optional(),
 });
 export type InvoiceDto = z.infer<typeof InvoiceDtoSchema>;
+
+export const CreatePayosPaymentSchema = z.object({
+  planSlug: z.string(),
+  billingCycle: z.enum(['monthly', 'yearly']).default('monthly'),
+  returnUrl: z.string().url().optional(),
+  cancelUrl: z.string().url().optional(),
+});
+export type CreatePayosPaymentDto = z.infer<typeof CreatePayosPaymentSchema>;
+
+export const PayosPaymentResponseSchema = z.object({
+  orderCode: z.number(),
+  checkoutUrl: z.string(),
+  qrCode: z.string(),
+  amount: z.number(),
+  currency: z.string().default('VND'),
+  status: z.string().default('PENDING'),
+  accountNumber: z.string().optional(),
+  accountName: z.string().optional(),
+  bin: z.string().optional(),
+  description: z.string().optional(),
+});
+export type PayosPaymentResponseDto = z.infer<typeof PayosPaymentResponseSchema>;
+
+export const PayosWebhookSchema = z.object({
+  code: z.string().or(z.number()),
+  desc: z.string(),
+  success: z.boolean().optional(),
+  data: z.object({
+    orderCode: z.number(),
+    amount: z.number(),
+    description: z.string(),
+    accountNumber: z.string().optional(),
+    reference: z.string().optional(),
+    transactionDateTime: z.string().optional(),
+    currency: z.string().optional(),
+    paymentLinkId: z.string().optional(),
+    code: z.string().optional(),
+    desc: z.string().optional(),
+    counterAccountBankId: z.string().nullable().optional(),
+    counterAccountBankName: z.string().nullable().optional(),
+    counterAccountName: z.string().nullable().optional(),
+    counterAccountNumber: z.string().nullable().optional(),
+    virtualAccountName: z.string().nullable().optional(),
+    virtualAccountNumber: z.string().nullable().optional(),
+  }),
+  signature: z.string(),
+});
+export type PayosWebhookDto = z.infer<typeof PayosWebhookSchema>;
+

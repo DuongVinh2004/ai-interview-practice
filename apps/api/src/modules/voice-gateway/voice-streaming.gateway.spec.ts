@@ -4,6 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { VoiceStreamingGateway } from './gateways/voice-streaming.gateway';
 import { VadEngineService } from './services/vad-engine.service';
 import { MockVoiceProvider } from './providers/mock-voice.provider';
+import { DeepgramSttProvider } from './providers/deepgram-stt.provider';
+import { ElevenLabsTtsProvider } from './providers/elevenlabs-tts.provider';
+import { SentenceChunkerService } from './services/sentence-chunker.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/contracts';
 
@@ -31,7 +34,10 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
   };
 
   const mockConfigService = {
-    get: jest.fn().mockReturnValue('test-jwt-secret'),
+    get: jest.fn((key: string) => {
+      if (key === 'jwt.accessSecret') return 'test-jwt-secret';
+      return null;
+    }),
   };
 
   beforeEach(async () => {
@@ -40,6 +46,9 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
         VoiceStreamingGateway,
         VadEngineService,
         MockVoiceProvider,
+        DeepgramSttProvider,
+        ElevenLabsTtsProvider,
+        SentenceChunkerService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },

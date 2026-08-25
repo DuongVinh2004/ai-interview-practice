@@ -69,12 +69,12 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (profileData) {
-      setFullName(profileData.fullName || '');
-      setTargetRole(profileData.targetRole || 'Fullstack Engineer');
-      setTargetLevel(profileData.targetLevel || 'Senior');
-      setBio(profileData.bio || '');
+      setFullName(profileData.fullName || user?.profile?.fullName || '');
+      setTargetRole(profileData.targetRole || user?.profile?.targetRole || 'Fullstack Engineer');
+      setTargetLevel(profileData.targetLevel || user?.profile?.targetLevel || 'Senior');
+      setBio(profileData.bio || user?.profile?.bio || '');
     }
-  }, [profileData]);
+  }, [profileData, user]);
 
   // Update profile mutation
   const updateMutation = useMutation({

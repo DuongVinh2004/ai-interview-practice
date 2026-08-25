@@ -41,6 +41,19 @@ export class BillingController {
     });
   }
 
+  @Post('payos/checkout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create PayOS VietQR payment link for subscription upgrade' })
+  async createPayosCheckout(@CurrentUser('sub') userId: string, @Body() dto: any) {
+    return this.billingService.createPayosPayment(userId, {
+      planSlug: dto.planSlug,
+      billingCycle: dto.billingCycle || 'monthly',
+      returnUrl: dto.returnUrl,
+      cancelUrl: dto.cancelUrl,
+    });
+  }
+
   @Post('cancel')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

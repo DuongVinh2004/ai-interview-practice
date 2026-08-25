@@ -37,6 +37,7 @@ import { QueueName } from '@ai-interview/contracts';
       { name: QueueName.QUESTION_GENERATION },
       { name: QueueName.ANSWER_EVALUATION },
       { name: QueueName.LEARNING_PATH },
+      { name: QueueName.EMAIL },
     ),
   ],
   providers: [RedisService],

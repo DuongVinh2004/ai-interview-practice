@@ -37,6 +37,7 @@ describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
         DesignAnalyzerService,
         DesignEvaluationService,
         MockVisionProvider,
+        { provide: 'VISION_PROVIDER', useClass: MockVisionProvider },
         { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();

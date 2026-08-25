@@ -13,6 +13,8 @@ import {
 import { MockSandboxProvider } from './providers/mock-sandbox.provider';
 import { Judge0Provider } from './providers/judge0.provider';
 import { ExecuteCodeDto, SubmitCodeDto } from './dto/code-execution.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class CodeExecutionService {
@@ -23,6 +25,7 @@ export class CodeExecutionService {
     private readonly configService: ConfigService,
     private readonly mockSandbox: MockSandboxProvider,
     private readonly judge0Sandbox: Judge0Provider,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {}
 
   private getSandboxProvider() {
@@ -188,6 +191,17 @@ export class CodeExecutionService {
           timeComplexity: aiReview.timeComplexity,
         },
       },
+    });
+
+    const allPassed =
+      execResult.testResults && execResult.testResults.length > 0
+        ? execResult.testResults.every(tr => tr.passed)
+        : execResult.status === SubmissionStatus.COMPLETED;
+
+    this.eventEmitter?.emit('code.executed', {
+      userId,
+      allTestsPassed: allPassed,
+      language: dto.language,
     });
 
     return {

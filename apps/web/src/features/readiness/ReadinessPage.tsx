@@ -9,7 +9,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Link } from 'react-router-dom';
-import { Sparkles, Target, ArrowRight, Info, Layers } from 'lucide-react';
+import { Sparkles, Target, ArrowRight, Info, Layers, ShieldCheck } from 'lucide-react';
 
 export function ReadinessPage() {
   const [role, setRole] = useState('backend');
@@ -38,7 +38,15 @@ export function ReadinessPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto" data-testid="readiness-page">
+    <div className="space-y-6 max-w-7xl mx-auto" data-testid="readiness-page">
+      {/* Formative Practice Disclaimer Alert */}
+      <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex items-center gap-3 text-xs text-emerald-900 shadow-xs">
+        <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
+        <p>
+          Mô hình dự báo năng lực phỏng vấn mang tính định hướng học tập cá nhân, hỗ trợ bạn lập kế hoạch ôn tập hiệu quả trước các vòng tuyển dụng thực tế.
+        </p>
+      </div>
+
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">

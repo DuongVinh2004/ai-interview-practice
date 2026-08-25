@@ -22,10 +22,12 @@ export function useVoiceStreaming(interviewId?: string) {
   const [isMuted, setIsMuted] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isCandidateSpeaking, setIsCandidateSpeaking] = useState(false);
+  const [candidateVolume, setCandidateVolume] = useState(0);
+  const [aiVolume, setAiVolume] = useState(0);
   const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>({
-    latencyMs: 25,
-    jitterMs: 3,
+    latencyMs: 22,
+    jitterMs: 2,
     packetLossRate: 0,
     quality: 'EXCELLENT',
   });
@@ -34,7 +36,9 @@ export function useVoiceStreaming(interviewId?: string) {
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
-  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
+  const pingIntervalRef = useRef<any>(null);
 
   // 1. Connect to Voice WebSocket Gateway
   const connect = useCallback(() => {
@@ -58,6 +62,14 @@ export function useVoiceStreaming(interviewId?: string) {
           interviewId,
         }),
       );
+
+      // Start ping loop for real-time latency measurement
+      pingIntervalRef.current = setInterval(() => {
+        if (ws.readyState === WebSocket.OPEN) {
+          const pingStart = Date.now();
+          ws.send(JSON.stringify({ type: 'ping', clientTimestamp: pingStart }));
+        }
+      }, 3000);
     };
 
     ws.onmessage = async event => {
@@ -77,11 +89,13 @@ export function useVoiceStreaming(interviewId?: string) {
     ws.onclose = () => {
       setConnectionStatus('ENDED');
       stopMicrophone();
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
     };
 
     ws.onerror = () => {
       setConnectionStatus('ERROR');
       stopMicrophone();
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
     };
   }, [interviewId]);
 
@@ -104,30 +118,47 @@ export function useVoiceStreaming(interviewId?: string) {
 
       case VoiceEventType.AI_SPEAKING_END:
         setIsAiSpeaking(false);
+        setAiVolume(0);
+        break;
+
+      case VoiceEventType.INTERIM_TRANSCRIPT:
+        if (msg.text) {
+          setTranscripts(prev => {
+            const filtered = prev.filter(t => t.isFinal || t.speaker !== SpeakerRole.USER);
+            return [
+              ...filtered,
+              { speaker: SpeakerRole.USER, text: msg.text, isFinal: false, timestamp: Date.now() },
+            ];
+          });
+        }
         break;
 
       case VoiceEventType.FINAL_TRANSCRIPT:
         if (msg.text) {
-          setTranscripts(prev => [
-            ...prev,
-            {
-              speaker: msg.speaker || SpeakerRole.USER,
-              text: msg.text,
-              isFinal: true,
-              timestamp: Date.now(),
-            },
-          ]);
+          setTranscripts(prev => {
+            const filtered = prev.filter(t => t.isFinal);
+            return [
+              ...filtered,
+              {
+                speaker: msg.speaker || SpeakerRole.USER,
+                text: msg.text,
+                isFinal: true,
+                timestamp: Date.now(),
+              },
+            ];
+          });
         }
         break;
 
       case VoiceEventType.INTERRUPT:
         setIsAiSpeaking(false);
+        setAiVolume(0);
         setBargeInCount(prev => prev + 1);
         break;
 
       case VoiceEventType.CONNECTION_QUALITY:
         setNetworkQuality({
-          latencyMs: msg.latencyMs || 20,
+          latencyMs: msg.latencyMs || 22,
           jitterMs: msg.jitterMs || 2,
           packetLossRate: msg.packetLossRate || 0,
           quality: msg.quality || 'EXCELLENT',
@@ -140,7 +171,7 @@ export function useVoiceStreaming(interviewId?: string) {
     }
   };
 
-  // 2. Microphone Capture
+  // 2. Microphone Capture with AudioWorkletNode & ScriptProcessor fallback
   const startMicrophone = async () => {
     try {
       if (!navigator.mediaDevices?.getUserMedia) return;
@@ -157,36 +188,72 @@ export function useVoiceStreaming(interviewId?: string) {
       mediaStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
       const audioCtx = new AudioCtx({ sampleRate: 16000 });
       audioContextRef.current = audioCtx;
 
       const source = audioCtx.createMediaStreamSource(stream);
-      const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
 
-      processor.onaudioprocess = e => {
-        if (isMuted || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+      // Attempt to load AudioWorkletProcessor
+      let workletLoaded = false;
+      if (audioCtx.audioWorklet) {
+        try {
+          await audioCtx.audioWorklet.addModule('/worklets/recorderWorkletProcessor.js');
+          const workletNode = new AudioWorkletNode(audioCtx, 'recorder-worklet');
+          workletNodeRef.current = workletNode;
 
-        const inputData = e.inputBuffer.getChannelData(0);
-        // Convert Float32 to Int16 PCM
-        const pcm16 = new Int16Array(inputData.length);
-        let sum = 0;
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-          sum += Math.abs(s);
+          workletNode.port.onmessage = (event: MessageEvent) => {
+            if (isMuted || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+            const buffer = event.data as ArrayBuffer;
+            const int16 = new Int16Array(buffer);
+            let sum = 0;
+            for (let i = 0; i < int16.length; i++) {
+              sum += Math.abs(int16[i]);
+            }
+            const avg = sum / int16.length / 32768.0;
+            setCandidateVolume(avg);
+            setIsCandidateSpeaking(avg > 0.03);
+
+            wsRef.current.send(buffer);
+          };
+
+          source.connect(workletNode);
+          workletNode.connect(audioCtx.destination);
+          workletLoaded = true;
+        } catch {
+          workletLoaded = false;
         }
+      }
 
-        const avgVolume = sum / inputData.length;
-        setIsCandidateSpeaking(avgVolume > 0.03);
+      // Fallback for environments without AudioWorklet support
+      if (!workletLoaded && typeof audioCtx.createScriptProcessor === 'function') {
+        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
+        scriptProcessorRef.current = processor;
 
-        wsRef.current.send(pcm16.buffer);
-      };
+        processor.onaudioprocess = e => {
+          if (isMuted || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
-      source.connect(processor);
-      processor.connect(audioCtx.destination);
+          const inputData = e.inputBuffer.getChannelData(0);
+          const pcm16 = new Int16Array(inputData.length);
+          let sum = 0;
+          for (let i = 0; i < inputData.length; i++) {
+            const s = Math.max(-1, Math.min(1, inputData[i]));
+            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+            sum += Math.abs(s);
+          }
+
+          const avgVolume = sum / inputData.length;
+          setCandidateVolume(avgVolume);
+          setIsCandidateSpeaking(avgVolume > 0.03);
+
+          wsRef.current.send(pcm16.buffer);
+        };
+
+        source.connect(processor);
+        processor.connect(audioCtx.destination);
+      }
     } catch (err) {
-      console.warn('Microphone capture not supported in this environment:', err);
+      console.warn('Microphone capture initialization failed:', err);
     }
   };
 
@@ -195,9 +262,13 @@ export function useVoiceStreaming(interviewId?: string) {
       mediaStreamRef.current.getTracks().forEach(t => t.stop());
       mediaStreamRef.current = null;
     }
-    if (processorRef.current) {
-      processorRef.current.disconnect();
-      processorRef.current = null;
+    if (workletNodeRef.current) {
+      workletNodeRef.current.disconnect();
+      workletNodeRef.current = null;
+    }
+    if (scriptProcessorRef.current) {
+      scriptProcessorRef.current.disconnect();
+      scriptProcessorRef.current = null;
     }
     if (audioContextRef.current) {
       audioContextRef.current.close().catch(() => {});
@@ -210,6 +281,7 @@ export function useVoiceStreaming(interviewId?: string) {
     try {
       if (!audioContextRef.current) {
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
         audioContextRef.current = new AudioCtx({ sampleRate: 24000 });
       }
       const ctx = audioContextRef.current;
@@ -217,8 +289,13 @@ export function useVoiceStreaming(interviewId?: string) {
         await ctx.resume();
       }
 
-      // Convert PCM16 Int16 to AudioBuffer
       const int16 = new Int16Array(arrayBuffer);
+      let sum = 0;
+      for (let i = 0; i < int16.length; i++) {
+        sum += Math.abs(int16[i]);
+      }
+      setAiVolume(sum / int16.length / 32768.0);
+
       const audioBuffer = ctx.createBuffer(1, int16.length, 24000);
       const channelData = audioBuffer.getChannelData(0);
       for (let i = 0; i < int16.length; i++) {
@@ -229,7 +306,7 @@ export function useVoiceStreaming(interviewId?: string) {
       source.buffer = audioBuffer;
       source.connect(ctx.destination);
       source.start();
-    } catch (e) {
+    } catch {
       // AudioContext playback fallback
     }
   };
@@ -239,6 +316,7 @@ export function useVoiceStreaming(interviewId?: string) {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: VoiceEventType.INTERRUPT }));
       setIsAiSpeaking(false);
+      setAiVolume(0);
       setBargeInCount(prev => prev + 1);
     }
   };
@@ -253,6 +331,7 @@ export function useVoiceStreaming(interviewId?: string) {
       wsRef.current.close();
     }
     stopMicrophone();
+    if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
     setConnectionStatus('ENDED');
   };
 
@@ -270,6 +349,8 @@ export function useVoiceStreaming(interviewId?: string) {
     toggleMute,
     isAiSpeaking,
     isCandidateSpeaking,
+    candidateVolume,
+    aiVolume,
     transcripts,
     networkQuality,
     bargeInCount,

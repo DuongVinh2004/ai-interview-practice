@@ -38,6 +38,7 @@ describe('SystemDesign Services (F003)', () => {
         DesignAnalyzerService,
         DesignEvaluationService,
         MockVisionProvider,
+        { provide: 'VISION_PROVIDER', useClass: MockVisionProvider },
         { provide: PrismaService, useValue: mockPrisma },
       ],
     }).compile();

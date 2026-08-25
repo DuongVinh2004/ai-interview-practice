@@ -77,6 +77,18 @@ export class SystemDesignController {
     return this.designEvaluationService.evaluateSession(userId, interviewId);
   }
 
+  @Post('evaluate-diagram')
+  @ApiOperation({
+    summary: 'On-demand multimodal Vision AI evaluation with visual bounding box annotations',
+  })
+  async evaluateDiagram(
+    @CurrentUser('sub') userId: string,
+    @Param('id') interviewId: string,
+    @Body() dto: any,
+  ) {
+    return this.designEvaluationService.evaluateDiagram(userId, interviewId, dto);
+  }
+
   @Get('export')
   @ApiOperation({ summary: 'Get export metadata for system design canvas' })
   async exportCanvas(@CurrentUser('sub') userId: string, @Param('id') interviewId: string) {
