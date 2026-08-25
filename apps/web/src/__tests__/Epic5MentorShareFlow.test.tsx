@@ -74,7 +74,8 @@ describe('Epic 5 Mentor Share Public Review Flow', () => {
                         keyFocus: 'Idempotency and Concurrency',
                       },
                       answer: {
-                        content: 'Use distributed locks and unique request tokens in Redis/PostgreSQL.',
+                        content:
+                          'Use distributed locks and unique request tokens in Redis/PostgreSQL.',
                         submittedAt: new Date().toISOString(),
                         evaluation: {
                           score: 9.0,
@@ -112,7 +113,9 @@ describe('Epic 5 Mentor Share Public Review Flow', () => {
       expect(screen.getByText('Anonymous Candidate')).toBeInTheDocument();
       expect(screen.getByText('Backend Engineer (Senior)')).toBeInTheDocument();
       expect(screen.getByText('8.8')).toBeInTheDocument();
-      expect(screen.getByText('How do you design a high-throughput idempotency service?')).toBeInTheDocument();
+      expect(
+        screen.getByText('How do you design a high-throughput idempotency service?'),
+      ).toBeInTheDocument();
     });
   });
 
@@ -143,7 +146,11 @@ describe('Epic 5 Mentor Share Public Review Flow', () => {
     fireEvent.click(submitBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/Mentor review feedback submitted successfully|Đã gửi nhận xét của Mentor/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Mentor review feedback submitted successfully|Đã gửi nhận xét của Mentor/i,
+        ),
+      ).toBeInTheDocument();
     });
   });
 });

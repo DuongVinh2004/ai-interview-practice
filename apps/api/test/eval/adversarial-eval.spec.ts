@@ -57,6 +57,8 @@ describe('M1 Adversarial & Safety Evaluation Suite', () => {
     });
 
     expect(result.data.safetyFlags).toContain('protected_trait_request');
-    expect(result.data.conciseFeedback).toContain('does not infer personal traits or make hiring decisions');
+    expect(result.data.conciseFeedback).toContain(
+      'does not infer personal traits or make hiring decisions',
+    );
   });
 });

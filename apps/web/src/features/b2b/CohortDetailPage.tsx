@@ -5,13 +5,7 @@ import { apiClient } from '../../lib/api-client';
 import { ImportRosterResultDto } from '@ai-interview/contracts';
 import { CohortAnalyticsView } from './components/CohortAnalyticsView';
 import { AssignmentManager } from './components/AssignmentManager';
-import {
-  Users,
-  BarChart3,
-  FileText,
-  Upload,
-  ArrowLeft,
-} from 'lucide-react';
+import { Users, BarChart3, FileText, Upload, ArrowLeft } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
 import { Alert } from '../../components/ui/Alert';
@@ -35,12 +29,15 @@ export const CohortDetailPage: React.FC = () => {
 
   const importMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiClient.post<ImportRosterResultDto>(`/b2b/cohorts/${cohortId}/members/csv`, {
-        csvContent,
-      });
+      const res = await apiClient.post<ImportRosterResultDto>(
+        `/b2b/cohorts/${cohortId}/members/csv`,
+        {
+          csvContent,
+        },
+      );
       return res.data;
     },
-    onSuccess: (data) => {
+    onSuccess: data => {
       queryClient.invalidateQueries({ queryKey: ['cohort-detail', cohortId] });
       queryClient.invalidateQueries({ queryKey: ['cohort-analytics', cohortId] });
       setImportResult(data);
@@ -50,7 +47,10 @@ export const CohortDetailPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-6 animate-pulse" data-testid="cohort-detail-loading">
+      <div
+        className="max-w-6xl mx-auto px-4 py-8 space-y-6 animate-pulse"
+        data-testid="cohort-detail-loading"
+      >
         <div className="h-24 bg-slate-100 rounded-3xl" />
         <div className="h-96 bg-slate-100 rounded-3xl" />
       </div>
@@ -61,7 +61,10 @@ export const CohortDetailPage: React.FC = () => {
     return (
       <div className="max-w-md mx-auto py-16 text-center">
         <h2 className="text-xl font-bold text-slate-900">Cohort Not Found</h2>
-        <Link to="/b2b/cohorts" className="text-emerald-700 font-semibold hover:underline mt-2 inline-block">
+        <Link
+          to="/b2b/cohorts"
+          className="text-emerald-700 font-semibold hover:underline mt-2 inline-block"
+        >
           Return to Cohort List
         </Link>
       </div>
@@ -78,7 +81,10 @@ instructor.lee@university.edu,"Prof. David Lee",INSTRUCTOR`;
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <Link to="/b2b/cohorts" className="text-xs font-semibold text-slate-500 hover:text-emerald-700 flex items-center gap-1 mb-1">
+          <Link
+            to="/b2b/cohorts"
+            className="text-xs font-semibold text-slate-500 hover:text-emerald-700 flex items-center gap-1 mb-1"
+          >
             <ArrowLeft className="h-3.5 w-3.5" /> Back to All Cohorts
           </Link>
           <div className="flex items-center gap-3">
@@ -148,11 +154,16 @@ instructor.lee@university.edu,"Prof. David Lee",INSTRUCTOR`;
       {activeTab === 'analytics' && <CohortAnalyticsView cohortId={cohortId || ''} />}
 
       {activeTab === 'roster' && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4" data-testid="roster-panel">
+        <div
+          className="bg-white rounded-3xl border border-slate-200 p-6 shadow-sm space-y-4"
+          data-testid="roster-panel"
+        >
           <div className="flex items-center justify-between mb-2">
             <div>
               <h3 className="font-bold text-base text-slate-900">Enrolled Members Roster</h3>
-              <p className="text-xs text-slate-500">Learners and instructors enrolled in this training cohort</p>
+              <p className="text-xs text-slate-500">
+                Learners and instructors enrolled in this training cohort
+              </p>
             </div>
           </div>
 
@@ -169,13 +180,21 @@ instructor.lee@university.edu,"Prof. David Lee",INSTRUCTOR`;
               <tbody className="divide-y divide-slate-100 text-slate-800">
                 {cohort.members && cohort.members.length > 0 ? (
                   cohort.members.map((member: any) => (
-                    <tr key={member.cohortMemberId} className="hover:bg-slate-50/50" data-testid="roster-row">
+                    <tr
+                      key={member.cohortMemberId}
+                      className="hover:bg-slate-50/50"
+                      data-testid="roster-row"
+                    >
                       <td className="py-3 px-4 font-bold">{member.fullName}</td>
                       <td className="py-3 px-4 font-mono text-slate-600">{member.email}</td>
                       <td className="py-3 px-4">
-                        <span className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] ${
-                          member.role === 'INSTRUCTOR' ? 'bg-purple-100 text-purple-800' : 'bg-emerald-100 text-emerald-800'
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 rounded-full font-bold uppercase text-[10px] ${
+                            member.role === 'INSTRUCTOR'
+                              ? 'bg-purple-100 text-purple-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
                           {member.role}
                         </span>
                       </td>
@@ -201,20 +220,32 @@ instructor.lee@university.edu,"Prof. David Lee",INSTRUCTOR`;
 
       {/* CSV Import Modal */}
       {isCsvModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm" data-testid="csv-modal">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
+          data-testid="csv-modal"
+        >
           <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <Upload className="h-5 w-5 text-emerald-600" /> Bulk Import Roster CSV
               </h3>
-              <button onClick={() => { setIsCsvModalOpen(false); setImportResult(null); }} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => {
+                  setIsCsvModalOpen(false);
+                  setImportResult(null);
+                }}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             {importResult && (
               <Alert variant={importResult.errors.length > 0 ? 'warning' : 'success'}>
                 <div className="space-y-1 text-xs">
                   <p className="font-bold">
-                    Successfully enrolled {importResult.successCount} of {importResult.totalImported} students! ({importResult.skippedCount} skipped)
+                    Successfully enrolled {importResult.successCount} of{' '}
+                    {importResult.totalImported} students! ({importResult.skippedCount} skipped)
                   </p>
                   {importResult.errors.length > 0 && (
                     <ul className="list-disc list-inside space-y-0.5 text-rose-700">
@@ -242,16 +273,27 @@ instructor.lee@university.edu,"Prof. David Lee",INSTRUCTOR`;
               <Textarea
                 rows={7}
                 value={csvContent}
-                onChange={(e) => setCsvContent(e.target.value)}
+                onChange={e => setCsvContent(e.target.value)}
                 placeholder="email,fullName,role&#10;alice@school.edu,Alice,STUDENT&#10;bob@school.edu,Bob,STUDENT"
                 className="font-mono text-xs"
                 data-testid="csv-textarea"
               />
-              <p className="text-[11px] text-slate-400">Headers supported: <code>email,fullName,role</code> (role can be STUDENT or INSTRUCTOR).</p>
+              <p className="text-[11px] text-slate-400">
+                Headers supported: <code>email,fullName,role</code> (role can be STUDENT or
+                INSTRUCTOR).
+              </p>
             </div>
 
             <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-              <Button type="button" variant="ghost" size="md" onClick={() => { setIsCsvModalOpen(false); setImportResult(null); }}>
+              <Button
+                type="button"
+                variant="ghost"
+                size="md"
+                onClick={() => {
+                  setIsCsvModalOpen(false);
+                  setImportResult(null);
+                }}
+              >
                 Close
               </Button>
               <Button

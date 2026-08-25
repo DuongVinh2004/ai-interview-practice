@@ -13,13 +13,7 @@ export interface PageHeaderProps {
   className?: string;
 }
 
-export function PageHeader({
-  title,
-  subtitle,
-  badge,
-  actions,
-  className,
-}: PageHeaderProps) {
+export function PageHeader({ title, subtitle, badge, actions, className }: PageHeaderProps) {
   return (
     <div
       className={cn(
@@ -39,9 +33,7 @@ export function PageHeader({
           )}
         </div>
         {subtitle && (
-          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">
-            {subtitle}
-          </p>
+          <p className="text-xs sm:text-sm text-slate-500 max-w-2xl leading-relaxed">{subtitle}</p>
         )}
       </div>
       {actions && <div className="flex items-center gap-2.5 flex-wrap">{actions}</div>}

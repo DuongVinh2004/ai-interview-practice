@@ -9,7 +9,13 @@ import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Bot, User, Mail, Lock, Eye, EyeOff } from 'lucide-react';
 
 export function RegisterPage() {
@@ -134,7 +140,11 @@ export function RegisterPage() {
               className="w-full h-11 font-bold shadow-sm"
               isLoading={isSubmitting}
             >
-              {isSubmitting ? (language === 'vi' ? 'Đang tạo...' : 'Creating...') : t.auth.signUpBtn}
+              {isSubmitting
+                ? language === 'vi'
+                  ? 'Đang tạo...'
+                  : 'Creating...'
+                : t.auth.signUpBtn}
             </Button>
           </form>
 

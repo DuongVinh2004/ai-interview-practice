@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsInt, IsArray, Min, Max, MaxLength } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsInt,
+  IsArray,
+  Min,
+  Max,
+  MaxLength,
+} from 'class-validator';
 import { TestCaseDto } from '@ai-interview/contracts';
 
 export class ExecuteCodeDto {

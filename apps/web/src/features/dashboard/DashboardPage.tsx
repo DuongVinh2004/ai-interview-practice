@@ -4,7 +4,13 @@ import { apiClient } from '../../lib/api-client';
 import { useAuthStore } from '../../stores/auth.store';
 import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { CompetencyRadarChart } from '../../components/analytics/CompetencyRadarChart';
@@ -250,12 +256,16 @@ export function DashboardPage() {
                     {radarData.topStrengths?.length > 0 ? (
                       <ul className="list-disc list-inside text-emerald-800 space-y-1 text-[11px]">
                         {radarData.topStrengths.map((s: string) => (
-                          <li key={s} className="truncate">{s}</li>
+                          <li key={s} className="truncate">
+                            {s}
+                          </li>
                         ))}
                       </ul>
                     ) : (
                       <p className="text-[11px] text-emerald-600">
-                        {language === 'vi' ? 'Hoàn thành thêm lượt để mở khóa' : 'Complete more sessions'}
+                        {language === 'vi'
+                          ? 'Hoàn thành thêm lượt để mở khóa'
+                          : 'Complete more sessions'}
                       </p>
                     )}
                   </div>
@@ -268,12 +278,16 @@ export function DashboardPage() {
                     {radarData.growthAreas?.length > 0 ? (
                       <ul className="list-disc list-inside text-amber-800 space-y-1 text-[11px]">
                         {radarData.growthAreas.map((g: string) => (
-                          <li key={g} className="truncate">{g}</li>
+                          <li key={g} className="truncate">
+                            {g}
+                          </li>
                         ))}
                       </ul>
                     ) : (
                       <p className="text-[11px] text-amber-600">
-                        {language === 'vi' ? 'Không phát hiện lỗ hổng lớn' : 'No major gaps detected'}
+                        {language === 'vi'
+                          ? 'Không phát hiện lỗ hổng lớn'
+                          : 'No major gaps detected'}
                       </p>
                     )}
                   </div>
@@ -298,9 +312,7 @@ export function DashboardPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-indigo-600" />
-              <CardTitle className="text-base font-bold">
-                {t.analytics.progressTitle}
-              </CardTitle>
+              <CardTitle className="text-base font-bold">{t.analytics.progressTitle}</CardTitle>
             </div>
             <CardDescription>{t.analytics.progressSubtitle}</CardDescription>
           </CardHeader>

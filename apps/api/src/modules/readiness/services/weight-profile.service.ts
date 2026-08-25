@@ -16,39 +16,39 @@ export class WeightProfileService {
 
   private readonly defaultProfiles: Record<string, RoleWeights> = {
     backend: {
-      [CompetencyArea.SYSTEM_DESIGN]: 0.30,
+      [CompetencyArea.SYSTEM_DESIGN]: 0.3,
       [CompetencyArea.DATABASE_CONCURRENCY]: 0.25,
-      [CompetencyArea.LANGUAGE_CORE]: 0.20,
+      [CompetencyArea.LANGUAGE_CORE]: 0.2,
       [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.15,
-      [CompetencyArea.RESILIENCE_SECURITY]: 0.10,
+      [CompetencyArea.RESILIENCE_SECURITY]: 0.1,
     },
     frontend: {
       [CompetencyArea.LANGUAGE_CORE]: 0.35,
       [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.25,
       [CompetencyArea.SYSTEM_DESIGN]: 0.15,
       [CompetencyArea.RESILIENCE_SECURITY]: 0.15,
-      [CompetencyArea.DATABASE_CONCURRENCY]: 0.10,
+      [CompetencyArea.DATABASE_CONCURRENCY]: 0.1,
     },
     fullstack: {
       [CompetencyArea.SYSTEM_DESIGN]: 0.25,
       [CompetencyArea.LANGUAGE_CORE]: 0.25,
-      [CompetencyArea.DATABASE_CONCURRENCY]: 0.20,
+      [CompetencyArea.DATABASE_CONCURRENCY]: 0.2,
       [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.15,
       [CompetencyArea.RESILIENCE_SECURITY]: 0.15,
     },
     devops: {
       [CompetencyArea.RESILIENCE_SECURITY]: 0.35,
       [CompetencyArea.SYSTEM_DESIGN]: 0.25,
-      [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.20,
-      [CompetencyArea.DATABASE_CONCURRENCY]: 0.10,
-      [CompetencyArea.LANGUAGE_CORE]: 0.10,
+      [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.2,
+      [CompetencyArea.DATABASE_CONCURRENCY]: 0.1,
+      [CompetencyArea.LANGUAGE_CORE]: 0.1,
     },
     qa: {
-      [CompetencyArea.LANGUAGE_CORE]: 0.30,
+      [CompetencyArea.LANGUAGE_CORE]: 0.3,
       [CompetencyArea.RESILIENCE_SECURITY]: 0.25,
-      [CompetencyArea.DATABASE_CONCURRENCY]: 0.20,
+      [CompetencyArea.DATABASE_CONCURRENCY]: 0.2,
       [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.15,
-      [CompetencyArea.SYSTEM_DESIGN]: 0.10,
+      [CompetencyArea.SYSTEM_DESIGN]: 0.1,
     },
   };
 

@@ -20,7 +20,7 @@ describe('Voice Streaming Components (F001)', () => {
           packetLossRate: 0.001,
           quality: 'EXCELLENT',
         }}
-      />
+      />,
     );
 
     expect(screen.getByTestId('network-quality-badge')).toBeInTheDocument();
@@ -38,7 +38,7 @@ describe('Voice Streaming Components (F001)', () => {
           levelName="STAFF"
           onFinish={onFinish}
         />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
 
     expect(screen.getByTestId('voice-interview-room')).toBeInTheDocument();

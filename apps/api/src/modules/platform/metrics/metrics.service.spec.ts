@@ -49,8 +49,15 @@ describe('MetricsService', () => {
   });
 
   it('should record BullMQ queue metrics', async () => {
-    service.bullmqJobsTotal.inc({ queue: 'answer-evaluation', job_name: 'evaluate_answer', status: 'completed' });
-    service.bullmqJobDurationSeconds.observe({ queue: 'answer-evaluation', job_name: 'evaluate_answer' }, 1.2);
+    service.bullmqJobsTotal.inc({
+      queue: 'answer-evaluation',
+      job_name: 'evaluate_answer',
+      status: 'completed',
+    });
+    service.bullmqJobDurationSeconds.observe(
+      { queue: 'answer-evaluation', job_name: 'evaluate_answer' },
+      1.2,
+    );
 
     const metrics = await service.getMetrics();
     expect(metrics).toContain('bullmq_jobs_total');

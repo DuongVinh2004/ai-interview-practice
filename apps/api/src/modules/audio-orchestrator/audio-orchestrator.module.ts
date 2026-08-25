@@ -6,15 +6,7 @@ import { MockAudioProvider } from './providers/mock-audio.provider';
 
 @Module({
   controllers: [AudioController],
-  providers: [
-    AudioOrchestratorService,
-    OpenAiAudioProvider,
-    MockAudioProvider,
-  ],
-  exports: [
-    AudioOrchestratorService,
-    OpenAiAudioProvider,
-    MockAudioProvider,
-  ],
+  providers: [AudioOrchestratorService, OpenAiAudioProvider, MockAudioProvider],
+  exports: [AudioOrchestratorService, OpenAiAudioProvider, MockAudioProvider],
 })
 export class AudioOrchestratorModule {}

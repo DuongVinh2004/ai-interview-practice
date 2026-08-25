@@ -318,4 +318,3 @@ export enum AssignmentStatus {
   PUBLISHED = 'PUBLISHED',
   CLOSED = 'CLOSED',
 }
-

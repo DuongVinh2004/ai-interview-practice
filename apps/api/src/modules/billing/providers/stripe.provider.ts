@@ -3,10 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import * as crypto from 'crypto';
 import { BillingProvider } from '../interfaces/billing-provider.interface';
-import {
-  CreateCheckoutRequest,
-  CheckoutResponse,
-} from '@ai-interview/contracts';
+import { CreateCheckoutRequest, CheckoutResponse } from '@ai-interview/contracts';
 
 @Injectable()
 export class StripeProvider implements BillingProvider {
@@ -151,7 +148,9 @@ export class StripeProvider implements BillingProvider {
       const eventTime = parseInt(timestamp, 10);
       const currentTime = Math.floor(Date.now() / 1000);
       if (isNaN(eventTime) || Math.abs(currentTime - eventTime) > 300) {
-        this.logger.warn(`Stripe webhook timestamp tolerance exceeded (${currentTime - eventTime}s)`);
+        this.logger.warn(
+          `Stripe webhook timestamp tolerance exceeded (${currentTime - eventTime}s)`,
+        );
         return false;
       }
 
@@ -163,7 +162,10 @@ export class StripeProvider implements BillingProvider {
 
       return signatures.some(sig => {
         try {
-          return crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expectedSignature, 'hex'));
+          return crypto.timingSafeEqual(
+            Buffer.from(sig, 'hex'),
+            Buffer.from(expectedSignature, 'hex'),
+          );
         } catch {
           return false;
         }
@@ -182,7 +184,9 @@ export class StripeProvider implements BillingProvider {
     const payloadStr = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
 
     if (!this.webhookSecret) {
-      this.logger.error('STRIPE_WEBHOOK_SECRET is not configured. Rejecting unauthenticated webhook.');
+      this.logger.error(
+        'STRIPE_WEBHOOK_SECRET is not configured. Rejecting unauthenticated webhook.',
+      );
       throw new BadRequestException('Stripe webhook verification failed: missing webhook secret');
     }
 
@@ -200,7 +204,9 @@ export class StripeProvider implements BillingProvider {
     const eventId = payload?.id;
     const data = payload?.data?.object;
 
-    this.logger.log(`Handling verified Stripe webhook event: ${eventType} (ID: ${eventId || 'n/a'})`);
+    this.logger.log(
+      `Handling verified Stripe webhook event: ${eventType} (ID: ${eventId || 'n/a'})`,
+    );
 
     if (this.prisma && eventId) {
       const existingEvent = await this.prisma.stripeEvent.findUnique({
@@ -208,7 +214,9 @@ export class StripeProvider implements BillingProvider {
       });
 
       if (existingEvent?.processed) {
-        this.logger.log(`Stripe event ${eventId} has already been processed. Skipping duplicate execution.`);
+        this.logger.log(
+          `Stripe event ${eventId} has already been processed. Skipping duplicate execution.`,
+        );
         return {
           eventType,
           handled: true,
@@ -371,7 +379,10 @@ export class StripeProvider implements BillingProvider {
           }
         }
       } catch (dbErr: any) {
-        this.logger.error(`Error processing webhook state transition: ${dbErr.message}`, dbErr.stack);
+        this.logger.error(
+          `Error processing webhook state transition: ${dbErr.message}`,
+          dbErr.stack,
+        );
       }
     }
 

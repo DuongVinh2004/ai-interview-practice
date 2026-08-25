@@ -137,7 +137,9 @@ export class MockAiProvider implements AiProvider {
           score: 0.0,
           rubricScores: { technicalAccuracy: 0.0, depth: 0.0, clarity: 0.0 },
           strengths: ['None'],
-          improvements: ['Answer must address the technical prompt instead of prompt injection instructions.'],
+          improvements: [
+            'Answer must address the technical prompt instead of prompt injection instructions.',
+          ],
           conciseFeedback: 'Prompt injection or adversarial instruction detected in submission.',
           evidence: [],
           confidence: 0.99,
@@ -167,7 +169,8 @@ export class MockAiProvider implements AiProvider {
           rubricScores: { technicalAccuracy: 2.0, depth: 1.0, clarity: 3.0 },
           strengths: ['Communication attempted'],
           improvements: ['Please focus strictly on technical engineering topics.'],
-          conciseFeedback: 'System evaluates technical knowledge only and does not infer personal traits or make hiring decisions.',
+          conciseFeedback:
+            'System evaluates technical knowledge only and does not infer personal traits or make hiring decisions.',
           evidence: [],
           confidence: 0.95,
           missingConcepts: ['Technical implementation details'],
@@ -185,7 +188,10 @@ export class MockAiProvider implements AiProvider {
     }
 
     // Verbosity manipulation detection (e.g. repeated same word 5+ times with no substance)
-    const cleanWords = answerLower.replace(/[^\p{L}\p{N}\s]/gu, '').split(/\s+/).filter(Boolean);
+    const cleanWords = answerLower
+      .replace(/[^\p{L}\p{N}\s]/gu, '')
+      .split(/\s+/)
+      .filter(Boolean);
     const wordCounts: Record<string, number> = {};
     for (const w of cleanWords) {
       wordCounts[w] = (wordCounts[w] || 0) + 1;
@@ -197,8 +203,11 @@ export class MockAiProvider implements AiProvider {
           score: 2.5,
           rubricScores: { technicalAccuracy: 2.5, depth: 2.0, clarity: 3.0 },
           strengths: ['Identified domain keywords'],
-          improvements: ['Avoid keyword repetition; provide substantive architectural explanations.'],
-          conciseFeedback: 'Answer contains excessive keyword repetition without substantive engineering mechanism.',
+          improvements: [
+            'Avoid keyword repetition; provide substantive architectural explanations.',
+          ],
+          conciseFeedback:
+            'Answer contains excessive keyword repetition without substantive engineering mechanism.',
           evidence: [`"${cleanWords.slice(0, 5).join(' ')}..."`],
           confidence: 0.85,
           missingConcepts: ['Concrete architectural implementation', 'Failure mode handling'],
@@ -243,34 +252,81 @@ export class MockAiProvider implements AiProvider {
       }
     } else {
       const qLower = (context.question || '').toLowerCase();
-      if (qLower.includes('isolation') || qLower.includes('dirty read') || qLower.includes('locking') || answerLower.includes('dirty read') || answerLower.includes('mvcc') || answerLower.includes('pessimistic')) {
+      if (
+        qLower.includes('isolation') ||
+        qLower.includes('dirty read') ||
+        qLower.includes('locking') ||
+        answerLower.includes('dirty read') ||
+        answerLower.includes('mvcc') ||
+        answerLower.includes('pessimistic')
+      ) {
         technicalKeyTerms.push(
           {
             term: 'isolation_anomalies / dirty_reads',
-            synonyms: ['dirty read', 'dirty reads', 'non-repeatable read', 'phantom read', 'anomalies', 'cột version'],
+            synonyms: [
+              'dirty read',
+              'dirty reads',
+              'non-repeatable read',
+              'phantom read',
+              'anomalies',
+              'cột version',
+            ],
             weight: 2.5,
           },
           {
             term: 'concurrency_mechanisms / mvcc',
-            synonyms: ['mvcc', 'snapshot', 'shared lock', 'predicate lock', 'where id = ?', 'select ... for update'],
+            synonyms: [
+              'mvcc',
+              'snapshot',
+              'shared lock',
+              'predicate lock',
+              'where id = ?',
+              'select ... for update',
+            ],
             weight: 2.5,
           },
           {
             term: 'serializable_isolation / 2pl',
-            synonyms: ['serializable', 'strict two-phase locking', '2pl', 'optimistic', 'pessimistic', 'rollback'],
+            synonyms: [
+              'serializable',
+              'strict two-phase locking',
+              '2pl',
+              'optimistic',
+              'pessimistic',
+              'rollback',
+            ],
             weight: 2.5,
           },
           {
             term: 'conflict_mitigation / locking_strategy',
-            synonyms: ['lock', 'locking', 'xung đột', 'khóa hàng', 'isolation level', 'cơ sở dữ liệu'],
+            synonyms: [
+              'lock',
+              'locking',
+              'xung đột',
+              'khóa hàng',
+              'isolation level',
+              'cơ sở dữ liệu',
+            ],
             weight: 2.5,
           },
         );
-      } else if (qLower.includes('cache') || qLower.includes('stampede') || answerLower.includes('cache-aside') || answerLower.includes('redis')) {
+      } else if (
+        qLower.includes('cache') ||
+        qLower.includes('stampede') ||
+        answerLower.includes('cache-aside') ||
+        answerLower.includes('redis')
+      ) {
         technicalKeyTerms.push(
           {
             term: 'cache_aside_pattern',
-            synonyms: ['cache-aside', 'cache aside', 'redis', 'đọc từ redis', 'cache hit', 'cache miss'],
+            synonyms: [
+              'cache-aside',
+              'cache aside',
+              'redis',
+              'đọc từ redis',
+              'cache hit',
+              'cache miss',
+            ],
             weight: 2.5,
           },
           {
@@ -280,7 +336,15 @@ export class MockAiProvider implements AiProvider {
           },
           {
             term: 'stampede_concurrency_lock',
-            synonyms: ['cache stampede', 'thundering herd', 'distributed mutex', 'redlock', 'mutex', 'xfetch', 'probabilistic'],
+            synonyms: [
+              'cache stampede',
+              'thundering herd',
+              'distributed mutex',
+              'redlock',
+              'mutex',
+              'xfetch',
+              'probabilistic',
+            ],
             weight: 2.5,
           },
           {
@@ -289,7 +353,13 @@ export class MockAiProvider implements AiProvider {
             weight: 2.5,
           },
         );
-      } else if (qLower.includes('go') || qLower.includes('channel') || qLower.includes('event loop') || answerLower.includes('goroutine') || answerLower.includes('libuv')) {
+      } else if (
+        qLower.includes('go') ||
+        qLower.includes('channel') ||
+        qLower.includes('event loop') ||
+        answerLower.includes('goroutine') ||
+        answerLower.includes('libuv')
+      ) {
         technicalKeyTerms.push(
           {
             term: 'concurrency_primitives',
@@ -303,7 +373,13 @@ export class MockAiProvider implements AiProvider {
           },
           {
             term: 'synchronization_phases',
-            synonyms: ['sync.waitgroup', 'waitgroup', 'check phase', 'setimmediate', 'select statement'],
+            synonyms: [
+              'sync.waitgroup',
+              'waitgroup',
+              'check phase',
+              'setimmediate',
+              'select statement',
+            ],
             weight: 2.5,
           },
           {
@@ -312,26 +388,67 @@ export class MockAiProvider implements AiProvider {
             weight: 2.5,
           },
         );
-      } else if (qLower.includes('outbox') || qLower.includes('saga') || qLower.includes('circuit breaker') || qLower.includes('jwt') || answerLower.includes('outbox') || answerLower.includes('saga') || answerLower.includes('half_open') || answerLower.includes('rs256')) {
+      } else if (
+        qLower.includes('outbox') ||
+        qLower.includes('saga') ||
+        qLower.includes('circuit breaker') ||
+        qLower.includes('jwt') ||
+        answerLower.includes('outbox') ||
+        answerLower.includes('saga') ||
+        answerLower.includes('half_open') ||
+        answerLower.includes('rs256')
+      ) {
         technicalKeyTerms.push(
           {
             term: 'architectural_pattern_structure',
-            synonyms: ['outbox', 'transactional outbox', 'saga', 'saga orchestration', 'circuit breaker', 'rs256', 'jwt'],
+            synonyms: [
+              'outbox',
+              'transactional outbox',
+              'saga',
+              'saga orchestration',
+              'circuit breaker',
+              'rs256',
+              'jwt',
+            ],
             weight: 2.5,
           },
           {
             term: 'atomicity_compensating_states',
-            synonyms: ['local database transaction', 'compensating transaction', 'half_open', 'half-open', 'closed', 'open', 'token rotation'],
+            synonyms: [
+              'local database transaction',
+              'compensating transaction',
+              'half_open',
+              'half-open',
+              'closed',
+              'open',
+              'token rotation',
+            ],
             weight: 2.5,
           },
           {
             term: 'event_relay_probe_lifecycle',
-            synonyms: ['debezium', 'cdc', 'kafka', 'orchestrator', 'cooldown timeout', 'probe request', 'blacklist', 'revocation'],
+            synonyms: [
+              'debezium',
+              'cdc',
+              'kafka',
+              'orchestrator',
+              'cooldown timeout',
+              'probe request',
+              'blacklist',
+              'revocation',
+            ],
             weight: 2.5,
           },
           {
             term: 'delivery_guarantee_resilience',
-            synonyms: ['at-least-once', 'fallback', 'cascading', 'dual-write', 'zero trust', 'failure rate'],
+            synonyms: [
+              'at-least-once',
+              'fallback',
+              'cascading',
+              'dual-write',
+              'zero trust',
+              'failure rate',
+            ],
             weight: 2.5,
           },
         );
@@ -340,22 +457,57 @@ export class MockAiProvider implements AiProvider {
         technicalKeyTerms.push(
           {
             term: 'idempotency_key / key_isolation',
-            synonyms: ['idempotency key', 'khóa idempotency', 'idempotency record', 'unique key', 'request id', 'request-id'],
+            synonyms: [
+              'idempotency key',
+              'khóa idempotency',
+              'idempotency record',
+              'unique key',
+              'request id',
+              'request-id',
+            ],
             weight: 2.5,
           },
           {
             term: 'atomicity / database_transaction',
-            synonyms: ['cùng transaction', 'transaction', 'giao dịch', 'unique constraint', 'atomic', 'atomicity', 'pessimistic', 'optimistic'],
+            synonyms: [
+              'cùng transaction',
+              'transaction',
+              'giao dịch',
+              'unique constraint',
+              'atomic',
+              'atomicity',
+              'pessimistic',
+              'optimistic',
+            ],
             weight: 2.5,
           },
           {
             term: 'failure_semantics / response_replay',
-            synonyms: ['replay response', 'replay', 'đang xử lý', 'trả trạng thái', 'response replay', 'retry', 'timeout', 'dead letter', 'recovery'],
+            synonyms: [
+              'replay response',
+              'replay',
+              'đang xử lý',
+              'trả trạng thái',
+              'response replay',
+              'retry',
+              'timeout',
+              'dead letter',
+              'recovery',
+            ],
             weight: 2.5,
           },
           {
             term: 'observability / monitoring',
-            synonyms: ['duplicate rate', 'conflict', 'theo dõi', 'trace', 'metric', 'cảnh báo', 'monitoring', 'log'],
+            synonyms: [
+              'duplicate rate',
+              'conflict',
+              'theo dõi',
+              'trace',
+              'metric',
+              'cảnh báo',
+              'monitoring',
+              'log',
+            ],
             weight: 2.5,
           },
         );
@@ -433,12 +585,15 @@ export class MockAiProvider implements AiProvider {
     const finalScore = Number((technicalAccuracy * 0.4 + depth * 0.3 + clarity * 0.3).toFixed(1));
 
     // Confidence: high if answer has multiple concrete sentences and evidence
-    const confidence = matchedEvidence.length >= 2 ? 0.95 : matchedEvidence.length === 1 ? 0.85 : 0.65;
+    const confidence =
+      matchedEvidence.length >= 2 ? 0.95 : matchedEvidence.length === 1 ? 0.85 : 0.65;
 
     // Strengths & Improvements
     const strengths: string[] = [];
     if (matchedEvidence.length >= 2) {
-      strengths.push('Demonstrated strong understanding of core transactional boundaries and idempotency patterns');
+      strengths.push(
+        'Demonstrated strong understanding of core transactional boundaries and idempotency patterns',
+      );
     }
     if (technicalAccuracy >= 7.5) {
       strengths.push('Applied correct domain terminology and structured solution logically');
@@ -448,10 +603,14 @@ export class MockAiProvider implements AiProvider {
 
     const improvements: string[] = [];
     if (missingConcepts.length > 0) {
-      improvements.push(`Elaborate on missing technical concepts: ${missingConcepts.slice(0, 2).join(', ')}`);
+      improvements.push(
+        `Elaborate on missing technical concepts: ${missingConcepts.slice(0, 2).join(', ')}`,
+      );
     }
     if (depth < 7.0) {
-      improvements.push('Include specific implementation details regarding failure modes and database constraints');
+      improvements.push(
+        'Include specific implementation details regarding failure modes and database constraints',
+      );
     }
 
     const conciseFeedback =
@@ -469,9 +628,15 @@ export class MockAiProvider implements AiProvider {
         clarity,
       },
       strengths,
-      improvements: improvements.length > 0 ? improvements : ['Continue practicing with more complex distributed systems trade-offs.'],
+      improvements:
+        improvements.length > 0
+          ? improvements
+          : ['Continue practicing with more complex distributed systems trade-offs.'],
       conciseFeedback,
-      evidence: matchedEvidence.length > 0 ? matchedEvidence.slice(0, 3) : [`"${answerRaw.substring(0, 80)}"`],
+      evidence:
+        matchedEvidence.length > 0
+          ? matchedEvidence.slice(0, 3)
+          : [`"${answerRaw.substring(0, 80)}"`],
       confidence,
       missingConcepts: missingConcepts.slice(0, 3),
       needsReview: false,

@@ -18,10 +18,7 @@ import {
   ErrorCode,
 } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
-import {
-  toAnthropicTool,
-  AI_SCHEMAS,
-} from '../utils/zod-to-json-schema.util';
+import { toAnthropicTool, AI_SCHEMAS } from '../utils/zod-to-json-schema.util';
 
 @Injectable()
 export class AnthropicProvider implements AiProvider {
@@ -93,9 +90,7 @@ export class AnthropicProvider implements AiProvider {
       });
 
       const latencyMs = Date.now() - startTime;
-      const toolUseBlock = response.content.find(
-        (block: any) => block.type === 'tool_use',
-      ) as any;
+      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
 
       if (!toolUseBlock || !toolUseBlock.input) {
         throw new Error('Anthropic did not return expected tool_use block');
@@ -157,9 +152,7 @@ export class AnthropicProvider implements AiProvider {
       });
 
       const latencyMs = Date.now() - startTime;
-      const toolUseBlock = response.content.find(
-        (block: any) => block.type === 'tool_use',
-      ) as any;
+      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
 
       if (!toolUseBlock || !toolUseBlock.input) {
         throw new Error('Anthropic did not return expected tool_use block');
@@ -221,9 +214,7 @@ export class AnthropicProvider implements AiProvider {
       });
 
       const latencyMs = Date.now() - startTime;
-      const toolUseBlock = response.content.find(
-        (block: any) => block.type === 'tool_use',
-      ) as any;
+      const toolUseBlock = response.content.find((block: any) => block.type === 'tool_use') as any;
 
       if (!toolUseBlock || !toolUseBlock.input) {
         throw new Error('Anthropic did not return expected tool_use block');

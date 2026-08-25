@@ -76,7 +76,12 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
     mockPrisma.liveSession.findFirst.mockResolvedValue(null);
 
     await expect(
-      liveSessionService.overrideScore(evaluationId, unassignedMentorUserId, 9.0, 'Override reason'),
+      liveSessionService.overrideScore(
+        evaluationId,
+        unassignedMentorUserId,
+        9.0,
+        'Override reason',
+      ),
     ).rejects.toThrow(
       new ForbiddenException("You are not the designated mentor for this candidate's session"),
     );
@@ -117,9 +122,7 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
       conciseFeedback: 'Updated feedback',
     });
 
-    mockPrisma.evaluation.findMany.mockResolvedValue([
-      { id: evaluationId, score: 9.0 },
-    ]);
+    mockPrisma.evaluation.findMany.mockResolvedValue([{ id: evaluationId, score: 9.0 }]);
 
     mockPrisma.interviewSession.update.mockResolvedValue({});
     mockPrisma.auditLog.create.mockResolvedValue({});

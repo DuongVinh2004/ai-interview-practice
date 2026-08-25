@@ -9,13 +9,7 @@ import { Spinner } from '../../components/ui/Spinner';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Link } from 'react-router-dom';
-import {
-  Sparkles,
-  Target,
-  ArrowRight,
-  Info,
-  Layers,
-} from 'lucide-react';
+import { Sparkles, Target, ArrowRight, Info, Layers } from 'lucide-react';
 
 export function ReadinessPage() {
   const [role, setRole] = useState('backend');
@@ -23,9 +17,14 @@ export function ReadinessPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4" data-testid="readiness-loading">
+      <div
+        className="flex flex-col items-center justify-center py-24 gap-4"
+        data-testid="readiness-loading"
+      >
         <Spinner size="lg" />
-        <p className="text-sm text-slate-500">Calculating AI Interview Readiness Score & Offer Predictor...</p>
+        <p className="text-sm text-slate-500">
+          Calculating AI Interview Readiness Score & Offer Predictor...
+        </p>
       </div>
     );
   }
@@ -53,8 +52,8 @@ export function ReadinessPage() {
             AI Interview Readiness Score
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-            Mathematical modeling of technical competency fulfillment, velocity trajectory, and hiring
-            tier probabilities.
+            Mathematical modeling of technical competency fulfillment, velocity trajectory, and
+            hiring tier probabilities.
           </p>
         </div>
 

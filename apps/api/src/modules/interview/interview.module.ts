@@ -13,4 +13,3 @@ import { BehavioralController } from './behavioral/behavioral.controller';
   exports: [InterviewService, BehavioralService],
 })
 export class InterviewModule {}
-

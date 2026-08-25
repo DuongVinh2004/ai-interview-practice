@@ -8,9 +8,9 @@ groups:
           severity: critical
           tier: tier1
         annotations:
-          summary: "High HTTP 5xx error rate detected ({{ $value | printf \"%.2f\" }}%)"
-          description: "API 5xx error rate exceeds 1% SLA threshold for more than 2 minutes. Immediate investigation required."
-          runbook: "ai-it-interview-project-kit/13-operations/SLO-ALERTING.md"
+          summary: 'High HTTP 5xx error rate detected ({{ $value | printf "%.2f" }}%)'
+          description: 'API 5xx error rate exceeds 1% SLA threshold for more than 2 minutes. Immediate investigation required.'
+          runbook: 'ai-it-interview-project-kit/13-operations/SLO-ALERTING.md'
 
       - alert: HighHttpLatencyP95
         expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.8
@@ -19,9 +19,9 @@ groups:
           severity: warning
           tier: tier1
         annotations:
-          summary: "API p95 latency is degraded ({{ $value | printf \"%.2f\" }}s)"
-          description: "Server p95 response time exceeds 800ms threshold for 5 continuous minutes."
-          runbook: "ai-it-interview-project-kit/13-operations/SLO-ALERTING.md"
+          summary: 'API p95 latency is degraded ({{ $value | printf "%.2f" }}s)'
+          description: 'Server p95 response time exceeds 800ms threshold for 5 continuous minutes.'
+          runbook: 'ai-it-interview-project-kit/13-operations/SLO-ALERTING.md'
 
       - alert: AiProviderOutageHighFailureRate
         expr: sum(rate(ai_provider_requests_total{status="error"}[3m])) / sum(rate(ai_provider_requests_total[3m])) * 100 > 15.0
@@ -30,9 +30,9 @@ groups:
           severity: critical
           tier: tier2
         annotations:
-          summary: "AI provider failure rate exceeds 15%"
-          description: "External AI provider API calls are failing at a rate above 15%. Circuit breaker fallback may be engaged."
-          runbook: "ai-it-interview-project-kit/13-operations/AI-PROVIDER-INCIDENT-RUNBOOK.md"
+          summary: 'AI provider failure rate exceeds 15%'
+          description: 'External AI provider API calls are failing at a rate above 15%. Circuit breaker fallback may be engaged.'
+          runbook: 'ai-it-interview-project-kit/13-operations/AI-PROVIDER-INCIDENT-RUNBOOK.md'
 
       - alert: CircuitBreakerTrippedOpen
         expr: ai_circuit_breaker_state == 2
@@ -41,9 +41,9 @@ groups:
           severity: warning
           tier: tier2
         annotations:
-          summary: "Circuit breaker is OPEN for {{ $labels.provider }}:{{ $labels.operation }}"
-          description: "AI Provider Circuit Breaker has tripped to OPEN due to consecutive failures. System is operating in fallback mode."
-          runbook: "ai-it-interview-project-kit/13-operations/AI-PROVIDER-INCIDENT-RUNBOOK.md"
+          summary: 'Circuit breaker is OPEN for {{ $labels.provider }}:{{ $labels.operation }}'
+          description: 'AI Provider Circuit Breaker has tripped to OPEN due to consecutive failures. System is operating in fallback mode.'
+          runbook: 'ai-it-interview-project-kit/13-operations/AI-PROVIDER-INCIDENT-RUNBOOK.md'
 
       - alert: BullMqQueueBacklogLag
         expr: histogram_quantile(0.95, sum(rate(bullmq_queue_lag_seconds_bucket[5m])) by (le, queue)) > 30.0
@@ -52,9 +52,9 @@ groups:
           severity: warning
           tier: tier2
         annotations:
-          summary: "BullMQ queue {{ $labels.queue }} lag exceeds 30s"
-          description: "Background worker pool is falling behind on job execution. Consider scaling worker replicas."
-          runbook: "ai-it-interview-project-kit/13-operations/SLO-ALERTING.md"
+          summary: 'BullMQ queue {{ $labels.queue }} lag exceeds 30s'
+          description: 'Background worker pool is falling behind on job execution. Consider scaling worker replicas.'
+          runbook: 'ai-it-interview-project-kit/13-operations/SLO-ALERTING.md'
 
       - alert: AiDailyBudgetBurnCritical
         expr: sum(increase(ai_estimated_cost_usd_total[24h])) > 40.0
@@ -63,6 +63,6 @@ groups:
           severity: warning
           tier: cost
         annotations:
-          summary: "AI daily spend ($40+) approaching daily budget limit ($50)"
-          description: "Cumulative 24h AI spend has exceeded 80% of configured daily budget."
-          runbook: "ai-it-interview-project-kit/13-operations/SLO-ALERTING.md"
+          summary: 'AI daily spend ($40+) approaching daily budget limit ($50)'
+          description: 'Cumulative 24h AI spend has exceeded 80% of configured daily budget.'
+          runbook: 'ai-it-interview-project-kit/13-operations/SLO-ALERTING.md'

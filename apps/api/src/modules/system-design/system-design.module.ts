@@ -7,17 +7,7 @@ import { MockVisionProvider } from './providers/mock-vision.provider';
 
 @Module({
   controllers: [SystemDesignController],
-  providers: [
-    CanvasService,
-    DesignAnalyzerService,
-    DesignEvaluationService,
-    MockVisionProvider,
-  ],
-  exports: [
-    CanvasService,
-    DesignAnalyzerService,
-    DesignEvaluationService,
-    MockVisionProvider,
-  ],
+  providers: [CanvasService, DesignAnalyzerService, DesignEvaluationService, MockVisionProvider],
+  exports: [CanvasService, DesignAnalyzerService, DesignEvaluationService, MockVisionProvider],
 })
 export class SystemDesignModule {}

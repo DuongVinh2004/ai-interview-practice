@@ -7,17 +7,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Spinner } from '../ui/Spinner';
 import { Alert } from '../ui/Alert';
-import {
-  Share2,
-  Copy,
-  Check,
-  Eye,
-  Trash2,
-  Globe,
-  Clock,
-  UserX,
-  X,
-} from 'lucide-react';
+import { Share2, Copy, Check, Eye, Trash2, Globe, Clock, UserX, X } from 'lucide-react';
 
 interface ShareSessionModalProps {
   sessionId: string;

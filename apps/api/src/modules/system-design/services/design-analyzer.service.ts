@@ -9,7 +9,7 @@ export class DesignAnalyzerService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly visionProvider: MockVisionProvider
+    private readonly visionProvider: MockVisionProvider,
   ) {}
 
   /**
@@ -19,7 +19,7 @@ export class DesignAnalyzerService {
     userId: string,
     interviewId: string,
     imageUrl?: string,
-    canvasStateJson?: any
+    canvasStateJson?: any,
   ): Promise<VisionAnalysisResultDto> {
     const interview = await this.prisma.interviewSession.findUnique({
       where: { id: interviewId },
@@ -43,7 +43,8 @@ export class DesignAnalyzerService {
       },
     });
 
-    const targetImageUrl = imageUrl || session?.snapshots[0]?.imageUrl || 'data:image/png;base64,mock';
+    const targetImageUrl =
+      imageUrl || session?.snapshots[0]?.imageUrl || 'data:image/png;base64,mock';
     const targetState = canvasStateJson || session?.snapshots[0]?.canvasStateJson;
 
     const analysis = await this.visionProvider.analyzeCanvasDiagram({

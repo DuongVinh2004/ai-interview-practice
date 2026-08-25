@@ -28,7 +28,11 @@ describe('MfaStepUpGuard (P1-001)', () => {
   it('should throw UNAUTHORIZED if user is missing on request', () => {
     const context = createMockContext(null);
     expect(() => guard.canActivate(context)).toThrow(
-      new DomainException(ErrorCode.UNAUTHORIZED, 'Authentication required', HttpStatus.UNAUTHORIZED),
+      new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Authentication required',
+        HttpStatus.UNAUTHORIZED,
+      ),
     );
   });
 

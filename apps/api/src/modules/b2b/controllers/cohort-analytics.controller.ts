@@ -15,21 +15,17 @@ export class CohortAnalyticsController {
 
   @Get('cohort/:id')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR)
-  @ApiOperation({ summary: 'Get aggregated cohort analytics, score distribution, and student progress' })
-  async getCohortAnalytics(
-    @Req() req: RequestWithTenant,
-    @Param('id') cohortId: string,
-  ) {
+  @ApiOperation({
+    summary: 'Get aggregated cohort analytics, score distribution, and student progress',
+  })
+  async getCohortAnalytics(@Req() req: RequestWithTenant, @Param('id') cohortId: string) {
     return this.cohortAnalyticsService.getCohortAnalytics(cohortId, req.tenantId!);
   }
 
   @Get('heatmap/:id')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR)
   @ApiOperation({ summary: 'Get competency heatmap for cohort' })
-  async getCohortHeatmap(
-    @Req() req: RequestWithTenant,
-    @Param('id') cohortId: string,
-  ) {
+  async getCohortHeatmap(@Req() req: RequestWithTenant, @Param('id') cohortId: string) {
     const analytics = await this.cohortAnalyticsService.getCohortAnalytics(cohortId, req.tenantId!);
     return {
       cohortId: analytics.cohortId,

@@ -148,7 +148,9 @@ export class AiOrchestratorService {
         latencyMs: result.latencyMs || Date.now() - startTime,
         costEstimate: result.costEstimate,
         status: AiRunStatus.SUCCESS,
-        metadata: postProcessed.safetyFlags ? { safetyFlags: postProcessed.safetyFlags } : undefined,
+        metadata: postProcessed.safetyFlags
+          ? { safetyFlags: postProcessed.safetyFlags }
+          : undefined,
       });
 
       return postProcessed;

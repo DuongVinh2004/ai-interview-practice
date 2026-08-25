@@ -49,8 +49,10 @@ export function CompetencyRadarOverlay({
   const userPoints = data.map((d, i) => getCoordinates(d.score, i));
   const benchmarkPoints = data.map((d, i) => getCoordinates(d.benchmarkP50, i));
 
-  const userPath = userPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
-  const benchmarkPath = benchmarkPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+  const userPath =
+    userPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+  const benchmarkPath =
+    benchmarkPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
 
   return (
     <div className="flex flex-col items-center gap-3" data-testid="competency-radar-overlay">
@@ -58,10 +60,17 @@ export function CompetencyRadarOverlay({
         {/* Background Grid Circles / Polygons */}
         {levels.map(lvl => {
           const gridPoints = data.map((_, i) => getCoordinates(lvl, i));
-          const gridPath = gridPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+          const gridPath =
+            gridPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
           return (
             <g key={lvl}>
-              <path d={gridPath} fill="none" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3,3" />
+              <path
+                d={gridPath}
+                fill="none"
+                stroke="#e2e8f0"
+                strokeWidth="1"
+                strokeDasharray="3,3"
+              />
               <text
                 x={center}
                 y={center - (lvl / 10) * radius + 4}
@@ -77,7 +86,17 @@ export function CompetencyRadarOverlay({
         {/* Radial Axis Lines */}
         {data.map((_, i) => {
           const edge = getCoordinates(10, i);
-          return <line key={i} x1={center} y1={center} x2={edge.x} y2={edge.y} stroke="#cbd5e1" strokeWidth="1" />;
+          return (
+            <line
+              key={i}
+              x1={center}
+              y1={center}
+              x2={edge.x}
+              y2={edge.y}
+              stroke="#cbd5e1"
+              strokeWidth="1"
+            />
+          );
         })}
 
         {/* Benchmark Polygon */}
@@ -116,8 +135,7 @@ export function CompetencyRadarOverlay({
         {/* Area Labels */}
         {data.map((item, i) => {
           const labelCoord = getCoordinates(11.8, i);
-          const shortName =
-            item.name.length > 18 ? item.name.substring(0, 16) + '...' : item.name;
+          const shortName = item.name.length > 18 ? item.name.substring(0, 16) + '...' : item.name;
           return (
             <text
               key={`label-${i}`}

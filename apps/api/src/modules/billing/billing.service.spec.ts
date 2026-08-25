@@ -41,7 +41,9 @@ describe('BillingService (F014)', () => {
         }),
       },
       user: {
-        findUnique: jest.fn().mockResolvedValue({ id: '00000000-0000-0000-0000-000000000002', email: 'dev@test.com' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: '00000000-0000-0000-0000-000000000002', email: 'dev@test.com' }),
       },
       subscription: {
         findFirst: jest.fn().mockResolvedValue({
@@ -161,7 +163,9 @@ describe('BillingService (F014)', () => {
 
   it('should verify Stripe webhook signature and reject forged signatures', async () => {
     const stripeProvider = new StripeProvider({
-      get: jest.fn((k: string) => (k === 'STRIPE_WEBHOOK_SECRET' ? 'mock_test_webhook_secret_123' : '')),
+      get: jest.fn((k: string) =>
+        k === 'STRIPE_WEBHOOK_SECRET' ? 'mock_test_webhook_secret_123' : '',
+      ),
     } as any);
 
     const crypto = await import('crypto');

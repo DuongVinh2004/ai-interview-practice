@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { TextExtractorService } from './services/text-extractor.service';
 import { CvAnalyzerService } from './services/cv-analyzer.service';
@@ -27,11 +33,7 @@ export class DocumentParserService {
   /**
    * Uploads and parses CV text / document, saving UserDocument and ParsedProfile with 30-day TTL.
    */
-  async parseCv(
-    userId: string,
-    req: ParseCvRequest,
-    buffer?: Buffer,
-  ) {
+  async parseCv(userId: string, req: ParseCvRequest, buffer?: Buffer) {
     let rawText = req.rawText;
     if (buffer) {
       rawText = await this.textExtractor.extractText(buffer, req.fileType, req.fileName);

@@ -26,7 +26,11 @@ I built GitHub Actions workflows with automated Docker container builds and stag
     const evalResult = StarRubric.evaluate(answer);
 
     expect(evalResult.extracted.missingComponents).toContain('result');
-    expect(evalResult.improvements.some(i => i.toLowerCase().includes('result') || i.toLowerCase().includes('metric'))).toBe(true);
+    expect(
+      evalResult.improvements.some(
+        i => i.toLowerCase().includes('result') || i.toLowerCase().includes('metric'),
+      ),
+    ).toBe(true);
   });
 
   it('should identify missing personal Action contribution when only generic "we" statements are made', () => {

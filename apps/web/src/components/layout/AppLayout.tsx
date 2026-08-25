@@ -20,7 +20,9 @@ export function AppLayout() {
             </div>
             <span>{t.nav.brand}</span>
             <span className="text-slate-300">•</span>
-            <span className="text-slate-400 font-normal">Production-Grade Mock Technical Interviews</span>
+            <span className="text-slate-400 font-normal">
+              Production-Grade Mock Technical Interviews
+            </span>
           </div>
 
           <div className="flex items-center gap-6">

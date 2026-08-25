@@ -10,14 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { RubricBreakdown } from '../../components/interview/RubricBreakdown';
 import { MentorFeedbackList } from '../../components/share/MentorFeedbackList';
-import {
-  Award,
-  Globe,
-  Printer,
-  BookOpen,
-  AlertCircle,
-  User,
-} from 'lucide-react';
+import { Award, Globe, Printer, BookOpen, AlertCircle, User } from 'lucide-react';
 
 export function PublicSharedResultPage() {
   const { token } = useParams<{ token: string }>();
@@ -65,9 +58,7 @@ export function PublicSharedResultPage() {
           </div>
           <h2 className="text-xl font-bold text-slate-900">Link Unavailable or Expired</h2>
           <p className="text-xs text-slate-500">
-            {errorMsg.includes('passcode')
-              ? 'This report is protected by a passcode.'
-              : errorMsg}
+            {errorMsg.includes('passcode') ? 'This report is protected by a passcode.' : errorMsg}
           </p>
 
           {errorMsg.includes('passcode') && (
@@ -115,11 +106,10 @@ export function PublicSharedResultPage() {
               <Globe className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold">
-                {t.share.publicReviewBanner}
-              </h1>
+              <h1 className="text-sm sm:text-base font-bold">{t.share.publicReviewBanner}</h1>
               <p className="text-xs text-emerald-100 mt-0.5">
-                Verified Evaluation Artifact • {new Date(publicReport.createdAt).toLocaleDateString()}
+                Verified Evaluation Artifact •{' '}
+                {new Date(publicReport.createdAt).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -148,7 +138,11 @@ export function PublicSharedResultPage() {
                 </h2>
                 <div className="flex flex-wrap gap-1.5 justify-center md:justify-start pt-1">
                   {session.technologies.map((t: any) => (
-                    <Badge key={t.id} variant="default" className="bg-slate-800 text-slate-300 border-slate-700">
+                    <Badge
+                      key={t.id}
+                      variant="default"
+                      className="bg-slate-800 text-slate-300 border-slate-700"
+                    >
                       {t.name}
                     </Badge>
                   ))}
@@ -270,15 +264,30 @@ export function PublicSharedResultPage() {
               <p className="text-sm text-slate-600">{session.learningPath.summary}</p>
               <div className="space-y-3">
                 {session.learningPath.items.map((item: any) => (
-                  <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div
+                    key={item.id}
+                    className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-slate-900">{item.topic}</span>
-                      <Badge variant={item.priority === 'HIGH' ? 'danger' : item.priority === 'MEDIUM' ? 'warning' : 'default'}>
+                      <Badge
+                        variant={
+                          item.priority === 'HIGH'
+                            ? 'danger'
+                            : item.priority === 'MEDIUM'
+                              ? 'warning'
+                              : 'default'
+                        }
+                      >
                         {item.priority} Priority
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-600"><strong className="text-slate-700">Skill Gap:</strong> {item.gap}</p>
-                    <p className="text-xs text-slate-700"><strong className="text-slate-800">Action:</strong> {item.recommendedAction}</p>
+                    <p className="text-xs text-slate-600">
+                      <strong className="text-slate-700">Skill Gap:</strong> {item.gap}
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <strong className="text-slate-800">Action:</strong> {item.recommendedAction}
+                    </p>
                   </div>
                 ))}
               </div>

@@ -85,7 +85,10 @@ export class AudioController {
     }
 
     const cleanMime = file.mimetype.split(';')[0].trim().toLowerCase();
-    if (!ALLOWED_AUDIO_MIMES.has(file.mimetype.toLowerCase()) && !ALLOWED_AUDIO_MIMES.has(cleanMime)) {
+    if (
+      !ALLOWED_AUDIO_MIMES.has(file.mimetype.toLowerCase()) &&
+      !ALLOWED_AUDIO_MIMES.has(cleanMime)
+    ) {
       throw new DomainException(
         ErrorCode.AUDIO_UNSUPPORTED_FORMAT,
         `Unsupported audio format: ${file.mimetype}. Supported formats: webm, wav, mp3, m4a, ogg, mp4.`,

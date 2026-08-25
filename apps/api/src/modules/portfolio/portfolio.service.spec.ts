@@ -81,12 +81,25 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       const score = 8.8;
       const issuedAt = new Date('2026-08-24T12:00:00Z');
 
-      const signature = signatureService.generateSignature(certId, userId, competency, score, issuedAt);
+      const signature = signatureService.generateSignature(
+        certId,
+        userId,
+        competency,
+        score,
+        issuedAt,
+      );
       expect(signature).toBeDefined();
       expect(typeof signature).toBe('string');
       expect(signature.length).toBe(64); // SHA-256 hex length
 
-      const isValid = signatureService.verifySignature(certId, userId, competency, score, issuedAt, signature);
+      const isValid = signatureService.verifySignature(
+        certId,
+        userId,
+        competency,
+        score,
+        issuedAt,
+        signature,
+      );
       expect(isValid).toBe(true);
     });
 
@@ -98,9 +111,22 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       const tamperedScore = 9.5;
       const issuedAt = new Date('2026-08-24T12:00:00Z');
 
-      const originalSignature = signatureService.generateSignature(certId, userId, competency, originalScore, issuedAt);
+      const originalSignature = signatureService.generateSignature(
+        certId,
+        userId,
+        competency,
+        originalScore,
+        issuedAt,
+      );
 
-      const isValid = signatureService.verifySignature(certId, userId, competency, tamperedScore, issuedAt, originalSignature);
+      const isValid = signatureService.verifySignature(
+        certId,
+        userId,
+        competency,
+        tamperedScore,
+        issuedAt,
+        originalSignature,
+      );
       expect(isValid).toBe(false);
     });
   });
@@ -157,7 +183,7 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       const progress = await badgeService.getUserBadgeProgress(userId);
       expect(progress.length).toBe(5);
 
-      const sysDesign = progress.find((p) => p.competencyArea === CompetencyArea.SYSTEM_DESIGN);
+      const sysDesign = progress.find(p => p.competencyArea === CompetencyArea.SYSTEM_DESIGN);
       expect(sysDesign?.highestLevel).toBe(BadgeLevel.GOLD);
       expect(sysDesign?.isUnlocked).toBe(true);
       expect(sysDesign?.nextBadgeLevel).toBe(BadgeLevel.PLATINUM);
@@ -184,9 +210,14 @@ describe('Track F010: Portfolio & Certificate Module', () => {
         evidenceCount: 10,
       });
 
-      mockPrisma.certificate.create.mockImplementation(({ data }: any) => Promise.resolve({ ...data, id: data.id || 'cert-999' }));
+      mockPrisma.certificate.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({ ...data, id: data.id || 'cert-999' }),
+      );
 
-      const result = await certificateService.generateCertificate(userId, CompetencyArea.SYSTEM_DESIGN);
+      const result = await certificateService.generateCertificate(
+        userId,
+        CompetencyArea.SYSTEM_DESIGN,
+      );
       expect(result).toBeDefined();
       expect(result.status).toBe(CertificateStatus.ISSUED);
       expect(result.recipientName).toBe('Alex Rivera');
@@ -216,7 +247,13 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       const certId = 'cert-777';
       const userId = 'user-123';
       const issuedAt = new Date('2026-08-24T10:00:00Z');
-      const sig = signatureService.generateSignature(certId, userId, CompetencyArea.SYSTEM_DESIGN, 8.5, issuedAt);
+      const sig = signatureService.generateSignature(
+        certId,
+        userId,
+        CompetencyArea.SYSTEM_DESIGN,
+        8.5,
+        issuedAt,
+      );
 
       mockPrisma.certificate.findUnique.mockResolvedValue({
         id: certId,
@@ -295,7 +332,9 @@ describe('Track F010: Portfolio & Certificate Module', () => {
         isPublic: false,
       });
 
-      await expect(portfolioService.getPublicPortfolio('private_user')).rejects.toThrow(NotFoundException);
+      await expect(portfolioService.getPublicPortfolio('private_user')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

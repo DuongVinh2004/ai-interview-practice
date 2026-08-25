@@ -203,7 +203,11 @@ invalid-email,"Bad Line",STUDENT`;
         status: AssignmentStatus.PUBLISHED,
       });
 
-      const published = await assignmentService.publishAssignment('assign-1', tenantId, AssignmentStatus.PUBLISHED);
+      const published = await assignmentService.publishAssignment(
+        'assign-1',
+        tenantId,
+        AssignmentStatus.PUBLISHED,
+      );
       expect(published.status).toBe(AssignmentStatus.PUBLISHED);
     });
   });

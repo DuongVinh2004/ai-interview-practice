@@ -78,9 +78,12 @@ export function AdminPromptsPage() {
                 <CardHeader className="bg-slate-50/60 pb-3 border-b border-slate-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <Sparkles className={`h-4 w-4 ${p.isActive ? 'text-purple-600' : 'text-slate-400'}`} />
+                      <Sparkles
+                        className={`h-4 w-4 ${p.isActive ? 'text-purple-600' : 'text-slate-400'}`}
+                      />
                       <span className="font-bold text-sm text-slate-900 font-mono">
-                        {p.slug} <span className="text-xs text-purple-700 font-bold">v{p.version}</span>
+                        {p.slug}{' '}
+                        <span className="text-xs text-purple-700 font-bold">v{p.version}</span>
                       </span>
                       {p.isActive && (
                         <Badge variant="info" className="gap-1">
@@ -109,7 +112,11 @@ export function AdminPromptsPage() {
                         onClick={() => toggleExpand(p.id)}
                         className="text-slate-500"
                       >
-                        {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
                       </Button>
                     </div>
                   </div>

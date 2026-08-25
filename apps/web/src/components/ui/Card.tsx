@@ -1,11 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/utils';
 
-export function Card({
-  className,
-  children,
-  ...props
-}: React.HTMLAttributes<HTMLDivElement>) {
+export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn(
@@ -52,7 +48,10 @@ export function CardDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={cn('text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed', className)} {...props}>
+    <p
+      className={cn('text-xs sm:text-sm text-slate-500 mt-1 leading-relaxed', className)}
+      {...props}
+    >
       {children}
     </p>
   );
@@ -77,7 +76,10 @@ export function CardFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('p-4 sm:p-6 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between', className)}
+      className={cn(
+        'p-4 sm:p-6 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between',
+        className,
+      )}
       {...props}
     >
       {children}

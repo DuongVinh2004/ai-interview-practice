@@ -17,7 +17,7 @@ export class VelocityService {
   calculateVelocity(
     currentScore: number,
     previousScore?: number,
-    deltaWeeks: number = 4
+    deltaWeeks: number = 4,
   ): VelocityForecast {
     if (previousScore === undefined || deltaWeeks <= 0) {
       // Baseline default with realistic steady progress
@@ -66,7 +66,7 @@ export class VelocityService {
   calculateWeeksToTarget(
     currentScore: number,
     targetScore: number,
-    weeklyVelocity: number = 0.25
+    weeklyVelocity: number = 0.25,
   ): number | null {
     if (currentScore >= targetScore) return 0;
     if (weeklyVelocity <= 0) return null;

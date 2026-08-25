@@ -30,7 +30,10 @@ export const TutorRatingButtons: React.FC<TutorRatingButtonsProps> = ({ onRate }
   }
 
   return (
-    <div className="flex items-center space-x-2 text-xs text-slate-500 py-1" data-testid="tutor-rating-buttons">
+    <div
+      className="flex items-center space-x-2 text-xs text-slate-500 py-1"
+      data-testid="tutor-rating-buttons"
+    >
       <span>Đánh giá câu trả lời của AI Tutor:</span>
       <button
         type="button"

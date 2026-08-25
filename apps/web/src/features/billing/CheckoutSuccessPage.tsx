@@ -18,7 +18,8 @@ export function CheckoutSuccessPage() {
 
           <h1 className="text-2xl font-bold text-slate-900">Subscription Activated!</h1>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Thank you for upgrading! Your account has been upgraded with increased mock interview quotas and advanced features.
+            Thank you for upgrading! Your account has been upgraded with increased mock interview
+            quotas and advanced features.
           </p>
 
           {sessionId && (
@@ -36,11 +37,7 @@ export function CheckoutSuccessPage() {
               <span>Start Interview</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate('/billing')}
-              className="w-full"
-            >
+            <Button variant="outline" onClick={() => navigate('/billing')} className="w-full">
               Billing Dashboard
             </Button>
           </div>

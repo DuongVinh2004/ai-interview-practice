@@ -8,15 +8,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
-import {
-  History,
-  PlayCircle,
-  ChevronRight,
-  Calendar,
-  Search,
-  X,
-  ChevronLeft,
-} from 'lucide-react';
+import { History, PlayCircle, ChevronRight, Calendar, Search, X, ChevronLeft } from 'lucide-react';
 
 export function HistoryPage() {
   const { t } = useI18nStore();

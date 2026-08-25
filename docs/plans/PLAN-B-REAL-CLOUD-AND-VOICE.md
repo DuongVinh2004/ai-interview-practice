@@ -9,9 +9,10 @@
 
 ## Tổng quan & Mục tiêu
 
-Kế hoạch "Plan B" tập trung vào việc chuyển đổi các mock integrations (giả lập) thành các dịch vụ đám mây thực thụ ở cấp độ production. Hệ thống sẽ được tích hợp với các provider hàng đầu thế giới để mang lại trải nghiệm độ trễ siêu thấp (ultra-low latency), xử lý đa phương thức (multimodal AI) và đảm bảo tính sẵn sàng cao, cũng như xử lý thanh toán thực tế và lưu trữ đáng tin cậy. 
+Kế hoạch "Plan B" tập trung vào việc chuyển đổi các mock integrations (giả lập) thành các dịch vụ đám mây thực thụ ở cấp độ production. Hệ thống sẽ được tích hợp với các provider hàng đầu thế giới để mang lại trải nghiệm độ trễ siêu thấp (ultra-low latency), xử lý đa phương thức (multimodal AI) và đảm bảo tính sẵn sàng cao, cũng như xử lý thanh toán thực tế và lưu trữ đáng tin cậy.
 
 Mục tiêu chính:
+
 1. **Cloud Storage**: Thay thế file system cục bộ bằng AWS S3 / Cloudflare R2 để lưu trữ an toàn, hỗ trợ presigned URL cho upload/download.
 2. **Email System**: Xây dựng hệ thống gửi email qua Resend với hàng đợi (queue) và template React Email cho các sự kiện quan trọng.
 3. **Voice Pipeline**: Tích hợp STT (Deepgram) và TTS (ElevenLabs/Cartesia) qua WebSocket với kiến trúc full-duplex, tối ưu độ trễ xuống dưới 500ms.
@@ -60,6 +61,7 @@ sequenceDiagram
 ```
 
 **Bucket Partitioning Strategy:**
+
 - `public/`: Hình ảnh công khai, avatar (truy cập qua CDN).
 - `documents/`: CV người dùng (quyền riêng tư, presigned-url only).
 - `system-design/`: Snapshot của các session (presigned-url only).
@@ -80,13 +82,13 @@ model FileAsset {
   sizeBytes    Int
   url          String?  // Public CDN URL (if public)
   isPublic     Boolean  @default(false)
-  
+
   userId       String
   user         User     @relation(fields: [userId], references: [id])
-  
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  
+
   // Relations to other entities that might use this asset
   userDocument UserDocument?
   snapshots    CanvasSnapshot[]
@@ -111,6 +113,7 @@ model CanvasSnapshot {
 ### B1.3 Backend Implementation
 
 #### [NEW] Storage Provider Interface
+
 Vị trí: `apps/api/src/modules/storage/interfaces/storage-provider.interface.ts`
 
 ```typescript
@@ -121,16 +124,13 @@ export interface StorageProvider {
   generatePresignedUploadUrl(
     key: string,
     mimeType: string,
-    expiresInSeconds?: number
+    expiresInSeconds?: number,
   ): Promise<string>;
 
   /**
    * Generates a URL for downloading private objects
    */
-  generatePresignedDownloadUrl(
-    key: string,
-    expiresInSeconds?: number
-  ): Promise<string>;
+  generatePresignedDownloadUrl(key: string, expiresInSeconds?: number): Promise<string>;
 
   /**
    * Deletes an object from the bucket
@@ -140,17 +140,26 @@ export interface StorageProvider {
   /**
    * Gets metadata about an object
    */
-  getObjectMetadata(key: string): Promise<{ size: number; contentType: string; lastModified: Date } | null>;
+  getObjectMetadata(
+    key: string,
+  ): Promise<{ size: number; contentType: string; lastModified: Date } | null>;
 }
 ```
 
 #### [NEW] S3 Storage Provider
+
 Vị trí: `apps/api/src/modules/storage/providers/s3-storage.provider.ts`
 
 ```typescript
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+  HeadObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { StorageProvider } from '../interfaces/storage-provider.interface';
 
@@ -171,7 +180,11 @@ export class S3StorageProvider implements StorageProvider {
     });
   }
 
-  async generatePresignedUploadUrl(key: string, mimeType: string, expiresInSeconds = 3600): Promise<string> {
+  async generatePresignedUploadUrl(
+    key: string,
+    mimeType: string,
+    expiresInSeconds = 3600,
+  ): Promise<string> {
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,
@@ -207,11 +220,13 @@ export class S3StorageProvider implements StorageProvider {
 }
 ```
 
-#### [NEW] R2 Storage Provider  
+#### [NEW] R2 Storage Provider
+
 Vị trí: `apps/api/src/modules/storage/providers/r2-storage.provider.ts`
-*(Tương tự S3 nhưng endpoint trỏ về Cloudflare R2 endpoint URL).*
+_(Tương tự S3 nhưng endpoint trỏ về Cloudflare R2 endpoint URL)._
 
 #### [NEW] Storage Service
+
 Vị trí: `apps/api/src/modules/storage/storage.service.ts`
 
 ```typescript
@@ -228,16 +243,27 @@ export class StorageService {
     private readonly prisma: PrismaService,
   ) {}
 
-  async createUploadIntent(userId: string, filename: string, mimeType: string, category: 'public' | 'documents' | 'temp') {
+  async createUploadIntent(
+    userId: string,
+    filename: string,
+    mimeType: string,
+    category: 'public' | 'documents' | 'temp',
+  ) {
     const extension = path.extname(filename);
     const key = `${category}/${userId}/${uuidv4()}${extension}`;
-    
+
     const url = await this.provider.generatePresignedUploadUrl(key, mimeType);
-    
+
     return { uploadUrl: url, key, filename };
   }
 
-  async confirmUpload(userId: string, key: string, filename: string, mimeType: string, isPublic: boolean) {
+  async confirmUpload(
+    userId: string,
+    key: string,
+    filename: string,
+    mimeType: string,
+    isPublic: boolean,
+  ) {
     const metadata = await this.provider.getObjectMetadata(key);
     if (!metadata) throw new Error('File not found in storage');
 
@@ -250,7 +276,7 @@ export class StorageService {
         sizeBytes: metadata.size,
         userId,
         isPublic,
-      }
+      },
     });
   }
 }
@@ -259,6 +285,7 @@ export class StorageService {
 ### B1.4 Configuration & Environment Variables
 
 Thêm vào `apps/api/src/modules/platform/config/configuration.ts`:
+
 ```typescript
 export default () => ({
   // ... existing configs
@@ -272,7 +299,7 @@ export default () => ({
     r2AccessKeyId: process.env.R2_ACCESS_KEY_ID,
     r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
     r2Bucket: process.env.R2_BUCKET,
-  }
+  },
 });
 ```
 
@@ -301,7 +328,7 @@ export function useCloudUpload() {
       // 2. Upload directly to S3/R2 via XMLHttpRequest to track progress
       await new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.upload.onprogress = (e) => {
+        xhr.upload.onprogress = e => {
           if (e.lengthComputable) {
             setProgress(Math.round((e.loaded / e.total) * 100));
           }
@@ -324,7 +351,7 @@ export function useCloudUpload() {
       });
 
       return asset;
-    }
+    },
   });
 
   return { ...uploadMutation, progress };
@@ -351,6 +378,7 @@ graph TD
 ### B2.2 Backend Implementation
 
 #### [NEW] Email Provider Interface
+
 Vị trí: `apps/api/src/modules/email/interfaces/email-provider.interface.ts`
 
 ```typescript
@@ -370,6 +398,7 @@ export interface EmailProvider {
 ```
 
 #### [NEW] Resend Email Provider
+
 Vị trí: `apps/api/src/modules/email/providers/resend-email.provider.ts`
 
 ```typescript
@@ -385,7 +414,10 @@ export class ResendEmailProvider implements EmailProvider {
 
   constructor(private configService: ConfigService) {
     this.resend = new Resend(this.configService.get<string>('email.resendApiKey'));
-    this.defaultFrom = this.configService.get<string>('email.defaultFrom', 'AI Interview <noreply@ai-interview.com>');
+    this.defaultFrom = this.configService.get<string>(
+      'email.defaultFrom',
+      'AI Interview <noreply@ai-interview.com>',
+    );
   }
 
   async sendEmail(options: EmailSendOptions) {
@@ -409,6 +441,7 @@ export class ResendEmailProvider implements EmailProvider {
 ```
 
 #### [NEW] Email Templates (React Email)
+
 Sử dụng package `@react-email/components`.
 Vị trí: `apps/api/src/modules/email/templates/WelcomeEmail.tsx`
 
@@ -427,11 +460,21 @@ export const WelcomeEmail = ({ userName, loginUrl }: WelcomeEmailProps) => {
       <Head />
       <Body style={{ fontFamily: 'sans-serif', backgroundColor: '#f9fafb' }}>
         <Container style={{ margin: '0 auto', padding: '20px', backgroundColor: '#ffffff' }}>
-          <Text style={{ fontSize: '24px', fontWeight: 'bold' }}>Welcome to AI Interview Practice!</Text>
+          <Text style={{ fontSize: '24px', fontWeight: 'bold' }}>
+            Welcome to AI Interview Practice!
+          </Text>
           <Text>Hi {userName},</Text>
           <Text>Get ready to ace your next technical interview.</Text>
           <Section style={{ textAlign: 'center', margin: '30px 0' }}>
-            <Button href={loginUrl} style={{ backgroundColor: '#2563eb', color: '#fff', padding: '12px 24px', borderRadius: '4px' }}>
+            <Button
+              href={loginUrl}
+              style={{
+                backgroundColor: '#2563eb',
+                color: '#fff',
+                padding: '12px 24px',
+                borderRadius: '4px',
+              }}
+            >
               Start Practicing
             </Button>
           </Section>
@@ -443,6 +486,7 @@ export const WelcomeEmail = ({ userName, loginUrl }: WelcomeEmailProps) => {
 ```
 
 #### [NEW] Email Queue Processor
+
 Vị trí: `apps/api/src/modules/email/email.processor.ts`
 
 ```typescript
@@ -457,15 +501,13 @@ import { WelcomeEmail } from './templates/WelcomeEmail';
 export class EmailProcessor extends WorkerHost {
   private readonly logger = new Logger(EmailProcessor.name);
 
-  constructor(
-    @Inject('EMAIL_PROVIDER') private readonly emailProvider: EmailProvider,
-  ) {
+  constructor(@Inject('EMAIL_PROVIDER') private readonly emailProvider: EmailProvider) {
     super();
   }
 
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.debug(`Processing email job ${job.id} of type ${job.name}`);
-    
+
     let html = '';
     let subject = '';
 
@@ -523,6 +565,7 @@ sequenceDiagram
 ### B3.2 Backend Implementation
 
 #### [NEW] Deepgram STT Provider
+
 Vị trí: `apps/api/src/modules/voice-gateway/providers/deepgram-stt.provider.ts`
 
 ```typescript
@@ -551,10 +594,10 @@ export class DeepgramSttProvider {
       interim_results: true,
     });
 
-    connection.on('Results', (data) => {
+    connection.on('Results', data => {
       const transcript = data.channel.alternatives[0].transcript;
       if (!transcript) return;
-      
+
       events.next({
         text: transcript,
         isFinal: data.is_final,
@@ -568,6 +611,7 @@ export class DeepgramSttProvider {
 ```
 
 #### [NEW] ElevenLabs TTS Provider
+
 Vị trí: `apps/api/src/modules/voice-gateway/providers/elevenlabs-tts.provider.ts`
 
 ```typescript
@@ -580,7 +624,7 @@ import { Subject } from 'rxjs';
 export class ElevenLabsTtsProvider {
   constructor(private configService: ConfigService) {}
 
-  createStreamingSession(voiceId: string = 'Rachel'): { 
+  createStreamingSession(voiceId: string = 'Rachel'): {
     sendText: (text: string) => void;
     audioStream: Subject<Buffer>;
     close: () => void;
@@ -589,7 +633,7 @@ export class ElevenLabsTtsProvider {
     const model = 'eleven_turbo_v2_5';
     // Input streaming WS URL
     const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${model}`;
-    
+
     const ws = new WebSocket(wsUrl, {
       headers: { 'xi-api-key': apiKey },
     });
@@ -597,11 +641,13 @@ export class ElevenLabsTtsProvider {
 
     ws.on('open', () => {
       // Send initial configuration
-      ws.send(JSON.stringify({
-        text: " ",
-        voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-        xi_api_key: apiKey
-      }));
+      ws.send(
+        JSON.stringify({
+          text: ' ',
+          voice_settings: { stability: 0.5, similarity_boost: 0.75 },
+          xi_api_key: apiKey,
+        }),
+      );
     });
 
     ws.on('message', (data: string) => {
@@ -623,16 +669,17 @@ export class ElevenLabsTtsProvider {
       audioStream,
       close: () => {
         if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ text: "" })); // End of stream signal
+          ws.send(JSON.stringify({ text: '' })); // End of stream signal
           ws.close();
         }
-      }
+      },
     };
   }
 }
 ```
 
 #### [NEW] Sentence Chunker Service
+
 Vị trí: `apps/api/src/modules/voice-gateway/services/sentence-chunker.service.ts`
 
 ```typescript
@@ -686,7 +733,7 @@ class RecorderProcessor extends AudioWorkletProcessor {
       const int16Data = new Int16Array(channelData.length);
       for (let i = 0; i < channelData.length; i++) {
         const s = Math.max(-1, Math.min(1, channelData[i]));
-        int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        int16Data[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
       }
       this.port.postMessage(int16Data.buffer, [int16Data.buffer]);
     }
@@ -717,6 +764,7 @@ graph TD
 ### B4.2 Backend Implementation
 
 #### [NEW] PayOS Provider
+
 Vị trí: `apps/api/src/modules/billing/providers/payos.provider.ts`
 
 ```typescript
@@ -732,11 +780,17 @@ export class PayosProvider {
     this.payos = new PayOS(
       this.configService.get<string>('billing.payosClientId'),
       this.configService.get<string>('billing.payosApiKey'),
-      this.configService.get<string>('billing.payosChecksumKey')
+      this.configService.get<string>('billing.payosChecksumKey'),
     );
   }
 
-  async createPaymentLink(orderCode: number, amount: number, description: string, returnUrl: string, cancelUrl: string) {
+  async createPaymentLink(
+    orderCode: number,
+    amount: number,
+    description: string,
+    returnUrl: string,
+    cancelUrl: string,
+  ) {
     const body = {
       orderCode,
       amount,
@@ -769,6 +823,7 @@ export class PayosProvider {
 ### B5.2 Backend Implementation
 
 #### [NEW] Vision AI Provider Interface
+
 Vị trí: `apps/api/src/modules/system-design/interfaces/vision-provider.interface.ts`
 
 ```typescript
@@ -785,11 +840,15 @@ export interface DesignEvaluationResult {
 }
 
 export interface VisionProvider {
-  evaluateDiagram(imageUrl: string | Buffer, promptContext: string): Promise<DesignEvaluationResult>;
+  evaluateDiagram(
+    imageUrl: string | Buffer,
+    promptContext: string,
+  ): Promise<DesignEvaluationResult>;
 }
 ```
 
 #### [NEW] GPT-4o Vision Provider
+
 Vị trí: `apps/api/src/modules/system-design/providers/openai-vision.provider.ts`
 
 ```typescript
@@ -812,17 +871,18 @@ export class OpenAiVisionProvider implements VisionProvider {
       messages: [
         {
           role: 'system',
-          content: 'You are an Expert System Design Interviewer. Evaluate the architecture diagram based on the context. Return JSON exactly matching the schema.'
+          content:
+            'You are an Expert System Design Interviewer. Evaluate the architecture diagram based on the context. Return JSON exactly matching the schema.',
         },
         {
           role: 'user',
           content: [
             { type: 'text', text: promptContext },
-            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } }
-          ]
-        }
+            { type: 'image_url', image_url: { url: imageUrl, detail: 'high' } },
+          ],
+        },
       ],
-      response_format: { type: 'json_object' }
+      response_format: { type: 'json_object' },
     });
 
     const content = response.choices[0].message.content;
@@ -835,59 +895,62 @@ export class OpenAiVisionProvider implements VisionProvider {
 
 ## Tổng hợp Dependencies Mới
 
-| Gói | Phiên bản | Mục đích |
-| --- | --- | --- |
-| **Backend** | | |
-| `@aws-sdk/client-s3` | ^3.500.0 | Tương tác với AWS S3 / Cloudflare R2 |
-| `@aws-sdk/s3-request-presigner` | ^3.500.0 | Tạo URL upload/download bảo mật |
-| `resend` | ^3.2.0 | Gửi Transactional Email |
-| `@nestjs/bullmq` | ^10.1.0 | Xử lý Email Queue |
-| `bullmq` | ^5.0.0 | Hàng đợi background |
-| `@react-email/components` | ^0.0.17 | Thiết kế Email template bằng React |
-| `@react-email/render` | ^0.0.13 | Render React Email sang HTML/Text |
-| `@deepgram/sdk` | ^3.0.0 | Giao tiếp WebSocket STT độ trễ thấp |
-| `@payos/node` | ^1.0.6 | Cổng thanh toán nội địa VietQR |
-| **Frontend** | | |
-| `lucide-react` | (Bổ sung icon) | Cập nhật UI thanh toán và player |
-| (Không cần thêm package voice vì dùng Web Audio API gốc) | | |
+| Gói                                                      | Phiên bản      | Mục đích                             |
+| -------------------------------------------------------- | -------------- | ------------------------------------ |
+| **Backend**                                              |                |                                      |
+| `@aws-sdk/client-s3`                                     | ^3.500.0       | Tương tác với AWS S3 / Cloudflare R2 |
+| `@aws-sdk/s3-request-presigner`                          | ^3.500.0       | Tạo URL upload/download bảo mật      |
+| `resend`                                                 | ^3.2.0         | Gửi Transactional Email              |
+| `@nestjs/bullmq`                                         | ^10.1.0        | Xử lý Email Queue                    |
+| `bullmq`                                                 | ^5.0.0         | Hàng đợi background                  |
+| `@react-email/components`                                | ^0.0.17        | Thiết kế Email template bằng React   |
+| `@react-email/render`                                    | ^0.0.13        | Render React Email sang HTML/Text    |
+| `@deepgram/sdk`                                          | ^3.0.0         | Giao tiếp WebSocket STT độ trễ thấp  |
+| `@payos/node`                                            | ^1.0.6         | Cổng thanh toán nội địa VietQR       |
+| **Frontend**                                             |                |                                      |
+| `lucide-react`                                           | (Bổ sung icon) | Cập nhật UI thanh toán và player     |
+| (Không cần thêm package voice vì dùng Web Audio API gốc) |                |                                      |
 
 ---
 
 ## Tổng hợp Environment Variables
 
-| Biến môi trường | Phân loại | Mô tả | Bắt buộc | Mặc định |
-| --- | --- | --- | --- | --- |
-| `STORAGE_PROVIDER` | Storage | Chọn `s3`, `r2`, hoặc `mock` | Không | `mock` |
-| `AWS_ACCESS_KEY_ID` | Storage | Key truy cập S3 | Có (nếu dùng s3) | |
-| `AWS_SECRET_ACCESS_KEY` | Storage | Secret truy cập S3 | Có (nếu dùng s3) | |
-| `AWS_S3_BUCKET` | Storage | Tên bucket S3 | Có (nếu dùng s3) | |
-| `AWS_REGION` | Storage | Vùng AWS S3 | Có (nếu dùng s3) | `ap-southeast-1` |
-| `RESEND_API_KEY` | Email | Key API cho Resend | Có (nếu dùng resend) | |
-| `EMAIL_DEFAULT_FROM` | Email | Email gửi mặc định | Không | `noreply@...` |
-| `DEEPGRAM_API_KEY` | Voice | Key dùng cho Live STT | Có (nếu bật voice) | |
-| `ELEVENLABS_API_KEY` | Voice | Key dùng cho Live TTS | Có (nếu bật voice) | |
-| `CARTESIA_API_KEY` | Voice | Alternative TTS | Không | |
-| `PAYOS_CLIENT_ID` | Billing | PayOS Client | Có (nếu dùng payos) | |
-| `PAYOS_API_KEY` | Billing | PayOS Secret Key | Có (nếu dùng payos) | |
-| `PAYOS_CHECKSUM_KEY` | Billing | PayOS Signature Key | Có (nếu dùng payos) | |
+| Biến môi trường         | Phân loại | Mô tả                        | Bắt buộc             | Mặc định         |
+| ----------------------- | --------- | ---------------------------- | -------------------- | ---------------- |
+| `STORAGE_PROVIDER`      | Storage   | Chọn `s3`, `r2`, hoặc `mock` | Không                | `mock`           |
+| `AWS_ACCESS_KEY_ID`     | Storage   | Key truy cập S3              | Có (nếu dùng s3)     |                  |
+| `AWS_SECRET_ACCESS_KEY` | Storage   | Secret truy cập S3           | Có (nếu dùng s3)     |                  |
+| `AWS_S3_BUCKET`         | Storage   | Tên bucket S3                | Có (nếu dùng s3)     |                  |
+| `AWS_REGION`            | Storage   | Vùng AWS S3                  | Có (nếu dùng s3)     | `ap-southeast-1` |
+| `RESEND_API_KEY`        | Email     | Key API cho Resend           | Có (nếu dùng resend) |                  |
+| `EMAIL_DEFAULT_FROM`    | Email     | Email gửi mặc định           | Không                | `noreply@...`    |
+| `DEEPGRAM_API_KEY`      | Voice     | Key dùng cho Live STT        | Có (nếu bật voice)   |                  |
+| `ELEVENLABS_API_KEY`    | Voice     | Key dùng cho Live TTS        | Có (nếu bật voice)   |                  |
+| `CARTESIA_API_KEY`      | Voice     | Alternative TTS              | Không                |                  |
+| `PAYOS_CLIENT_ID`       | Billing   | PayOS Client                 | Có (nếu dùng payos)  |                  |
+| `PAYOS_API_KEY`         | Billing   | PayOS Secret Key             | Có (nếu dùng payos)  |                  |
+| `PAYOS_CHECKSUM_KEY`    | Billing   | PayOS Signature Key          | Có (nếu dùng payos)  |                  |
 
 ---
 
 ## Verification Plan
 
 ### Automated Tests
+
 1. **Storage Unit Tests:** Mock S3Client để đảm bảo logic tạo URL và route bucket chính xác.
 2. **Email Integration Tests:** Verify BullMQ worker nhận job và parse biến vào React Email chính xác.
 3. **Billing Webhooks:** Gọi trực tiếp vào webhook handler với signature hợp lệ (mocked) để verify logic update Database và Invoice.
 4. **Voice Gateway Tests:** Unit test cho `SentenceChunkerService` với các đoạn text token stream ngẫu nhiên.
 
 ### Manual Verification
+
 1. Dùng Postman tạo Presigned URL và dùng cURL PUT một file mp3, xác nhận trên S3 Console.
 2. Gọi API trigger Welcome Email, kiểm tra Inbox của tài khoản test.
 3. Mở Voice Sandbox trên Frontend, nói "Hello", kiểm tra log latency trên Terminal của NestJS. Yêu cầu TTFB (Time to First Byte) của âm thanh trả về < 800ms.
 4. Quét QR code test trên môi trường staging của PayOS.
 
 ### Performance Benchmarks
+
 - Upload 25MB audio phải xử lý xong presigned URL dưới 100ms.
 - STT (Deepgram) interim delay: mục tiêu < 300ms.
 - LLM Token stream tới TTS chunk buffer: mục tiêu < 500ms tổng thể cho câu đầu tiên.

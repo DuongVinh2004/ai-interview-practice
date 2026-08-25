@@ -31,10 +31,7 @@ describe('ShareService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ShareService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [ShareService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<ShareService>(ShareService);

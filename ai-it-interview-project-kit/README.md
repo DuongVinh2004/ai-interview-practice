@@ -30,25 +30,25 @@ Sản phẩm không được dùng điểm AI làm quyết định tuyển dụn
 
 ## Bản đồ thư mục
 
-| Thư mục | Nội dung | Trạng thái |
-|---|---|---|
-| `00-start-here` | Điều lệ, baseline repo, quyết định, thuật ngữ và nguồn | ✅ Active |
-| `01-product` | Tầm nhìn, người dùng, phạm vi, mô hình sản phẩm và KPI | ✅ Active |
-| `02-domain` | Domain, state machine, taxonomy, đánh giá và learning path | ✅ Active |
-| `03-requirements` | Functional, non-functional, compliance và acceptance criteria | ✅ Active |
-| `04-ux` | Kiến trúc thông tin và luồng trải nghiệm | ✅ Active |
-| `05-architecture` | Kiến trúc mục tiêu, module, scale, IaC và ADR | ✅ Active |
-| `06-data` | Mô hình dữ liệu, index, retention và migration | ✅ Active |
-| `07-contracts` | API, event, async job, lỗi và compatibility | ✅ Active |
-| `08-ai-evaluation` | AI boundary, prompt, rubric, eval và safety | ✅ Active |
-| `09-security-privacy` | Auth, IAM, threat model, privacy và secure SDLC | ✅ Active |
-| `10-testing` | Chiến lược test, quality gate, performance và accessibility | ✅ Active |
-| `11-delivery` | Roadmap, backlog, Git, team ownership và release gate | ✅ Active |
-| `12-exec-plans` | Quy chuẩn và kế hoạch thực thi (M0, M1, M4) | ✅ Active |
-| `13-operations` | CI/CD, observability, SLO, backup và incident runbook | ✅ Active |
-| `14-sample-data` | Dữ liệu synthetic, rubric, session và AI eval cases | ✅ Active |
-| `15-quality-evidence` | Traceability, scorecard, evidence và demo acceptance | ✅ Active |
-| `_archived/16-codex` | ChatGPT Supervisor Protocol (workflow cũ, không còn sử dụng) | 🗄️ Archived |
+| Thư mục               | Nội dung                                                      | Trạng thái  |
+| --------------------- | ------------------------------------------------------------- | ----------- |
+| `00-start-here`       | Điều lệ, baseline repo, quyết định, thuật ngữ và nguồn        | ✅ Active   |
+| `01-product`          | Tầm nhìn, người dùng, phạm vi, mô hình sản phẩm và KPI        | ✅ Active   |
+| `02-domain`           | Domain, state machine, taxonomy, đánh giá và learning path    | ✅ Active   |
+| `03-requirements`     | Functional, non-functional, compliance và acceptance criteria | ✅ Active   |
+| `04-ux`               | Kiến trúc thông tin và luồng trải nghiệm                      | ✅ Active   |
+| `05-architecture`     | Kiến trúc mục tiêu, module, scale, IaC và ADR                 | ✅ Active   |
+| `06-data`             | Mô hình dữ liệu, index, retention và migration                | ✅ Active   |
+| `07-contracts`        | API, event, async job, lỗi và compatibility                   | ✅ Active   |
+| `08-ai-evaluation`    | AI boundary, prompt, rubric, eval và safety                   | ✅ Active   |
+| `09-security-privacy` | Auth, IAM, threat model, privacy và secure SDLC               | ✅ Active   |
+| `10-testing`          | Chiến lược test, quality gate, performance và accessibility   | ✅ Active   |
+| `11-delivery`         | Roadmap, backlog, Git, team ownership và release gate         | ✅ Active   |
+| `12-exec-plans`       | Quy chuẩn và kế hoạch thực thi (M0, M1, M4)                   | ✅ Active   |
+| `13-operations`       | CI/CD, observability, SLO, backup và incident runbook         | ✅ Active   |
+| `14-sample-data`      | Dữ liệu synthetic, rubric, session và AI eval cases           | ✅ Active   |
+| `15-quality-evidence` | Traceability, scorecard, evidence và demo acceptance          | ✅ Active   |
+| `_archived/16-codex`  | ChatGPT Supervisor Protocol (workflow cũ, không còn sử dụng)  | 🗄️ Archived |
 
 ## Nguyên tắc bất biến
 

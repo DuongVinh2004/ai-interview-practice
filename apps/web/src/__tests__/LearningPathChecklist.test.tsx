@@ -84,7 +84,9 @@ describe('LearningPathChecklist in ResultDetailPage (Epic 6)', () => {
       expect(screen.getByText(/Practice This Topic|Luyện tập Chủ đề này/i)).toBeInTheDocument();
     });
 
-    const toggleBtn = screen.getByTitle(/Mark as Completed|Đánh dấu Hoàn thành|Đánh dấu Đã xong|Mark Completed/i);
+    const toggleBtn = screen.getByTitle(
+      /Mark as Completed|Đánh dấu Hoàn thành|Đánh dấu Đã xong|Mark Completed/i,
+    );
     fireEvent.click(toggleBtn);
 
     await waitFor(() => {

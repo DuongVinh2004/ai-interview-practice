@@ -48,9 +48,9 @@ describe('Code Execution IDOR / Ownership Enforcement (P1-003)', () => {
       userId: ownerUserId,
     });
 
-    await expect(
-      codeExecutionService.getSubmissions(attackerUserId, sessionId),
-    ).rejects.toThrow(DomainException);
+    await expect(codeExecutionService.getSubmissions(attackerUserId, sessionId)).rejects.toThrow(
+      DomainException,
+    );
 
     try {
       await codeExecutionService.getSubmissions(attackerUserId, sessionId);

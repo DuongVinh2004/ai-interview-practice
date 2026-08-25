@@ -72,7 +72,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
         type: VoiceEventType.CONNECT,
         interviewId: 'int-123',
       }),
-      false
+      false,
     );
 
     const errorEvent = sentMessages.find(m => m.type === VoiceEventType.ERROR);
@@ -109,7 +109,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
         type: VoiceEventType.CONNECT,
         interviewId: 'int-victim',
       }),
-      false
+      false,
     );
 
     const errorEvent = sentMessages.find(m => m.type === VoiceEventType.ERROR);
@@ -126,9 +126,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
       id: 'int-123',
       userId: 'user-1',
       jobRole: { name: 'Staff Backend Engineer' },
-      turns: [
-        { turnNumber: 1, question: { content: 'Explain distributed locking protocols.' } },
-      ],
+      turns: [{ turnNumber: 1, question: { content: 'Explain distributed locking protocols.' } }],
     });
 
     mockPrisma.voiceSession.upsert.mockResolvedValueOnce({
@@ -158,13 +156,13 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
         type: VoiceEventType.CONNECT,
         interviewId: 'int-123',
       }),
-      false
+      false,
     );
 
     expect(mockPrisma.voiceSession.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { interviewId: 'int-123' },
-      })
+      }),
     );
 
     const startEvent = sentMessages.find(m => m.type === VoiceEventType.CONNECTED);
@@ -197,7 +195,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
       JSON.stringify({
         type: VoiceEventType.INTERRUPT,
       }),
-      false
+      false,
     );
 
     const bargeInEvent = sentMessages.find(m => m.type === VoiceEventType.INTERRUPT);

@@ -16,9 +16,7 @@ describe('System Design Whiteboard Components (F003)', () => {
     expect(screen.getByText('In-Memory Cache')).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Load Balancer'));
-    expect(onAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'LOAD_BALANCER' })
-    );
+    expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ type: 'LOAD_BALANCER' }));
   });
 
   it('renders DesignFeedbackPanel with detected components and analysis details', () => {
@@ -40,11 +38,7 @@ describe('System Design Whiteboard Components (F003)', () => {
     const onTrigger = vi.fn();
 
     render(
-      <DesignFeedbackPanel
-        analysis={analysis}
-        isAnalyzing={false}
-        onTriggerAnalysis={onTrigger}
-      />
+      <DesignFeedbackPanel analysis={analysis} isAnalyzing={false} onTriggerAnalysis={onTrigger} />,
     );
 
     expect(screen.getByTestId('design-feedback-panel')).toBeInTheDocument();
@@ -76,13 +70,7 @@ describe('System Design Whiteboard Components (F003)', () => {
     ];
     const onSelect = vi.fn();
 
-    render(
-      <CanvasTimelapse
-        snapshots={snapshots}
-        activeIdx={null}
-        onSelectSnapshot={onSelect}
-      />
-    );
+    render(<CanvasTimelapse snapshots={snapshots} activeIdx={null} onSelectSnapshot={onSelect} />);
 
     expect(screen.getByTestId('canvas-timelapse')).toBeInTheDocument();
     expect(screen.getByText(/Snapshot 1 \(1:00\)/i)).toBeInTheDocument();

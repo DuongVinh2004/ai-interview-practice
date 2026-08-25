@@ -227,7 +227,8 @@ export function Navbar() {
               <Link
                 to="/mentors"
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors ${
-                  location.pathname.startsWith('/mentors') || location.pathname.startsWith('/mentor')
+                  location.pathname.startsWith('/mentors') ||
+                  location.pathname.startsWith('/mentor')
                     ? 'bg-emerald-50 text-emerald-700'
                     : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50'
                 }`}

@@ -6,14 +6,7 @@ import { CanvasTimelapse } from './CanvasTimelapse';
 import { DesignEvaluationReport } from './DesignEvaluationReport';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
-import {
-  Pen,
-  Square,
-  ArrowRight,
-  Camera,
-  CheckCircle2,
-  Trash2,
-} from 'lucide-react';
+import { Pen, Square, ArrowRight, Camera, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface CanvasElement {
   id: string;
@@ -133,7 +126,10 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
 
   if (isLoadingSession) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3" data-testid="whiteboard-loading">
+      <div
+        className="flex flex-col items-center justify-center py-20 gap-3"
+        data-testid="whiteboard-loading"
+      >
         <Spinner size="lg" />
         <p className="text-sm text-slate-500">Initializing system design whiteboard...</p>
       </div>
@@ -190,7 +186,9 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
                 type="button"
                 onClick={() => setTool('select')}
                 className={`p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
-                  tool === 'select' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  tool === 'select'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
                 }`}
                 title="Select & Move"
               >

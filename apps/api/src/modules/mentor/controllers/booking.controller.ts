@@ -14,10 +14,7 @@ export class BookingController {
 
   @Post('book')
   @ApiOperation({ summary: 'Book collision-safe 1-on-1 interview session with a mentor' })
-  async bookSession(
-    @CurrentUser('sub') candidateId: string,
-    @Body() dto: BookSessionDto,
-  ) {
+  async bookSession(@CurrentUser('sub') candidateId: string, @Body() dto: BookSessionDto) {
     return this.bookingService.bookSession(candidateId, dto.mentorId, dto.scheduledAt);
   }
 
@@ -29,10 +26,7 @@ export class BookingController {
 
   @Post(':id/cancel')
   @ApiOperation({ summary: 'Cancel a booked live session' })
-  async cancelSession(
-    @Param('id') sessionId: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  async cancelSession(@Param('id') sessionId: string, @CurrentUser('sub') userId: string) {
     return this.bookingService.cancelSession(sessionId, userId);
   }
 }

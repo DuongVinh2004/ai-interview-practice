@@ -96,7 +96,8 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
               JSON.stringify({
                 data: {
                   secret: 'JBSWY3DPEHPK3PXP',
-                  otpauthUrl: 'otpauth://totp/AI%20Interview:test@example.com?secret=JBSWY3DPEHPK3PXP',
+                  otpauthUrl:
+                    'otpauth://totp/AI%20Interview:test@example.com?secret=JBSWY3DPEHPK3PXP',
                   issuer: 'AI Interview Practice',
                   accountName: 'test@example.com',
                 },
@@ -213,9 +214,7 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     fireEvent.change(totpInput, { target: { value: '123456' } });
 
     // Submit MFA verification
-    fireEvent.click(
-      screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }));
 
     // Verify authenticated state
     await waitFor(() => {
@@ -257,18 +256,14 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     fireEvent.click(recoveryBtn);
 
     // Expect recovery code input
-    expect(
-      screen.getByPlaceholderText(/Recovery code|Mã khôi phục/i),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Recovery code|Mã khôi phục/i)).toBeInTheDocument();
 
     // Fill recovery code
     const recoveryInput = screen.getByPlaceholderText(/Recovery code|Mã khôi phục/i);
     fireEvent.change(recoveryInput, { target: { value: 'A1B2-C3D4-E5' } });
 
     // Submit recovery code
-    fireEvent.click(
-      screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }));
 
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -326,12 +321,8 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     await waitFor(() => {
       expect(screen.getByText('A1B2-C3D4-E5')).toBeInTheDocument();
       expect(screen.getByText('M6N7-P8Q9-R0')).toBeInTheDocument();
-      expect(
-        screen.getByText(/Copy Codes|Sao chép mã/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Download TXT|Tải file TXT/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Copy Codes|Sao chép mã/i)).toBeInTheDocument();
+      expect(screen.getByText(/Download TXT|Tải file TXT/i)).toBeInTheDocument();
     });
   });
 });

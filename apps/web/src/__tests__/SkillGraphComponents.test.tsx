@@ -19,7 +19,7 @@ function renderWithProviders(ui: React.ReactElement) {
   return render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>{ui}</MemoryRouter>
-    </QueryClientProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -90,7 +90,7 @@ describe('Skill Graph & Benchmark Components (F008)', () => {
         overallDelta={1.4}
         selectedPeriod="30d"
         onPeriodChange={onPeriodChange}
-      />
+      />,
     );
 
     expect(screen.getByTestId('progress-trend-chart')).toBeInTheDocument();

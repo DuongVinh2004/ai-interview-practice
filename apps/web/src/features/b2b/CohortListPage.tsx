@@ -2,13 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { CohortDto } from '@ai-interview/contracts';
-import {
-  GraduationCap,
-  Plus,
-  Users,
-  ArrowRight,
-  Search,
-} from 'lucide-react';
+import { GraduationCap, Plus, Users, ArrowRight, Search } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -38,7 +32,7 @@ export const CohortListPage: React.FC = () => {
       });
       return res.data;
     },
-    onSuccess: (newCohort) => {
+    onSuccess: newCohort => {
       queryClient.invalidateQueries({ queryKey: ['tenant-cohorts'] });
       setIsModalOpen(false);
       setName('');
@@ -47,9 +41,10 @@ export const CohortListPage: React.FC = () => {
     },
   });
 
-  const filteredCohorts = cohorts?.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.description && c.description.toLowerCase().includes(search.toLowerCase())),
+  const filteredCohorts = cohorts?.filter(
+    c =>
+      c.name.toLowerCase().includes(search.toLowerCase()) ||
+      (c.description && c.description.toLowerCase().includes(search.toLowerCase())),
   );
 
   return (
@@ -57,13 +52,19 @@ export const CohortListPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
           <div className="flex items-center gap-2">
-            <Link to="/b2b/dashboard" className="text-xs font-semibold text-emerald-700 hover:underline">
+            <Link
+              to="/b2b/dashboard"
+              className="text-xs font-semibold text-emerald-700 hover:underline"
+            >
               ← Back to Dashboard
             </Link>
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 mt-1">Training Cohorts & Student Batches</h1>
+          <h1 className="text-2xl font-bold text-slate-900 mt-1">
+            Training Cohorts & Student Batches
+          </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Organize learners into batches, monitor roster performance, and distribute mock interviews.
+            Organize learners into batches, monitor roster performance, and distribute mock
+            interviews.
           </p>
         </div>
 
@@ -85,7 +86,7 @@ export const CohortListPage: React.FC = () => {
           type="text"
           placeholder="Filter cohorts by name..."
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={e => setSearch(e.target.value)}
           className="pl-10"
           data-testid="cohort-search-input"
         />
@@ -94,11 +95,11 @@ export const CohortListPage: React.FC = () => {
       {/* Cohorts Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {isLoading ? (
-          [1, 2, 3].map((i) => (
+          [1, 2, 3].map(i => (
             <div key={i} className="h-48 bg-slate-100 rounded-3xl animate-pulse" />
           ))
         ) : filteredCohorts && filteredCohorts.length > 0 ? (
-          filteredCohorts.map((cohort) => (
+          filteredCohorts.map(cohort => (
             <div
               key={cohort.id}
               onClick={() => navigate(`/b2b/cohorts/${cohort.id}`)}
@@ -141,11 +142,16 @@ export const CohortListPage: React.FC = () => {
           <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-lg font-bold text-slate-900">Create New Cohort</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             <form
-              onSubmit={(e) => {
+              onSubmit={e => {
                 e.preventDefault();
                 createMutation.mutate();
               }}
@@ -158,7 +164,7 @@ export const CohortListPage: React.FC = () => {
                 <Input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={e => setName(e.target.value)}
                   placeholder="e.g. Spring 2026 CS Batch A"
                   required
                   data-testid="create-cohort-name-input"
@@ -172,14 +178,19 @@ export const CohortListPage: React.FC = () => {
                 <Textarea
                   rows={3}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={e => setDescription(e.target.value)}
                   placeholder="Goals, target roles, or curriculum details..."
                   data-testid="create-cohort-desc-input"
                 />
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <Button type="button" variant="ghost" size="md" onClick={() => setIsModalOpen(false)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={() => setIsModalOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button

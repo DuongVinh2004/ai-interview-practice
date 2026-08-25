@@ -29,7 +29,6 @@ import {
   CreateAssignmentSchema,
 } from '../index';
 
-
 describe('Contracts Validation Schemas', () => {
   it('validates RegisterDto correctly', () => {
     const valid = RegisterDtoSchema.safeParse({
@@ -279,7 +278,3 @@ describe('Contracts Validation Schemas', () => {
     expect(AssignmentStatus.PUBLISHED).toBe('PUBLISHED');
   });
 });
-
-
-
-

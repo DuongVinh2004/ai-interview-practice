@@ -24,20 +24,14 @@ export class CohortController {
   @Post()
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR)
   @ApiOperation({ summary: 'Create a new training cohort' })
-  async createCohort(
-    @Req() req: RequestWithTenant,
-    @Body() dto: CreateCohortDto,
-  ) {
+  async createCohort(@Req() req: RequestWithTenant, @Body() dto: CreateCohortDto) {
     return this.cohortService.createCohort(req.tenantId!, dto.name, dto.description);
   }
 
   @Get(':id')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR, TenantRole.STUDENT)
   @ApiOperation({ summary: 'Get cohort detail with student roster' })
-  async getCohort(
-    @Req() req: RequestWithTenant,
-    @Param('id') cohortId: string,
-  ) {
+  async getCohort(@Req() req: RequestWithTenant, @Param('id') cohortId: string) {
     return this.cohortService.getCohort(cohortId, req.tenantId!);
   }
 

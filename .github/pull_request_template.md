@@ -1,7 +1,9 @@
 ## Description
+
 <!-- Provide a clear, concise summary of the changes introduced in this PR -->
 
 ## Type of Change
+
 - [ ] 🐛 Bug fix (non-breaking change which fixes an issue)
 - [ ] ✨ New feature (non-breaking change which adds functionality)
 - [ ] 💥 Breaking change (fix or feature that would cause existing functionality to not work as expected)
@@ -11,6 +13,7 @@
 - [ ] 🔧 CI/CD / Infrastructure / Build configuration
 
 ## Module Scope
+
 - [ ] `auth`
 - [ ] `profile`
 - [ ] `taxonomy`
@@ -23,6 +26,7 @@
 - [ ] `platform` / `contracts` / `web`
 
 ## Pre-Merge Checklist
+
 - [ ] My code follows the code style and formatting conventions of this project (`pnpm format:check`).
 - [ ] I have run the linter and resolved all issues (`pnpm lint`).
 - [ ] I have verified that all TypeScript types pass without errors (`pnpm type-check`).

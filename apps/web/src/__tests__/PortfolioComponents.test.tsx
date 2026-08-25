@@ -99,14 +99,9 @@ describe('Track F010: Portfolio & Certificate Components', () => {
       createdAt: '2026-08-24T10:00:00Z',
     };
 
-    render(
-      <CertificateViewer
-        certificate={cert}
-        onDownload={vi.fn()}
-        onShare={vi.fn()}
-      />,
-      { wrapper: createWrapper() },
-    );
+    render(<CertificateViewer certificate={cert} onDownload={vi.fn()} onShare={vi.fn()} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByTestId('certificate-canvas')).toBeInTheDocument();
     expect(screen.getByText('Alex Rivera')).toBeInTheDocument();
@@ -131,14 +126,9 @@ describe('Track F010: Portfolio & Certificate Components', () => {
       createdAt: '2026-08-24T10:00:00Z',
     };
 
-    render(
-      <CertificateModal
-        isOpen={true}
-        onClose={vi.fn()}
-        certificate={cert}
-      />,
-      { wrapper: createWrapper() },
-    );
+    render(<CertificateModal isOpen={true} onClose={vi.fn()} certificate={cert} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByTestId('certificate-modal')).toBeInTheDocument();
     expect(screen.getByText('Alex Rivera')).toBeInTheDocument();

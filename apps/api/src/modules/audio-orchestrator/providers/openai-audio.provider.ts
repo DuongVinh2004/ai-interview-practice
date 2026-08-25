@@ -67,7 +67,8 @@ export class OpenAiAudioProvider implements AudioProviderInterface {
       });
 
       const latencyMs = Date.now() - startTime;
-      const durationSeconds = (response as any).duration || Math.max(1, Math.round(audioBuffer.length / 16000));
+      const durationSeconds =
+        (response as any).duration || Math.max(1, Math.round(audioBuffer.length / 16000));
       // OpenAI Whisper cost: $0.006 per minute = $0.0001 per second
       const costEstimate = Number(((durationSeconds / 60) * 0.006).toFixed(6));
 
@@ -101,11 +102,7 @@ export class OpenAiAudioProvider implements AudioProviderInterface {
     const client = this.getClient();
 
     if (!text || text.trim().length === 0) {
-      throw new DomainException(
-        ErrorCode.VALIDATION_ERROR,
-        'Synthesis text cannot be empty.',
-        400,
-      );
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Synthesis text cannot be empty.', 400);
     }
 
     try {

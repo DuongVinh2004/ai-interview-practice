@@ -15,7 +15,10 @@ export function useSystemDesign(interviewId: string) {
   // Initialize or fetch whiteboard session
   const sessionQuery = useQuery<SystemDesignSessionDto>({
     queryKey: ['system-design', interviewId],
-    queryFn: () => apiClient<SystemDesignSessionDto>(`/interviews/${interviewId}/canvas/init`, { method: 'POST' }),
+    queryFn: () =>
+      apiClient<SystemDesignSessionDto>(`/interviews/${interviewId}/canvas/init`, {
+        method: 'POST',
+      }),
     enabled: !!interviewId,
   });
 
@@ -27,8 +30,12 @@ export function useSystemDesign(interviewId: string) {
   });
 
   // Mutation to save snapshot
-  const saveSnapshotMutation = useMutation<CanvasSnapshotDto, Error, { imageUrl: string; canvasStateJson?: any; elapsedSeconds?: number }>({
-    mutationFn: (body) =>
+  const saveSnapshotMutation = useMutation<
+    CanvasSnapshotDto,
+    Error,
+    { imageUrl: string; canvasStateJson?: any; elapsedSeconds?: number }
+  >({
+    mutationFn: body =>
       apiClient<CanvasSnapshotDto>(`/interviews/${interviewId}/canvas/snapshot`, {
         method: 'POST',
         body: JSON.stringify(body),
@@ -39,8 +46,12 @@ export function useSystemDesign(interviewId: string) {
   });
 
   // Mutation to analyze snapshot
-  const analyzeMutation = useMutation<VisionAnalysisResultDto, Error, { imageUrl?: string; canvasStateJson?: any }>({
-    mutationFn: (body) =>
+  const analyzeMutation = useMutation<
+    VisionAnalysisResultDto,
+    Error,
+    { imageUrl?: string; canvasStateJson?: any }
+  >({
+    mutationFn: body =>
       apiClient<VisionAnalysisResultDto>(`/interviews/${interviewId}/canvas/analyze`, {
         method: 'POST',
         body: JSON.stringify(body),

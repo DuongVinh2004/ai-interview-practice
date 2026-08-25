@@ -24,4 +24,3 @@ Create the plan on the task branch, review risky choices before implementation, 
 ## Stop conditions
 
 Pause when official baseline cannot be verified, required credentials/approval are missing, a migration risks unrecoverable data, a security/privacy boundary changes, tests reveal cross-user leakage, or a deferred decision gate is reached.
-

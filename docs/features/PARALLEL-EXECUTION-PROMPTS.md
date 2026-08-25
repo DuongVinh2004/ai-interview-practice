@@ -48,13 +48,13 @@ flowchart TD
     F014 --> F011
 ```
 
-| Wave | Features (song song) | Tổng effort | Thời gian thực (song song) |
-|---|---|---|---|
-| **Wave 1** | F013, F002, F007, F014 | 11–14 ngày | **3–4 ngày** |
-| **Wave 2** | F004, F006, F001 | 9–13 ngày | **5–7 ngày** |
-| **Wave 3** | F005, F003, F012 | 14–19 ngày | **5–7 ngày** |
-| **Wave 4** | F008 → F009 → F010 + F011 | 41–44 ngày | **~22 ngày** (chain + parallel) |
-| **Tổng** | 14 features | 77–97 ngày | **~35–40 ngày** ⚡ |
+| Wave       | Features (song song)      | Tổng effort | Thời gian thực (song song)      |
+| ---------- | ------------------------- | ----------- | ------------------------------- |
+| **Wave 1** | F013, F002, F007, F014    | 11–14 ngày  | **3–4 ngày**                    |
+| **Wave 2** | F004, F006, F001          | 9–13 ngày   | **5–7 ngày**                    |
+| **Wave 3** | F005, F003, F012          | 14–19 ngày  | **5–7 ngày**                    |
+| **Wave 4** | F008 → F009 → F010 + F011 | 41–44 ngày  | **~22 ngày** (chain + parallel) |
+| **Tổng**   | 14 features               | 77–97 ngày  | **~35–40 ngày** ⚡              |
 
 ---
 
@@ -830,15 +830,15 @@ Prerequisites: F008 (Skill Graph) + F014 (Billing) ĐÃ HOÀN THÀNH.
 
 ## Tổng hợp: Cách chạy
 
-| Bước | Hành động | Song song |
-|---|---|---|
-| 1 | Mở 4 Antigravity sessions → paste Prompt 1A, 1B, 1C, 1D | ✅ 4 agents |
-| 2 | Chờ tất cả Wave 1 xong. Verify: `pnpm lint && pnpm typecheck && pnpm test` | — |
-| 3 | Mở 3 sessions → paste Prompt 2A, 2B, 2C | ✅ 3 agents |
-| 4 | Chờ Wave 2 xong. Verify. | — |
-| 5 | Mở 3 sessions → paste Prompt 3A, 3B, 3C | ✅ 3 agents |
-| 6 | Chờ Wave 3 xong. Verify. | — |
-| 7 | Paste Prompt 4A (F008). Chờ xong. | 1 agent |
-| 8 | Mở 2 sessions → paste Prompt 4B + 4D song song | ✅ 2 agents |
-| 9 | Chờ xong. Paste Prompt 4C (F010). | 1 agent |
-| 10 | Done! Cập nhật PROJECT-STATUS.md | — |
+| Bước | Hành động                                                                  | Song song   |
+| ---- | -------------------------------------------------------------------------- | ----------- |
+| 1    | Mở 4 Antigravity sessions → paste Prompt 1A, 1B, 1C, 1D                    | ✅ 4 agents |
+| 2    | Chờ tất cả Wave 1 xong. Verify: `pnpm lint && pnpm typecheck && pnpm test` | —           |
+| 3    | Mở 3 sessions → paste Prompt 2A, 2B, 2C                                    | ✅ 3 agents |
+| 4    | Chờ Wave 2 xong. Verify.                                                   | —           |
+| 5    | Mở 3 sessions → paste Prompt 3A, 3B, 3C                                    | ✅ 3 agents |
+| 6    | Chờ Wave 3 xong. Verify.                                                   | —           |
+| 7    | Paste Prompt 4A (F008). Chờ xong.                                          | 1 agent     |
+| 8    | Mở 2 sessions → paste Prompt 4B + 4D song song                             | ✅ 2 agents |
+| 9    | Chờ xong. Paste Prompt 4C (F010).                                          | 1 agent     |
+| 10   | Done! Cập nhật PROJECT-STATUS.md                                           | —           |

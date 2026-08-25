@@ -1,11 +1,7 @@
 import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
-import {
-  ErrorCode,
-  AnalyzeStarResponse,
-  StarEvaluationReport,
-} from '@ai-interview/contracts';
+import { ErrorCode, AnalyzeStarResponse, StarEvaluationReport } from '@ai-interview/contracts';
 import { StarRubric } from '../../evaluation/rubrics/star-rubric';
 
 export interface AnalyzeStarInput {
@@ -37,12 +33,16 @@ export class BehavioralService {
 
     if (!hasResult) {
       actionNeeded = 'PROBE';
-      probeText = 'You described the actions well, but what were the quantifiable business or engineering results of this initiative?';
-      probeTextVi = 'Bạn đã mô tả hành động rất tốt, nhưng kết quả định lượng cụ thể (chỉ số, phần trăm cải thiện) của dự án này là gì?';
+      probeText =
+        'You described the actions well, but what were the quantifiable business or engineering results of this initiative?';
+      probeTextVi =
+        'Bạn đã mô tả hành động rất tốt, nhưng kết quả định lượng cụ thể (chỉ số, phần trăm cải thiện) của dự án này là gì?';
     } else if (!hasAction) {
       actionNeeded = 'PROBE';
-      probeText = 'Could you elaborate on the specific individual actions and technical decisions you personally took to resolve this challenge?';
-      probeTextVi = 'Bạn có thể chia sẻ sâu hơn về những hành động và quyết định kỹ thuật cụ thể mà cá nhân bạn đã thực hiện không?';
+      probeText =
+        'Could you elaborate on the specific individual actions and technical decisions you personally took to resolve this challenge?';
+      probeTextVi =
+        'Bạn có thể chia sẻ sâu hơn về những hành động và quyết định kỹ thuật cụ thể mà cá nhân bạn đã thực hiện không?';
     } else if (!hasTask) {
       actionNeeded = 'PROBE';
       probeText = 'What was your exact role and objective when this challenge emerged?';
@@ -106,7 +106,11 @@ export class BehavioralService {
     }
 
     const evaluated = StarRubric.evaluate(
-      (starEval.situationText || '') + ' ' + (starEval.actionText || '') + ' ' + (starEval.resultText || ''),
+      (starEval.situationText || '') +
+        ' ' +
+        (starEval.actionText || '') +
+        ' ' +
+        (starEval.resultText || ''),
     );
 
     return {

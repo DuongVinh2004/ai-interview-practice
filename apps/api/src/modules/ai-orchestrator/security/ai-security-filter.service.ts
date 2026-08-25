@@ -1,7 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import {
-  EvaluationPromptContext,
-} from '../interfaces/ai-provider.interface';
+import { EvaluationPromptContext } from '../interfaces/ai-provider.interface';
 import { EvaluatedAnswerAi } from '@ai-interview/contracts';
 
 export interface PreFilterResult {
@@ -116,10 +114,7 @@ export class AiSecurityFilterService {
               'Answer contains excessive keyword repetition without substantive engineering mechanism.',
             evidence: [`"${cleanWords.slice(0, 5).join(' ')}..."`],
             confidence: 0.85,
-            missingConcepts: [
-              'Concrete architectural implementation',
-              'Failure mode handling',
-            ],
+            missingConcepts: ['Concrete architectural implementation', 'Failure mode handling'],
             needsReview: false,
             safetyFlags: ['verbosity_manipulation'],
           },
@@ -139,7 +134,10 @@ export class AiSecurityFilterService {
    * 2. Recalculates deterministic application weighted score.
    * 3. Flags needsReview if confidence is low or safety violations occurred.
    */
-  postFilter(context: EvaluationPromptContext, rawEvaluation: EvaluatedAnswerAi): EvaluatedAnswerAi {
+  postFilter(
+    context: EvaluationPromptContext,
+    rawEvaluation: EvaluatedAnswerAi,
+  ): EvaluatedAnswerAi {
     const rawAnswer = context.answer.trim();
     const lowerAnswer = rawAnswer.toLowerCase();
 
@@ -167,7 +165,10 @@ export class AiSecurityFilterService {
     }
 
     // 2. Deterministic Application-computed weighted score
-    const technicalAccuracy = Math.min(10, Math.max(0, rawEvaluation.rubricScores.technicalAccuracy));
+    const technicalAccuracy = Math.min(
+      10,
+      Math.max(0, rawEvaluation.rubricScores.technicalAccuracy),
+    );
     const depth = Math.min(10, Math.max(0, rawEvaluation.rubricScores.depth));
     const clarity = Math.min(10, Math.max(0, rawEvaluation.rubricScores.clarity));
 

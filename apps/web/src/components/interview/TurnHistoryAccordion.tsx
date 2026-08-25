@@ -69,7 +69,9 @@ export function TurnHistoryAccordion({
                       <span className="text-xs font-bold text-slate-900">
                         {t.interview.question} {turn.turnNumber}
                       </span>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${diffInfo.color}`}>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded border ${diffInfo.color}`}
+                      >
                         {diffInfo.label}
                       </span>
                     </div>

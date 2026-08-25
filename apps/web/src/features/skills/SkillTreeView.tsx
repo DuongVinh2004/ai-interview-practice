@@ -29,8 +29,8 @@ export function SkillTreeNodeItem({ node, level = 1 }: SkillTreeItemProps) {
           level === 1
             ? 'bg-white border-slate-200 hover:border-emerald-300 shadow-sm mb-2'
             : level === 2
-            ? 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-100/80 mb-1.5'
-            : 'bg-white border-dashed border-slate-200 mb-1 hover:bg-emerald-50/30'
+              ? 'bg-slate-50/60 border-slate-200/80 hover:bg-slate-100/80 mb-1.5'
+              : 'bg-white border-dashed border-slate-200 mb-1 hover:bg-emerald-50/30'
         } ${hasChildren ? 'cursor-pointer' : 'cursor-default'}`}
         style={{ marginLeft: `${(level - 1) * 16}px` }}
       >
@@ -84,10 +84,10 @@ export function SkillTreeNodeItem({ node, level = 1 }: SkillTreeItemProps) {
                   node.score >= 8.0
                     ? 'bg-emerald-500'
                     : node.score >= 6.0
-                    ? 'bg-indigo-500'
-                    : node.score >= 4.0
-                    ? 'bg-amber-500'
-                    : 'bg-rose-500'
+                      ? 'bg-indigo-500'
+                      : node.score >= 4.0
+                        ? 'bg-amber-500'
+                        : 'bg-rose-500'
                 }`}
                 style={{ width: `${percent}%` }}
               />

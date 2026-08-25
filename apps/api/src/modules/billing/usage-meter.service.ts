@@ -2,11 +2,7 @@ import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
-import {
-  BillingMetric,
-  UsageSummary,
-  ErrorCode,
-} from '@ai-interview/contracts';
+import { BillingMetric, UsageSummary, ErrorCode } from '@ai-interview/contracts';
 
 const FREE_LIMITS: Record<BillingMetric, number> = {
   [BillingMetric.SESSION_COUNT]: 3,
@@ -141,11 +137,7 @@ export class UsageMeterService {
     );
   }
 
-  async recordUsage(
-    userId: string,
-    metric: BillingMetric,
-    quantity: number,
-  ): Promise<void> {
+  async recordUsage(userId: string, metric: BillingMetric, quantity: number): Promise<void> {
     await this.prisma.usageRecord.create({
       data: {
         userId,

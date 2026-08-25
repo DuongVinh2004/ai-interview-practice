@@ -69,11 +69,7 @@ export class MockAudioProvider implements AudioProviderInterface {
     const startTime = Date.now();
 
     if (!text || text.trim().length === 0) {
-      throw new DomainException(
-        ErrorCode.VALIDATION_ERROR,
-        'Synthesis text cannot be empty.',
-        400,
-      );
+      throw new DomainException(ErrorCode.VALIDATION_ERROR, 'Synthesis text cannot be empty.', 400);
     }
 
     const durationSeconds = Math.max(1, Math.min(30, Math.round(text.length / 15)));

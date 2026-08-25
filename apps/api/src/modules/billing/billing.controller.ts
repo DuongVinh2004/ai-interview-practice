@@ -34,10 +34,7 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create checkout session for subscription upgrade' })
-  async createCheckout(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: CreateCheckoutDto,
-  ) {
+  async createCheckout(@CurrentUser('sub') userId: string, @Body() dto: CreateCheckoutDto) {
     return this.billingService.createCheckout(userId, {
       ...dto,
       billingCycle: dto.billingCycle || 'monthly',

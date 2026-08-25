@@ -154,10 +154,7 @@ export class InterviewService {
         .updateMany({
           where: {
             id: dto.blueprintId,
-            OR: [
-              { jdAnalysis: { userId } },
-              { parsedProfile: { document: { userId } } },
-            ],
+            OR: [{ jdAnalysis: { userId } }, { parsedProfile: { document: { userId } } }],
           },
           data: { interviewId: session.id },
         })
@@ -511,7 +508,9 @@ export class InterviewService {
     const overallScore =
       allEvaluations.length > 0
         ? Number(
-            (allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length).toFixed(1),
+            (allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length).toFixed(
+              1,
+            ),
           )
         : null;
 
@@ -569,7 +568,6 @@ export class InterviewService {
       createdAt: (updatedEval.createdAt || new Date()).toISOString(),
     };
   }
-
 
   private mapToSessionDto(session: any) {
     return {

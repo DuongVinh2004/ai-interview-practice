@@ -87,7 +87,7 @@ export class AssignmentService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return assignments.map((a) => {
+    return assignments.map(a => {
       const completedSessions = a.sessions || [];
       const completedCandidates = completedSessions.length;
       let averageScore: number | null = null;

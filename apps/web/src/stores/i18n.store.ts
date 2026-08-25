@@ -68,11 +68,13 @@ export const translations = {
       placeholder: 'Structure your answer with key concepts, trade-offs, and practical examples...',
       submitAnswer: 'Submit Answer',
       submitting: 'Submitting...',
-      submitNotice: 'Take your time. Once submitted, your answer is persisted and evaluated asynchronously.',
+      submitNotice:
+        'Take your time. Once submitted, your answer is persisted and evaluated asynchronously.',
       submittedAnswer: 'Your Submitted Answer',
       evaluatingTitle: 'Evaluating',
       evaluatingDesc: 'AI is evaluating your answer against the structured rubric...',
-      evaluatingDetail: 'Scoring technical accuracy, depth, clarity, and extracting quoted evidence.',
+      evaluatingDetail:
+        'Scoring technical accuracy, depth, clarity, and extracting quoted evidence.',
       feedbackTitle: 'Evaluation & Feedback',
       technicalAccuracy: 'Technical Accuracy',
       depth: 'Depth & Detail',
@@ -116,19 +118,22 @@ export const translations = {
       pressSpaceToToggle: 'Press Space to start/stop',
       transcribeAnswer: 'Transcribe Answer',
       reRecord: 'Re-record',
-      micPermissionDenied: 'Microphone permission was denied. Please allow microphone access in your browser settings.',
+      micPermissionDenied:
+        'Microphone permission was denied. Please allow microphone access in your browser settings.',
       micNotFound: 'No microphone found. Please connect an audio input device.',
       audioSettings: 'Audio & Voice Settings',
       voiceSelect: 'AI Voice',
       playbackRate: 'Playback Speed',
       autoPlayTts: 'Auto-read Question Audio',
       micSensitivity: 'Microphone Sensitivity',
-      editTranscribedText: 'You can review and edit your transcribed answer below before submitting:',
+      editTranscribedText:
+        'You can review and edit your transcribed answer below before submitting:',
       waveformTitle: 'Audio Frequency Visualizer',
     },
     skills: {
       title: 'Skills Graph & Competencies',
-      subtitle: 'Track proficiency levels, benchmark against market expectations, and close knowledge gaps',
+      subtitle:
+        'Track proficiency levels, benchmark against market expectations, and close knowledge gaps',
       overallProficiency: 'Overall Technical Proficiency',
       benchmarkVsIndustry: 'Industry Benchmark Comparison',
       topGaps: 'Priority Skill Gaps',
@@ -138,7 +143,8 @@ export const translations = {
     },
     readiness: {
       title: 'Interview Readiness Index',
-      subtitle: 'Comprehensive evaluation of your hiring readiness across all technical and behavioral dimensions',
+      subtitle:
+        'Comprehensive evaluation of your hiring readiness across all technical and behavioral dimensions',
       readinessScore: 'Overall Readiness Score',
       hiringProbability: 'Estimated Offer Probability',
       tierBreakdown: 'Target Seniority Readiness',
@@ -162,7 +168,8 @@ export const translations = {
     },
     mentors: {
       title: 'Senior Engineering Mentors',
-      subtitle: 'Book 1:1 live mock interviews and feedback sessions with verified Tech Leads and Staff Engineers',
+      subtitle:
+        'Book 1:1 live mock interviews and feedback sessions with verified Tech Leads and Staff Engineers',
       bookSession: 'Book Mock Session',
       verifiedMentor: 'Verified Staff Mentor',
       totalSessions: 'Sessions Hosted',
@@ -171,7 +178,8 @@ export const translations = {
     },
     b2b: {
       title: 'Enterprise & Cohort Management',
-      subtitle: 'Train, evaluate, and benchmark developer candidates and engineering bootcamps at scale',
+      subtitle:
+        'Train, evaluate, and benchmark developer candidates and engineering bootcamps at scale',
       activeCohorts: 'Active Cohorts',
       totalCandidates: 'Enrolled Candidates',
       avgScore: 'Average Benchmark Score',
@@ -180,7 +188,8 @@ export const translations = {
     },
     billing: {
       title: 'Subscription & Quotas',
-      subtitle: 'Manage your active subscription plan, check usage quotas, and view invoice history',
+      subtitle:
+        'Manage your active subscription plan, check usage quotas, and view invoice history',
       currentPlan: 'Current Plan',
       changePlan: 'Upgrade or Change Plan',
       usageSummary: 'Monthly Usage & Quotas',
@@ -194,9 +203,11 @@ export const translations = {
       usersTitle: 'User Administration',
       usersSubtitle: 'Manage candidate accounts, search users, and apply soft locks',
       aiTelemetryTitle: 'AI Orchestrator Telemetry',
-      aiTelemetrySubtitle: 'Monitor Circuit Breaker resilience, token usage, latency, and estimated cost',
+      aiTelemetrySubtitle:
+        'Monitor Circuit Breaker resilience, token usage, latency, and estimated cost',
       promptsTitle: 'Prompt Version Management',
-      promptsSubtitle: 'View and activate versioned prompt templates for question generation & evaluation',
+      promptsSubtitle:
+        'View and activate versioned prompt templates for question generation & evaluation',
       circuitBreaker: 'Circuit Breaker Status',
       dailyBudget: 'Daily AI Budget',
       totalRuns: 'Total AI Runs',
@@ -216,7 +227,8 @@ export const translations = {
     },
     analytics: {
       competencyRadarTitle: 'Competency Radar Matrix',
-      competencyRadarSubtitle: 'Multi-dimensional technical skill distribution across all completed sessions',
+      competencyRadarSubtitle:
+        'Multi-dimensional technical skill distribution across all completed sessions',
       progressTitle: 'Longitudinal Score Progression',
       progressSubtitle: 'Track your performance improvement and difficulty velocity over time',
       topStrengths: 'Top Strengths',
@@ -227,11 +239,13 @@ export const translations = {
       sessionsCompleted: 'Sessions Completed',
       highestScore: 'Highest Score',
       scoreVelocity: 'Growth Velocity',
-      noDataYet: 'Complete at least one interview session to generate your competency radar matrix.',
+      noDataYet:
+        'Complete at least one interview session to generate your competency radar matrix.',
     },
     share: {
       shareTitle: 'Share with Mentor',
-      shareSubtitle: 'Generate a secure, time-limited read-only link for tech leads, mentors, or recruiters',
+      shareSubtitle:
+        'Generate a secure, time-limited read-only link for tech leads, mentors, or recruiters',
       createLink: 'Generate Share Link',
       expiryOption: 'Link Expiration',
       expiry1d: '24 Hours',
@@ -258,11 +272,14 @@ export const translations = {
     },
     practice: {
       standard: 'Full Mock Interview',
-      standardDesc: 'Comprehensive 5-question adaptive interview testing breadth & depth across all competencies.',
+      standardDesc:
+        'Comprehensive 5-question adaptive interview testing breadth & depth across all competencies.',
       remediation: 'Focused Remediation',
-      remediationDesc: 'Targeted workout specifically focused on addressing your identified skill gaps.',
+      remediationDesc:
+        'Targeted workout specifically focused on addressing your identified skill gaps.',
       sandbox: 'Quick Sandbox Drill',
-      sandboxDesc: 'Casual practice session with instant AI evaluations that does not impact your official profile stats.',
+      sandboxDesc:
+        'Casual practice session with instant AI evaluations that does not impact your official profile stats.',
       modeLabel: 'Session Mode',
       targetCompetency: 'Focus Competency Area',
       questionCount: 'Question Count',
@@ -278,10 +295,12 @@ export const translations = {
     },
     profile: {
       title: 'Candidate Profile & Career Goals',
-      subtitle: 'Manage your career targets, assess your technical competencies against industry standards, and control your data.',
+      subtitle:
+        'Manage your career targets, assess your technical competencies against industry standards, and control your data.',
       personalInfo: 'Personal & Career Details',
       profileTitle: 'Candidate Profile & Career Goals',
-      profileSubtitle: 'Manage your career targets, assess your technical competencies against industry standards, and control your data.',
+      profileSubtitle:
+        'Manage your career targets, assess your technical competencies against industry standards, and control your data.',
       fullName: 'Full Name',
       targetRole: 'Target Job Role',
       targetLevel: 'Seniority Level',
@@ -291,13 +310,15 @@ export const translations = {
       saving: 'Saving...',
       savedSuccess: 'Profile updated successfully!',
       benchmarksTitle: 'Industry Competency Benchmark',
-      benchmarksSubtitle: 'How your assessed skill scores compare against standard industry expectations for',
+      benchmarksSubtitle:
+        'How your assessed skill scores compare against standard industry expectations for',
       readinessScore: 'Overall Readiness',
       exceeds: 'Exceeds Benchmark',
       meets: 'Meets Benchmark',
       needsWork: 'Growth Required',
       gdprTitle: 'Privacy & Data Portability (GDPR AIP-047)',
-      gdprSubtitle: 'Download a machine-readable JSON archive of all your interview records, answers, and learning paths',
+      gdprSubtitle:
+        'Download a machine-readable JSON archive of all your interview records, answers, and learning paths',
       exportDataBtn: 'Export My Personal Data (JSON)',
       exporting: 'Exporting...',
     },
@@ -319,7 +340,8 @@ export const translations = {
     },
     adminEval: {
       title: 'AI Evaluation Regression Harness',
-      subtitle: 'Automated quality gate, golden benchmark regression testing, and bilingual slice analytics (AIP-030..034).',
+      subtitle:
+        'Automated quality gate, golden benchmark regression testing, and bilingual slice analytics (AIP-030..034).',
       runHarnessBtn: 'Run Full Golden Evaluation Suite',
       running: 'Running Evaluation Suite...',
       lastRun: 'Last Executed',
@@ -346,20 +368,23 @@ export const translations = {
     },
     mfa: {
       title: 'Two-Factor Authentication (2FA / TOTP)',
-      subtitle: 'Protect your account using Time-based One-Time Passwords and secure backup recovery codes (RFC 6238).',
+      subtitle:
+        'Protect your account using Time-based One-Time Passwords and secure backup recovery codes (RFC 6238).',
       statusEnabled: '2FA is Enabled',
       statusDisabled: '2FA is Disabled',
       enableBtn: 'Enable 2FA',
       disableBtn: 'Disable 2FA',
       setupTitle: 'Set Up Two-Factor Authentication',
-      step1: '1. Scan this URI or enter the secret key into your Authenticator app (Google Authenticator, Authy, Apple Passwords).',
+      step1:
+        '1. Scan this URI or enter the secret key into your Authenticator app (Google Authenticator, Authy, Apple Passwords).',
       step2: '2. Enter the 6-digit code generated by your Authenticator app to confirm setup.',
       secretKey: 'Secret Key',
       verifyCodePlaceholder: '6-digit code (e.g. 123456)',
       confirmEnable: 'Verify & Activate 2FA',
       enabling: 'Verifying...',
       recoveryCodesTitle: 'Important: Save Your Recovery Codes',
-      recoveryCodesWarning: 'These single-use backup codes allow you to regain access if you lose your phone. Each code can only be used once. Store them securely.',
+      recoveryCodesWarning:
+        'These single-use backup codes allow you to regain access if you lose your phone. Each code can only be used once. Store them securely.',
       copyCodes: 'Copy Codes',
       downloadCodes: 'Download TXT',
       codesSavedNotice: 'I have saved my backup codes securely',
@@ -370,7 +395,8 @@ export const translations = {
       confirmDisable: 'Confirm & Disable 2FA',
       disabling: 'Disabling...',
       mfaPromptTitle: 'Two-Factor Verification Required',
-      mfaPromptSubtitle: 'Enter the 6-digit verification code from your authenticator app to complete sign-in.',
+      mfaPromptSubtitle:
+        'Enter the 6-digit verification code from your authenticator app to complete sign-in.',
       useRecoveryCode: 'Use a backup recovery code instead',
       useTotpCode: 'Use 6-digit authenticator code instead',
       recoveryCodePlaceholder: 'Recovery code (e.g. ABCD-1234-EF)',
@@ -443,11 +469,13 @@ export const translations = {
       placeholder: 'Cấu trúc câu trả lời với các khái niệm cốt lõi, trade-offs và ví dụ thực tế...',
       submitAnswer: 'Nộp câu trả lời',
       submitting: 'Đang nộp...',
-      submitNotice: 'Hãy chuẩn bị kỹ lưỡng. Sau khi nộp, câu trả lời sẽ được lưu trữ và chấm điểm bất đồng bộ.',
+      submitNotice:
+        'Hãy chuẩn bị kỹ lưỡng. Sau khi nộp, câu trả lời sẽ được lưu trữ và chấm điểm bất đồng bộ.',
       submittedAnswer: 'Câu trả lời đã nộp',
       evaluatingTitle: 'Đang chấm điểm',
       evaluatingDesc: 'Hệ thống AI đang chấm điểm câu trả lời theo rubric tiêu chuẩn...',
-      evaluatingDetail: 'Đánh giá độ chính xác kỹ thuật, chiều sâu, độ rõ ràng và trích xuất bằng chứng nguyên văn.',
+      evaluatingDetail:
+        'Đánh giá độ chính xác kỹ thuật, chiều sâu, độ rõ ràng và trích xuất bằng chứng nguyên văn.',
       feedbackTitle: 'Đánh giá & Phản hồi',
       technicalAccuracy: 'Độ chính xác kỹ thuật',
       depth: 'Chiều sâu & Chi tiết',
@@ -491,7 +519,8 @@ export const translations = {
       pressSpaceToToggle: 'Nhấn Spacebar để Bắt đầu/Dừng',
       transcribeAnswer: 'Chuyển âm thanh thành văn bản',
       reRecord: 'Ghi âm lại',
-      micPermissionDenied: 'Quyền truy cập Microphone bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt của bạn.',
+      micPermissionDenied:
+        'Quyền truy cập Microphone bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt của bạn.',
       micNotFound: 'Không tìm thấy microphone. Vui lòng kết nối thiết bị thu âm.',
       audioSettings: 'Cài đặt Âm thanh & Giọng nói',
       voiceSelect: 'Giọng đọc AI',
@@ -503,7 +532,8 @@ export const translations = {
     },
     skills: {
       title: 'Ma trận Kỹ năng & Năng lực Kỹ thuật',
-      subtitle: 'Theo dõi độ thuần thục kỹ năng, đối chiếu với tiêu chuẩn thị trường và bù đắp lỗ hổng kiến thức',
+      subtitle:
+        'Theo dõi độ thuần thục kỹ năng, đối chiếu với tiêu chuẩn thị trường và bù đắp lỗ hổng kiến thức',
       overallProficiency: 'Mức độ Thuần thục Tổng quan',
       benchmarkVsIndustry: 'Đối chiếu Chuẩn ngành',
       topGaps: 'Kỹ năng Ưu tiên Cải thiện',
@@ -537,7 +567,8 @@ export const translations = {
     },
     mentors: {
       title: 'Chuyên gia & Mentor Kỹ thuật',
-      subtitle: 'Đặt lịch phỏng vấn thử 1:1 và nhận feedback chuyên sâu từ các Tech Lead và Staff Engineer',
+      subtitle:
+        'Đặt lịch phỏng vấn thử 1:1 và nhận feedback chuyên sâu từ các Tech Lead và Staff Engineer',
       bookSession: 'Đặt Lịch Phỏng vấn Thử',
       verifiedMentor: 'Mentor Đã Xác thực',
       totalSessions: 'Buổi đã Hướng dẫn',
@@ -569,9 +600,11 @@ export const translations = {
       usersTitle: 'Quản trị Người dùng',
       usersSubtitle: 'Quản lý tài khoản ứng viên, tìm kiếm và khóa tài khoản tạm thời',
       aiTelemetryTitle: 'Giám sát AI Orchestrator',
-      aiTelemetrySubtitle: 'Theo dõi trạng thái Circuit Breaker, lượng token, độ trễ và chi phí ước tính',
+      aiTelemetrySubtitle:
+        'Theo dõi trạng thái Circuit Breaker, lượng token, độ trễ và chi phí ước tính',
       promptsTitle: 'Quản lý Phiên bản Prompt',
-      promptsSubtitle: 'Xem và kích hoạt các mẫu prompt có phiên bản cho việc tạo câu hỏi và đánh giá',
+      promptsSubtitle:
+        'Xem và kích hoạt các mẫu prompt có phiên bản cho việc tạo câu hỏi và đánh giá',
       circuitBreaker: 'Trạng thái Circuit Breaker',
       dailyBudget: 'Ngân sách AI hàng ngày',
       totalRuns: 'Tổng lượt chạy AI',
@@ -633,11 +666,14 @@ export const translations = {
     },
     practice: {
       standard: 'Phỏng vấn Toàn diện',
-      standardDesc: 'Buổi phỏng vấn thích ứng 5 câu hỏi toàn diện kiểm tra cả chiều rộng & chiều sâu kỹ thuật.',
+      standardDesc:
+        'Buổi phỏng vấn thích ứng 5 câu hỏi toàn diện kiểm tra cả chiều rộng & chiều sâu kỹ thuật.',
       remediation: 'Luyện tập Trọng tâm',
-      remediationDesc: 'Bài luyện tập chuyên sâu nhắm thẳng vào các điểm thiếu sót đã được nhận diện.',
+      remediationDesc:
+        'Bài luyện tập chuyên sâu nhắm thẳng vào các điểm thiếu sót đã được nhận diện.',
       sandbox: 'Thao trường Thử nghiệm',
-      sandboxDesc: 'Thực hành thử nghiệm không áp lực, nhận đánh giá tức thì mà không ảnh hưởng tới chỉ số hồ sơ.',
+      sandboxDesc:
+        'Thực hành thử nghiệm không áp lực, nhận đánh giá tức thì mà không ảnh hưởng tới chỉ số hồ sơ.',
       modeLabel: 'Chế độ Luyện tập',
       targetCompetency: 'Năng lực Kỹ thuật Trọng tâm',
       questionCount: 'Số lượng Câu hỏi',
@@ -653,10 +689,12 @@ export const translations = {
     },
     profile: {
       title: 'Hồ sơ & Mục tiêu Nghề nghiệp',
-      subtitle: 'Quản lý mục tiêu nghề nghiệp, xem khoảng cách năng lực chuẩn ngành và xuất dữ liệu cá nhân',
+      subtitle:
+        'Quản lý mục tiêu nghề nghiệp, xem khoảng cách năng lực chuẩn ngành và xuất dữ liệu cá nhân',
       personalInfo: 'Thông tin Cá nhân & Mục tiêu',
       profileTitle: 'Hồ sơ & Mục tiêu Nghề nghiệp',
-      profileSubtitle: 'Quản lý mục tiêu nghề nghiệp, xem khoảng cách năng lực chuẩn ngành và xuất dữ liệu cá nhân',
+      profileSubtitle:
+        'Quản lý mục tiêu nghề nghiệp, xem khoảng cách năng lực chuẩn ngành và xuất dữ liệu cá nhân',
       fullName: 'Họ và tên',
       targetRole: 'Vị trí Mục tiêu',
       targetLevel: 'Cấp bậc Mục tiêu',
@@ -666,13 +704,15 @@ export const translations = {
       saving: 'Đang lưu...',
       savedSuccess: 'Cập nhật hồ sơ thành công!',
       benchmarksTitle: 'So sánh Năng lực theo Chuẩn Ngành',
-      benchmarksSubtitle: 'Đối chiếu điểm năng lực của bạn với kỳ vọng tiêu chuẩn thị trường cho cấp bậc',
+      benchmarksSubtitle:
+        'Đối chiếu điểm năng lực của bạn với kỳ vọng tiêu chuẩn thị trường cho cấp bậc',
       readinessScore: 'Mức độ Sẵn sàng',
       exceeds: 'Vượt chuẩn',
       meets: 'Đạt chuẩn',
       needsWork: 'Cần cải thiện',
       gdprTitle: 'Quyền Riêng tư & Di chuyển Dữ liệu (GDPR AIP-047)',
-      gdprSubtitle: 'Tải xuống gói lưu trữ JSON toàn bộ hồ sơ phỏng vấn, câu trả lời và lộ trình học tập của bạn',
+      gdprSubtitle:
+        'Tải xuống gói lưu trữ JSON toàn bộ hồ sơ phỏng vấn, câu trả lời và lộ trình học tập của bạn',
       exportDataBtn: 'Xuất Dữ liệu Cá nhân của tôi (JSON)',
       exporting: 'Đang xuất dữ liệu...',
     },
@@ -694,7 +734,8 @@ export const translations = {
     },
     adminEval: {
       title: 'Hệ thống Kiểm thử Hồi quy Đánh giá AI (Eval Harness)',
-      subtitle: 'Cổng kiểm soát chất lượng tự động, đánh giá bộ chuẩn golden benchmark song ngữ và phân tích lát cắt (AIP-030..034).',
+      subtitle:
+        'Cổng kiểm soát chất lượng tự động, đánh giá bộ chuẩn golden benchmark song ngữ và phân tích lát cắt (AIP-030..034).',
       runHarnessBtn: 'Chạy Toàn bộ Bộ Kiểm thử Golden Benchmark',
       running: 'Đang chạy bộ kiểm thử...',
       lastRun: 'Lần chạy gần nhất',
@@ -721,20 +762,23 @@ export const translations = {
     },
     mfa: {
       title: 'Xác thực Đa Yếu Tố (2FA / TOTP)',
-      subtitle: 'Bảo vệ tài khoản bằng mã xác thực 6 số dùng một lần theo thời gian (TOTP RFC 6238) và mã khôi phục dự phòng.',
+      subtitle:
+        'Bảo vệ tài khoản bằng mã xác thực 6 số dùng một lần theo thời gian (TOTP RFC 6238) và mã khôi phục dự phòng.',
       statusEnabled: '2FA đang Bật',
       statusDisabled: '2FA đang Tắt',
       enableBtn: 'Bật Xác thực 2FA',
       disableBtn: 'Tắt Xác thực 2FA',
       setupTitle: 'Cài đặt Xác thực 2 Yếu tố',
-      step1: '1. Quét mã hoặc nhập Khóa bí mật vào ứng dụng Authenticator (Google Authenticator, Authy, Apple Passwords).',
+      step1:
+        '1. Quét mã hoặc nhập Khóa bí mật vào ứng dụng Authenticator (Google Authenticator, Authy, Apple Passwords).',
       step2: '2. Nhập mã 6 chữ số được tạo trên ứng dụng Authenticator để hoàn tất kích hoạt.',
       secretKey: 'Khóa Bí mật',
       verifyCodePlaceholder: 'Mã 6 chữ số (VD: 123456)',
       confirmEnable: 'Xác thực & Kích hoạt 2FA',
       enabling: 'Đang xác thực...',
       recoveryCodesTitle: 'Quan trọng: Lưu lại Mã Khôi phục Dự phòng',
-      recoveryCodesWarning: 'Các mã dự phòng dùng 1 lần này giúp bạn đăng nhập khi mất điện thoại. Mỗi mã chỉ dùng được 1 lần. Hãy lưu trữ cẩn thận!',
+      recoveryCodesWarning:
+        'Các mã dự phòng dùng 1 lần này giúp bạn đăng nhập khi mất điện thoại. Mỗi mã chỉ dùng được 1 lần. Hãy lưu trữ cẩn thận!',
       copyCodes: 'Sao chép mã',
       downloadCodes: 'Tải file TXT',
       codesSavedNotice: 'Tôi đã lưu mã dự phòng an toàn',
@@ -745,7 +789,8 @@ export const translations = {
       confirmDisable: 'Xác nhận & Tắt 2FA',
       disabling: 'Đang xử lý...',
       mfaPromptTitle: 'Yêu cầu Xác thực 2 Yếu tố (2FA)',
-      mfaPromptSubtitle: 'Nhập mã xác thực 6 chữ số từ ứng dụng Authenticator để hoàn tất đăng nhập.',
+      mfaPromptSubtitle:
+        'Nhập mã xác thực 6 chữ số từ ứng dụng Authenticator để hoàn tất đăng nhập.',
       useRecoveryCode: 'Sử dụng Mã khôi phục dự phòng',
       useTotpCode: 'Sử dụng Mã 6 số từ Authenticator',
       recoveryCodePlaceholder: 'Mã khôi phục (VD: ABCD-1234-EF)',

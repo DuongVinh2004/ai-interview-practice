@@ -39,8 +39,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-rose-600 text-white hover:bg-rose-700 active:bg-rose-800 focus-visible:ring-rose-500 shadow-sm',
       ghost:
         'bg-transparent text-slate-700 hover:bg-slate-100 hover:text-slate-900 active:bg-slate-200 focus-visible:ring-slate-400',
-      link:
-        'bg-transparent text-emerald-600 hover:text-emerald-700 hover:underline p-0 h-auto focus-visible:ring-emerald-500',
+      link: 'bg-transparent text-emerald-600 hover:text-emerald-700 hover:underline p-0 h-auto focus-visible:ring-emerald-500',
     };
 
     const sizes = {
@@ -55,12 +54,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         disabled={disabled || isLoading}
-        className={cn(
-          baseStyles,
-          variants[variant],
-          variant !== 'link' && sizes[size],
-          className,
-        )}
+        className={cn(baseStyles, variants[variant], variant !== 'link' && sizes[size], className)}
         {...props}
       >
         {isLoading ? (

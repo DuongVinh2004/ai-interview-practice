@@ -127,7 +127,9 @@ describe('ProfileService', () => {
       expect(result.targetLevel).toBe('Senior');
       expect(result.evaluatedTurnsCount).toBe(2);
       expect(result.benchmarks.length).toBe(5);
-      expect(result.benchmarks.find(b => b.competency === CompetencyArea.SYSTEM_DESIGN)?.userScore).toBe(9.0);
+      expect(
+        result.benchmarks.find(b => b.competency === CompetencyArea.SYSTEM_DESIGN)?.userScore,
+      ).toBe(9.0);
       expect(result.readinessPercentage).toBeGreaterThan(0);
       expect(result.summary).toBeDefined();
     });
@@ -161,8 +163,21 @@ describe('ProfileService', () => {
             overallScore: 8.4,
             createdAt: new Date('2026-08-10T00:00:00Z'),
             updatedAt: new Date('2026-08-10T01:00:00Z'),
-            jobRole: { id: 'role-1', slug: 'backend', name: 'Backend', description: '', isActive: true },
-            seniorityLevel: { id: 'lvl-1', slug: 'senior', name: 'Senior', order: 3, description: '', isActive: true },
+            jobRole: {
+              id: 'role-1',
+              slug: 'backend',
+              name: 'Backend',
+              description: '',
+              isActive: true,
+            },
+            seniorityLevel: {
+              id: 'lvl-1',
+              slug: 'senior',
+              name: 'Senior',
+              order: 3,
+              description: '',
+              isActive: true,
+            },
             technologies: [],
             turns: [
               {

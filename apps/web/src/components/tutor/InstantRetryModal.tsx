@@ -53,7 +53,10 @@ export const InstantRetryModal: React.FC<InstantRetryModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150" data-testid="instant-retry-modal">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      data-testid="instant-retry-modal"
+    >
       <div className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
@@ -75,7 +78,9 @@ export const InstantRetryModal: React.FC<InstantRetryModalProps> = ({
         <div className="p-6 overflow-y-auto space-y-5">
           {/* Question Box */}
           <div className="p-4 bg-indigo-50/60 border border-indigo-100 rounded-xl space-y-1">
-            <span className="text-[11px] font-bold uppercase text-indigo-700">Câu hỏi phỏng vấn:</span>
+            <span className="text-[11px] font-bold uppercase text-indigo-700">
+              Câu hỏi phỏng vấn:
+            </span>
             <p className="text-sm font-medium text-indigo-950">{questionContent}</p>
           </div>
 
@@ -136,9 +141,13 @@ export const InstantRetryModal: React.FC<InstantRetryModalProps> = ({
                     <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold uppercase text-emerald-800">Điểm số sau khi cải thiện</p>
+                    <p className="text-xs font-bold uppercase text-emerald-800">
+                      Điểm số sau khi cải thiện
+                    </p>
                     <div className="flex items-baseline space-x-2">
-                      <span className="text-2xl font-extrabold text-emerald-950">{retryResult.retryScore}/10</span>
+                      <span className="text-2xl font-extrabold text-emerald-950">
+                        {retryResult.retryScore}/10
+                      </span>
                       <span className="text-xs font-bold text-emerald-700">
                         (+{retryResult.improvement} điểm so với lần 1)
                       </span>
@@ -153,12 +162,20 @@ export const InstantRetryModal: React.FC<InstantRetryModalProps> = ({
               {/* Side-by-side Answer View */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                  <span className="text-[11px] font-bold text-slate-500 block">Lần 1 ({retryResult.originalScore}/10):</span>
-                  <p className="text-xs text-slate-600 line-clamp-4">{retryResult.originalAnswer}</p>
+                  <span className="text-[11px] font-bold text-slate-500 block">
+                    Lần 1 ({retryResult.originalScore}/10):
+                  </span>
+                  <p className="text-xs text-slate-600 line-clamp-4">
+                    {retryResult.originalAnswer}
+                  </p>
                 </div>
                 <div className="p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl space-y-1">
-                  <span className="text-[11px] font-bold text-emerald-700 block">Lần 2 ({retryResult.retryScore}/10):</span>
-                  <p className="text-xs text-slate-800 line-clamp-4 font-medium">{retryResult.retryAnswer}</p>
+                  <span className="text-[11px] font-bold text-emerald-700 block">
+                    Lần 2 ({retryResult.retryScore}/10):
+                  </span>
+                  <p className="text-xs text-slate-800 line-clamp-4 font-medium">
+                    {retryResult.retryAnswer}
+                  </p>
                 </div>
               </div>
 
@@ -168,11 +185,15 @@ export const InstantRetryModal: React.FC<InstantRetryModalProps> = ({
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   <span>Đánh giá sự tiến bộ:</span>
                 </h4>
-                <p className="text-xs text-slate-600 leading-relaxed">{retryResult.feedback.summary}</p>
+                <p className="text-xs text-slate-600 leading-relaxed">
+                  {retryResult.feedback.summary}
+                </p>
 
                 {retryResult.feedback.keyStrengths.length > 0 && (
                   <div className="space-y-1">
-                    <span className="text-[11px] font-bold text-emerald-700">Điểm cải thiện nổi bật:</span>
+                    <span className="text-[11px] font-bold text-emerald-700">
+                      Điểm cải thiện nổi bật:
+                    </span>
                     <ul className="text-xs text-slate-600 list-disc list-inside space-y-0.5">
                       {retryResult.feedback.keyStrengths.map((st, i) => (
                         <li key={i}>{st}</li>

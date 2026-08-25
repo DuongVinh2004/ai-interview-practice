@@ -92,7 +92,9 @@ export class AuthController {
   @Post('mfa/enable')
   @ApiBearerAuth()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Verify TOTP code and enable 2FA, returning 8 single-use recovery codes' })
+  @ApiOperation({
+    summary: 'Verify TOTP code and enable 2FA, returning 8 single-use recovery codes',
+  })
   async enableMfa(@CurrentUser('sub') userId: string, @Body() dto: MfaEnableRequestDto) {
     return this.authService.enableMfa(userId, dto.code);
   }

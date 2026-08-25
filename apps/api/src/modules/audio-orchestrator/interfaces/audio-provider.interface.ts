@@ -31,9 +31,5 @@ export interface AudioProviderInterface {
     language?: string,
   ): Promise<AudioSttResult>;
 
-  synthesize(
-    text: string,
-    voice?: AudioVoice,
-    speed?: number,
-  ): Promise<AudioTtsResult>;
+  synthesize(text: string, voice?: AudioVoice, speed?: number): Promise<AudioTtsResult>;
 }

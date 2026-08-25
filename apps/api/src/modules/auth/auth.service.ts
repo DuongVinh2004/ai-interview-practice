@@ -181,7 +181,10 @@ export class AuthService {
           action: AuditAction.TOKEN_REUSE_DETECTED,
           resource: 'refresh_token',
           resourceId: storedToken.id,
-          details: { reason: 'Revoked refresh token was presented for rotation', familyId: storedToken.familyId },
+          details: {
+            reason: 'Revoked refresh token was presented for rotation',
+            familyId: storedToken.familyId,
+          },
         },
       });
       throw new DomainException(
@@ -227,7 +230,10 @@ export class AuthService {
           action: AuditAction.TOKEN_REUSE_DETECTED,
           resource: 'refresh_token',
           resourceId: storedToken.id,
-          details: { reason: 'Concurrent rotation race or already revoked refresh token', familyId: storedToken.familyId },
+          details: {
+            reason: 'Concurrent rotation race or already revoked refresh token',
+            familyId: storedToken.familyId,
+          },
         },
       });
       throw new DomainException(

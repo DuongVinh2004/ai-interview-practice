@@ -12,11 +12,16 @@ export const AiCodeReviewPanel: React.FC<AiCodeReviewPanelProps> = ({ review }) 
   if (!review) return null;
 
   return (
-    <Card className="bg-slate-900 border-slate-700 text-slate-100 shadow-xl" data-testid="ai-code-review-panel">
+    <Card
+      className="bg-slate-900 border-slate-700 text-slate-100 shadow-xl"
+      data-testid="ai-code-review-panel"
+    >
       <div className="flex items-center justify-between pb-3 border-b border-slate-800">
         <div className="flex items-center space-x-2">
           <Sparkles className="w-5 h-5 text-amber-400" />
-          <h3 className="text-sm font-semibold text-white">AI Code Assessment & Complexity Analysis</h3>
+          <h3 className="text-sm font-semibold text-white">
+            AI Code Assessment & Complexity Analysis
+          </h3>
         </div>
         <Badge variant={review.codeQualityScore >= 7 ? 'success' : 'warning'}>
           Score: {review.codeQualityScore}/10
@@ -37,11 +42,15 @@ export const AiCodeReviewPanel: React.FC<AiCodeReviewPanelProps> = ({ review }) 
             <Layers className="w-4 h-4 text-purple-400" />
             <span>Space Complexity (Auxiliary)</span>
           </div>
-          <div className="text-lg font-bold font-mono text-purple-300">{review.spaceComplexity}</div>
+          <div className="text-lg font-bold font-mono text-purple-300">
+            {review.spaceComplexity}
+          </div>
         </div>
       </div>
 
-      <p className="mt-3 text-xs text-slate-300 leading-relaxed font-sans">{review.complexityAnalysis}</p>
+      <p className="mt-3 text-xs text-slate-300 leading-relaxed font-sans">
+        {review.complexityAnalysis}
+      </p>
 
       {/* Clean Code Feedback */}
       {review.cleanCodeFeedback && review.cleanCodeFeedback.length > 0 && (
@@ -61,7 +70,9 @@ export const AiCodeReviewPanel: React.FC<AiCodeReviewPanelProps> = ({ review }) 
       {/* Edge Cases Identified */}
       {review.edgeCasesIdentified && review.edgeCasesIdentified.length > 0 && (
         <div className="mt-3 space-y-1.5">
-          <div className="text-xs font-semibold text-slate-400">Key Boundary Conditions Tested:</div>
+          <div className="text-xs font-semibold text-slate-400">
+            Key Boundary Conditions Tested:
+          </div>
           <ul className="space-y-1 text-xs text-slate-300">
             {review.edgeCasesIdentified.map((ec, idx) => (
               <li key={idx} className="flex items-start space-x-1.5">

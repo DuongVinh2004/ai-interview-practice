@@ -43,7 +43,12 @@ export class TelemetryService {
   parseTraceparent(traceparent?: string): { traceId: string; parentSpanId: string } | null {
     if (!traceparent) return null;
     const parts = traceparent.trim().split('-');
-    if (parts.length >= 4 && parts[0] === '00' && parts[1].length === 32 && parts[2].length === 16) {
+    if (
+      parts.length >= 4 &&
+      parts[0] === '00' &&
+      parts[1].length === 32 &&
+      parts[2].length === 16
+    ) {
       return {
         traceId: parts[1],
         parentSpanId: parts[2],
@@ -60,14 +65,19 @@ export class TelemetryService {
     requestId?: string,
     userId?: string,
   ): TraceContext {
-    const rawTraceparent = typeof headers?.['traceparent'] === 'string'
-      ? headers['traceparent']
-      : typeof headers?.['x-trace-id'] === 'string'
-      ? headers['x-trace-id']
-      : undefined;
+    const rawTraceparent =
+      typeof headers?.['traceparent'] === 'string'
+        ? headers['traceparent']
+        : typeof headers?.['x-trace-id'] === 'string'
+          ? headers['x-trace-id']
+          : undefined;
 
     const parsed = this.parseTraceparent(rawTraceparent);
-    const traceId = parsed ? parsed.traceId : (typeof rawTraceparent === 'string' && rawTraceparent.length === 32 ? rawTraceparent : this.generateTraceId());
+    const traceId = parsed
+      ? parsed.traceId
+      : typeof rawTraceparent === 'string' && rawTraceparent.length === 32
+        ? rawTraceparent
+        : this.generateTraceId();
     const parentSpanId = parsed ? parsed.parentSpanId : undefined;
     const spanId = this.generateSpanId();
 
@@ -75,7 +85,9 @@ export class TelemetryService {
       traceId,
       spanId,
       parentSpanId,
-      requestId: requestId || (typeof headers?.['x-request-id'] === 'string' ? headers['x-request-id'] : undefined),
+      requestId:
+        requestId ||
+        (typeof headers?.['x-request-id'] === 'string' ? headers['x-request-id'] : undefined),
       userId,
       startTime: Date.now(),
     };

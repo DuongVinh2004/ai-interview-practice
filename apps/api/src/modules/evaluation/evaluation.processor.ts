@@ -219,7 +219,9 @@ export class EvaluationProcessor extends WorkerHost {
           await tx.interviewSession.updateMany({
             where: {
               id: sessionId,
-              state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED] },
+              state: {
+                notIn: [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED],
+              },
             },
             data: {
               state: SessionState.ACTIVE,

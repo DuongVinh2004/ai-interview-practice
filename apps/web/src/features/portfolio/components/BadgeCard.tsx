@@ -117,9 +117,7 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
           </div>
         </div>
 
-        {isUnlocked && (
-          <ShieldCheck className="h-5 w-5 text-emerald-600 flex-shrink-0" />
-        )}
+        {isUnlocked && <ShieldCheck className="h-5 w-5 text-emerald-600 flex-shrink-0" />}
       </div>
 
       {/* Progress to next badge */}
@@ -129,17 +127,15 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
             {level === BadgeLevel.PLATINUM
               ? 'Mastery Level Achieved'
               : nextBadgeLevel
-              ? `Next: ${nextBadgeLevel} (Score ≥ ${requiredScore}, Ev ≥ ${requiredEvidence})`
-              : 'Unlock Bronze'}
+                ? `Next: ${nextBadgeLevel} (Score ≥ ${requiredScore}, Ev ≥ ${requiredEvidence})`
+                : 'Unlock Bronze'}
           </span>
           <span className="font-bold text-slate-700">{progressPercentage}%</span>
         </div>
         <div className="h-2 w-full bg-slate-200 rounded-full overflow-hidden">
           <div
             className={`h-full transition-all duration-500 rounded-full ${
-              level === BadgeLevel.PLATINUM
-                ? 'bg-cyan-500'
-                : 'bg-emerald-500'
+              level === BadgeLevel.PLATINUM ? 'bg-cyan-500' : 'bg-emerald-500'
             }`}
             style={{ width: `${progressPercentage}%` }}
           />

@@ -7,17 +7,7 @@ import { VelocityService } from './services/velocity.service';
 
 @Module({
   controllers: [ReadinessController],
-  providers: [
-    ReadinessService,
-    WeightProfileService,
-    TierClassificationService,
-    VelocityService,
-  ],
-  exports: [
-    ReadinessService,
-    WeightProfileService,
-    TierClassificationService,
-    VelocityService,
-  ],
+  providers: [ReadinessService, WeightProfileService, TierClassificationService, VelocityService],
+  exports: [ReadinessService, WeightProfileService, TierClassificationService, VelocityService],
 })
 export class ReadinessModule {}

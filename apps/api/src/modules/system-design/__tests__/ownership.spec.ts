@@ -70,7 +70,13 @@ describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
       });
 
       await expect(
-        canvasService.saveSnapshot(attackerUserId, interviewId, 'data:image/png;base64,data', {}, 10),
+        canvasService.saveSnapshot(
+          attackerUserId,
+          interviewId,
+          'data:image/png;base64,data',
+          {},
+          10,
+        ),
       ).rejects.toThrow(ForbiddenException);
     });
 
@@ -80,9 +86,9 @@ describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
         userId: ownerUserId,
       });
 
-      await expect(
-        canvasService.getSnapshotHistory(attackerUserId, interviewId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(canvasService.getSnapshotHistory(attackerUserId, interviewId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
 
     it('throws ForbiddenException when non-owner attempts to getSession', async () => {
@@ -91,9 +97,9 @@ describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
         userId: ownerUserId,
       });
 
-      await expect(
-        canvasService.getSession(attackerUserId, interviewId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(canvasService.getSession(attackerUserId, interviewId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 
@@ -115,9 +121,9 @@ describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
         userId: ownerUserId,
       });
 
-      await expect(
-        evaluationService.evaluateSession(attackerUserId, interviewId),
-      ).rejects.toThrow(ForbiddenException);
+      await expect(evaluationService.evaluateSession(attackerUserId, interviewId)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });

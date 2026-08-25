@@ -78,7 +78,9 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
           </div>
           <div>
             <h3 className="text-lg font-bold text-slate-900">Override AI Evaluation Score</h3>
-            <p className="text-xs text-slate-500">Human-in-the-loop mentor moderation with audit trail</p>
+            <p className="text-xs text-slate-500">
+              Human-in-the-loop mentor moderation with audit trail
+            </p>
           </div>
         </div>
 
@@ -92,17 +94,21 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div>
               <span className="text-xs text-slate-500 block font-medium">Original AI Score</span>
-              <span className="text-lg font-bold text-slate-700">{originalScore.toFixed(1)} / 10.0</span>
+              <span className="text-lg font-bold text-slate-700">
+                {originalScore.toFixed(1)} / 10.0
+              </span>
             </div>
             <div className="text-right">
-              <label className="text-xs text-slate-500 block font-medium mb-1">Adjusted Mentor Score</label>
+              <label className="text-xs text-slate-500 block font-medium mb-1">
+                Adjusted Mentor Score
+              </label>
               <input
                 type="number"
                 step="0.1"
                 min="0"
                 max="10"
                 value={newScore}
-                onChange={(e) => setNewScore(parseFloat(e.target.value) || 0)}
+                onChange={e => setNewScore(parseFloat(e.target.value) || 0)}
                 className="w-24 px-3 py-1.5 border border-slate-300 rounded-lg text-base font-bold text-emerald-700 text-right focus:ring-emerald-500 focus:border-emerald-500"
                 required
                 data-testid="override-score-input"
@@ -117,12 +123,14 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
             <Textarea
               rows={4}
               value={justification}
-              onChange={(e) => setJustification(e.target.value)}
+              onChange={e => setJustification(e.target.value)}
               placeholder="Explain why the automated AI score was adjusted (e.g. candidate elaborated on deadlock recovery during probing discussion)..."
               required
               data-testid="override-justification-input"
             />
-            <p className="text-xs text-slate-400 mt-1">This explanation is appended to the permanent audit trail.</p>
+            <p className="text-xs text-slate-400 mt-1">
+              This explanation is appended to the permanent audit trail.
+            </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">

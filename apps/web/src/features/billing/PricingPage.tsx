@@ -3,7 +3,13 @@ import { useBilling } from '../../hooks/useBilling';
 import { useI18nStore } from '../../stores/i18n.store';
 import { useAuthStore } from '../../stores/auth.store';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { Check, Sparkles, Zap, Shield, Rocket } from 'lucide-react';
@@ -46,7 +52,9 @@ export function PricingPage() {
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Spinner size="lg" />
         <p className="text-sm text-slate-500">
-          {language === 'vi' ? 'Đang tải thông tin gói dịch vụ...' : 'Loading subscription tiers...'}
+          {language === 'vi'
+            ? 'Đang tải thông tin gói dịch vụ...'
+            : 'Loading subscription tiers...'}
         </p>
       </div>
     );
@@ -159,15 +167,11 @@ export function PricingPage() {
                 <CardTitle className="text-xl font-bold text-slate-900">
                   {plan.nameVi || plan.name}
                 </CardTitle>
-                <CardDescription className="min-h-[36px]">
-                  {plan.description || ''}
-                </CardDescription>
+                <CardDescription className="min-h-[36px]">{plan.description || ''}</CardDescription>
 
                 <div className="mt-4 flex items-baseline">
                   <span className="text-4xl font-extrabold text-slate-900">${price}</span>
-                  <span className="text-xs font-semibold text-slate-500 ml-1.5">
-                    / month
-                  </span>
+                  <span className="text-xs font-semibold text-slate-500 ml-1.5">/ month</span>
                 </div>
                 {billingCycle === 'yearly' && plan.priceYearly > 0 && (
                   <span className="text-[11px] text-emerald-600 font-semibold block mt-1">
@@ -186,13 +190,15 @@ export function PricingPage() {
                     <li className="flex items-start space-x-2">
                       <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
                       <span>
-                        <strong>{plan.limits.sessionsPerMonth}</strong> mock interview sessions / month
+                        <strong>{plan.limits.sessionsPerMonth}</strong> mock interview sessions /
+                        month
                       </span>
                     </li>
                     <li className="flex items-start space-x-2">
                       <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
                       <span>
-                        <strong>{plan.limits.voiceMinutesPerMonth}</strong> voice & audio streaming minutes
+                        <strong>{plan.limits.voiceMinutesPerMonth}</strong> voice & audio streaming
+                        minutes
                       </span>
                     </li>
                     {plan.limits.allowLiveCoding && (
@@ -223,8 +229,8 @@ export function PricingPage() {
                   {isCurrent
                     ? 'Active Plan'
                     : plan.slug === 'free'
-                    ? 'Free Forever'
-                    : `Upgrade to ${plan.name}`}
+                      ? 'Free Forever'
+                      : `Upgrade to ${plan.name}`}
                 </Button>
               </CardContent>
             </Card>

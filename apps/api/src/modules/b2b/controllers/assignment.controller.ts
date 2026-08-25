@@ -17,10 +17,7 @@ export class AssignmentController {
   @Post('assignments')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR)
   @ApiOperation({ summary: 'Create a new interview assignment test for a cohort' })
-  async createAssignment(
-    @Req() req: RequestWithTenant,
-    @Body() dto: CreateAssignmentDto,
-  ) {
+  async createAssignment(@Req() req: RequestWithTenant, @Body() dto: CreateAssignmentDto) {
     return this.assignmentService.createAssignment(dto.cohortId, req.tenantId!, dto);
   }
 
@@ -38,10 +35,7 @@ export class AssignmentController {
   @Get('cohorts/:id/assignments')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR, TenantRole.STUDENT)
   @ApiOperation({ summary: 'List all assignments for a specific cohort' })
-  async listAssignments(
-    @Req() req: RequestWithTenant,
-    @Param('id') cohortId: string,
-  ) {
+  async listAssignments(@Req() req: RequestWithTenant, @Param('id') cohortId: string) {
     return this.assignmentService.listCohortAssignments(cohortId, req.tenantId!);
   }
 }

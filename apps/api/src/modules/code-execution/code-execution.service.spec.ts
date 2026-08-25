@@ -15,8 +15,20 @@ describe('CodeExecutionService (F002)', () => {
     userId: 'user-cand-123',
     sessionMode: 'CODING',
     codeTestCases: [
-      { id: 'tc-1', input: '[2, 7, 11, 15], target = 9', expectedOutput: '[0, 1]', isHidden: false, order: 1 },
-      { id: 'tc-2', input: '[3, 2, 4], target = 6', expectedOutput: '[1, 2]', isHidden: true, order: 2 },
+      {
+        id: 'tc-1',
+        input: '[2, 7, 11, 15], target = 9',
+        expectedOutput: '[0, 1]',
+        isHidden: false,
+        order: 1,
+      },
+      {
+        id: 'tc-2',
+        input: '[3, 2, 4], target = 6',
+        expectedOutput: '[1, 2]',
+        isHidden: true,
+        order: 2,
+      },
     ],
   };
 

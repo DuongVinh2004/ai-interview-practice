@@ -30,7 +30,7 @@ export class CohortService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return cohorts.map((c) => ({
+    return cohorts.map(c => ({
       id: c.id,
       tenantId: c.tenantId,
       name: c.name,
@@ -74,7 +74,7 @@ export class CohortService {
       name: cohort.name,
       description: cohort.description,
       isActive: cohort.isActive,
-      members: cohort.members.map((m) => ({
+      members: cohort.members.map(m => ({
         cohortMemberId: m.id,
         tenantMemberId: m.tenantMemberId,
         userId: m.tenantMember.userId,
@@ -100,8 +100,8 @@ export class CohortService {
 
     const lines = csvContent
       .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
 
     if (lines.length === 0) {
       throw new BadRequestException('CSV file is empty');
@@ -116,7 +116,7 @@ export class CohortService {
 
     for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i];
-      const parts = line.split(',').map((p) => p.trim().replace(/^["']|["']$/g, ''));
+      const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
       const email = parts[0]?.toLowerCase();
       const fullName = parts[1] || '';
       const roleStr = parts[2]?.toUpperCase();

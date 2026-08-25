@@ -3,26 +3,35 @@
   "$id": "https://example.local/ai-interview/handoff.schema.json",
   "title": "Antigravity Execution Handoff",
   "type": "object",
-  "required": ["task", "anti_verdict", "baseline", "scope", "acceptance", "verification", "risks", "worktree_after"],
+  "required": [
+    "task",
+    "anti_verdict",
+    "baseline",
+    "scope",
+    "acceptance",
+    "verification",
+    "risks",
+    "worktree_after"
+  ],
   "properties": {
     "task": {
       "type": "object",
       "required": ["id", "title"],
       "properties": {
-        "id": {"type": "string", "pattern": "^AIP-[0-9]+$"},
-        "title": {"type": "string"}
+        "id": { "type": "string", "pattern": "^AIP-[0-9]+$" },
+        "title": { "type": "string" }
       },
       "additionalProperties": true
     },
-    "anti_verdict": {"enum": ["PASS", "FAIL", "BLOCKED"]},
-    "baseline": {"type": "object"},
-    "scope": {"type": "object"},
-    "acceptance": {"type": "array"},
-    "verification": {"type": "array"},
-    "security_privacy": {"type": ["object", "array", "string", "null"]},
-    "risks": {"type": "array"},
-    "blockers": {"type": "array"},
-    "worktree_after": {"type": "object"}
+    "anti_verdict": { "enum": ["PASS", "FAIL", "BLOCKED"] },
+    "baseline": { "type": "object" },
+    "scope": { "type": "object" },
+    "acceptance": { "type": "array" },
+    "verification": { "type": "array" },
+    "security_privacy": { "type": ["object", "array", "string", "null"] },
+    "risks": { "type": "array" },
+    "blockers": { "type": "array" },
+    "worktree_after": { "type": "object" }
   },
   "additionalProperties": true
 }

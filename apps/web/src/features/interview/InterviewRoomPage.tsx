@@ -1,7 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { InterviewSessionDto, SessionState, InterviewMode, SessionMode } from '@ai-interview/contracts';
+import {
+  InterviewSessionDto,
+  SessionState,
+  InterviewMode,
+  SessionMode,
+} from '@ai-interview/contracts';
 import { apiClient, ApiError } from '../../lib/api-client';
 import { useInterviewSse } from '../../hooks/use-interview-sse';
 import { useAudioSettingsStore } from '../../stores/audio-settings.store';
@@ -58,13 +63,8 @@ export function InterviewRoomPage() {
   const [reEvalModalTurn, setReEvalModalTurn] = useState<number | null>(null);
   const [reEvalReason, setReEvalReason] = useState('');
 
-  const {
-    executeCode,
-    isExecuting,
-    executionResult,
-    submitCode,
-    submissionResult,
-  } = useCodeExecution(sessionId || '');
+  const { executeCode, isExecuting, executionResult, submitCode, submissionResult } =
+    useCodeExecution(sessionId || '');
 
   // Fetch session details
   const {
@@ -182,12 +182,13 @@ export function InterviewRoomPage() {
         sourceCode: code,
       });
       // Also submit text explanation containing the source code for evaluation pipeline
-      await handleSubmitAnswerText(`[${language.toUpperCase()} Solution]\n\`\`\`${language}\n${code}\n\`\`\``);
+      await handleSubmitAnswerText(
+        `[${language.toUpperCase()} Solution]\n\`\`\`${language}\n${code}\n\`\`\``,
+      );
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to submit code solution.');
     }
   };
-
 
   const handleReEvaluateConfirm = async () => {
     if (!sessionId || reEvalModalTurn === null || isReEvaluating) return;
@@ -223,7 +224,10 @@ export function InterviewRoomPage() {
     );
   }
 
-  if (session.sessionMode === SessionMode.VOICE_LIVE || (session.sessionMode as any) === 'VOICE_LIVE') {
+  if (
+    session.sessionMode === SessionMode.VOICE_LIVE ||
+    (session.sessionMode as any) === 'VOICE_LIVE'
+  ) {
     return (
       <VoiceInterviewRoom
         interviewId={session.id}
@@ -281,7 +285,8 @@ export function InterviewRoomPage() {
               const isCurrent = turn.turnNumber === session.currentTurn;
               const isCompleted = !!turn.answer?.evaluation;
               const isEvaluating =
-                turn.turnNumber === session.currentTurn && session.state === SessionState.EVALUATING;
+                turn.turnNumber === session.currentTurn &&
+                session.state === SessionState.EVALUATING;
 
               return (
                 <div
@@ -322,9 +327,7 @@ export function InterviewRoomPage() {
         <Card className="text-center py-16">
           <CardContent className="flex flex-col items-center gap-4">
             <Spinner size="lg" />
-            <h3 className="text-lg font-bold text-slate-900">
-              {t.interview.generatingQuestion}
-            </h3>
+            <h3 className="text-lg font-bold text-slate-900">{t.interview.generatingQuestion}</h3>
             <p className="text-sm text-slate-500 max-w-md">
               {t.interview.generatingHint} ({session.technologies.map(t => t.name).join(', ')}).
             </p>
@@ -388,11 +391,14 @@ export function InterviewRoomPage() {
           {/* Candidate Response Section */}
           {!answer && session.state === SessionState.ACTIVE && (
             <div>
-              {session.sessionMode === 'SYSTEM_DESIGN' || (session.sessionMode as any) === SessionMode.SYSTEM_DESIGN ? (
+              {session.sessionMode === 'SYSTEM_DESIGN' ||
+              (session.sessionMode as any) === SessionMode.SYSTEM_DESIGN ? (
                 <div className="space-y-4" data-testid="system-design-workspace">
                   <WhiteboardRoom
                     interviewId={session.id}
-                    onCompleteSession={() => handleSubmitAnswerText('[Whiteboard System Design Diagram Submitted]')}
+                    onCompleteSession={() =>
+                      handleSubmitAnswerText('[Whiteboard System Design Diagram Submitted]')
+                    }
                   />
                 </div>
               ) : session.sessionMode === 'CODING' ? (
@@ -401,7 +407,10 @@ export function InterviewRoomPage() {
                   <div className="flex items-center space-x-2 text-xs text-slate-500 bg-slate-100 p-2 rounded-lg border border-slate-200">
                     <Code2 className="w-4 h-4 text-primary-600" />
                     <span className="font-semibold text-slate-700">Live Coding Sandbox:</span>
-                    <span>Write code, run test cases against the execution engine, and submit for AI complexity review.</span>
+                    <span>
+                      Write code, run test cases against the execution engine, and submit for AI
+                      complexity review.
+                    </span>
                   </div>
 
                   <div className="h-[420px]">
@@ -454,9 +463,7 @@ export function InterviewRoomPage() {
                       />
 
                       <div className="flex items-center justify-between pt-2">
-                        <p className="text-xs text-slate-500">
-                          {t.interview.submitNotice}
-                        </p>
+                        <p className="text-xs text-slate-500">{t.interview.submitNotice}</p>
                         <Button
                           type="submit"
                           disabled={!answerText.trim() || answerText.length > 5000 || isSubmitting}
@@ -464,7 +471,9 @@ export function InterviewRoomPage() {
                           className="gap-2 px-6"
                         >
                           <Send className="h-4 w-4" />
-                          <span>{isSubmitting ? t.interview.submitting : t.interview.submitAnswer}</span>
+                          <span>
+                            {isSubmitting ? t.interview.submitting : t.interview.submitAnswer}
+                          </span>
                         </Button>
                       </div>
                     </form>
@@ -490,12 +499,8 @@ export function InterviewRoomPage() {
                 <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-amber-200">
                   <Spinner size="sm" />
                   <div className="text-xs text-amber-900">
-                    <span className="font-semibold">
-                      {t.interview.evaluatingDesc}
-                    </span>
-                    <p className="text-slate-500 mt-0.5">
-                      {t.interview.evaluatingDetail}
-                    </p>
+                    <span className="font-semibold">{t.interview.evaluatingDesc}</span>
+                    <p className="text-slate-500 mt-0.5">{t.interview.evaluatingDetail}</p>
                   </div>
                 </div>
               </CardContent>
@@ -572,7 +577,9 @@ export function InterviewRoomPage() {
                     {/* Confidence & Review Indicator */}
                     <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-slate-700">{t.interview.confidence}:</span>
+                        <span className="font-medium text-slate-700">
+                          {t.interview.confidence}:
+                        </span>
                         <span className="font-semibold text-emerald-700">
                           {Math.round(((evaluation as any).confidence || 0.85) * 100)}%
                         </span>

@@ -14,7 +14,11 @@ export function useFlashcards() {
   const queryClient = useQueryClient();
 
   // 1. Decks query
-  const { data: decks = [], isLoading: isLoadingDecks, refetch: refetchDecks } = useQuery<FlashcardDeckDto[]>({
+  const {
+    data: decks = [],
+    isLoading: isLoadingDecks,
+    refetch: refetchDecks,
+  } = useQuery<FlashcardDeckDto[]>({
     queryKey: ['flashcards', 'decks'],
     queryFn: async () => {
       const res = await apiClient.get<FlashcardDeckDto[]>('/flashcards/decks');
@@ -23,7 +27,11 @@ export function useFlashcards() {
   });
 
   // 2. Due cards query
-  const { data: dueCards = [], isLoading: isLoadingDue, refetch: refetchDue } = useQuery<any[]>({
+  const {
+    data: dueCards = [],
+    isLoading: isLoadingDue,
+    refetch: refetchDue,
+  } = useQuery<any[]>({
     queryKey: ['flashcards', 'due'],
     queryFn: async () => {
       const res = await apiClient.get<any[]>('/flashcards/due');
@@ -32,7 +40,11 @@ export function useFlashcards() {
   });
 
   // 3. Stats query
-  const { data: stats, isLoading: isLoadingStats, refetch: refetchStats } = useQuery<FlashcardStatsDto>({
+  const {
+    data: stats,
+    isLoading: isLoadingStats,
+    refetch: refetchStats,
+  } = useQuery<FlashcardStatsDto>({
     queryKey: ['flashcards', 'stats'],
     queryFn: async () => {
       const res = await apiClient.get<FlashcardStatsDto>('/flashcards/stats');
@@ -65,7 +77,10 @@ export function useFlashcards() {
 
   const createCardMutation = useMutation({
     mutationFn: async (payload: CreateFlashcardRequest) => {
-      const res = await apiClient.post<FlashcardDto>(`/flashcards/decks/${payload.deckId}/cards`, payload);
+      const res = await apiClient.post<FlashcardDto>(
+        `/flashcards/decks/${payload.deckId}/cards`,
+        payload,
+      );
       return res.data;
     },
     onSuccess: () => {
@@ -76,8 +91,19 @@ export function useFlashcards() {
   });
 
   const reviewCardMutation = useMutation({
-    mutationFn: async ({ cardId, rating, durationMs }: { cardId: string; rating: FSRSRating; durationMs?: number }) => {
-      const res = await apiClient.post(`/flashcards/${cardId}/review`, { rating, durationMs: durationMs || 0 });
+    mutationFn: async ({
+      cardId,
+      rating,
+      durationMs,
+    }: {
+      cardId: string;
+      rating: FSRSRating;
+      durationMs?: number;
+    }) => {
+      const res = await apiClient.post(`/flashcards/${cardId}/review`, {
+        rating,
+        durationMs: durationMs || 0,
+      });
       return res.data;
     },
     onSuccess: () => {

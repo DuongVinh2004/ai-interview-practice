@@ -9,9 +9,10 @@
 
 ## Tổng quan & Mục tiêu
 
-Kế hoạch này (Plan C) tập trung vào việc chuyển đổi nền tảng AI Interview Practice từ một công cụ hữu ích thành một sản phẩm có tính gây nghiện cao (habit-forming) và đạt chuẩn AAA SaaS. 
+Kế hoạch này (Plan C) tập trung vào việc chuyển đổi nền tảng AI Interview Practice từ một công cụ hữu ích thành một sản phẩm có tính gây nghiện cao (habit-forming) và đạt chuẩn AAA SaaS.
 
 Mục tiêu cốt lõi:
+
 1. **Gamification (Trò chơi hóa)**: Xây dựng Habit Loop (Vòng lặp thói quen) thông qua hệ thống XP, Cấp độ (Levels), Huy hiệu (Badges) và Chuỗi ngày học (Streaks).
 2. **Sensory Polish (Hoàn thiện trải nghiệm giác quan)**: Bổ sung hiệu ứng âm thanh (SFX) và hoạt ảnh (Animations) mượt mà để tạo cảm giác thỏa mãn khi người dùng hoàn thành nhiệm vụ.
 3. **Focus Mode (Chế độ tập trung)**: Tối ưu hóa không gian phòng phỏng vấn, giảm thiểu xao nhãng.
@@ -25,6 +26,7 @@ Mục tiêu cốt lõi:
 ### C1.1 Kiến trúc Tổng quan
 
 **Gamification Event Pipeline**
+
 ```mermaid
 sequenceDiagram
     participant U as User (React)
@@ -50,6 +52,7 @@ sequenceDiagram
 ```
 
 **Habit Loop Diagram**
+
 ```mermaid
 graph TD
     T[Trigger<br/>Push Notification/Daily Reminder] --> A[Action<br/>Interview/Flashcard/Coding]
@@ -74,9 +77,9 @@ model UserXp {
   currentLevel Int     @default(1) @map("current_level")
   dailyXp     Int      @default(0) @map("daily_xp") // Reset at midnight UTC
   lastEarnedAt DateTime? @map("last_earned_at") @db.Timestamptz
-  
+
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+
   @@map("user_xp")
 }
 
@@ -156,7 +159,7 @@ model UserStreak {
   longestStreak        Int       @default(0) @map("longest_streak")
   lastActiveDate       DateTime? @map("last_active_date") @db.Date
   totalReviews         Int       @default(0) @map("total_reviews")
-  
+
   // NEW FIELDS FOR PLAN C
   streakFreezeCount    Int       @default(0) @map("streak_freeze_count")
   streakFreezeUsedToday Boolean  @default(false) @map("streak_freeze_used_today")
@@ -169,18 +172,19 @@ model UserStreak {
 
 ### C1.3 XP Reward Matrix
 
-| Action | XP Earned | Source Enum | Constraints |
-|--------|-----------|-------------|-------------|
-| Daily Login | +10 XP | `DAILY_LOGIN` | Once per day |
-| Review Flashcard | +2 XP | `FLASHCARD_REVIEW` | Max 200 XP/day |
-| Complete Voice Interview | +50 XP | `INTERVIEW_COMPLETE` | Scaling by score (>80% = +20) |
-| Submit Code Pass Tests | +30 XP | `CODING_SUBMIT` | - |
-| STAR Story Evaluated | +20 XP | `STAR_COMPLETE` | - |
-| Maintain 7-day Streak | +100 XP | `STREAK_BONUS` | Weekly |
-| Unlock Tier 1 Badge | +50 XP | `BADGE_UNLOCK` | One-time per badge |
+| Action                   | XP Earned | Source Enum          | Constraints                   |
+| ------------------------ | --------- | -------------------- | ----------------------------- |
+| Daily Login              | +10 XP    | `DAILY_LOGIN`        | Once per day                  |
+| Review Flashcard         | +2 XP     | `FLASHCARD_REVIEW`   | Max 200 XP/day                |
+| Complete Voice Interview | +50 XP    | `INTERVIEW_COMPLETE` | Scaling by score (>80% = +20) |
+| Submit Code Pass Tests   | +30 XP    | `CODING_SUBMIT`      | -                             |
+| STAR Story Evaluated     | +20 XP    | `STAR_COMPLETE`      | -                             |
+| Maintain 7-day Streak    | +100 XP   | `STREAK_BONUS`       | Weekly                        |
+| Unlock Tier 1 Badge      | +50 XP    | `BADGE_UNLOCK`       | One-time per badge            |
 
 **Level Progression Formula**
 `XP = 100 * (Level^1.5)`
+
 - Level 1: 0 XP (Newcomer)
 - Level 2: 282 XP (Beginner)
 - Level 3: 519 XP (Learner)
@@ -191,18 +195,19 @@ model UserStreak {
 
 Catalog of system badges to be seeded:
 
-| Slug | Name (EN/VI) | Category | Criteria JSON |
-|------|--------------|----------|---------------|
-| `first-blood` | First Blood / Khởi đầu | `INTERVIEW` | `{ "metric": "total_interviews", "op": "gte", "value": 1 }` |
-| `streak-7` | 7-Day Scholar / Học giả 7 ngày | `STREAK` | `{ "metric": "current_streak", "op": "gte", "value": 7 }` |
-| `streak-30` | Unstoppable / Không thể cản bước | `STREAK` | `{ "metric": "current_streak", "op": "gte", "value": 30 }` |
-| `sys-design-guru` | Architect / Kiến trúc sư | `INTERVIEW` | `{ "metric": "sys_design_score", "op": "gte", "value": 90 }` |
-| `flashcard-1000` | Memory Master / Bậc thầy ghi nhớ | `LEARNING` | `{ "metric": "total_flashcard_reviews", "op": "gte", "value": 1000 }` |
-| `night-owl` | Night Owl / Cú đêm (Secret) | `LEARNING` | `{ "metric": "time_of_day", "op": "between", "value": ["00:00", "04:00"] }` |
+| Slug              | Name (EN/VI)                     | Category    | Criteria JSON                                                               |
+| ----------------- | -------------------------------- | ----------- | --------------------------------------------------------------------------- |
+| `first-blood`     | First Blood / Khởi đầu           | `INTERVIEW` | `{ "metric": "total_interviews", "op": "gte", "value": 1 }`                 |
+| `streak-7`        | 7-Day Scholar / Học giả 7 ngày   | `STREAK`    | `{ "metric": "current_streak", "op": "gte", "value": 7 }`                   |
+| `streak-30`       | Unstoppable / Không thể cản bước | `STREAK`    | `{ "metric": "current_streak", "op": "gte", "value": 30 }`                  |
+| `sys-design-guru` | Architect / Kiến trúc sư         | `INTERVIEW` | `{ "metric": "sys_design_score", "op": "gte", "value": 90 }`                |
+| `flashcard-1000`  | Memory Master / Bậc thầy ghi nhớ | `LEARNING`  | `{ "metric": "total_flashcard_reviews", "op": "gte", "value": 1000 }`       |
+| `night-owl`       | Night Owl / Cú đêm (Secret)      | `LEARNING`  | `{ "metric": "time_of_day", "op": "between", "value": ["00:00", "04:00"] }` |
 
 ### C1.5 Backend Implementation
 
 **Module Structure**
+
 ```typescript
 // apps/api/src/modules/gamification/gamification.module.ts
 import { Module } from '@nestjs/common';
@@ -221,6 +226,7 @@ export class GamificationModule {}
 ```
 
 **XP Service**
+
 ```typescript
 // apps/api/src/modules/gamification/xp.service.ts
 import { Injectable, Logger } from '@nestjs/common';
@@ -234,45 +240,51 @@ export class XpService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly eventEmitter: EventEmitter2
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   async awardXp(userId: string, amount: number, source: XpSource, description?: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async tx => {
       // 1. Create Transaction
       const transaction = await tx.xpTransaction.create({
-        data: { userId, amount, source, description }
+        data: { userId, amount, source, description },
       });
 
       // 2. Update Total XP
       const userXp = await tx.userXp.upsert({
         where: { userId },
         create: { userId, totalXp: amount, dailyXp: amount, currentLevel: 1 },
-        update: { 
+        update: {
           totalXp: { increment: amount },
           dailyXp: { increment: amount },
-          lastEarnedAt: new Date()
-        }
+          lastEarnedAt: new Date(),
+        },
       });
 
       // 3. Check Level Up
       const newLevel = this.calculateLevel(userXp.totalXp);
       let isLevelUp = false;
-      
+
       if (newLevel > userXp.currentLevel) {
         isLevelUp = true;
         await tx.userXp.update({
           where: { userId },
-          data: { currentLevel: newLevel }
+          data: { currentLevel: newLevel },
         });
-        
+
         this.eventEmitter.emit('gamification.level_up', {
-          userId, oldLevel: userXp.currentLevel, newLevel
+          userId,
+          oldLevel: userXp.currentLevel,
+          newLevel,
         });
       }
 
       this.eventEmitter.emit('gamification.xp_awarded', {
-        userId, amount, source, totalXp: userXp.totalXp, isLevelUp
+        userId,
+        amount,
+        source,
+        totalXp: userXp.totalXp,
+        isLevelUp,
       });
 
       return { transaction, userXp, isLevelUp };
@@ -281,12 +293,13 @@ export class XpService {
 
   calculateLevel(xp: number): number {
     // Inverse of 100 * (Level^1.5) -> (XP/100)^(2/3)
-    return Math.floor(Math.pow(xp / 100, 2/3)) || 1;
+    return Math.floor(Math.pow(xp / 100, 2 / 3)) || 1;
   }
 }
 ```
 
 **Badge Service Listener Example**
+
 ```typescript
 // apps/api/src/modules/gamification/gamification.listener.ts
 import { Injectable } from '@nestjs/common';
@@ -298,10 +311,10 @@ export class GamificationEventListener {
   constructor(private badgeService: BadgeService) {}
 
   @OnEvent('interview.completed')
-  async handleInterviewCompleted(payload: { userId: string, score: number, type: string }) {
+  async handleInterviewCompleted(payload: { userId: string; score: number; type: string }) {
     await this.badgeService.checkAndUnlockBadges(payload.userId, {
       trigger: 'INTERVIEW',
-      data: payload
+      data: payload,
     });
   }
 }
@@ -310,6 +323,7 @@ export class GamificationEventListener {
 ### C1.6 Frontend Implementation
 
 #### Gamification Store (Zustand)
+
 ```typescript
 // apps/web/src/stores/gamification.store.ts
 import { create } from 'zustand';
@@ -321,30 +335,32 @@ interface GamificationState {
   badges: Badge[];
   streak: { current: number; longest: number; freezes: number };
   recentEvents: GamificationEvent[];
-  
+
   // Actions
   addXpLocally: (amount: number, reason: string) => void;
   showLevelUpModal: (level: number) => void;
   setGamificationData: (data: Partial<GamificationState>) => void;
 }
 
-export const useGamificationStore = create<GamificationState>((set) => ({
+export const useGamificationStore = create<GamificationState>(set => ({
   xp: 0,
   level: 1,
   xpToNextLevel: 100,
   badges: [],
   streak: { current: 0, longest: 0, freezes: 0 },
   recentEvents: [],
-  
-  addXpLocally: (amount, reason) => set((state) => ({
-    xp: state.xp + amount,
-    recentEvents: [...state.recentEvents, { amount, reason, id: Date.now() }]
-  })),
+
+  addXpLocally: (amount, reason) =>
+    set(state => ({
+      xp: state.xp + amount,
+      recentEvents: [...state.recentEvents, { amount, reason, id: Date.now() }],
+    })),
   // ...
 }));
 ```
 
 #### React Components
+
 - **XpBar.tsx**: Nằm trên Navbar. Hiển thị progress bar dạng gradient `brand-400` sang `brand-600`.
 - **XpPopup.tsx**: Component portal/floating, render text "+20 XP" nổi lên tại vị trí chuột click (sử dụng Framer Motion `AnimatePresence`).
 - **StreakWidget.tsx**: Card hiển thị biểu tượng 🔥. Nếu user có streak freeze, hiển thị khiên băng 🧊 bảo vệ.
@@ -354,11 +370,13 @@ export const useGamificationStore = create<GamificationState>((set) => ({
 ## C2 — Sound Effects & Micro-Interactions (SFX Engine, Confetti, Animations)
 
 ### C2.1 SFX Engine Architecture
+
 Web Audio API cho phép xử lý độ trễ thấp (<10ms) cho các sự kiện UI. Chúngra sẽ sử dụng file audio sprite duy nhất `sfx-sprite.mp3` kèm JSON mapping để tối ưu network requests.
 
 ### C2.2 Frontend Implementation
 
 #### SFX Engine Setup
+
 ```typescript
 // apps/web/src/lib/sfx-engine.ts
 import { Howl } from 'howler';
@@ -371,12 +389,12 @@ const sfxSprite = new Howl({
     error: [1100, 500],
     level_up: [1700, 1500],
     coin: [3300, 400],
-    card_flip: [3800, 300]
+    card_flip: [3800, 300],
   },
-  volume: 0.5
+  volume: 0.5,
 });
 
-export const playSFX = (soundId: keyof typeof sfxSprite['_sprite']) => {
+export const playSFX = (soundId: keyof (typeof sfxSprite)['_sprite']) => {
   const isMuted = localStorage.getItem('ai-interview-sfx-muted') === 'true';
   if (!isMuted) {
     sfxSprite.play(soundId);
@@ -385,6 +403,7 @@ export const playSFX = (soundId: keyof typeof sfxSprite['_sprite']) => {
 ```
 
 #### Confetti Component
+
 ```tsx
 // apps/web/src/components/effects/ConfettiCelebration.tsx
 import React, { useEffect } from 'react';
@@ -401,21 +420,21 @@ export const ConfettiCelebration: React.FC<Props> = ({ trigger, type = 'win' }) 
       if (type === 'levelup') {
         const duration = 3000;
         const end = Date.now() + duration;
-        
+
         const frame = () => {
           confetti({
             particleCount: 5,
             angle: 60,
             spread: 55,
             origin: { x: 0 },
-            colors: ['#10b981', '#3b82f6', '#fbbf24']
+            colors: ['#10b981', '#3b82f6', '#fbbf24'],
           });
           confetti({
             particleCount: 5,
             angle: 120,
             spread: 55,
             origin: { x: 1 },
-            colors: ['#10b981', '#3b82f6', '#fbbf24']
+            colors: ['#10b981', '#3b82f6', '#fbbf24'],
           });
           if (Date.now() < end) requestAnimationFrame(frame);
         };
@@ -431,6 +450,7 @@ export const ConfettiCelebration: React.FC<Props> = ({ trigger, type = 'win' }) 
 ```
 
 #### Counter Animation (Framer Motion)
+
 ```tsx
 // apps/web/src/components/effects/CounterAnimation.tsx
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
@@ -438,7 +458,7 @@ import { useEffect } from 'react';
 
 export const CounterAnimation = ({ from = 0, to, duration = 1 }) => {
   const count = useMotionValue(from);
-  const rounded = useTransform(count, (latest) => Math.round(latest));
+  const rounded = useTransform(count, latest => Math.round(latest));
 
   useEffect(() => {
     const animation = animate(count, to, { duration, ease: 'easeOut' });
@@ -454,34 +474,42 @@ export const CounterAnimation = ({ from = 0, to, duration = 1 }) => {
 ## C3 — Focus Mode & Interview Room Polish
 
 ### C3.1 Focus Mode Overview
+
 Chế độ tập trung (Focus Mode) loại bỏ các yếu tố UI dư thừa (Navbar, Sidebar) để tối đa hóa không gian màn hình, đặc biệt quan trọng cho Coding & System Design.
 
 ### C3.2 Implementation
 
 #### Focus Mode Store
+
 ```typescript
 // apps/web/src/stores/focus-mode.store.ts
 export const useFocusModeStore = create<{
   isFocusMode: boolean;
   toggleFocusMode: () => void;
-}>((set) => ({
+}>(set => ({
   isFocusMode: false,
-  toggleFocusMode: () => set((state) => ({ isFocusMode: !state.isFocusMode })),
+  toggleFocusMode: () => set(state => ({ isFocusMode: !state.isFocusMode })),
 }));
 ```
 
 #### Component Modifications
+
 Trong `apps/web/src/layouts/DashboardLayout.tsx`:
+
 ```tsx
 const { isFocusMode } = useFocusModeStore();
 
 return (
   <div className="min-h-screen bg-slate-50">
     {!isFocusMode && <Navbar />}
-    <main className={cn(
-      "transition-all duration-300", 
-      isFocusMode ? "p-0 h-screen w-screen absolute top-0 left-0 z-50 bg-white" : "container mx-auto p-4"
-    )}>
+    <main
+      className={cn(
+        'transition-all duration-300',
+        isFocusMode
+          ? 'p-0 h-screen w-screen absolute top-0 left-0 z-50 bg-white'
+          : 'container mx-auto p-4',
+      )}
+    >
       {children}
     </main>
     {isFocusMode && <FocusModeExitBtn />}
@@ -506,7 +534,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg', 'sfx/ui-sprite.mp3'],
+      includeAssets: [
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'masked-icon.svg',
+        'sfx/ui-sprite.mp3',
+      ],
       manifest: {
         name: 'AI Interview Practice',
         short_name: 'AI Interview',
@@ -517,29 +550,33 @@ export default defineConfig({
         icons: [
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
-          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
+          { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        ],
       },
       workbox: {
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts-cache', expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 } }
+            options: {
+              cacheName: 'google-fonts-cache',
+              expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
+            },
           },
           {
             urlPattern: /\/api\/v1\/flashcards\/.*/i,
             handler: 'NetworkFirst', // Allow offline flashcard review
-            options: { cacheName: 'api-flashcards-cache' }
-          }
-        ]
-      }
-    })
-  ]
+            options: { cacheName: 'api-flashcards-cache' },
+          },
+        ],
+      },
+    }),
+  ],
 });
 ```
 
 ### C4.2 Mobile-First Gesture (Tinder Swipe cho Flashcards)
+
 Tạo component `SwipeCard.tsx` bằng `framer-motion` `useDrag` cho phép người dùng mobile vuốt trái (Again) / phải (Good) khi học Flashcard.
 
 ```tsx
@@ -575,9 +612,11 @@ export const SwipeCard = ({ card, onSwipeLeft, onSwipeRight }) => {
 ## C5 — Web Push Notifications
 
 ### C5.1 Notification System Architecture
+
 Sử dụng thư viện `web-push` phía Node.js và VAPID keys để gửi thông báo đến trình duyệt qua Push API, ngay cả khi web app đã bị đóng.
 
 ### C5.2 Database Changes
+
 ```prisma
 model PushSubscription {
   id        String   @id @default(uuid()) @db.Uuid
@@ -605,6 +644,7 @@ model NotificationPreference {
 ```
 
 ### C5.3 Backend Push Service
+
 ```typescript
 // apps/api/src/modules/notification/push.service.ts
 import { Injectable, Logger } from '@nestjs/common';
@@ -617,50 +657,54 @@ export class PushService {
     webpush.setVapidDetails(
       'mailto:admin@ai-interview.com',
       process.env.VAPID_PUBLIC_KEY,
-      process.env.VAPID_PRIVATE_KEY
+      process.env.VAPID_PRIVATE_KEY,
     );
   }
 
   async sendToUser(userId: string, payload: any) {
     const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
-    
-    const sendPromises = subs.map(sub => 
-      webpush.sendNotification({
-        endpoint: sub.endpoint,
-        keys: { p256dh: sub.p256dh, auth: sub.auth }
-      }, JSON.stringify(payload))
-      .catch(err => {
-        if (err.statusCode === 410) {
-          // Subscription expired/unsubscribed
-          return this.prisma.pushSubscription.delete({ where: { id: sub.id } });
-        }
-      })
+
+    const sendPromises = subs.map(sub =>
+      webpush
+        .sendNotification(
+          {
+            endpoint: sub.endpoint,
+            keys: { p256dh: sub.p256dh, auth: sub.auth },
+          },
+          JSON.stringify(payload),
+        )
+        .catch(err => {
+          if (err.statusCode === 410) {
+            // Subscription expired/unsubscribed
+            return this.prisma.pushSubscription.delete({ where: { id: sub.id } });
+          }
+        }),
     );
-    
+
     await Promise.all(sendPromises);
   }
 }
 ```
 
 ### C5.4 Service Worker Setup cho Push
+
 Trong file `apps/web/public/sw.js` (hoặc inject qua Vite PWA):
+
 ```javascript
-self.addEventListener('push', function(event) {
+self.addEventListener('push', function (event) {
   const data = event.data.json();
-  
+
   const options = {
     body: data.body,
     icon: '/pwa-192x192.png',
     badge: '/masked-icon.png',
-    data: data.url
+    data: data.url,
   };
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+  event.waitUntil(self.registration.showNotification(data.title, options));
 });
 
-self.addEventListener('notificationclick', function(event) {
+self.addEventListener('notificationclick', function (event) {
   event.notification.close();
   if (event.notification.data) {
     event.waitUntil(clients.openWindow(event.notification.data));
@@ -675,12 +719,14 @@ self.addEventListener('notificationclick', function(event) {
 Thêm các package sau vào dự án:
 
 **Frontend (`apps/web/package.json`)**:
+
 - `framer-motion` (^11.0.0): Animations & Gestures
 - `canvas-confetti` (^1.9.2): Hiệu ứng pháo giấy
 - `howler` (^2.2.4): Xử lý Web Audio API
 - `vite-plugin-pwa` (^0.19.0): Cấu hình PWA
 
 **Backend (`apps/api/package.json`)**:
+
 - `web-push` (^3.6.7): Gửi thông báo đẩy qua VAPID
 - `@nestjs/schedule`: Cho Cron jobs (nếu chưa có)
 
@@ -707,6 +753,7 @@ XP_MULTIPLIER=1.0
 Cập nhật `apps/web/src/stores/i18n.store.ts`:
 
 **EN (`en.json` equivalent):**
+
 ```json
 {
   "gamification": {
@@ -731,6 +778,7 @@ Cập nhật `apps/web/src/stores/i18n.store.ts`:
 ```
 
 **VI (`vi.json` equivalent):**
+
 ```json
 {
   "gamification": {
@@ -759,16 +807,19 @@ Cập nhật `apps/web/src/stores/i18n.store.ts`:
 ## Verification Plan
 
 ### Automated Tests
+
 1. **Gamification Logic**: Viết unit test cho `XpService.calculateLevel()` và logic cấp phát XP.
 2. **Event Hooks**: Đảm bảo event `interview.completed` trigger `BadgeService`.
 3. **PWA Check**: Cypress test giả lập offline mode.
 
 ### Manual Verification
+
 1. Hoàn thành 1 bài phỏng vấn -> Xác nhận XP pop-up nổi lên và nghe tiếng "ting" (SFX).
 2. Tắt/Bật mạng di động -> Xác nhận thanh Offline Indicator xuất hiện nhưng Flashcards (cache) vẫn học được.
 3. Vào trình duyệt di động -> Chờ prompt "Install App" hiện ra, click tải xuống và mở app ngoài homescreen.
 
 ### Lighthouse Audit Targets
+
 - Performance: > 90
 - Accessibility: > 95
 - Best Practices: > 95

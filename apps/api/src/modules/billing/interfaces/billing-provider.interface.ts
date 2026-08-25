@@ -1,7 +1,4 @@
-import {
-  CreateCheckoutRequest,
-  CheckoutResponse,
-} from '@ai-interview/contracts';
+import { CreateCheckoutRequest, CheckoutResponse } from '@ai-interview/contracts';
 
 export interface BillingProvider {
   readonly name: string;
@@ -12,10 +9,7 @@ export interface BillingProvider {
     stripePriceId?: string,
   ): Promise<CheckoutResponse>;
 
-  createCustomerPortalSession(
-    customerId: string,
-    returnUrl: string,
-  ): Promise<{ url: string }>;
+  createCustomerPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }>;
 
   handleWebhook(
     payload: any,

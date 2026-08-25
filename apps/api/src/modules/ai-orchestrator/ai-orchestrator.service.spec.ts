@@ -26,7 +26,8 @@ describe('AiOrchestratorService', () => {
       id: 'pv-1',
       slug: 'question_generator',
       systemPrompt: 'System prompt test',
-      userPromptTemplate: 'Template test: Role: {{role}}, Level: {{level}}, Technologies: {{technologies}}',
+      userPromptTemplate:
+        'Template test: Role: {{role}}, Level: {{level}}, Technologies: {{technologies}}',
     }),
   };
 

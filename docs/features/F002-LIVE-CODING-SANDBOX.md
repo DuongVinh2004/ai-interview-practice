@@ -3,19 +3,23 @@
 ## 1. Tổng quan (Overview)
 
 ### Mô tả tính năng chi tiết
+
 Interactive Live Coding & Code Execution Sandbox là môi trường lập trình trực tuyến được tích hợp trực tiếp vào phòng phỏng vấn. Nó cho phép ứng viên viết, chạy thử, và submit code theo thời gian thực. Hệ thống đi kèm với khả năng biên dịch/thực thi mã an toàn (sandbox) và tích hợp AI để tự động đánh giá chất lượng mã nguồn, phân tích độ phức tạp thuật toán và đưa ra gợi ý tối ưu.
 
 ### Vấn đề giải quyết (Problem Statement)
+
 - Phỏng vấn kỹ thuật truyền thống thường dùng Google Docs hoặc bảng trắng, không kiểm tra được lỗi cú pháp hay logic thực tế.
 - Khó đánh giá chính xác độ phức tạp thời gian/không gian nếu không có bộ test case chạy thực tế.
 - Việc review code thủ công tốn nhiều thời gian của người phỏng vấn.
 
 ### Giá trị mang lại (Value Proposition)
+
 - **Hands-on Assessment**: Đánh giá khả năng code thực tế của ứng viên thông qua việc pass các test cases.
 - **Instant AI Feedback**: AI review code ngay lập tức (Clean Code, Time/Space Complexity).
 - **Seamless Experience**: Ứng viên không cần cài đặt môi trường, code ngay trên trình duyệt với đầy đủ tính năng của IDE.
 
 ### Personas thụ hưởng
+
 - **Ứng viên (Candidates)**: Trải nghiệm code tương tự IDE quen thuộc (VSCode).
 - **Nhà tuyển dụng / Developer (Recruiters/Devs)**: Tiết kiệm thời gian chấm bài, nhận được báo cáo đánh giá code chi tiết từ AI.
 
@@ -23,35 +27,36 @@ Interactive Live Coding & Code Execution Sandbox là môi trường lập trình
 
 ## 2. Yêu cầu chức năng (Functional Requirements)
 
-| ID | Yêu cầu | Mô tả chi tiết |
-|---|---|---|
-| FR-COD-001 | Monaco Editor Integration | Tích hợp Monaco Editor hỗ trợ syntax highlighting, auto-completion, và phím tắt chuẩn. |
-| FR-COD-002 | Multi-language Support | Hỗ trợ JavaScript, TypeScript, Python, Java, C++, Go. |
-| FR-COD-003 | Code Execution Sandbox | Thực thi code an toàn qua Judge0 API hoặc WebContainers. Không cho phép truy cập filesystem/network từ code của ứng viên. |
-| FR-COD-004 | Test Case Runner | Chạy code với các test case định sẵn (Hidden/Public) hoặc test case tùy chỉnh của ứng viên. |
-| FR-COD-005 | Code Submission & Auto-save | Tự động lưu bản nháp (draft) mỗi 5s. Submit phiên bản cuối cùng để chấm điểm. |
-| FR-COD-006 | AI Code Review - Complexity | AI phân tích độ phức tạp Big O (Time & Space Complexity) của đoạn code submit. |
-| FR-COD-007 | AI Code Review - Quality | AI đánh giá code dựa trên Clean Code principles, phát hiện code smells. |
-| FR-COD-008 | Split-Pane UI | Layout chia đôi màn hình có thể resize: Trái (Đề bài), Phải (Editor + Console). |
-| FR-COD-009 | Console Output Panel | Hiển thị STDOUT, STDERR, và kết quả test case chi tiết. |
-| FR-COD-010 | Execution Resource Limits | Giới hạn thời gian chạy (Timeout) và bộ nhớ (Memory Limit) cho mỗi lần execution. |
+| ID         | Yêu cầu                     | Mô tả chi tiết                                                                                                            |
+| ---------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| FR-COD-001 | Monaco Editor Integration   | Tích hợp Monaco Editor hỗ trợ syntax highlighting, auto-completion, và phím tắt chuẩn.                                    |
+| FR-COD-002 | Multi-language Support      | Hỗ trợ JavaScript, TypeScript, Python, Java, C++, Go.                                                                     |
+| FR-COD-003 | Code Execution Sandbox      | Thực thi code an toàn qua Judge0 API hoặc WebContainers. Không cho phép truy cập filesystem/network từ code của ứng viên. |
+| FR-COD-004 | Test Case Runner            | Chạy code với các test case định sẵn (Hidden/Public) hoặc test case tùy chỉnh của ứng viên.                               |
+| FR-COD-005 | Code Submission & Auto-save | Tự động lưu bản nháp (draft) mỗi 5s. Submit phiên bản cuối cùng để chấm điểm.                                             |
+| FR-COD-006 | AI Code Review - Complexity | AI phân tích độ phức tạp Big O (Time & Space Complexity) của đoạn code submit.                                            |
+| FR-COD-007 | AI Code Review - Quality    | AI đánh giá code dựa trên Clean Code principles, phát hiện code smells.                                                   |
+| FR-COD-008 | Split-Pane UI               | Layout chia đôi màn hình có thể resize: Trái (Đề bài), Phải (Editor + Console).                                           |
+| FR-COD-009 | Console Output Panel        | Hiển thị STDOUT, STDERR, và kết quả test case chi tiết.                                                                   |
+| FR-COD-010 | Execution Resource Limits   | Giới hạn thời gian chạy (Timeout) và bộ nhớ (Memory Limit) cho mỗi lần execution.                                         |
 
 ---
 
 ## 3. Yêu cầu phi chức năng (Non-Functional Requirements)
 
-| ID | Yêu cầu | Tiêu chuẩn / Metric |
-|---|---|---|
-| NFR-COD-001 | Execution Latency | Thời gian trả về kết quả chạy code < 5s đối với các ngôn ngữ biên dịch nhanh hoặc thông dịch. |
-| NFR-COD-002 | Sandbox Isolation | 100% code thực thi trong môi trường isolated, chặn toàn bộ syscalls nguy hiểm, network egress = 0. |
-| NFR-COD-003 | Resource Constraints | Max execution time: 2s (C++), 5s (Python/Java). Max memory: 256MB/execution. |
-| NFR-COD-004 | Concurrency | Xử lý ít nhất 1,000 code executions đồng thời (thông qua message queue). |
+| ID          | Yêu cầu              | Tiêu chuẩn / Metric                                                                                |
+| ----------- | -------------------- | -------------------------------------------------------------------------------------------------- |
+| NFR-COD-001 | Execution Latency    | Thời gian trả về kết quả chạy code < 5s đối với các ngôn ngữ biên dịch nhanh hoặc thông dịch.      |
+| NFR-COD-002 | Sandbox Isolation    | 100% code thực thi trong môi trường isolated, chặn toàn bộ syscalls nguy hiểm, network egress = 0. |
+| NFR-COD-003 | Resource Constraints | Max execution time: 2s (C++), 5s (Python/Java). Max memory: 256MB/execution.                       |
+| NFR-COD-004 | Concurrency          | Xử lý ít nhất 1,000 code executions đồng thời (thông qua message queue).                           |
 
 ---
 
 ## 4. Thiết kế Kiến trúc (Architecture Design)
 
 ### Sequence Diagram: Code Execution Flow
+
 ```mermaid
 sequenceDiagram
     participant C as Client (Browser)
@@ -67,7 +72,7 @@ sequenceDiagram
     S-->>Q: 5. Return STDOUT/STDERR/Metrics
     C->>API: 6. Poll / Long-poll for result
     API-->>C: 7. Return Result
-    
+
     opt If Final Submission
         API->>AI: 8. Request Code Review (Context: Code)
         AI-->>API: 9. Return AST analysis & Feedback
@@ -76,6 +81,7 @@ sequenceDiagram
 ```
 
 ### Component Architecture
+
 - **Frontend**: React + Monaco Editor + Xterm.js (Console).
 - **Backend**: NestJS, cung cấp REST/SSE cho client.
 - **Queue**: Redis + BullMQ để buffer request chạy code, tránh overload Sandbox.
@@ -140,6 +146,7 @@ enum SubmissionStatus {
 ## 6. API Specification
 
 ### REST Endpoints
+
 - `POST /api/v1/interviews/:id/code/execute`
   - Body: `{ language: "python", sourceCode: "...", testCaseIds: [...] }`
   - Response: `{ jobId: "..." }`
@@ -153,6 +160,7 @@ enum SubmissionStatus {
 ## 7. Thiết kế Frontend
 
 ### React Components
+
 - **CodeEditor**: Bọc Monaco Editor component, khởi tạo language server client.
 - **SplitPane**: Hỗ trợ drag resize giữa panel đề bài và panel code.
 - **TestCasesPanel**: Danh sách tabs cho các test cases. Textarea cho input/output.

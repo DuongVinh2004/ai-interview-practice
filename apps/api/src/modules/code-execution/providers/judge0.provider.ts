@@ -6,10 +6,10 @@ import { ExecuteCodeResponse, TestCaseDto, SubmissionStatus } from '@ai-intervie
 const LANGUAGE_ID_MAP: Record<string, number> = {
   javascript: 63, // Node.js
   typescript: 74, // TypeScript
-  python: 71,     // Python 3
-  java: 62,       // OpenJDK 13
-  cpp: 54,        // C++ (GCC 9.2.0)
-  go: 60,         // Go
+  python: 71, // Python 3
+  java: 62, // OpenJDK 13
+  cpp: 54, // C++ (GCC 9.2.0)
+  go: 60, // Go
 };
 
 @Injectable()
@@ -116,12 +116,19 @@ export class Judge0Provider implements SandboxProvider {
           else if (statusId === 6) caseStatus = SubmissionStatus.COMPILE_ERROR;
           else if (statusId >= 7) caseStatus = SubmissionStatus.FAILED;
 
-          const stdout = data.stdout ? Buffer.from(data.stdout, 'base64').toString('utf8').trim() : '';
+          const stdout = data.stdout
+            ? Buffer.from(data.stdout, 'base64').toString('utf8').trim()
+            : '';
           const stderr = data.stderr ? Buffer.from(data.stderr, 'base64').toString('utf8') : null;
-          const compileOutput = data.compile_output ? Buffer.from(data.compile_output, 'base64').toString('utf8') : null;
+          const compileOutput = data.compile_output
+            ? Buffer.from(data.compile_output, 'base64').toString('utf8')
+            : null;
 
           if (compileOutput) compileErr = compileOutput;
-          if (caseStatus !== SubmissionStatus.COMPLETED && overallStatus === SubmissionStatus.COMPLETED) {
+          if (
+            caseStatus !== SubmissionStatus.COMPLETED &&
+            overallStatus === SubmissionStatus.COMPLETED
+          ) {
             overallStatus = caseStatus;
           }
 
@@ -204,7 +211,9 @@ export class Judge0Provider implements SandboxProvider {
 
       const stdout = data.stdout ? Buffer.from(data.stdout, 'base64').toString('utf8') : '';
       const stderr = data.stderr ? Buffer.from(data.stderr, 'base64').toString('utf8') : null;
-      const compileOutput = data.compile_output ? Buffer.from(data.compile_output, 'base64').toString('utf8') : null;
+      const compileOutput = data.compile_output
+        ? Buffer.from(data.compile_output, 'base64').toString('utf8')
+        : null;
 
       return {
         status,

@@ -54,8 +54,8 @@ export function ProgressTrendChart({
               overallDelta > 0
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                 : overallDelta < 0
-                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                : 'bg-slate-50 text-slate-700 border border-slate-200'
+                  ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                  : 'bg-slate-50 text-slate-700 border border-slate-200'
             }`}
           >
             {overallDelta > 0 ? (
@@ -95,8 +95,20 @@ export function ProgressTrendChart({
             const y = height - padding - (lvl / 10) * (height - padding * 2);
             return (
               <g key={lvl}>
-                <line x1={padding} y1={y} x2={width - padding} y2={y} stroke="#e2e8f0" strokeDasharray="3,3" />
-                <text x={padding - 6} y={y + 3} textAnchor="end" className="text-[8px] fill-slate-400">
+                <line
+                  x1={padding}
+                  y1={y}
+                  x2={width - padding}
+                  y2={y}
+                  stroke="#e2e8f0"
+                  strokeDasharray="3,3"
+                />
+                <text
+                  x={padding - 6}
+                  y={y + 3}
+                  textAnchor="end"
+                  className="text-[8px] fill-slate-400"
+                >
                   {lvl}
                 </text>
               </g>
@@ -107,7 +119,14 @@ export function ProgressTrendChart({
           <path d={areaD} fill="rgba(16, 185, 129, 0.12)" />
 
           {/* Sparkline Path */}
-          <path d={pathD} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d={pathD}
+            fill="none"
+            stroke="#10b981"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
 
           {/* Data Points */}
           {points.map((p, i) => (

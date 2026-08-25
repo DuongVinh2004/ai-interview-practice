@@ -11,7 +11,6 @@ export const UserQueryDtoSchema = z.object({
 
 export type UserQueryDto = z.infer<typeof UserQueryDtoSchema>;
 
-
 export const AiRunQueryDtoSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),

@@ -39,10 +39,19 @@ export class MockSandboxProvider implements SandboxProvider {
       };
     }
 
-    const cases = testCases && testCases.length > 0 ? testCases : [
-      { id: 'case-1', input: customInput || '2, 3', expectedOutput: '5', isHidden: false, order: 1 },
-      { id: 'case-2', input: '10, -5', expectedOutput: '5', isHidden: true, order: 2 },
-    ];
+    const cases =
+      testCases && testCases.length > 0
+        ? testCases
+        : [
+            {
+              id: 'case-1',
+              input: customInput || '2, 3',
+              expectedOutput: '5',
+              isHidden: false,
+              order: 1,
+            },
+            { id: 'case-2', input: '10, -5', expectedOutput: '5', isHidden: true, order: 2 },
+          ];
 
     const testResults = cases.map(tc => {
       // In mock mode, if code contains return or print, simulate passing output

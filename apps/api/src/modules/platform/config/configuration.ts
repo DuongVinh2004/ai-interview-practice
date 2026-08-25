@@ -49,5 +49,3 @@ export const featuresConfig = registerAs('features', () => ({
   spacedRepetition: process.env.FEATURE_SPACED_REPETITION === 'true',
   voiceStreaming: process.env.FEATURE_VOICE_STREAMING === 'true',
 }));
-
-

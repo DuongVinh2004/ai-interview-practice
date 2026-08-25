@@ -65,7 +65,11 @@ describe('SystemDesign Services (F003)', () => {
         evaluation: null,
       });
 
-      const session = await canvasService.initSession(userId, interviewId, 'Design a URL Shortener');
+      const session = await canvasService.initSession(
+        userId,
+        interviewId,
+        'Design a URL Shortener',
+      );
       expect(session.id).toBe('sd-123');
       expect(session.initialPrompt).toBe('Design a URL Shortener');
     });
@@ -95,7 +99,7 @@ describe('SystemDesign Services (F003)', () => {
         interviewId,
         'data:image/png;base64,sample',
         { elements: [] },
-        120
+        120,
       );
 
       expect(snapshot.id).toBe('snap-1');
@@ -122,7 +126,11 @@ describe('SystemDesign Services (F003)', () => {
       });
       mockPrisma.canvasSnapshot.update.mockResolvedValue({});
 
-      const analysis = await analyzerService.analyzeSnapshot(userId, interviewId, 'data:image/png;base64,test');
+      const analysis = await analyzerService.analyzeSnapshot(
+        userId,
+        interviewId,
+        'data:image/png;base64,test',
+      );
       expect(analysis.detectedComponents).toContain('Load Balancer');
       expect(analysis.detectedComponents).toContain('API Gateway');
       expect(analysis.rubricScores.requirements).toBeGreaterThanOrEqual(8.0);

@@ -9,7 +9,7 @@ export class DesignEvaluationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly visionProvider: MockVisionProvider
+    private readonly visionProvider: MockVisionProvider,
   ) {}
 
   /**
@@ -59,7 +59,7 @@ export class DesignEvaluationService {
         rubric.componentDetail * 0.2 +
         rubric.scalability * 0.2 +
         rubric.dataModel * 0.2
-      ).toFixed(1)
+      ).toFixed(1),
     );
 
     const feedback = `${analysis.summary}\n\nKey Strengths:\n- ${analysis.strengths.join('\n- ')}\n\nBottlenecks to Address:\n- ${analysis.potentialBottlenecks.join('\n- ')}`;

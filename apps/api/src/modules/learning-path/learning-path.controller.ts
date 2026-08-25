@@ -50,4 +50,3 @@ export class LearningPathController {
     return this.learningPathService.getMyLearningGoals(userId);
   }
 }
-

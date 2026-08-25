@@ -4,15 +4,15 @@ Testing follows the risk pyramid: many deterministic unit tests, service-level i
 
 ## Layers
 
-| Layer | Primary purpose | Required environment |
-|---|---|---|
-| Unit | pure domain rules, schemas, score calculation, state transitions | process only |
-| Integration | repositories, auth/session, migrations, queues, idempotency | PostgreSQL + Redis |
-| Contract | REST/SSE/events/provider schemas and compatibility | producer/consumer fixtures |
-| E2E | critical candidate/admin journeys and accessibility | production-like stack |
-| Performance | latency, saturation, backpressure, failover | isolated load environment |
-| Security | negative authorization, abuse cases, scanning | CI + staging |
-| AI eval | quality, evidence, safety, slice regression | pinned datasets/artifacts |
+| Layer       | Primary purpose                                                  | Required environment       |
+| ----------- | ---------------------------------------------------------------- | -------------------------- |
+| Unit        | pure domain rules, schemas, score calculation, state transitions | process only               |
+| Integration | repositories, auth/session, migrations, queues, idempotency      | PostgreSQL + Redis         |
+| Contract    | REST/SSE/events/provider schemas and compatibility               | producer/consumer fixtures |
+| E2E         | critical candidate/admin journeys and accessibility              | production-like stack      |
+| Performance | latency, saturation, backpressure, failover                      | isolated load environment  |
+| Security    | negative authorization, abuse cases, scanning                    | CI + staging               |
+| AI eval     | quality, evidence, safety, slice regression                      | pinned datasets/artifacts  |
 
 ## Principles
 

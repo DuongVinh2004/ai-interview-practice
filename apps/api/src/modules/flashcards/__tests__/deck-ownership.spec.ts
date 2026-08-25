@@ -22,10 +22,7 @@ describe('Flashcard Deck Injection & Ownership (P1-010)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FlashcardService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [FlashcardService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     flashcardService = module.get<FlashcardService>(FlashcardService);

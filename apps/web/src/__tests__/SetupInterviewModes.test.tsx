@@ -20,7 +20,14 @@ describe('SetupInterviewPage Modes (Epic 6)', () => {
           text: () =>
             Promise.resolve(
               JSON.stringify({
-                data: [{ id: 'role-1', name: 'Backend Engineer', slug: 'backend', description: 'Server-side apps' }],
+                data: [
+                  {
+                    id: 'role-1',
+                    name: 'Backend Engineer',
+                    slug: 'backend',
+                    description: 'Server-side apps',
+                  },
+                ],
               }),
             ),
         });
@@ -32,7 +39,9 @@ describe('SetupInterviewPage Modes (Epic 6)', () => {
           text: () =>
             Promise.resolve(
               JSON.stringify({
-                data: [{ id: 'lvl-1', name: 'Senior', slug: 'senior', description: 'Senior level' }],
+                data: [
+                  { id: 'lvl-1', name: 'Senior', slug: 'senior', description: 'Senior level' },
+                ],
               }),
             ),
         });
@@ -67,9 +76,15 @@ describe('SetupInterviewPage Modes (Epic 6)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Phỏng vấn Toàn diện|Full Mock Interview/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Luyện tập Trọng tâm|Focused Remediation/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Thao trường Thử nghiệm|Quick Sandbox/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Phỏng vấn Toàn diện|Full Mock Interview/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Luyện tập Trọng tâm|Focused Remediation/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Thao trường Thử nghiệm|Quick Sandbox/i }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -83,13 +98,19 @@ describe('SetupInterviewPage Modes (Epic 6)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /Luyện tập Trọng tâm|Focused Remediation/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Luyện tập Trọng tâm|Focused Remediation/i }),
+      ).toBeInTheDocument();
     });
 
-    const remediationTab = screen.getByRole('button', { name: /Luyện tập Trọng tâm|Focused Remediation/i });
+    const remediationTab = screen.getByRole('button', {
+      name: /Luyện tập Trọng tâm|Focused Remediation/i,
+    });
     fireEvent.click(remediationTab);
 
-    expect(screen.getByText(/Focus Competency Area|Năng lực Kỹ thuật Trọng tâm/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Focus Competency Area|Năng lực Kỹ thuật Trọng tâm/i),
+    ).toBeInTheDocument();
     expect(screen.getByText('System Design & Scalability')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '3 Questions' })).toBeInTheDocument();
   });

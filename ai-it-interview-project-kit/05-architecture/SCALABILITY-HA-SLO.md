@@ -19,13 +19,13 @@
 
 ## SLO
 
-| Capability | SLI | Target |
-|---|---|---|
-| Core REST API | successful eligible requests | 99,9%/tháng |
-| Session creation | p95 latency | < 300 ms không tính enqueue outage |
-| Answer durability | accepted answer persisted | 99,99% |
-| Question generation | completed within 15 s | ≥ 95% |
-| Evaluation | completed within 20 s | ≥ 95% |
-| SSE freshness | event delivered within 2 s | ≥ 99% khi connected |
+| Capability          | SLI                          | Target                             |
+| ------------------- | ---------------------------- | ---------------------------------- |
+| Core REST API       | successful eligible requests | 99,9%/tháng                        |
+| Session creation    | p95 latency                  | < 300 ms không tính enqueue outage |
+| Answer durability   | accepted answer persisted    | 99,99%                             |
+| Question generation | completed within 15 s        | ≥ 95%                              |
+| Evaluation          | completed within 20 s        | ≥ 95%                              |
+| SSE freshness       | event delivered within 2 s   | ≥ 99% khi connected                |
 
 AI provider failure không được tính như API đã thành công nếu user không nhận được trạng thái recoverable. Error budget phải chặn rollout rủi ro khi burn rate vượt ngưỡng.

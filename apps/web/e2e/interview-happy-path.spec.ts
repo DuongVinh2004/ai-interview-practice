@@ -41,7 +41,9 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
     await page.click('button[type="submit"]');
 
     // 9. Verify evaluation completes and session advances to Turn 2
-    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 2/i })).toBeVisible({ timeout: 25000 });
+    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 2/i })).toBeVisible({
+      timeout: 25000,
+    });
     await expect(page.getByText(/(lịch sử các lượt trước|past turns)/i)).toBeVisible();
 
     // 10. Click past turn 1 accordion to inspect evaluation

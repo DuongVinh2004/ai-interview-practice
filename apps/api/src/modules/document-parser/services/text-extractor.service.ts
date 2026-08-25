@@ -45,7 +45,9 @@ export class TextExtractorService {
       if (err instanceof BadRequestException) {
         throw err;
       }
-      this.logger.error(`Failed to extract text from file ${fileName || 'unnamed'}: ${err.message}`);
+      this.logger.error(
+        `Failed to extract text from file ${fileName || 'unnamed'}: ${err.message}`,
+      );
       throw new BadRequestException(`Unable to parse file content: ${err.message}`);
     }
   }
@@ -75,11 +77,13 @@ export class TextExtractorService {
     scrubbed = scrubbed.replace(emailRegex, '[EMAIL_MASKED]');
 
     // 2. Phone pattern (VN & international)
-    const phoneRegex = /(?:\+?\d{1,3}[-.\s]*)?\(?\d{2,4}\)?[-.\s]*\d{2,4}[-.\s]*\d{2,4}[-.\s]*\d{3,4}|\b0[3|5|7|8|9]\d{8}\b|\b0\d{9,10}\b/g;
+    const phoneRegex =
+      /(?:\+?\d{1,3}[-.\s]*)?\(?\d{2,4}\)?[-.\s]*\d{2,4}[-.\s]*\d{2,4}[-.\s]*\d{3,4}|\b0[3|5|7|8|9]\d{8}\b|\b0\d{9,10}\b/g;
     scrubbed = scrubbed.replace(phoneRegex, '[PHONE_MASKED]');
 
     // 3. Address pattern (VN & International common street formats)
-    const addressRegex = /\b\d{1,5}\s+[A-Za-z0-9\s,.-]+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|District|Ward|Quận|Phường|Hà Nội|TP\.?HCM|Hồ Chí Minh|Đà Nẵng)\b/gi;
+    const addressRegex =
+      /\b\d{1,5}\s+[A-Za-z0-9\s,.-]+(Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|District|Ward|Quận|Phường|Hà Nội|TP\.?HCM|Hồ Chí Minh|Đà Nẵng)\b/gi;
     scrubbed = scrubbed.replace(addressRegex, '[ADDRESS_MASKED]');
 
     return scrubbed;

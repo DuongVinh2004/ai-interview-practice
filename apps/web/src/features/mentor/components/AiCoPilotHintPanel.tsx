@@ -2,14 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/api-client';
 import { CopilotHintsResponseDto, CopilotHintDto } from '@ai-interview/contracts';
-import {
-  Sparkles,
-  HelpCircle,
-  CheckCircle,
-  RefreshCw,
-  Send,
-  Zap,
-} from 'lucide-react';
+import { Sparkles, HelpCircle, CheckCircle, RefreshCw, Send, Zap } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 
 interface AiCoPilotHintPanelProps {
@@ -26,14 +19,16 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
   const { data, isLoading, refetch, isFetching } = useQuery<CopilotHintsResponseDto>({
     queryKey: ['copilot-hints', sessionId],
     queryFn: async () => {
-      const res = await apiClient.get<CopilotHintsResponseDto>(`/sessions/${sessionId}/copilot-hints`);
+      const res = await apiClient.get<CopilotHintsResponseDto>(
+        `/sessions/${sessionId}/copilot-hints`,
+      );
       return res.data;
     },
     refetchInterval: 15000, // Real-time poll every 15s
   });
 
   const handleUseHint = (hint: CopilotHintDto) => {
-    setUsedHints((prev) => new Set([...prev, hint.id]));
+    setUsedHints(prev => new Set([...prev, hint.id]));
     if (onSelectHint) {
       onSelectHint(hint.questionText);
     }
@@ -90,12 +85,12 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 divide-y divide-slate-100">
         {isLoading && !data ? (
           <div className="space-y-3 py-2">
-            {[1, 2, 3].map((i) => (
+            {[1, 2, 3].map(i => (
               <div key={i} className="h-24 bg-slate-100 rounded-xl animate-pulse" />
             ))}
           </div>
         ) : data?.hints && data.hints.length > 0 ? (
-          data.hints.map((hint) => {
+          data.hints.map(hint => {
             const isUsed = usedHints.has(hint.id);
             return (
               <div
@@ -134,7 +129,9 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
                 {/* Key Signals */}
                 {hint.expectedKeySignals && hint.expectedKeySignals.length > 0 && (
                   <div className="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-200/60 text-[11px]">
-                    <span className="font-bold text-slate-700 block mb-1">Expected Signals to listen for:</span>
+                    <span className="font-bold text-slate-700 block mb-1">
+                      Expected Signals to listen for:
+                    </span>
                     <ul className="list-disc list-inside space-y-0.5 text-slate-600">
                       {hint.expectedKeySignals.map((signal, idx) => (
                         <li key={idx}>{signal}</li>

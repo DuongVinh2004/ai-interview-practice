@@ -70,11 +70,17 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-xl" data-testid="code-editor-container">
+    <div
+      className="flex flex-col h-full bg-slate-900 border border-slate-700 rounded-lg overflow-hidden shadow-xl"
+      data-testid="code-editor-container"
+    >
       {/* Editor Header */}
       <div className="flex items-center justify-between px-4 py-2 bg-slate-800 border-b border-slate-700">
         <div className="flex items-center space-x-3">
-          <label htmlFor="language-select" className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+          <label
+            htmlFor="language-select"
+            className="text-xs font-semibold text-slate-300 uppercase tracking-wider"
+          >
             Language:
           </label>
           <select
@@ -111,7 +117,8 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
             className="bg-slate-700 hover:bg-slate-600 text-emerald-400 font-medium"
             data-testid="run-code-btn"
           >
-            <Play className="w-3.5 h-3.5 mr-1 fill-current" /> {isRunning ? 'Running...' : 'Run Code'}
+            <Play className="w-3.5 h-3.5 mr-1 fill-current" />{' '}
+            {isRunning ? 'Running...' : 'Run Code'}
           </Button>
           <Button
             variant="primary"
@@ -121,7 +128,8 @@ export const MonacoCodeEditor: React.FC<MonacoCodeEditorProps> = ({
             className="bg-primary-600 hover:bg-primary-500 text-white font-medium"
             data-testid="submit-code-btn"
           >
-            <Send className="w-3.5 h-3.5 mr-1" /> {isSubmitting ? 'Submitting...' : 'Submit Solution'}
+            <Send className="w-3.5 h-3.5 mr-1" />{' '}
+            {isSubmitting ? 'Submitting...' : 'Submit Solution'}
           </Button>
         </div>
       </div>

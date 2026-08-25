@@ -64,7 +64,10 @@ export function FlashcardReviewPage() {
 
   if (isFinished) {
     return (
-      <div className="max-w-2xl mx-auto py-16 px-4 text-center space-y-6" data-testid="review-finished">
+      <div
+        className="max-w-2xl mx-auto py-16 px-4 text-center space-y-6"
+        data-testid="review-finished"
+      >
         <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-inner">
           <CheckCircle2 className="w-10 h-10" />
         </div>
@@ -74,7 +77,8 @@ export function FlashcardReviewPage() {
             Tuyệt vời! Bạn đã hoàn thành buổi ôn tập hôm nay
           </h2>
           <p className="text-sm text-slate-600">
-            Đã hoàn thành <strong className="text-emerald-700">{completedCount}</strong> lượt ôn tập. Thuật toán FSRS v4 đã tối ưu lại thời điểm ôn tiếp theo cho bộ nhớ dài hạn của bạn.
+            Đã hoàn thành <strong className="text-emerald-700">{completedCount}</strong> lượt ôn
+            tập. Thuật toán FSRS v4 đã tối ưu lại thời điểm ôn tiếp theo cho bộ nhớ dài hạn của bạn.
           </p>
         </div>
 
@@ -91,7 +95,7 @@ export function FlashcardReviewPage() {
     );
   }
 
-  const progressPercent = Math.round(((currentIndex) / dueCards.length) * 100);
+  const progressPercent = Math.round((currentIndex / dueCards.length) * 100);
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6" data-testid="flashcard-review-page">
@@ -178,12 +182,20 @@ export function FlashcardReviewPage() {
           </div>
 
           <p className="text-center text-[11px] text-slate-400">
-            Phím tắt: Nhấn <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">1</kbd>, <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">2</kbd>, <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">3</kbd>, <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">4</kbd> trên bàn phím
+            Phím tắt: Nhấn{' '}
+            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">1</kbd>,{' '}
+            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">2</kbd>,{' '}
+            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">3</kbd>,{' '}
+            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">4</kbd> trên bàn phím
           </p>
         </div>
       ) : (
         <div className="flex justify-center">
-          <Button size="lg" onClick={() => setIsFlipped(true)} className="w-full sm:w-auto px-8 shadow-sm">
+          <Button
+            size="lg"
+            onClick={() => setIsFlipped(true)}
+            className="w-full sm:w-auto px-8 shadow-sm"
+          >
             <span>Hiển thị Đáp án (Lật thẻ)</span>
           </Button>
         </div>

@@ -13,7 +13,7 @@ export class ReadinessService {
     private readonly prisma: PrismaService,
     private readonly weightProfileService: WeightProfileService,
     private readonly tierClassificationService: TierClassificationService,
-    private readonly velocityService: VelocityService
+    private readonly velocityService: VelocityService,
   ) {}
 
   /**
@@ -23,7 +23,7 @@ export class ReadinessService {
   public computeCompositeReadiness(
     scores: Record<CompetencyArea, number>,
     weights: Record<CompetencyArea, number>,
-    targetScores: Record<CompetencyArea, number>
+    targetScores: Record<CompetencyArea, number>,
   ): number {
     let composite = 0;
     const areas = Object.keys(weights) as CompetencyArea[];
@@ -47,7 +47,7 @@ export class ReadinessService {
   public computeConfidenceInterval(
     readinessScore: number,
     evidenceCount: number,
-    stdDev: number = 8.5
+    stdDev: number = 8.5,
   ): { low: number; high: number; confidenceLevel: string; evidenceCount: number } {
     const n = Math.max(1, evidenceCount);
     const margin = 1.96 * (stdDev / Math.sqrt(n));
@@ -68,7 +68,7 @@ export class ReadinessService {
    */
   async getReadinessDashboard(
     userId: string,
-    jobRoleSlug: string = 'backend'
+    jobRoleSlug: string = 'backend',
   ): Promise<ReadinessDashboardResponseDto> {
     const slug = jobRoleSlug.toLowerCase();
     const weights = await this.weightProfileService.getWeightsForRole(slug);
@@ -95,7 +95,9 @@ export class ReadinessService {
     };
 
     for (const turn of turns) {
-      const area = (turn.session.competencyArea ? (turn.session.competencyArea as unknown as CompetencyArea) : CompetencyArea.SYSTEM_DESIGN);
+      const area = turn.session.competencyArea
+        ? (turn.session.competencyArea as unknown as CompetencyArea)
+        : CompetencyArea.SYSTEM_DESIGN;
       if (turn.answer?.evaluation?.score != null) {
         areaScoresMap[area].push(turn.answer.evaluation.score);
       }
@@ -127,9 +129,16 @@ export class ReadinessService {
 
     // 2. Core Readiness Calculation
     const readinessScore = this.computeCompositeReadiness(currentScores, weights, targetScores);
-    const confidenceInterval = this.computeConfidenceInterval(readinessScore, Math.max(3, evidenceCount));
+    const confidenceInterval = this.computeConfidenceInterval(
+      readinessScore,
+      Math.max(3, evidenceCount),
+    );
     const tier = this.tierClassificationService.classifyTier(readinessScore);
-    const velocity = this.velocityService.calculateVelocity(readinessScore, Math.max(0, readinessScore - 4.5), 4);
+    const velocity = this.velocityService.calculateVelocity(
+      readinessScore,
+      Math.max(0, readinessScore - 4.5),
+      4,
+    );
 
     // 3. Competency Breakdown Items
     const areaNames: Record<CompetencyArea, string> = {
@@ -145,9 +154,18 @@ export class ReadinessService {
       const target = targetScores[area];
       const weight = weights[area];
       const fulfillment = Number((Math.min(current / target, 1.0) * 100).toFixed(1));
-      const status = fulfillment >= 95 ? ('TARGET_MET' as const) : fulfillment >= 80 ? ('APPROACHING' as const) : ('BELOW_TARGET' as const);
+      const status =
+        fulfillment >= 95
+          ? ('TARGET_MET' as const)
+          : fulfillment >= 80
+            ? ('APPROACHING' as const)
+            : ('BELOW_TARGET' as const);
       const areaVelocity = 0.25;
-      const estimatedWeeksToTarget = this.velocityService.calculateWeeksToTarget(current, target, areaVelocity);
+      const estimatedWeeksToTarget = this.velocityService.calculateWeeksToTarget(
+        current,
+        target,
+        areaVelocity,
+      );
 
       return {
         area,
@@ -166,8 +184,18 @@ export class ReadinessService {
     const milestones = [
       { type: '25%', targetScore: 25, achieved: readinessScore >= 25, achievedAt: '2026-06-01' },
       { type: '50%', targetScore: 50, achieved: readinessScore >= 50, achievedAt: '2026-07-15' },
-      { type: '75%', targetScore: 75, achieved: readinessScore >= 75, achievedAt: readinessScore >= 75 ? '2026-08-10' : null },
-      { type: '85%', targetScore: 85, achieved: readinessScore >= 85, achievedAt: readinessScore >= 85 ? '2026-08-20' : null },
+      {
+        type: '75%',
+        targetScore: 75,
+        achieved: readinessScore >= 75,
+        achievedAt: readinessScore >= 75 ? '2026-08-10' : null,
+      },
+      {
+        type: '85%',
+        targetScore: 85,
+        achieved: readinessScore >= 85,
+        achievedAt: readinessScore >= 85 ? '2026-08-20' : null,
+      },
       { type: '100%', targetScore: 100, achieved: readinessScore >= 100, achievedAt: null },
     ];
 
@@ -175,8 +203,16 @@ export class ReadinessService {
     const sortedByPriority = breakdown
       .filter(b => b.currentScore < b.targetScore)
       .sort((a, b) => {
-        const pA = this.velocityService.calculatePriorityScore(a.currentScore, a.targetScore, a.weight);
-        const pB = this.velocityService.calculatePriorityScore(b.currentScore, b.targetScore, b.weight);
+        const pA = this.velocityService.calculatePriorityScore(
+          a.currentScore,
+          a.targetScore,
+          a.weight,
+        );
+        const pB = this.velocityService.calculatePriorityScore(
+          b.currentScore,
+          b.targetScore,
+          b.weight,
+        );
         return pB - pA;
       });
 
@@ -212,7 +248,8 @@ export class ReadinessService {
     return {
       userId,
       jobRoleSlug: slug,
-      jobRoleName: slug === 'backend' ? 'Senior Backend Engineer' : `${slug.toUpperCase()} Engineer`,
+      jobRoleName:
+        slug === 'backend' ? 'Senior Backend Engineer' : `${slug.toUpperCase()} Engineer`,
       readinessScore,
       tier: {
         slug: tier.slug,
@@ -232,10 +269,7 @@ export class ReadinessService {
   /**
    * Get historical readiness progression
    */
-  async getReadinessHistory(
-    userId: string,
-    period: '30d' | '90d' | '180d' | '365d' = '30d'
-  ) {
+  async getReadinessHistory(userId: string, period: '30d' | '90d' | '180d' | '365d' = '30d') {
     const count = period === '30d' ? 6 : period === '90d' ? 9 : 12;
     const intervalDays = period === '30d' ? 5 : period === '90d' ? 10 : 30;
 
@@ -244,7 +278,9 @@ export class ReadinessService {
 
     for (let i = count - 1; i >= 0; i--) {
       const date = new Date(Date.now() - i * intervalDays * 24 * 60 * 60 * 1000);
-      const score = Number(Math.max(20, Math.min(98, baseScore - i * 1.8 + Math.sin(i) * 1.5)).toFixed(1));
+      const score = Number(
+        Math.max(20, Math.min(98, baseScore - i * 1.8 + Math.sin(i) * 1.5)).toFixed(1),
+      );
       const tier = this.tierClassificationService.classifyTier(score);
 
       history.push({
@@ -268,9 +304,30 @@ export class ReadinessService {
    */
   async compareRoles(userId: string) {
     const roles = [
-      { slug: 'backend', name: 'Senior Backend Engineer', score: 82.5, tierSlug: 'tier-2', tierName: 'Competitive Offer Ready', estimatedWeeks: 3 },
-      { slug: 'fullstack', name: 'Fullstack Engineer', score: 76.0, tierSlug: 'tier-2', tierName: 'Competitive Offer Ready', estimatedWeeks: 6 },
-      { slug: 'devops', name: 'DevOps & SRE Engineer', score: 68.0, tierSlug: 'tier-1', tierName: 'Emerging Candidate', estimatedWeeks: 10 },
+      {
+        slug: 'backend',
+        name: 'Senior Backend Engineer',
+        score: 82.5,
+        tierSlug: 'tier-2',
+        tierName: 'Competitive Offer Ready',
+        estimatedWeeks: 3,
+      },
+      {
+        slug: 'fullstack',
+        name: 'Fullstack Engineer',
+        score: 76.0,
+        tierSlug: 'tier-2',
+        tierName: 'Competitive Offer Ready',
+        estimatedWeeks: 6,
+      },
+      {
+        slug: 'devops',
+        name: 'DevOps & SRE Engineer',
+        score: 68.0,
+        tierSlug: 'tier-1',
+        tierName: 'Emerging Candidate',
+        estimatedWeeks: 10,
+      },
     ];
 
     return roles;

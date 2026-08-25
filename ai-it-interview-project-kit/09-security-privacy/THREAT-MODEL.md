@@ -10,17 +10,17 @@ Browser ↔ edge/API; API ↔ PostgreSQL/Redis/object store; API ↔ worker queu
 
 ## Principal threats and controls
 
-| Threat | Example | Primary controls |
-|---|---|---|
-| Broken ownership | Read another candidate's session by ID | centralized policy, scoped queries, negative tests |
-| Session takeover | Refresh-token replay | rotation families, reuse detection, revocation, MFA |
-| Privileged misuse | Admin exports answers | least privilege, step-up, approval/audit, alerts |
-| Prompt injection | Answer asks model to reveal rubric | instruction isolation, output schema, adversarial eval |
-| Data exfiltration | Provider receives excess PII | minimization, redaction, provider contract, egress control |
-| Queue abuse | Duplicate finalization or stale job | idempotency, locks/constraints, state version checks |
-| Supply-chain compromise | Malicious dependency or image | lockfiles, provenance, SBOM, scans, pinned actions/images |
-| Availability attack | Oversized answers and AI fan-out | limits, quotas, circuit breakers, backpressure |
-| Backup compromise | Unencrypted or untested copy | encrypted immutable backups, access isolation, restore drills |
+| Threat                  | Example                                | Primary controls                                              |
+| ----------------------- | -------------------------------------- | ------------------------------------------------------------- |
+| Broken ownership        | Read another candidate's session by ID | centralized policy, scoped queries, negative tests            |
+| Session takeover        | Refresh-token replay                   | rotation families, reuse detection, revocation, MFA           |
+| Privileged misuse       | Admin exports answers                  | least privilege, step-up, approval/audit, alerts              |
+| Prompt injection        | Answer asks model to reveal rubric     | instruction isolation, output schema, adversarial eval        |
+| Data exfiltration       | Provider receives excess PII           | minimization, redaction, provider contract, egress control    |
+| Queue abuse             | Duplicate finalization or stale job    | idempotency, locks/constraints, state version checks          |
+| Supply-chain compromise | Malicious dependency or image          | lockfiles, provenance, SBOM, scans, pinned actions/images     |
+| Availability attack     | Oversized answers and AI fan-out       | limits, quotas, circuit breakers, backpressure                |
+| Backup compromise       | Unencrypted or untested copy           | encrypted immutable backups, access isolation, restore drills |
 
 ## Abuse cases
 

@@ -16,7 +16,9 @@ export interface NetworkQuality {
 }
 
 export function useVoiceStreaming(interviewId?: string) {
-  const [connectionStatus, setConnectionStatus] = useState<'DISCONNECTED' | 'CONNECTING' | 'LIVE' | 'ENDED' | 'ERROR'>('DISCONNECTED');
+  const [connectionStatus, setConnectionStatus] = useState<
+    'DISCONNECTED' | 'CONNECTING' | 'LIVE' | 'ENDED' | 'ERROR'
+  >('DISCONNECTED');
   const [isMuted, setIsMuted] = useState(false);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isCandidateSpeaking, setIsCandidateSpeaking] = useState(false);
@@ -50,13 +52,15 @@ export function useVoiceStreaming(interviewId?: string) {
 
     ws.onopen = () => {
       setConnectionStatus('LIVE');
-      ws.send(JSON.stringify({
-        type: VoiceEventType.CONNECT,
-        interviewId,
-      }));
+      ws.send(
+        JSON.stringify({
+          type: VoiceEventType.CONNECT,
+          interviewId,
+        }),
+      );
     };
 
-    ws.onmessage = async (event) => {
+    ws.onmessage = async event => {
       if (typeof event.data === 'string') {
         try {
           const msg = JSON.parse(event.data);
@@ -106,7 +110,12 @@ export function useVoiceStreaming(interviewId?: string) {
         if (msg.text) {
           setTranscripts(prev => [
             ...prev,
-            { speaker: msg.speaker || SpeakerRole.USER, text: msg.text, isFinal: true, timestamp: Date.now() },
+            {
+              speaker: msg.speaker || SpeakerRole.USER,
+              text: msg.text,
+              isFinal: true,
+              timestamp: Date.now(),
+            },
           ]);
         }
         break;
@@ -155,7 +164,7 @@ export function useVoiceStreaming(interviewId?: string) {
       const processor = audioCtx.createScriptProcessor(4096, 1, 1);
       processorRef.current = processor;
 
-      processor.onaudioprocess = (e) => {
+      processor.onaudioprocess = e => {
         if (isMuted || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
 
         const inputData = e.inputBuffer.getChannelData(0);

@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { MediaProvider } from '../providers/media-provider.interface';
 import { LiveSessionStatus } from '@ai-interview/contracts';
@@ -190,7 +196,9 @@ export class LiveSessionService {
     });
 
     if (!assignment) {
-      throw new ForbiddenException('You are not the designated mentor for this candidate\'s session');
+      throw new ForbiddenException(
+        "You are not the designated mentor for this candidate's session",
+      );
     }
 
     const originalScore = evaluation.score;
@@ -274,8 +282,7 @@ export class LiveSessionService {
 
     if (ratedSessions.length > 0) {
       const avg =
-        ratedSessions.reduce((sum, s) => sum + (s.candidateRating || 0), 0) /
-        ratedSessions.length;
+        ratedSessions.reduce((sum, s) => sum + (s.candidateRating || 0), 0) / ratedSessions.length;
       await this.prisma.mentorProfile.update({
         where: { id: session.mentorId },
         data: { rating: Number(avg.toFixed(1)) },

@@ -51,7 +51,8 @@ describe('M1 Golden Benchmark Evaluation Suite v2 (VI/EN)', () => {
     const result = await mockProvider.evaluateAnswer({
       role: 'Backend Engineer',
       level: 'Senior',
-      question: 'How do you design an idempotent API to prevent duplicate financial transactions under network retries?',
+      question:
+        'How do you design an idempotent API to prevent duplicate financial transactions under network retries?',
       answer: enPartialAnswer,
     });
 
@@ -61,7 +62,9 @@ describe('M1 Golden Benchmark Evaluation Suite v2 (VI/EN)', () => {
 
     // Missing concepts identified
     expect(result.data.missingConcepts.length).toBeGreaterThan(0);
-    expect(result.data.missingConcepts.some(c => c.includes('transaction') || c.includes('atomicity'))).toBe(true);
+    expect(
+      result.data.missingConcepts.some(c => c.includes('transaction') || c.includes('atomicity')),
+    ).toBe(true);
 
     // Evidence & confidence
     expect(result.data.confidence).toBeLessThanOrEqual(0.85);
@@ -75,7 +78,8 @@ describe('M1 Golden Benchmark Evaluation Suite v2 (VI/EN)', () => {
     const result = await mockProvider.evaluateAnswer({
       role: 'Database Engineer',
       level: 'Senior',
-      question: 'Explain database isolation levels and the anomalies they prevent (dirty read, non-repeatable read, phantom read).',
+      question:
+        'Explain database isolation levels and the anomalies they prevent (dirty read, non-repeatable read, phantom read).',
       answer: enDbAnswer,
     });
 
@@ -91,7 +95,8 @@ describe('M1 Golden Benchmark Evaluation Suite v2 (VI/EN)', () => {
     const result = await mockProvider.evaluateAnswer({
       role: 'Backend Engineer',
       level: 'Senior',
-      question: 'Giải thích chiến lược Cache-Aside và cách xử lý hiện tượng Cache Stampede / Thundering Herd?',
+      question:
+        'Giải thích chiến lược Cache-Aside và cách xử lý hiện tượng Cache Stampede / Thundering Herd?',
       answer: viCacheAnswer,
     });
 

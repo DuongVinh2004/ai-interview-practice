@@ -7,14 +7,20 @@ async function main() {
   console.log('🌱 Starting database seed...');
 
   if (process.env.NODE_ENV === 'production') {
-    console.warn('⚠️  NODE_ENV is set to production. Skipping demo user credential seeding for security.');
+    console.warn(
+      '⚠️  NODE_ENV is set to production. Skipping demo user credential seeding for security.',
+    );
   }
 
   const isProduction = process.env.NODE_ENV === 'production';
-  const adminEmail = process.env.DEMO_ADMIN_EMAIL || (isProduction ? undefined : 'admin@example.com');
-  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || (isProduction ? undefined : 'Admin@123456');
-  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL || (isProduction ? undefined : 'candidate@example.com');
-  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD || (isProduction ? undefined : 'Candidate@123456');
+  const adminEmail =
+    process.env.DEMO_ADMIN_EMAIL || (isProduction ? undefined : 'admin@example.com');
+  const adminPassword =
+    process.env.DEMO_ADMIN_PASSWORD || (isProduction ? undefined : 'Admin@123456');
+  const candidateEmail =
+    process.env.DEMO_CANDIDATE_EMAIL || (isProduction ? undefined : 'candidate@example.com');
+  const candidatePassword =
+    process.env.DEMO_CANDIDATE_PASSWORD || (isProduction ? undefined : 'Candidate@123456');
 
   const passwordSalt = 10;
 
@@ -53,17 +59,18 @@ async function main() {
         passwordHash: candidatePasswordHash,
         role: UserRole.CANDIDATE,
         status: UserStatus.ACTIVE,
-      profile: {
-        create: {
-          fullName: 'Demo Candidate',
-          targetRole: 'Frontend Engineer',
-          targetLevel: 'Mid-Level',
-          bio: 'Passionate developer practicing for technical interviews.',
+        profile: {
+          create: {
+            fullName: 'Demo Candidate',
+            targetRole: 'Frontend Engineer',
+            targetLevel: 'Mid-Level',
+            bio: 'Passionate developer practicing for technical interviews.',
+          },
         },
       },
-    },
-  });
-  console.log(`✅ Candidate user seeded: ${candidate.email}`);
+    });
+    console.log(`✅ Candidate user seeded: ${candidate.email}`);
+  }
 
   // 3. Seed Job Roles
   const jobRoles = [
@@ -214,7 +221,8 @@ async function main() {
       slug: 'leadership',
       name: 'Leadership & Initiative',
       nameVi: 'Lãnh đạo & Tiên phong',
-      description: 'Ability to lead initiatives, take ownership, and guide team members to success.',
+      description:
+        'Ability to lead initiatives, take ownership, and guide team members to success.',
       category: 'LEADERSHIP' as const,
       order: 1,
     },
@@ -222,7 +230,8 @@ async function main() {
       slug: 'teamwork',
       name: 'Teamwork & Collaboration',
       nameVi: 'Làm việc nhóm & Hợp tác',
-      description: 'Effective collaboration across cross-functional teams and managing diverse perspectives.',
+      description:
+        'Effective collaboration across cross-functional teams and managing diverse perspectives.',
       category: 'TEAMWORK' as const,
       order: 2,
     },
@@ -230,7 +239,8 @@ async function main() {
       slug: 'problem-solving',
       name: 'Problem Solving & Conflict Resolution',
       nameVi: 'Giải quyết vấn đề & Xử lý xung đột',
-      description: 'Navigating technical and interpersonal challenges with structured analytical reasoning.',
+      description:
+        'Navigating technical and interpersonal challenges with structured analytical reasoning.',
       category: 'PROBLEM_SOLVING' as const,
       order: 3,
     },
@@ -317,7 +327,12 @@ async function main() {
       priceMonthly: 0,
       priceYearly: 0,
       currency: 'USD',
-      features: ['5 interview sessions / month', 'Standard AI feedback', 'Live coding sandbox', 'Community access'],
+      features: [
+        '5 interview sessions / month',
+        'Standard AI feedback',
+        'Live coding sandbox',
+        'Community access',
+      ],
       limits: {
         sessionsPerMonth: 5,
         voiceMinutesPerMonth: 0,

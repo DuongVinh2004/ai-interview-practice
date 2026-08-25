@@ -43,10 +43,7 @@ const BENCHMARKS_BY_LEVEL: Record<string, Record<CompetencyArea, number>> = {
   },
 };
 
-const COMPETENCY_META: Record<
-  CompetencyArea,
-  { name: string; recommendationTemplate: string }
-> = {
+const COMPETENCY_META: Record<CompetencyArea, { name: string; recommendationTemplate: string }> = {
   [CompetencyArea.SYSTEM_DESIGN]: {
     name: 'System Design & Scalability',
     recommendationTemplate:

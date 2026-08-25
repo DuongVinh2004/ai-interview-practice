@@ -85,9 +85,7 @@ describe('RefreshToken Family & Security (P1-008, P1-001)', () => {
     mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 2 });
     mockPrisma.auditLog.create.mockResolvedValue({});
 
-    await expect(authService.refreshTokens(rawToken)).rejects.toThrow(
-      DomainException,
-    );
+    await expect(authService.refreshTokens(rawToken)).rejects.toThrow(DomainException);
 
     // Verifies revocation was scoped to the compromised familyId
     expect(mockPrisma.refreshToken.updateMany).toHaveBeenCalledWith({

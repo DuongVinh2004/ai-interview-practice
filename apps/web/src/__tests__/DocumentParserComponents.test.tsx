@@ -17,7 +17,7 @@ describe('DocumentParser Components (F004)', () => {
         isParsing={false}
         onParseText={onParseText}
         onParseFile={onParseFile}
-      />
+      />,
     );
 
     expect(screen.getByTestId('cv-upload-zone')).toBeInTheDocument();
@@ -30,30 +30,33 @@ describe('DocumentParser Components (F004)', () => {
     const textarea = screen.getByPlaceholderText(/Dán nội dung tóm tắt kinh nghiệm/i);
     expect(textarea).toBeInTheDocument();
 
-    fireEvent.change(textarea, { target: { value: 'Senior Backend Engineer with 5 years experience in Node.js' } });
+    fireEvent.change(textarea, {
+      target: { value: 'Senior Backend Engineer with 5 years experience in Node.js' },
+    });
     const submitBtn = screen.getByText('Phân tích nội dung CV');
     fireEvent.click(submitBtn);
 
-    expect(onParseText).toHaveBeenCalledWith('Senior Backend Engineer with 5 years experience in Node.js');
+    expect(onParseText).toHaveBeenCalledWith(
+      'Senior Backend Engineer with 5 years experience in Node.js',
+    );
   });
 
   it('renders JdInputCard and submits job description text', () => {
     const onAnalyzed = vi.fn();
-    const onAnalyzeJd = vi.fn().mockResolvedValue({ id: 'jd-1', roleTitle: 'Senior Backend Engineer' });
+    const onAnalyzeJd = vi
+      .fn()
+      .mockResolvedValue({ id: 'jd-1', roleTitle: 'Senior Backend Engineer' });
 
-    render(
-      <JdInputCard
-        onAnalyzed={onAnalyzed}
-        isAnalyzing={false}
-        onAnalyzeJd={onAnalyzeJd}
-      />
-    );
+    render(<JdInputCard onAnalyzed={onAnalyzed} isAnalyzing={false} onAnalyzeJd={onAnalyzeJd} />);
 
     expect(screen.getByTestId('jd-input-card')).toBeInTheDocument();
 
     const textarea = screen.getByPlaceholderText(/Dán toàn bộ nội dung tuyển dụng/i);
     fireEvent.change(textarea, {
-      target: { value: 'We are seeking a Senior Backend Engineer proficient in Node.js, PostgreSQL, and Kafka.' },
+      target: {
+        value:
+          'We are seeking a Senior Backend Engineer proficient in Node.js, PostgreSQL, and Kafka.',
+      },
     });
 
     const submitBtn = screen.getByText('Phân tích yêu cầu JD');
@@ -86,12 +89,7 @@ describe('DocumentParser Components (F004)', () => {
 
     const onProceed = vi.fn();
 
-    render(
-      <GapAnalysisPreview
-        blueprint={mockBlueprint}
-        onProceed={onProceed}
-      />
-    );
+    render(<GapAnalysisPreview blueprint={mockBlueprint} onProceed={onProceed} />);
 
     expect(screen.getByTestId('gap-analysis-preview')).toBeInTheDocument();
     expect(screen.getAllByText('75%').length).toBeGreaterThan(0);

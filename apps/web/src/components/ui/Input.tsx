@@ -11,17 +11,7 @@ export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> 
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
   (
-    {
-      className,
-      type = 'text',
-      error,
-      label,
-      helperText,
-      leftIcon,
-      rightIcon,
-      id,
-      ...props
-    },
+    { className, type = 'text', error, label, helperText, leftIcon, rightIcon, id, ...props },
     ref,
   ) => {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
@@ -56,9 +46,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-3 flex items-center text-slate-400">
-              {rightIcon}
-            </div>
+            <div className="absolute right-3 flex items-center text-slate-400">{rightIcon}</div>
           )}
         </div>
         {error && (
@@ -66,9 +54,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             {error}
           </p>
         )}
-        {!error && helperText && (
-          <p className="text-xs text-slate-500">{helperText}</p>
-        )}
+        {!error && helperText && <p className="text-xs text-slate-500">{helperText}</p>}
       </div>
     );
   },

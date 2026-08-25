@@ -218,9 +218,7 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         mfaEnabled: true,
         createdAt: new Date('2026-08-01T00:00:00Z'),
         profile: { fullName: 'Admin' },
-        recoveryCodes: [
-          { id: 'rc-1', codeHash, isUsed: false },
-        ],
+        recoveryCodes: [{ id: 'rc-1', codeHash, isUsed: false }],
       });
 
       const res = await service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode);
@@ -250,16 +248,14 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         mfaEnabled: true,
         createdAt: new Date('2026-08-01T00:00:00Z'),
         profile: { fullName: 'Admin' },
-        recoveryCodes: [
-          { id: 'rc-1', codeHash, isUsed: false },
-        ],
+        recoveryCodes: [{ id: 'rc-1', codeHash, isUsed: false }],
       });
 
       prisma.recoveryCode.updateMany.mockResolvedValueOnce({ count: 0 });
 
-      await expect(service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode)).rejects.toThrow(
-        'Invalid or already used recovery code',
-      );
+      await expect(
+        service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode),
+      ).rejects.toThrow('Invalid or already used recovery code');
     });
   });
 

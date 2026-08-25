@@ -2,14 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/api-client';
 import { AssignmentDto, AssignmentStatus, SessionMode } from '@ai-interview/contracts';
-import {
-  FileText,
-  Plus,
-  Clock,
-  Play,
-  Lock,
-  AlertCircle,
-} from 'lucide-react';
+import { FileText, Plus, Clock, Play, Lock, AlertCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -92,7 +85,9 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
           <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <FileText className="h-5 w-5 text-emerald-600" /> Cohort Interview Assignments
           </h3>
-          <p className="text-xs text-slate-500">Dispatch technical mock exams and rubric requirements to students</p>
+          <p className="text-xs text-slate-500">
+            Dispatch technical mock exams and rubric requirements to students
+          </p>
         </div>
 
         <Button
@@ -108,13 +103,13 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
 
       {isLoading ? (
         <div className="space-y-3">
-          {[1, 2].map((i) => (
+          {[1, 2].map(i => (
             <div key={i} className="h-24 bg-slate-100 rounded-2xl animate-pulse" />
           ))}
         </div>
       ) : assignments && assignments.length > 0 ? (
         <div className="space-y-4">
-          {assignments.map((assignment) => (
+          {assignments.map(assignment => (
             <div
               key={assignment.id}
               className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
@@ -142,7 +137,8 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                 <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-slate-400">
                   {assignment.deadline && (
                     <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" /> Due: {new Date(assignment.deadline).toLocaleDateString()}
+                      <Clock className="h-3.5 w-3.5" /> Due:{' '}
+                      {new Date(assignment.deadline).toLocaleDateString()}
                     </span>
                   )}
                   <span>Target Score: ≥ {assignment.config?.targetScore || 7.0}/10</span>
@@ -156,7 +152,10 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                     variant="primary"
                     size="sm"
                     onClick={() =>
-                      publishMutation.mutate({ id: assignment.id, status: AssignmentStatus.PUBLISHED })
+                      publishMutation.mutate({
+                        id: assignment.id,
+                        status: AssignmentStatus.PUBLISHED,
+                      })
                     }
                     className="gap-1.5 text-xs"
                     data-testid="publish-assignment-btn"
@@ -193,7 +192,12 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
           <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-slate-200 space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-lg font-bold text-slate-900">Create Cohort Assignment</h3>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-slate-400 hover:text-slate-700">✕</button>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                ✕
+              </button>
             </div>
 
             {errorMessage && (
@@ -203,7 +207,7 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
             )}
 
             <form
-              onSubmit={(e) => {
+              onSubmit={e => {
                 e.preventDefault();
                 createMutation.mutate();
               }}
@@ -216,7 +220,7 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                 <Input
                   type="text"
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={e => setTitle(e.target.value)}
                   placeholder="e.g. Distributed System Design Midterm Exam"
                   required
                   data-testid="assignment-title-input"
@@ -230,7 +234,7 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                 <Textarea
                   rows={3}
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={e => setDescription(e.target.value)}
                   placeholder="Specific requirements, topics, and rubric guidelines..."
                   data-testid="assignment-desc-input"
                 />
@@ -243,7 +247,7 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                   </label>
                   <select
                     value={sessionMode}
-                    onChange={(e) => setSessionMode(e.target.value as SessionMode)}
+                    onChange={e => setSessionMode(e.target.value as SessionMode)}
                     className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-semibold"
                   >
                     <option value={SessionMode.STANDARD}>Standard Technical</option>
@@ -263,7 +267,7 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                     min="1"
                     max="10"
                     value={targetScore}
-                    onChange={(e) => setTargetScore(parseFloat(e.target.value))}
+                    onChange={e => setTargetScore(parseFloat(e.target.value))}
                   />
                 </div>
               </div>
@@ -275,12 +279,17 @@ export const AssignmentManager: React.FC<AssignmentManagerProps> = ({ cohortId }
                 <Input
                   type="datetime-local"
                   value={deadline}
-                  onChange={(e) => setDeadline(e.target.value)}
+                  onChange={e => setDeadline(e.target.value)}
                 />
               </div>
 
               <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <Button type="button" variant="ghost" size="md" onClick={() => setIsCreateModalOpen(false)}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="md"
+                  onClick={() => setIsCreateModalOpen(false)}
+                >
                   Cancel
                 </Button>
                 <Button

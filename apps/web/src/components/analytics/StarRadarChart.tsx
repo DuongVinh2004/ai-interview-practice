@@ -10,11 +10,41 @@ export const StarRadarChart: React.FC<StarRadarChartProps> = ({ scores, size = 3
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const dimensions = [
-    { key: 'situation', name: 'Situation', rawScore: scores.situationScore, max: 4, normalized: (scores.situationScore / 4) * 10 },
-    { key: 'task', name: 'Task', rawScore: scores.taskScore, max: 4, normalized: (scores.taskScore / 4) * 10 },
-    { key: 'action', name: 'Action', rawScore: scores.actionScore, max: 4, normalized: (scores.actionScore / 4) * 10 },
-    { key: 'result', name: 'Result', rawScore: scores.resultScore, max: 4, normalized: (scores.resultScore / 4) * 10 },
-    { key: 'structure', name: 'Structure', rawScore: scores.structureScore, max: 2, normalized: (scores.structureScore / 2) * 10 },
+    {
+      key: 'situation',
+      name: 'Situation',
+      rawScore: scores.situationScore,
+      max: 4,
+      normalized: (scores.situationScore / 4) * 10,
+    },
+    {
+      key: 'task',
+      name: 'Task',
+      rawScore: scores.taskScore,
+      max: 4,
+      normalized: (scores.taskScore / 4) * 10,
+    },
+    {
+      key: 'action',
+      name: 'Action',
+      rawScore: scores.actionScore,
+      max: 4,
+      normalized: (scores.actionScore / 4) * 10,
+    },
+    {
+      key: 'result',
+      name: 'Result',
+      rawScore: scores.resultScore,
+      max: 4,
+      normalized: (scores.resultScore / 4) * 10,
+    },
+    {
+      key: 'structure',
+      name: 'Structure',
+      rawScore: scores.structureScore,
+      max: 2,
+      normalized: (scores.structureScore / 2) * 10,
+    },
   ];
 
   const center = size / 2;
@@ -39,7 +69,10 @@ export const StarRadarChart: React.FC<StarRadarChartProps> = ({ scores, size = 3
     .join(' ');
 
   return (
-    <div className="relative flex flex-col items-center justify-center select-none" data-testid="star-radar-chart">
+    <div
+      className="relative flex flex-col items-center justify-center select-none"
+      data-testid="star-radar-chart"
+    >
       <svg width={size} height={size} className="overflow-visible">
         {/* Background Grid Rings */}
         {levels.map(level => {
@@ -66,15 +99,7 @@ export const StarRadarChart: React.FC<StarRadarChartProps> = ({ scores, size = 3
         {dimensions.map((_, i) => {
           const { x, y } = getCoordinates(i, 10);
           return (
-            <line
-              key={i}
-              x1={center}
-              y1={center}
-              x2={x}
-              y2={y}
-              stroke="#94a3b8"
-              strokeWidth="1"
-            />
+            <line key={i} x1={center} y1={center} x2={x} y2={y} stroke="#94a3b8" strokeWidth="1" />
           );
         })}
 

@@ -67,23 +67,23 @@ Antigravity must not:
 
 Unless a current prompt says otherwise:
 
-| Action | Default |
-|---|---:|
-| Read local repository and Project Kit | ALLOW |
-| `git status`, `diff`, `log`, `show`, `branch --show-current` | ALLOW |
-| Create one short-lived task branch | ALLOW |
-| Edit task-scoped files | ALLOW |
-| Add/update task-scoped tests | ALLOW |
-| Run local lint/typecheck/test/build | ALLOW |
-| Use synthetic/local fixtures and local databases | ALLOW |
-| Update task evidence/state files | ALLOW |
-| Local commit | GATE |
-| Push / PR / merge / rebase / reset / stash | GATE or FORBIDDEN |
-| Jira write | GATE |
-| Deploy / cloud mutation | GATE |
-| Real AI/voice/payment provider call | GATE |
-| Destructive migration | GATE |
-| Access production data or secrets | GATE |
+| Action                                                       |           Default |
+| ------------------------------------------------------------ | ----------------: |
+| Read local repository and Project Kit                        |             ALLOW |
+| `git status`, `diff`, `log`, `show`, `branch --show-current` |             ALLOW |
+| Create one short-lived task branch                           |             ALLOW |
+| Edit task-scoped files                                       |             ALLOW |
+| Add/update task-scoped tests                                 |             ALLOW |
+| Run local lint/typecheck/test/build                          |             ALLOW |
+| Use synthetic/local fixtures and local databases             |             ALLOW |
+| Update task evidence/state files                             |             ALLOW |
+| Local commit                                                 |              GATE |
+| Push / PR / merge / rebase / reset / stash                   | GATE or FORBIDDEN |
+| Jira write                                                   |              GATE |
+| Deploy / cloud mutation                                      |              GATE |
+| Real AI/voice/payment provider call                          |              GATE |
+| Destructive migration                                        |              GATE |
+| Access production data or secrets                            |              GATE |
 
 A prompt may narrow permissions, but must not silently broaden them.
 

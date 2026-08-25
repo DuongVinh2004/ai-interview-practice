@@ -2,7 +2,11 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { BadgeService, AREA_LABELS } from './badge.service';
 import { CertificateService } from './certificate.service';
-import { UpdatePortfolioSettingsDto, CompetencyArea, CertificateStatus } from '@ai-interview/contracts';
+import {
+  UpdatePortfolioSettingsDto,
+  CompetencyArea,
+  CertificateStatus,
+} from '@ai-interview/contracts';
 
 @Injectable()
 export class PortfolioService {
@@ -47,10 +51,12 @@ export class PortfolioService {
     const profile = user.profile;
 
     // Build skills data if enabled
-    let skills: Array<{ area: CompetencyArea; name: string; score: number; evidenceCount: number }> | undefined;
+    let skills:
+      | Array<{ area: CompetencyArea; name: string; score: number; evidenceCount: number }>
+      | undefined;
     if (portfolio.showSkills) {
       const badgeProgress = await this.badgeService.getUserBadgeProgress(user.id);
-      skills = badgeProgress.map((bp) => ({
+      skills = badgeProgress.map(bp => ({
         area: bp.competencyArea,
         name: bp.areaName,
         score: bp.currentScore,
@@ -61,7 +67,7 @@ export class PortfolioService {
     // Build badges data if enabled
     let badges = undefined;
     if (portfolio.showBadges) {
-      badges = user.userBadges.map((b) => ({
+      badges = user.userBadges.map(b => ({
         id: b.id,
         userId: b.userId,
         competencyArea: b.competencyArea,
@@ -75,7 +81,7 @@ export class PortfolioService {
     // Build certificates data if enabled
     let certificates = undefined;
     if (portfolio.showCertificates) {
-      certificates = user.certificates.map((c) => ({
+      certificates = user.certificates.map(c => ({
         id: c.id,
         userId: c.userId,
         competencyArea: c.competencyArea,
@@ -106,7 +112,7 @@ export class PortfolioService {
         take: 5,
       });
 
-      historyHighlights = recentSessions.map((s) => ({
+      historyHighlights = recentSessions.map(s => ({
         sessionId: s.id,
         roleName: s.jobRole.name,
         score: s.overallScore || 0,
@@ -118,7 +124,10 @@ export class PortfolioService {
 
     return {
       username: portfolio.username,
-      displayName: portfolio.displayName || (portfolio.showRealName ? profile?.fullName : null) || portfolio.username,
+      displayName:
+        portfolio.displayName ||
+        (portfolio.showRealName ? profile?.fullName : null) ||
+        portfolio.username,
       realName: portfolio.showRealName ? profile?.fullName || null : null,
       bio: portfolio.showBio ? portfolio.customBio || profile?.bio || null : null,
       viewCount: portfolio.viewCount + 1,
@@ -148,8 +157,14 @@ export class PortfolioService {
       });
 
       const baseUsername = user?.profile?.fullName
-        ? user.profile.fullName.toLowerCase().replace(/[^a-z0-9]/g, '_').slice(0, 20)
-        : user?.email.split('@')[0].replace(/[^a-z0-9]/g, '_').slice(0, 20) || `user_${userId.slice(0, 8)}`;
+        ? user.profile.fullName
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '_')
+            .slice(0, 20)
+        : user?.email
+            .split('@')[0]
+            .replace(/[^a-z0-9]/g, '_')
+            .slice(0, 20) || `user_${userId.slice(0, 8)}`;
 
       // ensure uniqueness
       let candidateUsername = baseUsername;

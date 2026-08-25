@@ -10,6 +10,7 @@
 
 > [!IMPORTANT]
 > **Key Architectural Decisions in This Wave**:
+>
 > 1. **F004**: PII masking layer before AI context injection (phone, email, address scrubbed). File retention 30-day TTL with hard delete. In-memory parsing only — no persistent local disk writes.
 > 2. **F006**: SSE streaming for tutor chat responses (reuses existing Nginx SSE buffering-off config). Max 20 turns per tutor session to contain token costs.
 > 3. **F005**: Pure TypeScript FSRS v4 engine (no external library dependency) — Difficulty, Stability, Retrievability computation. BullMQ queue for daily reminder notifications.
@@ -17,6 +18,7 @@
 
 > [!WARNING]
 > **New Dependencies Requiring ADRs**:
+>
 > - `ADR-0007`: File parsing strategy — `pdf-parse` + `mammoth` for text extraction (F004)
 > - `ADR-0008`: WebSocket gateway architecture — `ws` library vs Socket.io for voice streaming (F001)
 
@@ -36,12 +38,12 @@ flowchart LR
     F004["F004 JD/CV Parser<br/>~3 days"] --> F006["F006 Socratic Tutor<br/>~3 days"]
     F006 --> F005["F005 Spaced Repetition<br/>~5 days"]
     F005 --> F001["F001 Voice Streaming<br/>~5-7 days"]
-    
+
     F013_done["✅ F013 LLM Router"] -.->|"prerequisite"| F004
     F013_done -.->|"prerequisite"| F006
     F013_done -.->|"prerequisite"| F001
     F006 -.->|"feeds weaknesses"| F005
-    
+
     style F004 fill:#e74c3c,color:#fff
     style F006 fill:#f39c12,color:#fff
     style F005 fill:#3498db,color:#fff
@@ -147,8 +149,9 @@ model InterviewBlueprint {
 ### 1.2 Contracts (`packages/contracts`)
 
 #### [NEW] `packages/contracts/src/schemas/document-parser.ts`
+
 - `ParsedExperienceSchema` — company, role, duration, responsibilities, projects
-- `ParsedProjectSchema` — name, role, technologies, description, highlights  
+- `ParsedProjectSchema` — name, role, technologies, description, highlights
 - `ParsedProfileDtoSchema` — skills[], experience[], education[], rawSummary
 - `JdAnalysisDtoSchema` — roleTitle, requiredSkills[], preferredSkills[], responsibilities[], seniorityLevel, companyContext
 - `BlueprintTopicSchema` — topic, weight (0-100), reason, sampleQuestions[], cvReference
@@ -158,6 +161,7 @@ model InterviewBlueprint {
 - `GenerateBlueprintRequestSchema` — parsedProfileId, jdAnalysisId
 
 #### [MODIFY] `packages/contracts/src/index.ts`
+
 - Add `export * from './schemas/document-parser'`
 
 ### 1.3 Backend Module (`apps/api/src/modules/document-parser/`)
@@ -178,40 +182,42 @@ document-parser/
 
 **Key Implementation Details**:
 
-| Component | Responsibility | Details |
-|---|---|---|
-| `TextExtractorService` | File → raw text | `pdf-parse` for PDF, `mammoth` for DOCX. Max 5MB. PII regex masking (phone, email, address) before returning. |
-| `CvAnalyzerService` | Raw text → structured profile | Calls `AiOrchestratorService` with JSON-mode prompt. Validates output against `ParsedProfileDtoSchema`. |
-| `JdAnalyzerService` | JD text → structured analysis | Calls `AiOrchestratorService`. Extracts required vs preferred skills, seniority, company culture context. |
-| `BlueprintGeneratorService` | Profile + JD → interview plan | Computes skill overlap & gaps. Generates weighted topic list with CV-referenced sample questions. |
+| Component                   | Responsibility                | Details                                                                                                       |
+| --------------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `TextExtractorService`      | File → raw text               | `pdf-parse` for PDF, `mammoth` for DOCX. Max 5MB. PII regex masking (phone, email, address) before returning. |
+| `CvAnalyzerService`         | Raw text → structured profile | Calls `AiOrchestratorService` with JSON-mode prompt. Validates output against `ParsedProfileDtoSchema`.       |
+| `JdAnalyzerService`         | JD text → structured analysis | Calls `AiOrchestratorService`. Extracts required vs preferred skills, seniority, company culture context.     |
+| `BlueprintGeneratorService` | Profile + JD → interview plan | Computes skill overlap & gaps. Generates weighted topic list with CV-referenced sample questions.             |
 
 **API Endpoints**:
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `POST` | `/documents/parse-cv` | JWT | Upload raw text or file → extract & parse CV → return `ParsedProfile` |
-| `POST` | `/documents/analyze-jd` | JWT | Submit JD text → parse → return `JdAnalysis` |
-| `POST` | `/documents/generate-blueprint` | JWT | Combine profile + JD → gap analysis + blueprint |
-| `GET` | `/documents/my-profiles` | JWT | List user's parsed profiles |
-| `GET` | `/documents/my-blueprints` | JWT | List user's blueprints |
-| `DELETE` | `/documents/:id` | JWT | Delete document + cascade parsed data |
+| Method   | Path                            | Auth | Description                                                           |
+| -------- | ------------------------------- | ---- | --------------------------------------------------------------------- |
+| `POST`   | `/documents/parse-cv`           | JWT  | Upload raw text or file → extract & parse CV → return `ParsedProfile` |
+| `POST`   | `/documents/analyze-jd`         | JWT  | Submit JD text → parse → return `JdAnalysis`                          |
+| `POST`   | `/documents/generate-blueprint` | JWT  | Combine profile + JD → gap analysis + blueprint                       |
+| `GET`    | `/documents/my-profiles`        | JWT  | List user's parsed profiles                                           |
+| `GET`    | `/documents/my-blueprints`      | JWT  | List user's blueprints                                                |
+| `DELETE` | `/documents/:id`                | JWT  | Delete document + cascade parsed data                                 |
 
 **Integration with Interview Module**:
+
 - [MODIFY] `InterviewService.createSession()` — Accept optional `blueprintId` parameter. When provided, load blueprint topics and inject them into the question generation prompt context.
 - [MODIFY] Question generation prompt template — Add `{{blueprintContext}}` variable for tailored questions referencing CV projects.
 
 ### 1.4 Frontend Components
 
-| Component | Path | Description |
-|---|---|---|
-| `CvUploadZone` | `apps/web/src/components/setup/CvUploadZone.tsx` | Drag-and-drop with format validation (PDF/DOCX/TXT, max 5MB), progress indicator, text preview |
-| `JdInputCard` | `apps/web/src/components/setup/JdInputCard.tsx` | Tabbed: paste text or enter URL. Min 100-word validation |
-| `GapAnalysisPreview` | `apps/web/src/components/setup/GapAnalysisPreview.tsx` | Radar chart (matched vs gap skills), topic weight bars, editable focus areas |
-| `useDocumentParser` | `apps/web/src/hooks/useDocumentParser.ts` | TanStack Query mutations for parse/analyze/blueprint + queries for listing |
+| Component            | Path                                                   | Description                                                                                    |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| `CvUploadZone`       | `apps/web/src/components/setup/CvUploadZone.tsx`       | Drag-and-drop with format validation (PDF/DOCX/TXT, max 5MB), progress indicator, text preview |
+| `JdInputCard`        | `apps/web/src/components/setup/JdInputCard.tsx`        | Tabbed: paste text or enter URL. Min 100-word validation                                       |
+| `GapAnalysisPreview` | `apps/web/src/components/setup/GapAnalysisPreview.tsx` | Radar chart (matched vs gap skills), topic weight bars, editable focus areas                   |
+| `useDocumentParser`  | `apps/web/src/hooks/useDocumentParser.ts`              | TanStack Query mutations for parse/analyze/blueprint + queries for listing                     |
 
 **[MODIFY]** `SetupInterviewPage.tsx` — Add "Tailored Interview" tab/toggle alongside existing mode selectors. When active, show `CvUploadZone` + `JdInputCard` → `GapAnalysisPreview` → proceed to interview with `blueprintId`.
 
 ### 1.5 Feature Flag & Config
+
 - `FEATURE_JD_RESUME_PARSER` → `features.jdResumeParser` (default: `false`)
 - Rate limit: 10 document parses per user per day
 
@@ -282,6 +288,7 @@ model QuestionRetry {
 ### 2.2 Contracts (`packages/contracts`)
 
 #### [NEW] `packages/contracts/src/schemas/tutor.ts`
+
 - `TutorSessionDtoSchema` — id, interviewId, turnNumber, turnCount, messages[]
 - `TutorMessageDtoSchema` — id, role (`USER | AI_TUTOR | SYSTEM`), content, references?, createdAt
 - `AskTutorRequestSchema` — message (max 1000 chars)
@@ -305,15 +312,16 @@ tutor/
 
 **Key Implementation Details**:
 
-| Method | Path | Auth | Response Type | Description |
-|---|---|---|---|---|
-| `POST` | `/tutor/sessions` | JWT | JSON | Create/resume tutor session for a specific interview turn. Pre-loads context: question, answer, evaluation, model answer. |
-| `POST` | `/tutor/sessions/:id/chat` | JWT | **SSE** (`text/event-stream`) | Send user message, stream AI Socratic response. Max 20 turns. |
-| `GET` | `/tutor/sessions/:id` | JWT | JSON | Get session with full message history |
-| `POST` | `/tutor/retry` | JWT | JSON | Submit retry answer → fast evaluation → return score comparison |
-| `POST` | `/tutor/sessions/:id/rate` | JWT | JSON | Thumbs up/down feedback on tutor quality |
+| Method | Path                       | Auth | Response Type                 | Description                                                                                                               |
+| ------ | -------------------------- | ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/tutor/sessions`          | JWT  | JSON                          | Create/resume tutor session for a specific interview turn. Pre-loads context: question, answer, evaluation, model answer. |
+| `POST` | `/tutor/sessions/:id/chat` | JWT  | **SSE** (`text/event-stream`) | Send user message, stream AI Socratic response. Max 20 turns.                                                             |
+| `GET`  | `/tutor/sessions/:id`      | JWT  | JSON                          | Get session with full message history                                                                                     |
+| `POST` | `/tutor/retry`             | JWT  | JSON                          | Submit retry answer → fast evaluation → return score comparison                                                           |
+| `POST` | `/tutor/sessions/:id/rate` | JWT  | JSON                          | Thumbs up/down feedback on tutor quality                                                                                  |
 
 **Socratic Prompting Strategy**:
+
 ```
 Role: You are a patient senior software engineer mentoring a junior developer.
 Rules:
@@ -328,6 +336,7 @@ Rules:
 ```
 
 **SSE Streaming**: Reuses existing Nginx `proxy_buffering off` config. Response format:
+
 ```
 data: {"type":"token","content":"What"}
 data: {"type":"token","content":" happens"}
@@ -335,6 +344,7 @@ data: {"type":"done","references":[{"title":"MDN Array.prototype.map","url":"...
 ```
 
 **Instant Retry Flow**:
+
 1. Load original question + expected points from `InterviewTurn`
 2. Use lightweight/fast AI model via `AiOrchestratorService` (same rubric as standard evaluation)
 3. Compare `retryScore` vs `originalScore`, compute `improvement`
@@ -342,16 +352,17 @@ data: {"type":"done","references":[{"title":"MDN Array.prototype.map","url":"...
 
 ### 2.4 Frontend Components
 
-| Component | Path | Description |
-|---|---|---|
-| `SocraticTutorDrawer` | `apps/web/src/components/tutor/SocraticTutorDrawer.tsx` | Slide-over chat drawer (Tailwind + CSS transition). Markdown rendering with `react-markdown`. Code blocks with syntax highlighting. |
-| `InstantRetryModal` | `apps/web/src/components/tutor/InstantRetryModal.tsx` | Modal with text area for retry answer. Side-by-side comparison: Original (red) → Retry (green) → Model Answer (blue). Score delta badge. |
-| `TutorRatingButtons` | `apps/web/src/components/tutor/TutorRatingButtons.tsx` | Thumbs up/down with optional text feedback |
-| `useTutor` | `apps/web/src/hooks/useTutor.ts` | SSE stream consumer via `EventSource` or `fetch` with `ReadableStream`. Mutations for session create, retry submit. |
+| Component             | Path                                                    | Description                                                                                                                              |
+| --------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `SocraticTutorDrawer` | `apps/web/src/components/tutor/SocraticTutorDrawer.tsx` | Slide-over chat drawer (Tailwind + CSS transition). Markdown rendering with `react-markdown`. Code blocks with syntax highlighting.      |
+| `InstantRetryModal`   | `apps/web/src/components/tutor/InstantRetryModal.tsx`   | Modal with text area for retry answer. Side-by-side comparison: Original (red) → Retry (green) → Model Answer (blue). Score delta badge. |
+| `TutorRatingButtons`  | `apps/web/src/components/tutor/TutorRatingButtons.tsx`  | Thumbs up/down with optional text feedback                                                                                               |
+| `useTutor`            | `apps/web/src/hooks/useTutor.ts`                        | SSE stream consumer via `EventSource` or `fetch` with `ReadableStream`. Mutations for session create, retry submit.                      |
 
 **[MODIFY]** `ResultDetailPage.tsx` — Add per-turn action buttons: "🧑‍🏫 Ask AI Tutor" and "🔄 Retry This Question". Wire to drawer/modal.
 
 ### 2.5 Feature Flag
+
 - `FEATURE_SOCRATIC_TUTOR` → `features.socraticTutor` (default: `false`)
 
 ---
@@ -461,6 +472,7 @@ model UserStreak {
 ### 3.2 Contracts (`packages/contracts`)
 
 #### [NEW] `packages/contracts/src/schemas/flashcard.ts`
+
 - `FlashcardDeckDtoSchema` — id, name, description, tags[], cardCount, dueCount
 - `FlashcardDtoSchema` — id, type, frontContent, backContent, metadata, FSRS state fields (due, stability, difficulty, state, reps, lapses)
 - `ReviewLogDtoSchema` — id, rating, state, scheduled fields, durationMs
@@ -495,19 +507,19 @@ The FSRS engine is a pure function module with no external dependencies:
 // Core FSRS v4 parameters (default w[] weights from open-source FSRS)
 interface FSRSCard {
   due: Date;
-  stability: number;    // S
-  difficulty: number;   // D (1-10)
+  stability: number; // S
+  difficulty: number; // D (1-10)
   elapsedDays: number;
   scheduledDays: number;
   reps: number;
   lapses: number;
-  state: CardState;     // NEW | LEARNING | REVIEW | RELEARNING
+  state: CardState; // NEW | LEARNING | REVIEW | RELEARNING
   lastReview: Date | null;
 }
 
 interface FSRSScheduleResult {
-  card: FSRSCard;       // Updated card state
-  log: ReviewLogEntry;  // Log entry for persistence
+  card: FSRSCard; // Updated card state
+  log: ReviewLogEntry; // Log entry for persistence
 }
 
 // Key functions:
@@ -520,20 +532,21 @@ interface FSRSScheduleResult {
 
 **API Endpoints**:
 
-| Method | Path | Auth | Description |
-|---|---|---|---|
-| `GET` | `/flashcards/decks` | JWT | List user's decks with due counts |
-| `POST` | `/flashcards/decks` | JWT | Create new deck |
-| `PUT` | `/flashcards/decks/:id` | JWT | Update deck name/description/tags |
-| `DELETE` | `/flashcards/decks/:id` | JWT | Delete deck + cascade cards |
-| `GET` | `/flashcards/decks/:id/cards` | JWT | List cards in deck (paginated) |
-| `POST` | `/flashcards/decks/:id/cards` | JWT | Create manual card |
-| `GET` | `/flashcards/due` | JWT | Get due cards across all decks (limit 50) |
-| `POST` | `/flashcards/:id/review` | JWT | Submit review rating → FSRS reschedule → update streak |
-| `POST` | `/flashcards/auto-generate` | JWT | AI-generate cards from interview weaknesses |
-| `GET` | `/flashcards/stats` | JWT | Stats: due today, streak, heatmap data, mastery breakdown |
+| Method   | Path                          | Auth | Description                                               |
+| -------- | ----------------------------- | ---- | --------------------------------------------------------- |
+| `GET`    | `/flashcards/decks`           | JWT  | List user's decks with due counts                         |
+| `POST`   | `/flashcards/decks`           | JWT  | Create new deck                                           |
+| `PUT`    | `/flashcards/decks/:id`       | JWT  | Update deck name/description/tags                         |
+| `DELETE` | `/flashcards/decks/:id`       | JWT  | Delete deck + cascade cards                               |
+| `GET`    | `/flashcards/decks/:id/cards` | JWT  | List cards in deck (paginated)                            |
+| `POST`   | `/flashcards/decks/:id/cards` | JWT  | Create manual card                                        |
+| `GET`    | `/flashcards/due`             | JWT  | Get due cards across all decks (limit 50)                 |
+| `POST`   | `/flashcards/:id/review`      | JWT  | Submit review rating → FSRS reschedule → update streak    |
+| `POST`   | `/flashcards/auto-generate`   | JWT  | AI-generate cards from interview weaknesses               |
+| `GET`    | `/flashcards/stats`           | JWT  | Stats: due today, streak, heatmap data, mastery breakdown |
 
 **Auto-Generation Pipeline** (integration with Evaluation module):
+
 1. Load `Evaluation` records for given `interviewId`
 2. Extract `improvements` array (weakness descriptions)
 3. Call `AiOrchestratorService` with prompt: "Generate flashcards for these knowledge gaps: [weaknesses]"
@@ -543,20 +556,21 @@ interface FSRSScheduleResult {
 
 ### 3.4 Frontend Components
 
-| Component | Path | Description |
-|---|---|---|
-| `FlashcardDecksPage` | `apps/web/src/features/flashcards/FlashcardDecksPage.tsx` | Deck grid with due count badges, streak counter, heatmap calendar |
+| Component             | Path                                                       | Description                                                                                                                                |
+| --------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `FlashcardDecksPage`  | `apps/web/src/features/flashcards/FlashcardDecksPage.tsx`  | Deck grid with due count badges, streak counter, heatmap calendar                                                                          |
 | `FlashcardReviewPage` | `apps/web/src/features/flashcards/FlashcardReviewPage.tsx` | Full-screen review mode: flip card animation (CSS 3D transform), 4 rating buttons, progress bar, keyboard shortcuts (Space=flip, 1-4=rate) |
-| `FlashcardItem` | `apps/web/src/components/flashcards/FlashcardItem.tsx` | Single card with front/back flip, markdown rendering for code snippets |
-| `StreakHeatmap` | `apps/web/src/components/flashcards/StreakHeatmap.tsx` | GitHub-style contribution heatmap for review activity |
-| `CreateCardModal` | `apps/web/src/components/flashcards/CreateCardModal.tsx` | Manual card creation form with type selector and markdown preview |
-| `useFlashcards` | `apps/web/src/hooks/useFlashcards.ts` | TanStack Query hooks: decks, due cards, review mutation, stats, auto-generate |
+| `FlashcardItem`       | `apps/web/src/components/flashcards/FlashcardItem.tsx`     | Single card with front/back flip, markdown rendering for code snippets                                                                     |
+| `StreakHeatmap`       | `apps/web/src/components/flashcards/StreakHeatmap.tsx`     | GitHub-style contribution heatmap for review activity                                                                                      |
+| `CreateCardModal`     | `apps/web/src/components/flashcards/CreateCardModal.tsx`   | Manual card creation form with type selector and markdown preview                                                                          |
+| `useFlashcards`       | `apps/web/src/hooks/useFlashcards.ts`                      | TanStack Query hooks: decks, due cards, review mutation, stats, auto-generate                                                              |
 
 **[MODIFY]** `App.tsx` — Add routes: `/flashcards`, `/flashcards/:deckId`, `/flashcards/review`  
 **[MODIFY]** `Navbar.tsx` — Add "📚 Flashcards" nav link with due count badge  
 **[MODIFY]** `ResultDetailPage.tsx` — Add "Generate Flashcards" action button that calls auto-generate endpoint
 
 ### 3.5 Feature Flag & BullMQ
+
 - `FEATURE_SPACED_REPETITION` → `features.spacedRepetition` (default: `false`)
 - New BullMQ queue: `flashcard-generation` for async AI card generation
 - Future: `flashcard-reminder` queue for daily email digest (stub only in this wave)
@@ -643,7 +657,7 @@ export const VoiceEventType = {
   INTERRUPT: 'voice:interrupt',
   MUTE_TOGGLE: 'voice:mute_toggle',
   DISCONNECT: 'voice:disconnect',
-  
+
   // Server → Client
   CONNECTED: 'voice:connected',
   INTERIM_TRANSCRIPT: 'voice:interim_transcript',
@@ -686,7 +700,7 @@ voice-gateway/
 **WebSocket Gateway Design**:
 
 ```typescript
-@WebSocketGateway({ 
+@WebSocketGateway({
   namespace: '/voice',
   cors: { origin: '*' },
   transports: ['websocket'],
@@ -695,16 +709,17 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   // Authentication via JWT in handshake query/headers
   // Binary frame handling for Opus audio chunks
   // Per-connection session state (Map<socketId, VoiceSessionState>)
-  
+
   @SubscribeMessage('voice:audio_chunk')
   handleAudioChunk(client: Socket, data: ArrayBuffer): void { ... }
-  
+
   @SubscribeMessage('voice:interrupt')
   handleInterrupt(client: Socket): void { ... }
 }
 ```
 
 **Voice Pipeline Flow**:
+
 1. Client connects WebSocket → JWT auth → create `VoiceSession`
 2. Client streams binary Opus audio chunks → VAD filters silence
 3. Active speech → forwarded to STT provider (streaming)
@@ -715,39 +730,45 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 8. **Interruption**: Client sends `interrupt` → immediately stop TTS playback → truncate AI context
 
 **Mock Voice Provider**:
+
 - `streamSTT()`: Returns deterministic transcript from hardcoded test phrases (delays 200ms per word)
 - `streamTTS()`: Returns silent Opus frames with correct timing (for CI/offline testing)
 - No external API keys required
 
 **Graceful Degradation**:
+
 - If latency > 2000ms for 3 consecutive chunks → emit `FALLBACK_TO_TEXT` event
 - Client auto-switches to standard text interview mode
 - Existing text-mode interview flow takes over seamlessly
 
 ### 4.4 Frontend Components
 
-| Component | Path | Description |
-|---|---|---|
-| `VoiceInterviewRoom` | `apps/web/src/components/interview/VoiceInterviewRoom.tsx` | Full voice UI overlay: waveform visualizer (Web Audio API `AnalyserNode`), live transcript bubbles, mute/unmute, network indicator |
-| `AudioVisualizer` | `apps/web/src/components/interview/AudioVisualizer.tsx` | Canvas-based real-time waveform (reuses existing pattern from MVP audio) |
-| `NetworkQualityBadge` | `apps/web/src/components/interview/NetworkQualityBadge.tsx` | Color-coded latency/quality indicator (🟢🟡🟠🔴) |
-| `MicPermissionPrompt` | `apps/web/src/components/interview/MicPermissionPrompt.tsx` | Guided microphone permission request with browser-specific instructions |
-| `useVoiceStreaming` | `apps/web/src/hooks/useVoiceStreaming.ts` | WebSocket client: MediaStream recorder (Opus), playback via `AudioContext`, VAD-based interruption detection, reconnection with exponential backoff |
+| Component             | Path                                                        | Description                                                                                                                                         |
+| --------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `VoiceInterviewRoom`  | `apps/web/src/components/interview/VoiceInterviewRoom.tsx`  | Full voice UI overlay: waveform visualizer (Web Audio API `AnalyserNode`), live transcript bubbles, mute/unmute, network indicator                  |
+| `AudioVisualizer`     | `apps/web/src/components/interview/AudioVisualizer.tsx`     | Canvas-based real-time waveform (reuses existing pattern from MVP audio)                                                                            |
+| `NetworkQualityBadge` | `apps/web/src/components/interview/NetworkQualityBadge.tsx` | Color-coded latency/quality indicator (🟢🟡🟠🔴)                                                                                                    |
+| `MicPermissionPrompt` | `apps/web/src/components/interview/MicPermissionPrompt.tsx` | Guided microphone permission request with browser-specific instructions                                                                             |
+| `useVoiceStreaming`   | `apps/web/src/hooks/useVoiceStreaming.ts`                   | WebSocket client: MediaStream recorder (Opus), playback via `AudioContext`, VAD-based interruption detection, reconnection with exponential backoff |
 
 **[MODIFY]** `InterviewRoomPage.tsx`:
+
 - Add voice mode detection: when `sessionMode === 'VOICE_LIVE'` (or feature flag + user toggle), render `VoiceInterviewRoom` instead of text area
 - Fallback toggle: "Switch to Text Mode" button always visible
 - Mode selector in setup: "🎤 Live Voice Interview" option
 
 **[MODIFY]** `SessionMode` enum in Prisma + contracts:
+
 - Add `VOICE_LIVE` to `SessionMode` enum (alongside existing `STANDARD`, `FOCUSED_REMEDIATION`, `QUICK_PRACTICE`, `CODING`, `BEHAVIORAL`)
 
 ### 4.5 Feature Flag & Config
+
 - `FEATURE_VOICE_STREAMING` → `features.voiceStreaming` (default: `false`)
 - `VOICE_STT_PROVIDER` → `voice.sttProvider` (`mock | deepgram | whisper`)
 - `VOICE_TTS_PROVIDER` → `voice.ttsProvider` (`mock | elevenlabs | openai`)
 
 ### 4.6 ADR-0008: WebSocket Gateway Architecture
+
 - **Decision**: Use `ws` library via `@nestjs/websockets` (not Socket.io) for lower overhead with binary audio frames
 - **Rationale**: Socket.io adds ~30KB client bundle + protocol overhead unsuitable for real-time audio. Raw `ws` provides direct binary frame control needed for Opus streaming.
 - **Trade-off**: Lose auto-reconnection (implement manually via exponential backoff in client hook)
@@ -764,25 +785,25 @@ flowchart TD
         INT[InterviewService]
         LP[LearningPathService]
     end
-    
+
     subgraph "Wave 2 Features"
         F004[F004 Document Parser]
         F006[F006 Socratic Tutor]
         F005[F005 Flashcards + FSRS]
         F001[F001 Voice Gateway]
     end
-    
+
     F004 -->|"blueprintContext"| INT
     F004 -->|"parse CV/JD via LLM"| AI
-    
+
     F006 -->|"load question+eval context"| EVAL
     F006 -->|"Socratic prompts"| AI
     F006 -->|"fast retry scoring"| AI
-    
+
     F005 -->|"extract weaknesses"| EVAL
     F005 -->|"generate cards via LLM"| AI
     F005 -.->|"auto-gen from retry gaps"| F006
-    
+
     F001 -->|"STT transcript → question/answer"| INT
     F001 -->|"stream AI response"| AI
     F001 -.->|"voice turn → evaluation"| EVAL
@@ -794,14 +815,15 @@ flowchart TD
 
 ### Per-Feature Test Strategy
 
-| Feature | Unit Tests | Integration Points | Key Assertions |
-|---|---|---|---|
-| F004 | TextExtractor (PDF/DOCX/PII masking), CvAnalyzer, JdAnalyzer, BlueprintGenerator | `AiOrchestratorService` mock, Prisma, Controller | Parse accuracy, PII stripped from AI context, 5MB limit enforcement, blueprint topic weights sum to 100 |
-| F006 | TutorService (context loading, turn limit), SSE streaming | `AiOrchestratorService` mock, Evaluation data, Prisma | Socratic prompt never contains direct answers, max 20 turns, retry score comparison accuracy |
-| F005 | **FSRS engine** (known test vectors for all 4 ratings × 4 states), FlashcardService (CRUD, auto-gen) | `AiOrchestratorService` mock, Evaluation data, Prisma | FSRS scheduling determinism, streak tracking, due queue ordering |
-| F001 | VAD threshold detection, WebSocket lifecycle, Mock provider | WebSocket test client, `AiOrchestratorService` mock | Binary frame handling, interruption stops TTS, graceful degradation trigger |
+| Feature | Unit Tests                                                                                           | Integration Points                                    | Key Assertions                                                                                          |
+| ------- | ---------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| F004    | TextExtractor (PDF/DOCX/PII masking), CvAnalyzer, JdAnalyzer, BlueprintGenerator                     | `AiOrchestratorService` mock, Prisma, Controller      | Parse accuracy, PII stripped from AI context, 5MB limit enforcement, blueprint topic weights sum to 100 |
+| F006    | TutorService (context loading, turn limit), SSE streaming                                            | `AiOrchestratorService` mock, Evaluation data, Prisma | Socratic prompt never contains direct answers, max 20 turns, retry score comparison accuracy            |
+| F005    | **FSRS engine** (known test vectors for all 4 ratings × 4 states), FlashcardService (CRUD, auto-gen) | `AiOrchestratorService` mock, Evaluation data, Prisma | FSRS scheduling determinism, streak tracking, due queue ordering                                        |
+| F001    | VAD threshold detection, WebSocket lifecycle, Mock provider                                          | WebSocket test client, `AiOrchestratorService` mock   | Binary frame handling, interruption stops TTS, graceful degradation trigger                             |
 
 ### Automated Test Commands
+
 ```bash
 # Per-module
 pnpm --filter contracts test
@@ -819,15 +841,16 @@ pnpm --filter web build
 
 ### Risk Mitigation
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| PDF parsing fails on complex layouts | F004 degraded accuracy | Fallback to raw text paste; error message guides manual entry |
-| SSE connection drops mid-tutor-chat | F006 lost context | Message history persisted in DB; client auto-resumes from last message |
-| FSRS produces unreasonable intervals | F005 bad UX | Clamp max interval to 365 days; unit tests with known vectors from FSRS research paper |
-| WebSocket binary frame corruption | F001 audio artifacts | Opus codec self-corrects; client-side CRC check; fallback to text mode |
-| AI provider latency > 10s | All features | Circuit breaker + MockProvider fallback already in place from MVP |
+| Risk                                 | Impact                 | Mitigation                                                                             |
+| ------------------------------------ | ---------------------- | -------------------------------------------------------------------------------------- |
+| PDF parsing fails on complex layouts | F004 degraded accuracy | Fallback to raw text paste; error message guides manual entry                          |
+| SSE connection drops mid-tutor-chat  | F006 lost context      | Message history persisted in DB; client auto-resumes from last message                 |
+| FSRS produces unreasonable intervals | F005 bad UX            | Clamp max interval to 365 days; unit tests with known vectors from FSRS research paper |
+| WebSocket binary frame corruption    | F001 audio artifacts   | Opus codec self-corrects; client-side CRC check; fallback to text mode                 |
+| AI provider latency > 10s            | All features           | Circuit breaker + MockProvider fallback already in place from MVP                      |
 
 ### Documentation Updates
+
 - Update `PROJECT-STATUS.md`: Mark F004, F006, F005, F001 as ✅ (8/14 Phase 2)
 - Update `FEATURE-ROADMAP-INDEX.md`: Status icons
 - Create `ADR-0007` (file parsing) and `ADR-0008` (WebSocket gateway)

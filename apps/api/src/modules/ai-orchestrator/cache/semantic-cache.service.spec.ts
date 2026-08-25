@@ -115,7 +115,7 @@ describe('SemanticCacheService (F013)', () => {
 
     // Closely related query
     const variantPrompt = 'Explain garbage collection mechanism in JavaScript V8 engine';
-    const result = await service.get(variantPrompt, 0.70); // lower threshold for term-based mock vector
+    const result = await service.get(variantPrompt, 0.7); // lower threshold for term-based mock vector
 
     expect(result.hit).toBe(true);
     expect(result.data).toEqual(payload);

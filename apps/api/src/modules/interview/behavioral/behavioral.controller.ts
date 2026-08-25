@@ -34,7 +34,9 @@ export class BehavioralController {
   constructor(private readonly behavioralService: BehavioralService) {}
 
   @Post('analyze-star')
-  @ApiOperation({ summary: 'Analyze real-time answer for STAR components and generate dynamic probing questions' })
+  @ApiOperation({
+    summary: 'Analyze real-time answer for STAR components and generate dynamic probing questions',
+  })
   async analyzeStar(@Body() dto: AnalyzeStarDto) {
     return this.behavioralService.analyzeStar(dto);
   }

@@ -32,11 +32,23 @@ export interface FSRSResult {
 
 // Standard FSRS v4 default parameter weights
 const DEFAULT_WEIGHTS = [
-  0.4, 0.6, 2.4, 5.8, // w0..w3: Initial stability for ratings Again, Hard, Good, Easy
-  4.93, 0.94, 0.86, 0.01, // w4..w7: Difficulty parameters
-  1.49, 0.14, 0.94, // w8..w10: Stability on success
-  2.18, 0.05, 0.34, 1.26, // w11..w14: Stability on lapse
-  0.29, 2.61, // w15..w16: Hard & Easy bonuses
+  0.4,
+  0.6,
+  2.4,
+  5.8, // w0..w3: Initial stability for ratings Again, Hard, Good, Easy
+  4.93,
+  0.94,
+  0.86,
+  0.01, // w4..w7: Difficulty parameters
+  1.49,
+  0.14,
+  0.94, // w8..w10: Stability on success
+  2.18,
+  0.05,
+  0.34,
+  1.26, // w11..w14: Stability on lapse
+  0.29,
+  2.61, // w15..w16: Hard & Easy bonuses
 ];
 
 const DECAY = -0.5;
@@ -75,14 +87,22 @@ export class FSRSEngine {
     if (card.state === CardState.NEW || card.stability <= 0 || !card.lastReview) {
       return 0;
     }
-    const elapsedDays = Math.max(0, (now.getTime() - card.lastReview.getTime()) / (1000 * 60 * 60 * 24));
+    const elapsedDays = Math.max(
+      0,
+      (now.getTime() - card.lastReview.getTime()) / (1000 * 60 * 60 * 24),
+    );
     return Math.pow(1 + (FACTOR * elapsedDays) / card.stability, DECAY);
   }
 
   /**
    * Schedules a card after a review with the given rating (1: Again, 2: Hard, 3: Good, 4: Easy)
    */
-  scheduleCard(card: FSRSCard, rating: FSRSRating, durationMs: number = 0, now: Date = new Date()): FSRSResult {
+  scheduleCard(
+    card: FSRSCard,
+    rating: FSRSRating,
+    durationMs: number = 0,
+    now: Date = new Date(),
+  ): FSRSResult {
     const currentState = card.state;
     let nextStability: number;
     let nextDifficulty: number;
@@ -90,7 +110,10 @@ export class FSRSEngine {
     let elapsedDays = 0;
 
     if (card.lastReview) {
-      elapsedDays = Math.max(0, Math.floor((now.getTime() - card.lastReview.getTime()) / (1000 * 60 * 60 * 24)));
+      elapsedDays = Math.max(
+        0,
+        Math.floor((now.getTime() - card.lastReview.getTime()) / (1000 * 60 * 60 * 24)),
+      );
     }
 
     if (currentState === CardState.NEW) {
@@ -111,10 +134,19 @@ export class FSRSEngine {
       nextDifficulty = this.updateDifficulty(card.difficulty, rating);
 
       if (rating === FSRSRating.AGAIN) {
-        nextStability = this.updateStabilityOnLapse(card.difficulty, card.stability, retrievability);
+        nextStability = this.updateStabilityOnLapse(
+          card.difficulty,
+          card.stability,
+          retrievability,
+        );
         nextState = CardState.RELEARNING;
       } else {
-        nextStability = this.updateStabilityOnSuccess(card.difficulty, card.stability, retrievability, rating);
+        nextStability = this.updateStabilityOnSuccess(
+          card.difficulty,
+          card.stability,
+          retrievability,
+          rating,
+        );
         nextState = CardState.REVIEW;
       }
     }
@@ -173,12 +205,21 @@ export class FSRSEngine {
     } else if (rating === FSRSRating.EASY) {
       hardPenalty = this.w[16];
     }
-    const factor = Math.exp(this.w[8]) * (11 - d) * Math.pow(s, -this.w[9]) * (Math.exp((1 - r) * this.w[10]) - 1) * hardPenalty;
+    const factor =
+      Math.exp(this.w[8]) *
+      (11 - d) *
+      Math.pow(s, -this.w[9]) *
+      (Math.exp((1 - r) * this.w[10]) - 1) *
+      hardPenalty;
     return Math.max(0.1, s * (1 + factor));
   }
 
   private updateStabilityOnLapse(d: number, s: number, r: number): number {
-    const factor = this.w[11] * Math.pow(d, -this.w[12]) * (Math.pow(s + 1, this.w[13]) - 1) * Math.exp((1 - r) * this.w[14]);
+    const factor =
+      this.w[11] *
+      Math.pow(d, -this.w[12]) *
+      (Math.pow(s + 1, this.w[13]) - 1) *
+      Math.exp((1 - r) * this.w[14]);
     return Math.min(Math.max(0.1, factor), s);
   }
 

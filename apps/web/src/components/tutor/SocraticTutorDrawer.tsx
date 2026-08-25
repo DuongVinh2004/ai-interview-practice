@@ -47,7 +47,10 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-150" data-testid="socratic-tutor-drawer">
+    <div
+      className="fixed inset-0 z-50 overflow-hidden bg-slate-900/40 backdrop-blur-xs flex justify-end animate-in fade-in duration-150"
+      data-testid="socratic-tutor-drawer"
+    >
       <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col border-l border-slate-200">
         {/* Drawer Header */}
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
@@ -62,7 +65,9 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
                   Câu #{turnNumber}
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-500">Gợi mở & đào sâu kỹ năng tư duy phản biện</p>
+              <p className="text-[11px] text-slate-500">
+                Gợi mở & đào sâu kỹ năng tư duy phản biện
+              </p>
             </div>
           </div>
           <button
@@ -141,7 +146,9 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
                 <Bot className="w-4 h-4" />
               </div>
               <div className="max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed bg-slate-50 border border-slate-200 text-slate-800 rounded-tl-none">
-                <p className="whitespace-pre-wrap">{streamedContent || 'AI Tutor đang suy nghĩ...'}</p>
+                <p className="whitespace-pre-wrap">
+                  {streamedContent || 'AI Tutor đang suy nghĩ...'}
+                </p>
               </div>
             </div>
           )}
@@ -155,7 +162,10 @@ export const SocraticTutorDrawer: React.FC<SocraticTutorDrawerProps> = ({
         </div>
 
         {/* Input Bar */}
-        <form onSubmit={handleSend} className="p-3 border-t border-slate-200 bg-white flex items-center space-x-2">
+        <form
+          onSubmit={handleSend}
+          className="p-3 border-t border-slate-200 bg-white flex items-center space-x-2"
+        >
           <input
             type="text"
             value={inputText}

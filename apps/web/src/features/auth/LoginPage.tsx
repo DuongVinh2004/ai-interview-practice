@@ -9,8 +9,24 @@ import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
-import { Bot, ShieldCheck, KeyRound, ArrowLeft, Eye, EyeOff, Lock, Mail, Sparkles } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
+import {
+  Bot,
+  ShieldCheck,
+  KeyRound,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Sparkles,
+} from 'lucide-react';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -157,7 +173,10 @@ export function LoginPage() {
             /* --- MFA Challenge Step --- */
             <form onSubmit={handleMfaSubmit} className="space-y-4">
               <div>
-                <label htmlFor="mfa-code-input" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label
+                  htmlFor="mfa-code-input"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
                   {useRecoveryCode ? 'Backup Recovery Code' : '6-digit Authenticator Code'}
                 </label>
                 <input
@@ -168,7 +187,9 @@ export function LoginPage() {
                   value={mfaCode}
                   onChange={e => setMfaCode(e.target.value)}
                   placeholder={
-                    useRecoveryCode ? 'Recovery code (e.g. ABCD-1234)' : '6-digit code (e.g. 123456)'
+                    useRecoveryCode
+                      ? 'Recovery code (e.g. ABCD-1234)'
+                      : '6-digit code (e.g. 123456)'
                   }
                   className="w-full h-11 px-3 py-2 bg-white border border-slate-300 rounded-lg text-base font-mono tracking-widest text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   maxLength={useRecoveryCode ? 16 : 6}

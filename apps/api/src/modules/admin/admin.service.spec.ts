@@ -32,7 +32,7 @@ describe('AdminService', () => {
       update: jest.fn(),
       updateMany: jest.fn(),
     },
-    $transaction: jest.fn().mockImplementation((promises) => Promise.all(promises)),
+    $transaction: jest.fn().mockImplementation(promises => Promise.all(promises)),
   };
 
   const mockProviderRouterService = {
@@ -121,7 +121,10 @@ describe('AdminService', () => {
   });
 
   it('calculates aggregated AI metrics and circuit states', async () => {
-    mockPrismaService.aiRun.count.mockResolvedValueOnce(10).mockResolvedValueOnce(9).mockResolvedValueOnce(1);
+    mockPrismaService.aiRun.count
+      .mockResolvedValueOnce(10)
+      .mockResolvedValueOnce(9)
+      .mockResolvedValueOnce(1);
     mockPrismaService.aiRun.findMany.mockResolvedValueOnce([
       {
         provider: 'gemini',
@@ -161,4 +164,3 @@ describe('AdminService', () => {
     );
   });
 });
-

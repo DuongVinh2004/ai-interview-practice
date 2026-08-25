@@ -372,7 +372,11 @@ export function ProfilePage() {
                       onClick={() => copyToClipboard(recoveryCodes.join('\n'), 'codes')}
                       className="gap-1.5 text-xs"
                     >
-                      {copiedCodes ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedCodes ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                       <span>{copiedCodes ? 'Copied!' : t.mfa.copyCodes}</span>
                     </Button>
                     <Button
@@ -418,7 +422,11 @@ export function ProfilePage() {
                       onClick={() => copyToClipboard(mfaSetupData.secret, 'key')}
                       className="text-xs gap-1"
                     >
-                      {copiedKey ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedKey ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                       <span>{copiedKey ? 'Copied' : 'Copy'}</span>
                     </Button>
                   </div>
@@ -456,7 +464,10 @@ export function ProfilePage() {
                 </div>
               ) : isDisablingMfa ? (
                 /* --- Active Disable 2FA Form --- */
-                <form onSubmit={handleDisableMfa} className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3">
+                <form
+                  onSubmit={handleDisableMfa}
+                  className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3"
+                >
                   <h4 className="font-semibold text-sm text-rose-900">{t.mfa.disableTitle}</h4>
                   <p className="text-xs text-rose-700">{t.mfa.disableWarning}</p>
 
@@ -648,13 +659,9 @@ export function ProfilePage() {
                       className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2 hover:border-slate-300 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-slate-900">
-                          {item.name}
-                        </span>
+                        <span className="font-semibold text-xs text-slate-900">{item.name}</span>
                         <Badge
-                          variant={
-                            isExceeds ? 'success' : isMeets ? 'default' : 'warning'
-                          }
+                          variant={isExceeds ? 'success' : isMeets ? 'default' : 'warning'}
                           className="text-[10px]"
                         >
                           {isExceeds

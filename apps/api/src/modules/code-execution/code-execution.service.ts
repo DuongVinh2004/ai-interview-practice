@@ -31,7 +31,9 @@ export class CodeExecutionService {
       return this.judge0Sandbox;
     }
     if (process.env.NODE_ENV === 'production') {
-      this.logger.error('Code execution sandbox (Judge0) is not configured in production environment!');
+      this.logger.error(
+        'Code execution sandbox (Judge0) is not configured in production environment!',
+      );
       throw new DomainException(
         ErrorCode.CODE_EXECUTION_FAILED,
         'Code execution engine is not configured in production environment',
@@ -134,7 +136,11 @@ export class CodeExecutionService {
     );
 
     // AI Code Review Analysis
-    const aiReview: AiCodeReview = this.analyzeCodeQuality(dto.language, dto.sourceCode, execResult);
+    const aiReview: AiCodeReview = this.analyzeCodeQuality(
+      dto.language,
+      dto.sourceCode,
+      execResult,
+    );
 
     // Persist submission in DB
     const submission = await this.prisma.codeSubmission.create({
@@ -257,11 +263,16 @@ export class CodeExecutionService {
       timeComplexity = 'O(n^2)';
     } else if (clean.includes('sort') || clean.includes('.sort(')) {
       timeComplexity = 'O(n log n)';
-    } else if (clean.includes('while') && clean.includes('/ 2') || clean.includes('>> 1')) {
+    } else if ((clean.includes('while') && clean.includes('/ 2')) || clean.includes('>> 1')) {
       timeComplexity = 'O(log n)';
     }
 
-    if (clean.includes('new map') || clean.includes('new set') || clean.includes('{}') || clean.includes('[]')) {
+    if (
+      clean.includes('new map') ||
+      clean.includes('new set') ||
+      clean.includes('{}') ||
+      clean.includes('[]')
+    ) {
       spaceComplexity = 'O(n)';
     }
 
@@ -279,7 +290,9 @@ export class CodeExecutionService {
     }
 
     if (!clean.includes('if') || clean.includes('throw')) {
-      cleanCodeFeedback.push('Ensure guard clauses validate null or empty parameters at the entry point.');
+      cleanCodeFeedback.push(
+        'Ensure guard clauses validate null or empty parameters at the entry point.',
+      );
     }
 
     const codeQualityScore = execResult.allPassed ? 8.5 : 5.0;

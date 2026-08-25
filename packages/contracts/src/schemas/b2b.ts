@@ -3,8 +3,14 @@ import { TenantRole, AssignmentStatus, CompetencyArea, SessionMode } from '../en
 
 export const TenantBrandingSchema = z.object({
   logoUrl: z.string().url().optional().or(z.literal('')),
-  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Hex color code required').default('#059669'),
-  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, 'Hex color code required').default('#10b981'),
+  primaryColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Hex color code required')
+    .default('#059669'),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, 'Hex color code required')
+    .default('#10b981'),
   companyName: z.string().optional(),
 });
 

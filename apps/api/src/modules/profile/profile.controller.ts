@@ -25,7 +25,9 @@ export class ProfileController {
   }
 
   @Get('benchmarks')
-  @ApiOperation({ summary: 'Get candidate competency benchmark gap analysis vs industry standards' })
+  @ApiOperation({
+    summary: 'Get candidate competency benchmark gap analysis vs industry standards',
+  })
   async getBenchmarks(@CurrentUser('sub') userId: string) {
     return this.profileService.getBenchmarks(userId);
   }

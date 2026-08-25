@@ -50,7 +50,8 @@ describe('Epic 6 Adaptive Interview & Follow-Up Probing', () => {
                       status: 'QUESTION_READY',
                       isFollowUp: true,
                       question: {
-                        content: 'How would you mitigate deadlocks in high concurrency batch updates?',
+                        content:
+                          'How would you mitigate deadlocks in high concurrency batch updates?',
                         keyFocus: 'Deadlock Mitigation',
                       },
                       answer: null,

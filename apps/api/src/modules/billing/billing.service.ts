@@ -110,16 +110,17 @@ export class BillingService {
     };
   }
 
-  async createCheckout(
-    userId: string,
-    req: CreateCheckoutRequest,
-  ): Promise<CheckoutResponse> {
+  async createCheckout(userId: string, req: CreateCheckoutRequest): Promise<CheckoutResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
 
     if (!user) {
-      throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, 'User not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'User not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const plan = await this.prisma.subscriptionPlan.findUnique({
@@ -127,7 +128,11 @@ export class BillingService {
     });
 
     if (!plan) {
-      throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, 'Subscription plan not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'Subscription plan not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const provider = this.getProvider();
@@ -136,7 +141,12 @@ export class BillingService {
         ? plan.stripePriceIdYearly || plan.stripePriceIdMonthly
         : plan.stripePriceIdMonthly;
 
-    const result = await provider.createCheckoutSession(userId, user.email, req, stripePriceId || undefined);
+    const result = await provider.createCheckoutSession(
+      userId,
+      user.email,
+      req,
+      stripePriceId || undefined,
+    );
 
     // If Mock provider, activate subscription
     if (provider.name === 'mock') {
@@ -216,7 +226,11 @@ export class BillingService {
     });
 
     if (!sub) {
-      throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, 'No active subscription found to cancel', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'No active subscription found to cancel',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const updated = await this.prisma.subscription.update({
@@ -265,7 +279,9 @@ export class BillingService {
     }));
   }
 
-  async validatePromoCode(code: string): Promise<{ valid: boolean; discountPercent: number; code: string }> {
+  async validatePromoCode(
+    code: string,
+  ): Promise<{ valid: boolean; discountPercent: number; code: string }> {
     const promo = await this.prisma.promoCode.findUnique({
       where: { code: code.toUpperCase().trim() },
     });

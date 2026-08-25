@@ -45,10 +45,7 @@ describe('BehavioralService (F007)', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        BehavioralService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
+      providers: [BehavioralService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
 
     service = module.get<BehavioralService>(BehavioralService);
@@ -59,7 +56,8 @@ describe('BehavioralService (F007)', () => {
       sessionId: 'session-123',
       turnNumber: 1,
       questionText: 'Describe a challenging technical project you led.',
-      candidateAnswer: 'At my company, we had high server load. I was responsible for fixing it. I implemented Redis caching and load balancing with Nginx.',
+      candidateAnswer:
+        'At my company, we had high server load. I was responsible for fixing it. I implemented Redis caching and load balancing with Nginx.',
     });
 
     expect(analysis.actionNeeded).toBe('PROBE');
@@ -73,7 +71,8 @@ describe('BehavioralService (F007)', () => {
       sessionId: 'session-123',
       turnNumber: 1,
       questionText: 'Describe a challenging technical project you led.',
-      candidateAnswer: 'When I was at TechCorp, our production microservice had latency spikes. My responsibility was to optimize queries. I implemented connection pooling with PgBouncer and indexing. As a result, we reduced p99 latency by 65%.',
+      candidateAnswer:
+        'When I was at TechCorp, our production microservice had latency spikes. My responsibility was to optimize queries. I implemented connection pooling with PgBouncer and indexing. As a result, we reduced p99 latency by 65%.',
     });
 
     expect(analysis.actionNeeded).toBe('COMPLETE');

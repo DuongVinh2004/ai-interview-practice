@@ -10,8 +10,7 @@ import { TenantRole, UserRole } from '@ai-interview/contracts';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 
 export const TENANT_ROLES_KEY = 'tenant_roles';
-export const RequireTenantRoles = (...roles: TenantRole[]) =>
-  SetMetadata(TENANT_ROLES_KEY, roles);
+export const RequireTenantRoles = (...roles: TenantRole[]) => SetMetadata(TENANT_ROLES_KEY, roles);
 
 @Injectable()
 export class TenantRoleGuard implements CanActivate {
@@ -21,10 +20,10 @@ export class TenantRoleGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredRoles = this.reflector.getAllAndOverride<TenantRole[]>(
-      TENANT_ROLES_KEY,
-      [context.getHandler(), context.getClass()],
-    );
+    const requiredRoles = this.reflector.getAllAndOverride<TenantRole[]>(TENANT_ROLES_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
 
     if (!requiredRoles || requiredRoles.length === 0) {
       return true;

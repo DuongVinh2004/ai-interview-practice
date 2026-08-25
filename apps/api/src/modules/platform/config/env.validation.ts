@@ -15,7 +15,9 @@ export const EnvSchema = z.object({
   JWT_REFRESH_EXPIRATION: z.string().default('7d'),
   THROTTLE_TTL: z.coerce.number().default(60),
   THROTTLE_LIMIT: z.coerce.number().default(100),
-  AI_PROVIDER: z.enum(['mock', 'gemini', 'openai', 'anthropic', 'router', 'external']).default('mock'),
+  AI_PROVIDER: z
+    .enum(['mock', 'gemini', 'openai', 'anthropic', 'router', 'external'])
+    .default('mock'),
   OPENAI_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY: z.string().optional().default(''),

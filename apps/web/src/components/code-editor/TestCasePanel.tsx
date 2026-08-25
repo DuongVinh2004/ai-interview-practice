@@ -13,7 +13,9 @@ export const TestCasePanel: React.FC<TestCasePanelProps> = ({ testResults = [] }
     return (
       <div className="p-3 bg-slate-900 border border-slate-700 rounded-lg text-slate-400 font-mono text-xs flex items-center space-x-2">
         <ListChecks className="w-4 h-4 text-slate-500" />
-        <span>No test cases evaluated yet. Hit &quot;Run Code&quot; to test your implementation.</span>
+        <span>
+          No test cases evaluated yet. Hit &quot;Run Code&quot; to test your implementation.
+        </span>
       </div>
     );
   }
@@ -21,7 +23,10 @@ export const TestCasePanel: React.FC<TestCasePanelProps> = ({ testResults = [] }
   const currentCase = testResults[selectedCaseIdx] || testResults[0];
 
   return (
-    <div className="flex flex-col bg-slate-900 border border-slate-700 rounded-lg overflow-hidden font-mono text-xs" data-testid="test-case-panel">
+    <div
+      className="flex flex-col bg-slate-900 border border-slate-700 rounded-lg overflow-hidden font-mono text-xs"
+      data-testid="test-case-panel"
+    >
       {/* Test Case Tabs */}
       <div className="flex items-center space-x-1 p-1.5 bg-slate-800 border-b border-slate-700 overflow-x-auto">
         {testResults.map((tc, idx) => {
@@ -65,8 +70,11 @@ export const TestCasePanel: React.FC<TestCasePanelProps> = ({ testResults = [] }
             </div>
             <div>
               <div className="text-slate-500 font-semibold mb-1">Actual Output:</div>
-              <div className={`bg-slate-900 p-2 rounded border border-slate-800 ${currentCase.passed ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {currentCase.actualOutput || (currentCase.errorMsg ? `Error: ${currentCase.errorMsg}` : 'None')}
+              <div
+                className={`bg-slate-900 p-2 rounded border border-slate-800 ${currentCase.passed ? 'text-emerald-400' : 'text-rose-400'}`}
+              >
+                {currentCase.actualOutput ||
+                  (currentCase.errorMsg ? `Error: ${currentCase.errorMsg}` : 'None')}
               </div>
             </div>
           </div>

@@ -248,9 +248,9 @@ export class LearningPathService {
     return {
       totalGoals: allItems.length,
       completedGoals: completedCount,
-      completionRate: allItems.length > 0 ? Math.round((completedCount / allItems.length) * 100) : 0,
+      completionRate:
+        allItems.length > 0 ? Math.round((completedCount / allItems.length) * 100) : 0,
       goals: allItems,
     };
   }
 }
-

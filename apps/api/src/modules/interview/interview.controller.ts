@@ -96,11 +96,7 @@ export class InterviewController {
       const result = await this.interviewService.submitAnswer(userId, sessionId, dto);
 
       if (idempotencyKey) {
-        await this.idempotencyService.completeKey(
-          idempotencyKey,
-          HttpStatus.OK,
-          result,
-        );
+        await this.idempotencyService.completeKey(idempotencyKey, HttpStatus.OK, result);
       }
 
       return result;
@@ -144,4 +140,3 @@ export class InterviewController {
     return this.sseService.getSessionEventStream(sessionId);
   }
 }
-

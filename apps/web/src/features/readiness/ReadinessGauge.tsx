@@ -21,8 +21,7 @@ export function ReadinessGauge({
   const strokeDasharray = `${(sweepAngle / 360) * circumference} ${circumference}`;
 
   const progressFraction = Math.min(1.0, Math.max(0.0, score / 100));
-  const strokeDashoffset =
-    ((sweepAngle / 360) * circumference) * (1 - progressFraction);
+  const strokeDashoffset = (sweepAngle / 360) * circumference * (1 - progressFraction);
 
   const getGaugeColor = (val: number) => {
     if (val >= 85) return '#10b981'; // emerald-500

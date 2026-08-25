@@ -145,9 +145,7 @@ describe('InterviewService (Unit)', () => {
         createdAt: new Date(),
       });
 
-      prisma.evaluation.findMany = jest.fn().mockResolvedValue([
-        { id: 'eval-1', score: 9.0 },
-      ]);
+      prisma.evaluation.findMany = jest.fn().mockResolvedValue([{ id: 'eval-1', score: 9.0 }]);
 
       prisma.auditLog = { create: jest.fn().mockResolvedValue({}) };
 
@@ -163,9 +161,19 @@ describe('InterviewService (Unit)', () => {
 
   describe('createSession modes (Epic 6)', () => {
     it('creates a focused remediation session with custom turns', async () => {
-      prisma.jobRole.findUnique.mockResolvedValue({ id: 'role-1', isActive: true, name: 'Backend' });
-      prisma.seniorityLevel.findUnique.mockResolvedValue({ id: 'lvl-1', isActive: true, name: 'Senior' });
-      prisma.technology.findMany.mockResolvedValue([{ id: 'tech-1', isActive: true, name: 'Node.js' }]);
+      prisma.jobRole.findUnique.mockResolvedValue({
+        id: 'role-1',
+        isActive: true,
+        name: 'Backend',
+      });
+      prisma.seniorityLevel.findUnique.mockResolvedValue({
+        id: 'lvl-1',
+        isActive: true,
+        name: 'Senior',
+      });
+      prisma.technology.findMany.mockResolvedValue([
+        { id: 'tech-1', isActive: true, name: 'Node.js' },
+      ]);
 
       prisma.interviewSession.create.mockResolvedValue({
         id: 'session-rem-1',
@@ -179,13 +187,58 @@ describe('InterviewService (Unit)', () => {
         currentTurn: 1,
         totalTurns: 3,
         targetDifficulty: 1,
-        jobRole: { id: 'role-1', name: 'Backend', slug: 'backend', description: '', isActive: true },
-        seniorityLevel: { id: 'lvl-1', name: 'Senior', slug: 'senior', order: 1, description: '', isActive: true },
-        technologies: [{ id: 'tech-1', name: 'Node.js', slug: 'nodejs', category: 'Backend', isActive: true }],
+        jobRole: {
+          id: 'role-1',
+          name: 'Backend',
+          slug: 'backend',
+          description: '',
+          isActive: true,
+        },
+        seniorityLevel: {
+          id: 'lvl-1',
+          name: 'Senior',
+          slug: 'senior',
+          order: 1,
+          description: '',
+          isActive: true,
+        },
+        technologies: [
+          { id: 'tech-1', name: 'Node.js', slug: 'nodejs', category: 'Backend', isActive: true },
+        ],
         turns: [
-          { id: 'turn-1', sessionId: 'session-rem-1', turnNumber: 1, difficulty: 1, status: 'PENDING', isFollowUp: false, parentTurnNumber: null, createdAt: new Date(), updatedAt: new Date() },
-          { id: 'turn-2', sessionId: 'session-rem-1', turnNumber: 2, difficulty: 1, status: 'PENDING', isFollowUp: false, parentTurnNumber: null, createdAt: new Date(), updatedAt: new Date() },
-          { id: 'turn-3', sessionId: 'session-rem-1', turnNumber: 3, difficulty: 1, status: 'PENDING', isFollowUp: false, parentTurnNumber: null, createdAt: new Date(), updatedAt: new Date() },
+          {
+            id: 'turn-1',
+            sessionId: 'session-rem-1',
+            turnNumber: 1,
+            difficulty: 1,
+            status: 'PENDING',
+            isFollowUp: false,
+            parentTurnNumber: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: 'turn-2',
+            sessionId: 'session-rem-1',
+            turnNumber: 2,
+            difficulty: 1,
+            status: 'PENDING',
+            isFollowUp: false,
+            parentTurnNumber: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: 'turn-3',
+            sessionId: 'session-rem-1',
+            turnNumber: 3,
+            difficulty: 1,
+            status: 'PENDING',
+            isFollowUp: false,
+            parentTurnNumber: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         ],
         learningPath: null,
         createdAt: new Date(),
@@ -209,4 +262,3 @@ describe('InterviewService (Unit)', () => {
     });
   });
 });
-

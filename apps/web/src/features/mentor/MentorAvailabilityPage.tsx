@@ -2,15 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { MentorProfileDto, MentorAvailabilitySlotDto } from '@ai-interview/contracts';
-import {
-  Clock,
-  Plus,
-  Trash2,
-  Save,
-  Check,
-  AlertCircle,
-  UserCheck,
-} from 'lucide-react';
+import { Clock, Plus, Trash2, Save, Check, AlertCircle, UserCheck } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -48,8 +40,8 @@ export const MentorAvailabilityPage: React.FC = () => {
     mutationFn: async () => {
       const areas = expertise
         .split(',')
-        .map((s) => s.trim())
-        .filter((s) => s.length > 0);
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
 
       // Save profile
       await apiClient.post('/mentor/profile', {
@@ -72,20 +64,18 @@ export const MentorAvailabilityPage: React.FC = () => {
   });
 
   const handleAddSlot = () => {
-    setSlots((prev) => [
+    setSlots(prev => [
       ...prev,
       { dayOfWeek: 1, startTime: '09:00', endTime: '11:00', isActive: true },
     ]);
   };
 
   const handleRemoveSlot = (index: number) => {
-    setSlots((prev) => prev.filter((_, i) => i !== index));
+    setSlots(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSlotChange = (index: number, field: keyof MentorAvailabilitySlotDto, val: any) => {
-    setSlots((prev) =>
-      prev.map((slot, i) => (i === index ? { ...slot, [field]: val } : slot)),
-    );
+    setSlots(prev => prev.map((slot, i) => (i === index ? { ...slot, [field]: val } : slot)));
   };
 
   return (
@@ -93,7 +83,8 @@ export const MentorAvailabilityPage: React.FC = () => {
       <div className="border-b border-slate-200 pb-6">
         <h1 className="text-2xl font-bold text-slate-900">Mentor Profile & Weekly Availability</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Set up your mentor bio, target coaching domains, and recurring weekly time windows for candidate bookings.
+          Set up your mentor bio, target coaching domains, and recurring weekly time windows for
+          candidate bookings.
         </p>
       </div>
 
@@ -122,7 +113,7 @@ export const MentorAvailabilityPage: React.FC = () => {
           <Input
             type="text"
             value={expertise}
-            onChange={(e) => setExpertise(e.target.value)}
+            onChange={e => setExpertise(e.target.value)}
             placeholder="e.g. System Design, Distributed Systems, High Concurrency, Java Core"
             data-testid="mentor-expertise-input"
           />
@@ -135,7 +126,7 @@ export const MentorAvailabilityPage: React.FC = () => {
           <Textarea
             rows={3}
             value={bio}
-            onChange={(e) => setBio(e.target.value)}
+            onChange={e => setBio(e.target.value)}
             placeholder="Introduce your engineering experience, past companies, and how you mentor candidates..."
             data-testid="mentor-bio-input"
           />
@@ -152,7 +143,13 @@ export const MentorAvailabilityPage: React.FC = () => {
             <p className="text-xs text-slate-500 mt-0.5">Define your recurring weekly hours</p>
           </div>
 
-          <Button variant="outline" size="sm" onClick={handleAddSlot} className="gap-1.5" data-testid="add-slot-btn">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAddSlot}
+            className="gap-1.5"
+            data-testid="add-slot-btn"
+          >
             <Plus className="h-4 w-4" /> Add Slot
           </Button>
         </div>
@@ -171,7 +168,7 @@ export const MentorAvailabilityPage: React.FC = () => {
               >
                 <select
                   value={slot.dayOfWeek}
-                  onChange={(e) => handleSlotChange(index, 'dayOfWeek', parseInt(e.target.value, 10))}
+                  onChange={e => handleSlotChange(index, 'dayOfWeek', parseInt(e.target.value, 10))}
                   className="w-full sm:w-44 px-3 py-2 bg-white border border-slate-300 rounded-lg text-sm font-semibold"
                 >
                   {DAYS.map((d, i) => (
@@ -185,14 +182,14 @@ export const MentorAvailabilityPage: React.FC = () => {
                   <Input
                     type="time"
                     value={slot.startTime}
-                    onChange={(e) => handleSlotChange(index, 'startTime', e.target.value)}
+                    onChange={e => handleSlotChange(index, 'startTime', e.target.value)}
                     className="w-full sm:w-32 text-center"
                   />
                   <span className="text-slate-400 text-xs font-bold">to</span>
                   <Input
                     type="time"
                     value={slot.endTime}
-                    onChange={(e) => handleSlotChange(index, 'endTime', e.target.value)}
+                    onChange={e => handleSlotChange(index, 'endTime', e.target.value)}
                     className="w-full sm:w-32 text-center"
                   />
                 </div>
@@ -202,7 +199,7 @@ export const MentorAvailabilityPage: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={slot.isActive}
-                      onChange={(e) => handleSlotChange(index, 'isActive', e.target.checked)}
+                      onChange={e => handleSlotChange(index, 'isActive', e.target.checked)}
                       className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
                     />
                     Active
@@ -230,7 +227,8 @@ export const MentorAvailabilityPage: React.FC = () => {
             className="gap-2"
             data-testid="save-availability-btn"
           >
-            <Save className="h-4 w-4" /> {saveMutation.isPending ? 'Saving...' : 'Save All Settings'}
+            <Save className="h-4 w-4" />{' '}
+            {saveMutation.isPending ? 'Saving...' : 'Save All Settings'}
           </Button>
         </div>
       </div>

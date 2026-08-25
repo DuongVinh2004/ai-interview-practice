@@ -16,7 +16,8 @@ export class SignatureService {
     score: number,
     issuedAt: string | Date,
   ): string {
-    const issuedIso = issuedAt instanceof Date ? issuedAt.toISOString() : new Date(issuedAt).toISOString();
+    const issuedIso =
+      issuedAt instanceof Date ? issuedAt.toISOString() : new Date(issuedAt).toISOString();
     const payload = `${certId}:${userId}:${competency}:${score.toFixed(1)}:${issuedIso}`;
     return crypto.createHmac('sha256', this.secret).update(payload).digest('hex');
   }
@@ -31,7 +32,10 @@ export class SignatureService {
   ): boolean {
     const expected = this.generateSignature(certId, userId, competency, score, issuedAt);
     try {
-      return crypto.timingSafeEqual(Buffer.from(expected, 'hex'), Buffer.from(signatureHash, 'hex'));
+      return crypto.timingSafeEqual(
+        Buffer.from(expected, 'hex'),
+        Buffer.from(signatureHash, 'hex'),
+      );
     } catch {
       return false;
     }

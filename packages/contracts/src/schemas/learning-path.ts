@@ -33,4 +33,3 @@ export const LearningPathDtoSchema = z.object({
 });
 
 export type LearningPathDto = z.infer<typeof LearningPathDtoSchema>;
-

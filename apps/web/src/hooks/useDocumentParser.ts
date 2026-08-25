@@ -20,7 +20,7 @@ export function useDocumentParser() {
         const res = await apiClient.post<{ document: any; parsedProfile: ParsedProfileDto }>(
           '/documents/parse-cv',
           formData,
-          { headers: { 'Content-Type': 'multipart/form-data' } }
+          { headers: { 'Content-Type': 'multipart/form-data' } },
         );
         return res.data;
       } else {
@@ -31,7 +31,7 @@ export function useDocumentParser() {
         };
         const res = await apiClient.post<{ document: any; parsedProfile: ParsedProfileDto }>(
           '/documents/parse-cv',
-          payload
+          payload,
         );
         return res.data;
       }
@@ -50,7 +50,10 @@ export function useDocumentParser() {
 
   const generateBlueprintMutation = useMutation({
     mutationFn: async (payload: GenerateBlueprintRequest) => {
-      const res = await apiClient.post<InterviewBlueprintDto>('/documents/generate-blueprint', payload);
+      const res = await apiClient.post<InterviewBlueprintDto>(
+        '/documents/generate-blueprint',
+        payload,
+      );
       return res.data;
     },
     onSuccess: () => {

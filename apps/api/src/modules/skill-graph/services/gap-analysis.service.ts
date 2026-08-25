@@ -12,7 +12,7 @@ export class GapAnalysisService {
   async analyzeGaps(
     userId: string,
     roleTitle: string = 'Senior Backend Engineer',
-    seniorityLevel: string = 'Senior'
+    seniorityLevel: string = 'Senior',
   ): Promise<GapAnalysisResponseDto> {
     const graph = await this.skillAggregationService.getCandidateSkillGraph(userId);
     const targetScore = seniorityLevel.toLowerCase().includes('senior') ? 8.0 : 7.0;

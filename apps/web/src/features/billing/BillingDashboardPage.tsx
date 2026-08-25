@@ -61,7 +61,9 @@ export function BillingDashboardPage() {
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Spinner size="lg" />
         <p className="text-sm text-slate-500">
-          {language === 'vi' ? 'Đang tải thông tin gói & thanh toán...' : 'Loading your billing details...'}
+          {language === 'vi'
+            ? 'Đang tải thông tin gói & thanh toán...'
+            : 'Loading your billing details...'}
         </p>
       </div>
     );
@@ -205,8 +207,8 @@ export function BillingDashboardPage() {
                   sessionsPercent >= 90
                     ? 'bg-rose-500'
                     : sessionsPercent >= 70
-                    ? 'bg-amber-500'
-                    : 'bg-emerald-500'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
                 }`}
                 style={{ width: `${sessionsPercent}%` }}
               />
@@ -235,8 +237,8 @@ export function BillingDashboardPage() {
                   voicePercent >= 90
                     ? 'bg-rose-500'
                     : voicePercent >= 70
-                    ? 'bg-amber-500'
-                    : 'bg-indigo-500'
+                      ? 'bg-amber-500'
+                      : 'bg-indigo-500'
                 }`}
                 style={{ width: `${voicePercent}%` }}
               />

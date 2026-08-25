@@ -12,14 +12,14 @@
 
 ## 2. Multi-Role Sign-Off Matrix (Go / No-Go Decision Gate)
 
-| Discipline | Lead / Owner | Gate Criteria | Sign-Off Verdict |
-|---|---|---|---|
-| **Security & Privacy** | Security Lead | SAST/SCA/Secret scans green; Pen test findings resolved; DPIA & GDPR/PDPA notices complete. | **GO ✅** |
-| **Platform & IaC** | Staff SRE | Modular Terraform validated; ECS Fargate & Multi-AZ RDS tested; zero drift detected. | **GO ✅** |
-| **AI Quality & Safety** | AI Platform Lead | Golden eval benchmarks pass quality threshold; prompt injection filter active; circuit breaker verified. | **GO ✅** |
-| **Data & DR** | Data Platform Lead | Encrypted PITR backups automated; quarterly restore drill RTO/RPO objectives met (RTO < 60m, RPO < 15m). | **GO ✅** |
-| **Product & UX** | Product Lead | Bilingual VI/EN localization complete; WCAG accessibility verified; core candidate flows validated. | **GO ✅** |
-| **Release Management** | Release Engineer | Automated CI/CD pipeline green; Canary rollout plan and rollback triggers established. | **GO ✅** |
+| Discipline              | Lead / Owner       | Gate Criteria                                                                                            | Sign-Off Verdict |
+| ----------------------- | ------------------ | -------------------------------------------------------------------------------------------------------- | ---------------- |
+| **Security & Privacy**  | Security Lead      | SAST/SCA/Secret scans green; Pen test findings resolved; DPIA & GDPR/PDPA notices complete.              | **GO ✅**        |
+| **Platform & IaC**      | Staff SRE          | Modular Terraform validated; ECS Fargate & Multi-AZ RDS tested; zero drift detected.                     | **GO ✅**        |
+| **AI Quality & Safety** | AI Platform Lead   | Golden eval benchmarks pass quality threshold; prompt injection filter active; circuit breaker verified. | **GO ✅**        |
+| **Data & DR**           | Data Platform Lead | Encrypted PITR backups automated; quarterly restore drill RTO/RPO objectives met (RTO < 60m, RPO < 15m). | **GO ✅**        |
+| **Product & UX**        | Product Lead       | Bilingual VI/EN localization complete; WCAG accessibility verified; core candidate flows validated.      | **GO ✅**        |
+| **Release Management**  | Release Engineer   | Automated CI/CD pipeline green; Canary rollout plan and rollback triggers established.                   | **GO ✅**        |
 
 ---
 
@@ -33,6 +33,7 @@ flowchart LR
 ```
 
 ### Stage Milestones
+
 1. **Phase 1 (5% Traffic / Internal Beta)**:
    - Route 5% of web/API traffic via ALB weighted target groups.
    - Monitor error rates, p95 latency, and BullMQ queue lag for 48 hours.
@@ -48,13 +49,16 @@ flowchart LR
 ## 4. Automated Rollback Triggers & Fast Rollback Runbook
 
 ### Automatic Rollback Conditions
+
 If any of the following conditions occur for > 3 minutes during Canary:
+
 - **HTTP 5xx Error Rate** > **1.0%**
 - **Core Read p95 Latency** > **800ms**
 - **Answer Submission Persistence Failure** > **0.0%**
 - **Evaluation Pipeline Error Rate** > **2.0%**
 
 ### Fast Rollback Procedure (< 5 minutes)
+
 1. **ALB Traffic Shift**: Re-point Application Load Balancer target group to previous stable task definition (`100%` rollback).
 2. **Worker Draining**: BullMQ workers continue draining existing jobs; new incoming jobs halt gracefully.
 3. **Database Safeguard**: Migrations are strictly backward-compatible (additive only); zero rollback migrations required on data tier.

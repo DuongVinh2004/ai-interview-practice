@@ -7,11 +7,18 @@ export class MockVisionProvider implements MultimodalProvider {
   private readonly logger = new Logger(MockVisionProvider.name);
 
   async analyzeCanvasDiagram(options: MultimodalAnalysisOptions): Promise<VisionAnalysisResultDto> {
-    this.logger.log(`MockVisionProvider analyzing canvas snapshot (Length: ${options.imageUrl?.length || 0})`);
+    this.logger.log(
+      `MockVisionProvider analyzing canvas snapshot (Length: ${options.imageUrl?.length || 0})`,
+    );
 
     // Detect components from canvas state if present, else standard detected architecture
     const stateElements = options.canvasStateJson?.elements || [];
-    const detected: string[] = ['Load Balancer', 'API Gateway', 'Microservices', 'Distributed Cache'];
+    const detected: string[] = [
+      'Load Balancer',
+      'API Gateway',
+      'Microservices',
+      'Distributed Cache',
+    ];
 
     if (stateElements.length > 0) {
       for (const el of stateElements) {

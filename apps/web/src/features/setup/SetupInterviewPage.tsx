@@ -32,7 +32,6 @@ import { GapAnalysisPreview } from '../../components/setup/GapAnalysisPreview';
 import { useDocumentParser } from '../../hooks/useDocumentParser';
 import { InterviewBlueprintDto } from '@ai-interview/contracts';
 
-
 const COMPETENCY_OPTIONS = [
   { area: CompetencyArea.SYSTEM_DESIGN, label: 'System Design & Scalability' },
   { area: CompetencyArea.LANGUAGE_CORE, label: 'Core Language & Fundamentals' },
@@ -170,7 +169,8 @@ export function SetupInterviewPage() {
   const handleStartBlueprintInterview = async (blueprintId: string) => {
     const roleId = selectedRole || (roles.length > 0 ? roles[0].id : '');
     const levelId = selectedLevel || (levels.length > 0 ? levels[0].id : '');
-    const techIds = selectedTechs.length > 0 ? selectedTechs : (technologies.slice(0, 2).map(t => t.id));
+    const techIds =
+      selectedTechs.length > 0 ? selectedTechs : technologies.slice(0, 2).map(t => t.id);
 
     setIsSubmitting(true);
     setErrorMessage(null);
@@ -309,7 +309,6 @@ export function SetupInterviewPage() {
           )}
         </div>
       )}
-
 
       {/* Mode Switcher */}
       <Card className="border-slate-200 shadow-sm">

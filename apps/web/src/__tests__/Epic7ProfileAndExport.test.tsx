@@ -210,7 +210,9 @@ describe('Epic 7 Profile, Benchmark & Export Features', () => {
 
     await waitFor(() => {
       expect(screen.getByPlaceholderText(/Search by role|Tìm theo vị trí/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Focused Remediation|Luyện tập Trọng tâm/i).length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText(/Focused Remediation|Luyện tập Trọng tâm/i).length,
+      ).toBeGreaterThan(0);
       expect(screen.getAllByText(/Sandbox|Thao trường/i).length).toBeGreaterThan(0);
       expect(screen.getByText('8.5/10')).toBeInTheDocument();
       expect(screen.getByText('9.0/10')).toBeInTheDocument();

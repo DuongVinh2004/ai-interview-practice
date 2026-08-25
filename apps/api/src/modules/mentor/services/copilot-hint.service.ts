@@ -29,7 +29,9 @@ export class CopilotHintService {
 
       if (liveSession) {
         if (liveSession.mentor.userId !== userId) {
-          throw new ForbiddenException('Only the designated mentor can view co-pilot probing hints');
+          throw new ForbiddenException(
+            'Only the designated mentor can view co-pilot probing hints',
+          );
         }
       } else {
         const mentorProfile = await this.prisma.mentorProfile.findUnique({
@@ -58,7 +60,8 @@ export class CopilotHintService {
         topic: activeTopic,
         questionText: `Could you walk me through how your design handles a sudden 10x traffic surge? Specifically, where are the bottlenecks in write throughput?`,
         difficulty: 'HARD',
-        intentDescription: 'Tests candidate understanding of write amplification, message queue buffering, and database sharding.',
+        intentDescription:
+          'Tests candidate understanding of write amplification, message queue buffering, and database sharding.',
         expectedKeySignals: [
           'Mention of asynchronous ingestion (Kafka/RabbitMQ)',
           'Rate limiting / token bucket algorithm',
@@ -71,7 +74,8 @@ export class CopilotHintService {
         topic: activeTopic,
         questionText: `What isolation level would you configure for this transaction, and how would you prevent phantom reads or double booking?`,
         difficulty: 'MEDIUM',
-        intentDescription: 'Evaluates ACID trade-offs, pessimistic vs optimistic locking, and distributed transaction pitfalls.',
+        intentDescription:
+          'Evaluates ACID trade-offs, pessimistic vs optimistic locking, and distributed transaction pitfalls.',
         expectedKeySignals: [
           'SERIALIZABLE or REPEATABLE READ isolation',
           'Optimistic locking with version column / condition check',
@@ -84,7 +88,8 @@ export class CopilotHintService {
         topic: activeTopic,
         questionText: `If the downstream third-party payment gateway starts timing out at 50% rate, how does your service degrade gracefully without cascading failures?`,
         difficulty: 'MEDIUM',
-        intentDescription: 'Probes circuit breaker mechanics, fallbacks, and bulkhead thread pools.',
+        intentDescription:
+          'Probes circuit breaker mechanics, fallbacks, and bulkhead thread pools.',
         expectedKeySignals: [
           'Circuit Breaker pattern with half-open recovery state',
           'Expedited fallbacks & user queuing',
@@ -97,7 +102,8 @@ export class CopilotHintService {
         topic: activeTopic,
         questionText: `How would you evolve this architecture from a monolith to event-driven microservices without experiencing data consistency issues across domain boundaries?`,
         difficulty: 'HARD',
-        intentDescription: 'Assesses domain-driven design, Outbox pattern, and eventual consistency strategies.',
+        intentDescription:
+          'Assesses domain-driven design, Outbox pattern, and eventual consistency strategies.',
         expectedKeySignals: [
           'Transactional Outbox pattern with Debezium/CDC',
           'Saga pattern (choreographed vs orchestrated)',

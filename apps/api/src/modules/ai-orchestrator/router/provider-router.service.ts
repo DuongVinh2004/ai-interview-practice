@@ -84,7 +84,9 @@ export class ProviderRouterService {
 
     if (configuredProvider === 'mock') {
       if (isProduction && process.env.AI_ALLOW_MOCK !== 'true') {
-        this.logger.error('AI_PROVIDER=mock configured in production environment without explicit override!');
+        this.logger.error(
+          'AI_PROVIDER=mock configured in production environment without explicit override!',
+        );
         throw new Error('Mock AI provider cannot be primary provider in production');
       }
       return ['mock'];
@@ -237,11 +239,7 @@ export class ProviderRouterService {
         }
 
         // If provider is mock (either primary or fallback), always mark needsReview and record metric
-        if (
-          providerName === 'mock' &&
-          result.data &&
-          typeof result.data === 'object'
-        ) {
+        if (providerName === 'mock' && result.data && typeof result.data === 'object') {
           const dataObj = result.data as any;
           if ('needsReview' in dataObj) {
             dataObj.needsReview = true;
@@ -266,7 +264,10 @@ export class ProviderRouterService {
 
         if (!this.circuitBreaker.canExecute(providerName, operation)) {
           this.metricsService?.aiCircuitBreakerState.set({ provider: providerName, operation }, 2);
-          this.metricsService?.aiCircuitBreakerTripsTotal.inc({ provider: providerName, operation });
+          this.metricsService?.aiCircuitBreakerTripsTotal.inc({
+            provider: providerName,
+            operation,
+          });
         }
 
         this.logger.error(
@@ -322,7 +323,7 @@ export class ProviderRouterService {
     userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedQuestionAi>> {
     const cacheKey = `question:${context.role}:${context.level}:${context.technologies?.join(',')}:${context.turnNumber}:${context.difficulty}:${userPrompt || ''}`;
-    
+
     if (this.semanticCacheService?.isCacheEnabled()) {
       const cached = await this.semanticCacheService.get<GeneratedQuestionAi>(cacheKey, undefined, {
         namespace: 'questions',
@@ -406,9 +407,13 @@ export class ProviderRouterService {
     const cacheKey = `learning-path:${context.role}:${context.level}:${context.turns?.map(t => `${t.turnNumber}:${t.score}`).join(',')}`;
 
     if (this.semanticCacheService?.isCacheEnabled()) {
-      const cached = await this.semanticCacheService.get<GeneratedLearningPathAi>(cacheKey, undefined, {
-        namespace: 'learning_paths',
-      });
+      const cached = await this.semanticCacheService.get<GeneratedLearningPathAi>(
+        cacheKey,
+        undefined,
+        {
+          namespace: 'learning_paths',
+        },
+      );
       if (cached.hit && cached.data) {
         return {
           data: cached.data,

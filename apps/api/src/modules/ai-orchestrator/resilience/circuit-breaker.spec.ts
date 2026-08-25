@@ -24,12 +24,16 @@ describe('CircuitBreaker Resilience Spec', () => {
     const failingFn = jest.fn().mockRejectedValue(new Error('API 500'));
 
     for (let i = 0; i < 2; i++) {
-      await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow('API 500');
+      await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
+        'API 500',
+      );
       expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.CLOSED);
     }
 
     // 3rd failure trips threshold
-    await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow('API 500');
+    await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
+      'API 500',
+    );
     expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.OPEN);
     expect(circuitBreaker.canExecute('test-provider', 'eval')).toBe(false);
 
@@ -53,7 +57,11 @@ describe('CircuitBreaker Resilience Spec', () => {
     expect(circuitBreaker.canExecute('test-provider', 'eval')).toBe(true);
 
     // Probe success
-    const probeResult = await circuitBreaker.execute('test-provider', 'eval', async () => 'probe-ok');
+    const probeResult = await circuitBreaker.execute(
+      'test-provider',
+      'eval',
+      async () => 'probe-ok',
+    );
     expect(probeResult).toBe('probe-ok');
     expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.CLOSED);
   });
@@ -68,7 +76,9 @@ describe('CircuitBreaker Resilience Spec', () => {
     expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.HALF_OPEN);
 
     // Probe failure
-    await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow('API 500');
+    await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
+      'API 500',
+    );
     expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.OPEN);
   });
 });

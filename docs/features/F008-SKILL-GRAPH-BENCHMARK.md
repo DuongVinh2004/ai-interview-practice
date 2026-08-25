@@ -24,13 +24,13 @@ Skill Graph & Candidate Benchmark xây dựng một **đồ thị năng lực đ
 
 ### 1.3. Giá trị mang lại (Value Proposition)
 
-| Giá trị | Mô tả |
-|---|---|
-| **Tự nhận thức** | Ứng viên hiểu rõ điểm mạnh/yếu trên bản đồ năng lực toàn diện |
-| **Động lực luyện tập** | So sánh percentile tạo mục tiêu cụ thể: "Đạt top 20% System Design" |
-| **Quyết định dựa trên dữ liệu** | Gap analysis giúp chọn đúng kỹ năng cần ưu tiên cải thiện |
-| **Đo lường hiệu quả** | Biểu đồ trend cho thấy tốc độ tiến bộ sau mỗi tuần luyện tập |
-| **B2B Analytics** | Cơ sở dữ liệu benchmark phục vụ tính năng B2B cohort analytics (F011) |
+| Giá trị                         | Mô tả                                                                 |
+| ------------------------------- | --------------------------------------------------------------------- |
+| **Tự nhận thức**                | Ứng viên hiểu rõ điểm mạnh/yếu trên bản đồ năng lực toàn diện         |
+| **Động lực luyện tập**          | So sánh percentile tạo mục tiêu cụ thể: "Đạt top 20% System Design"   |
+| **Quyết định dựa trên dữ liệu** | Gap analysis giúp chọn đúng kỹ năng cần ưu tiên cải thiện             |
+| **Đo lường hiệu quả**           | Biểu đồ trend cho thấy tốc độ tiến bộ sau mỗi tuần luyện tập          |
+| **B2B Analytics**               | Cơ sở dữ liệu benchmark phục vụ tính năng B2B cohort analytics (F011) |
 
 ### 1.4. Personas thụ hưởng
 
@@ -44,42 +44,43 @@ Skill Graph & Candidate Benchmark xây dựng một **đồ thị năng lực đ
 
 ### 2.1. Skill Taxonomy Tree
 
-| ID | Yêu cầu | Độ ưu tiên |
-|---|---|---|
-| `FR-SKG-001` | Định nghĩa cây phân cấp kỹ năng 3 cấp: **CompetencyArea → SubCompetency → Topic** | MUST |
-| `FR-SKG-002` | Mỗi `CompetencyArea` tương ứng với enum hiện có: `SYSTEM_DESIGN`, `LANGUAGE_CORE`, `DATABASE_CONCURRENCY`, `ARCHITECTURE_PATTERNS`, `RESILIENCE_SECURITY` | MUST |
-| `FR-SKG-003` | Mỗi `SubCompetency` có weight mặc định và có thể cấu hình bởi Admin | SHOULD |
-| `FR-SKG-004` | Admin có thể thêm/sửa/deactivate topic trong cây mà không ảnh hưởng dữ liệu lịch sử | MUST |
+| ID           | Yêu cầu                                                                                                                                                   | Độ ưu tiên |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| `FR-SKG-001` | Định nghĩa cây phân cấp kỹ năng 3 cấp: **CompetencyArea → SubCompetency → Topic**                                                                         | MUST       |
+| `FR-SKG-002` | Mỗi `CompetencyArea` tương ứng với enum hiện có: `SYSTEM_DESIGN`, `LANGUAGE_CORE`, `DATABASE_CONCURRENCY`, `ARCHITECTURE_PATTERNS`, `RESILIENCE_SECURITY` | MUST       |
+| `FR-SKG-003` | Mỗi `SubCompetency` có weight mặc định và có thể cấu hình bởi Admin                                                                                       | SHOULD     |
+| `FR-SKG-004` | Admin có thể thêm/sửa/deactivate topic trong cây mà không ảnh hưởng dữ liệu lịch sử                                                                       | MUST       |
 
 ### 2.2. Score Aggregation
 
-| ID | Yêu cầu | Độ ưu tiên |
-|---|---|---|
-| `FR-SKG-005` | Tổng hợp điểm trung bình có trọng số (weighted average) theo cây skill từ evaluation rubric scores | MUST |
-| `FR-SKG-006` | Chỉ tổng hợp evaluation có cùng rubric version hoặc đã được normalize | MUST |
-| `FR-SKG-007` | Yêu cầu **tối thiểu 3 evaluations** trên một skill node trước khi hiển thị percentile (minimum evidence threshold) | MUST |
-| `FR-SKG-008` | Áp dụng **exponential decay** cho điểm cũ: điểm gần đây có trọng số cao hơn | SHOULD |
-| `FR-SKG-009` | Recalculation chạy batch mỗi đêm (00:00 UTC) và on-demand khi user xem | MUST |
+| ID           | Yêu cầu                                                                                                            | Độ ưu tiên |
+| ------------ | ------------------------------------------------------------------------------------------------------------------ | ---------- |
+| `FR-SKG-005` | Tổng hợp điểm trung bình có trọng số (weighted average) theo cây skill từ evaluation rubric scores                 | MUST       |
+| `FR-SKG-006` | Chỉ tổng hợp evaluation có cùng rubric version hoặc đã được normalize                                              | MUST       |
+| `FR-SKG-007` | Yêu cầu **tối thiểu 3 evaluations** trên một skill node trước khi hiển thị percentile (minimum evidence threshold) | MUST       |
+| `FR-SKG-008` | Áp dụng **exponential decay** cho điểm cũ: điểm gần đây có trọng số cao hơn                                        | SHOULD     |
+| `FR-SKG-009` | Recalculation chạy batch mỗi đêm (00:00 UTC) và on-demand khi user xem                                             | MUST       |
 
 **Công thức Exponential Decay Score:**
 
 $$S_{\text{weighted}} = \frac{\sum_{i=1}^{n} s_i \cdot e^{-\lambda \cdot \Delta t_i}}{\sum_{i=1}^{n} e^{-\lambda \cdot \Delta t_i}}$$
 
 Trong đó:
+
 - $s_i$ = điểm evaluation thứ $i$
 - $\Delta t_i$ = số ngày từ evaluation $i$ đến hiện tại
 - $\lambda$ = decay rate (mặc định `0.01`, cấu hình qua `SKILL_DECAY_RATE`)
 
 ### 2.3. Percentile Calculation Engine
 
-| ID | Yêu cầu | Độ ưu tiên |
-|---|---|---|
-| `FR-SKG-010` | Tính percentile ranking cho mỗi skill node theo **cùng role + level** | MUST |
-| `FR-SKG-011` | Tính percentile tổng (overall) không phân biệt role/level | SHOULD |
-| `FR-SKG-012` | Sử dụng **approximate percentile** (t-digest hoặc percentile_cont) trên PostgreSQL | MUST |
-| `FR-SKG-013` | Cache percentile kết quả vào materialized view, refresh mỗi 6 giờ | MUST |
-| `FR-SKG-014` | Không hiển thị percentile khi tổng số user trong cohort < 30 (statistical significance) | MUST |
-| `FR-SKG-015` | Anonymize: không bao giờ tiết lộ danh tính user khác trong dữ liệu benchmark | MUST |
+| ID           | Yêu cầu                                                                                 | Độ ưu tiên |
+| ------------ | --------------------------------------------------------------------------------------- | ---------- |
+| `FR-SKG-010` | Tính percentile ranking cho mỗi skill node theo **cùng role + level**                   | MUST       |
+| `FR-SKG-011` | Tính percentile tổng (overall) không phân biệt role/level                               | SHOULD     |
+| `FR-SKG-012` | Sử dụng **approximate percentile** (t-digest hoặc percentile_cont) trên PostgreSQL      | MUST       |
+| `FR-SKG-013` | Cache percentile kết quả vào materialized view, refresh mỗi 6 giờ                       | MUST       |
+| `FR-SKG-014` | Không hiển thị percentile khi tổng số user trong cohort < 30 (statistical significance) | MUST       |
+| `FR-SKG-015` | Anonymize: không bao giờ tiết lộ danh tính user khác trong dữ liệu benchmark            | MUST       |
 
 **Công thức Percentile:**
 
@@ -89,44 +90,44 @@ Trong đó $S$ là tập điểm của tất cả user trong cùng cohort (role 
 
 ### 2.4. Visualization
 
-| ID | Yêu cầu | Độ ưu tiên |
-|---|---|---|
-| `FR-SKG-016` | **Radar Chart** (Spider Chart) hiển thị 5 trục competency area với nhãn và giá trị | MUST |
-| `FR-SKG-017` | Overlay radar: so sánh profile hiện tại vs target role requirement | SHOULD |
-| `FR-SKG-018` | **Time-series Line Chart**: xu hướng điểm theo tuần/tháng cho mỗi competency | MUST |
-| `FR-SKG-019` | **Heatmap Calendar**: ngày luyện tập và cường độ (số session) theo kiểu GitHub contribution graph | SHOULD |
-| `FR-SKG-020` | Mọi chart phải có text/table alternative cho accessibility (WCAG 2.2 AA) | MUST |
+| ID           | Yêu cầu                                                                                           | Độ ưu tiên |
+| ------------ | ------------------------------------------------------------------------------------------------- | ---------- |
+| `FR-SKG-016` | **Radar Chart** (Spider Chart) hiển thị 5 trục competency area với nhãn và giá trị                | MUST       |
+| `FR-SKG-017` | Overlay radar: so sánh profile hiện tại vs target role requirement                                | SHOULD     |
+| `FR-SKG-018` | **Time-series Line Chart**: xu hướng điểm theo tuần/tháng cho mỗi competency                      | MUST       |
+| `FR-SKG-019` | **Heatmap Calendar**: ngày luyện tập và cường độ (số session) theo kiểu GitHub contribution graph | SHOULD     |
+| `FR-SKG-020` | Mọi chart phải có text/table alternative cho accessibility (WCAG 2.2 AA)                          | MUST       |
 
 ### 2.5. Gap Analysis & Recommendations
 
-| ID | Yêu cầu | Độ ưu tiên |
-|---|---|---|
-| `FR-SKG-021` | So sánh skill profile hiện tại với yêu cầu tối thiểu của target role | MUST |
-| `FR-SKG-022` | Hiển thị top 3 kỹ năng cần cải thiện nhiều nhất (largest gap) | MUST |
-| `FR-SKG-023` | Link đến Focused Remediation mode (hiện có) cho mỗi gap | SHOULD |
-| `FR-SKG-024` | Weekly/monthly progress email digest (opt-in) | COULD |
+| ID           | Yêu cầu                                                              | Độ ưu tiên |
+| ------------ | -------------------------------------------------------------------- | ---------- |
+| `FR-SKG-021` | So sánh skill profile hiện tại với yêu cầu tối thiểu của target role | MUST       |
+| `FR-SKG-022` | Hiển thị top 3 kỹ năng cần cải thiện nhiều nhất (largest gap)        | MUST       |
+| `FR-SKG-023` | Link đến Focused Remediation mode (hiện có) cho mỗi gap              | SHOULD     |
+| `FR-SKG-024` | Weekly/monthly progress email digest (opt-in)                        | COULD      |
 
 ### 2.6. Export & Reporting
 
-| ID | Yêu cầu | Độ ưu tiên |
-|---|---|---|
-| `FR-SKG-025` | Xuất skill report dạng PDF bao gồm radar chart, percentile, gap analysis | SHOULD |
-| `FR-SKG-026` | Export dữ liệu skill graph dạng JSON (GDPR compliance) | MUST |
+| ID           | Yêu cầu                                                                  | Độ ưu tiên |
+| ------------ | ------------------------------------------------------------------------ | ---------- |
+| `FR-SKG-025` | Xuất skill report dạng PDF bao gồm radar chart, percentile, gap analysis | SHOULD     |
+| `FR-SKG-026` | Export dữ liệu skill graph dạng JSON (GDPR compliance)                   | MUST       |
 
 ---
 
 ## 3. Yêu cầu phi chức năng (Non-Functional Requirements)
 
-| ID | Yêu cầu | Target |
-|---|---|---|
-| `NFR-SKG-001` | Thời gian load trang Skill Graph (bao gồm radar + percentile) | p95 < 500ms |
-| `NFR-SKG-002` | Percentile batch recalculation cho 10.000 MAU | < 5 phút |
-| `NFR-SKG-003` | On-demand recalculation cho một user | < 2 giây |
-| `NFR-SKG-004` | Materialized view refresh (incremental) | < 30 giây |
-| `NFR-SKG-005` | Privacy: tất cả benchmark data phải anonymized, aggregated | 100% |
-| `NFR-SKG-006` | Statistical significance: không hiển thị percentile nếu cohort < 30 users | Enforced |
-| `NFR-SKG-007` | Chart rendering performance (client-side) | < 100ms |
-| `NFR-SKG-008` | Accessibility: mọi visualization có screen reader alternative | WCAG 2.2 AA |
+| ID            | Yêu cầu                                                                   | Target      |
+| ------------- | ------------------------------------------------------------------------- | ----------- |
+| `NFR-SKG-001` | Thời gian load trang Skill Graph (bao gồm radar + percentile)             | p95 < 500ms |
+| `NFR-SKG-002` | Percentile batch recalculation cho 10.000 MAU                             | < 5 phút    |
+| `NFR-SKG-003` | On-demand recalculation cho một user                                      | < 2 giây    |
+| `NFR-SKG-004` | Materialized view refresh (incremental)                                   | < 30 giây   |
+| `NFR-SKG-005` | Privacy: tất cả benchmark data phải anonymized, aggregated                | 100%        |
+| `NFR-SKG-006` | Statistical significance: không hiển thị percentile nếu cohort < 30 users | Enforced    |
+| `NFR-SKG-007` | Chart rendering performance (client-side)                                 | < 100ms     |
+| `NFR-SKG-008` | Accessibility: mọi visualization có screen reader alternative             | WCAG 2.2 AA |
 
 ---
 
@@ -350,6 +351,7 @@ ON mv_skill_percentiles (skill_node_id, job_role_slug, seniority_slug);
 Trả về skill graph đầy đủ cho user hiện tại.
 
 **Response 200:**
+
 ```json
 {
   "data": {
@@ -395,10 +397,12 @@ Trả về skill graph đầy đủ cho user hiện tại.
 #### `GET /api/v1/profile/skills/benchmark`
 
 **Query Parameters:**
+
 - `jobRole` (optional): Filter cohort by job role slug
 - `seniorityLevel` (optional): Filter cohort by seniority slug
 
 **Response 200:**
+
 ```json
 {
   "data": {
@@ -432,10 +436,12 @@ Trả về skill graph đầy đủ cho user hiện tại.
 #### `GET /api/v1/profile/skills/progress`
 
 **Query Parameters:**
+
 - `period`: `7d`, `30d`, `90d`, `180d`, `365d` (default: `30d`)
 - `competency` (optional): Filter by specific competency area
 
 **Response 200:**
+
 ```json
 {
   "data": {
@@ -464,6 +470,7 @@ Trả về skill graph đầy đủ cho user hiện tại.
 #### `GET /api/v1/profile/skills/gaps`
 
 **Response 200:**
+
 ```json
 {
   "data": {
@@ -492,6 +499,7 @@ Trả về skill graph đầy đủ cho user hiện tại.
 #### `GET /api/v1/admin/benchmarks/overview`
 
 **Response 200** (Admin only):
+
 ```json
 {
   "data": {
@@ -516,15 +524,15 @@ Trả về skill graph đầy đủ cho user hiện tại.
 
 ### 7.1. Pages & Components
 
-| Component | Mô tả | Vị trí |
-|---|---|---|
-| `SkillGraphPage` | Trang chính hiển thị toàn bộ skill graph | `features/skills/SkillGraphPage.tsx` |
-| `CompetencyRadarOverlay` | Radar chart với overlay so sánh (user vs target) | `components/analytics/CompetencyRadarOverlay.tsx` |
-| `SkillTreeView` | Tree view expand/collapse hiển thị chi tiết skill nodes | `components/analytics/SkillTreeView.tsx` |
-| `ProgressTrendChart` | Line chart xu hướng theo thời gian (Recharts) | `components/analytics/ProgressTrendChart.tsx` (enhance) |
-| `HeatmapCalendar` | Calendar heatmap kiểu GitHub contribution | `components/analytics/HeatmapCalendar.tsx` |
-| `GapAnalysisCard` | Card hiển thị gap với action links | `components/analytics/GapAnalysisCard.tsx` |
-| `PercentileBadge` | Badge hiển thị "Top 15% Senior Backend" | `components/analytics/PercentileBadge.tsx` |
+| Component                | Mô tả                                                   | Vị trí                                                  |
+| ------------------------ | ------------------------------------------------------- | ------------------------------------------------------- |
+| `SkillGraphPage`         | Trang chính hiển thị toàn bộ skill graph                | `features/skills/SkillGraphPage.tsx`                    |
+| `CompetencyRadarOverlay` | Radar chart với overlay so sánh (user vs target)        | `components/analytics/CompetencyRadarOverlay.tsx`       |
+| `SkillTreeView`          | Tree view expand/collapse hiển thị chi tiết skill nodes | `components/analytics/SkillTreeView.tsx`                |
+| `ProgressTrendChart`     | Line chart xu hướng theo thời gian (Recharts)           | `components/analytics/ProgressTrendChart.tsx` (enhance) |
+| `HeatmapCalendar`        | Calendar heatmap kiểu GitHub contribution               | `components/analytics/HeatmapCalendar.tsx`              |
+| `GapAnalysisCard`        | Card hiển thị gap với action links                      | `components/analytics/GapAnalysisCard.tsx`              |
+| `PercentileBadge`        | Badge hiển thị "Top 15% Senior Backend"                 | `components/analytics/PercentileBadge.tsx`              |
 
 ### 7.2. State Management
 
@@ -551,27 +559,27 @@ interface SkillGraphState {
 
 ## 8. Xử lý Lỗi & Edge Cases
 
-| Tình huống | Xử lý |
-|---|---|
-| User chưa có đủ 3 evaluations trên một skill | Hiển thị "Chưa đủ dữ liệu" với badge, ẩn percentile |
-| Cohort < 30 users | Ẩn percentile, hiển thị "Chưa đủ dữ liệu cộng đồng" |
-| Rubric version thay đổi | Chỉ aggregate cùng version, cảnh báo nếu có mixed versions |
-| Materialized view đang refresh | Serve stale data từ cache, không block user |
-| Batch job thất bại | Retry 3 lần, alert Admin, serve cached data |
-| Lỗ hổng privacy: percentile leak | Không bao giờ trả về raw scores của user khác |
+| Tình huống                                   | Xử lý                                                      |
+| -------------------------------------------- | ---------------------------------------------------------- |
+| User chưa có đủ 3 evaluations trên một skill | Hiển thị "Chưa đủ dữ liệu" với badge, ẩn percentile        |
+| Cohort < 30 users                            | Ẩn percentile, hiển thị "Chưa đủ dữ liệu cộng đồng"        |
+| Rubric version thay đổi                      | Chỉ aggregate cùng version, cảnh báo nếu có mixed versions |
+| Materialized view đang refresh               | Serve stale data từ cache, không block user                |
+| Batch job thất bại                           | Retry 3 lần, alert Admin, serve cached data                |
+| Lỗ hổng privacy: percentile leak             | Không bao giờ trả về raw scores của user khác              |
 
 ---
 
 ## 9. Bảo mật & Quyền riêng tư
 
-| Yêu cầu | Giải pháp |
-|---|---|
-| **Anonymization** | Benchmark data chỉ chứa aggregated statistics, không bao giờ chứa userId |
-| **Access Control** | User chỉ xem skill graph của mình; Admin xem overview aggregated |
+| Yêu cầu               | Giải pháp                                                                     |
+| --------------------- | ----------------------------------------------------------------------------- |
+| **Anonymization**     | Benchmark data chỉ chứa aggregated statistics, không bao giờ chứa userId      |
+| **Access Control**    | User chỉ xem skill graph của mình; Admin xem overview aggregated              |
 | **Data Minimization** | Percentile tính từ aggregated view, không query raw evaluations của user khác |
-| **GDPR Export** | Skill scores nằm trong GDPR export (`/profile/export`) |
-| **Deletion** | Xóa user cascade xóa `skill_scores`; benchmark view tự điều chỉnh khi refresh |
-| **Audit** | Mọi batch recalculation ghi AuditLog |
+| **GDPR Export**       | Skill scores nằm trong GDPR export (`/profile/export`)                        |
+| **Deletion**          | Xóa user cascade xóa `skill_scores`; benchmark view tự điều chỉnh khi refresh |
+| **Audit**             | Mọi batch recalculation ghi AuditLog                                          |
 
 ---
 
@@ -605,16 +613,19 @@ interface SkillGraphState {
 ## 11. Kế hoạch Triển khai (Rollout Plan)
 
 ### Phase 1: Skill Score Aggregation (2 ngày)
+
 - Tạo database tables và migration.
 - Implement `SkillAggregationService`.
 - Backfill historical evaluations.
 
 ### Phase 2: Percentile Engine (2 ngày)
+
 - Tạo materialized views.
 - Implement `PercentileService`.
 - Setup batch cron job.
 
 ### Phase 3: API & Frontend (3 ngày)
+
 - Build REST endpoints.
 - Build frontend components (radar, trend, heatmap).
 - Integrate with existing ProfilePage.
@@ -622,6 +633,7 @@ interface SkillGraphState {
 ### Feature Flag: `FEATURE_SKILL_GRAPH` (default: `false`)
 
 ### Monitoring
+
 - Alert khi batch job > 10 phút.
 - Alert khi cache miss rate > 50%.
 - Dashboard: cohort size distribution, avg calculation time.
@@ -632,25 +644,25 @@ interface SkillGraphState {
 
 ### Development Effort
 
-| Task | Ước lượng |
-|---|---|
-| Database schema & migration | 1 ngày |
-| Skill aggregation service + batch job | 2 ngày |
-| Percentile engine + materialized views | 2 ngày |
-| REST API endpoints | 1 ngày |
-| Frontend: Radar overlay, trend chart, heatmap | 3 ngày |
-| Gap analysis component | 1 ngày |
-| Testing (unit, integration, perf) | 2 ngày |
-| **Tổng** | **12 ngày** |
+| Task                                          | Ước lượng   |
+| --------------------------------------------- | ----------- |
+| Database schema & migration                   | 1 ngày      |
+| Skill aggregation service + batch job         | 2 ngày      |
+| Percentile engine + materialized views        | 2 ngày      |
+| REST API endpoints                            | 1 ngày      |
+| Frontend: Radar overlay, trend chart, heatmap | 3 ngày      |
+| Gap analysis component                        | 1 ngày      |
+| Testing (unit, integration, perf)             | 2 ngày      |
+| **Tổng**                                      | **12 ngày** |
 
 ### Infrastructure Cost
 
-| Resource | Chi phí ước tính |
-|---|---|
-| PostgreSQL materialized view refresh | Negligible (existing DB) |
-| Redis cache for skill graphs | ~50MB additional |
-| BullMQ batch job (nightly) | < 1 min CPU |
-| **Tổng bổ sung** | **~\$0/tháng** (sử dụng hạ tầng hiện có) |
+| Resource                             | Chi phí ước tính                         |
+| ------------------------------------ | ---------------------------------------- |
+| PostgreSQL materialized view refresh | Negligible (existing DB)                 |
+| Redis cache for skill graphs         | ~50MB additional                         |
+| BullMQ batch job (nightly)           | < 1 min CPU                              |
+| **Tổng bổ sung**                     | **~\$0/tháng** (sử dụng hạ tầng hiện có) |
 
 ### Dependencies & Prerequisites
 

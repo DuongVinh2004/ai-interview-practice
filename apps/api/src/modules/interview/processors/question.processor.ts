@@ -124,7 +124,9 @@ export class QuestionProcessor extends WorkerHost {
 
         const terminal = sessionUpdateResult.count === 0;
         if (terminal) {
-          this.logger.warn(`Session ${sessionId} is terminal (CANCELLED/COMPLETED). State not changed to ACTIVE.`);
+          this.logger.warn(
+            `Session ${sessionId} is terminal (CANCELLED/COMPLETED). State not changed to ACTIVE.`,
+          );
         }
 
         return { question: q, isTerminal: terminal };

@@ -1,13 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -34,7 +25,7 @@ export class SkillGraphController {
     private readonly skillAggregationService: SkillAggregationService,
     private readonly percentileService: PercentileService,
     private readonly gapAnalysisService: GapAnalysisService,
-    private readonly prisma: PrismaService
+    private readonly prisma: PrismaService,
   ) {}
 
   @Get('profile/skills/graph')
@@ -47,12 +38,12 @@ export class SkillGraphController {
   @ApiOperation({ summary: 'Get candidate benchmark percentile ranking vs cohorts' })
   async getBenchmarkRanking(
     @CurrentUser('sub') userId: string,
-    @Query() query: BenchmarkFilterQueryDto
+    @Query() query: BenchmarkFilterQueryDto,
   ) {
     return this.percentileService.getCandidateBenchmarkRanking(
       userId,
       query.role || 'backend',
-      query.level || 'senior'
+      query.level || 'senior',
     );
   }
 
@@ -60,7 +51,7 @@ export class SkillGraphController {
   @ApiOperation({ summary: 'Get candidate time-series skill progress trends' })
   async getProgressTrends(
     @CurrentUser('sub') userId: string,
-    @Query() query: ProgressTrendQueryDto
+    @Query() query: ProgressTrendQueryDto,
   ) {
     const period = query.period || '30d';
     const graph = await this.skillAggregationService.getCandidateSkillGraph(userId);
@@ -74,7 +65,9 @@ export class SkillGraphController {
     for (let i = pointsCount - 1; i >= 0; i--) {
       const date = new Date(Date.now() - i * daysInterval * 24 * 60 * 60 * 1000);
       const randomVariance = (pointsCount - 1 - i) * 0.15;
-      const pointScore = Number(Math.max(0, Math.min(10, overall - randomVariance + Math.sin(i) * 0.1)).toFixed(2));
+      const pointScore = Number(
+        Math.max(0, Math.min(10, overall - randomVariance + Math.sin(i) * 0.1)).toFixed(2),
+      );
 
       trends.push({
         date: date.toISOString().split('T')[0],

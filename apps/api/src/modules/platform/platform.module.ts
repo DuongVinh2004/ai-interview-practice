@@ -8,7 +8,14 @@ import { MetricsModule } from './metrics/metrics.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { IdempotencyService } from './guards/idempotency.service';
 import { validateEnv } from './config/env.validation';
-import { appConfig, dbConfig, redisConfig, jwtConfig, aiConfig, featuresConfig } from './config/configuration';
+import {
+  appConfig,
+  dbConfig,
+  redisConfig,
+  jwtConfig,
+  aiConfig,
+  featuresConfig,
+} from './config/configuration';
 
 @Global()
 @Module({

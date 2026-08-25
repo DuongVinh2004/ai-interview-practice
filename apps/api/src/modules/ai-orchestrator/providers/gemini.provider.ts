@@ -18,10 +18,7 @@ import {
   ErrorCode,
 } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
-import {
-  toGeminiResponseSchema,
-  AI_SCHEMAS,
-} from '../utils/zod-to-json-schema.util';
+import { toGeminiResponseSchema, AI_SCHEMAS } from '../utils/zod-to-json-schema.util';
 
 @Injectable()
 export class GeminiProvider implements AiProvider {
@@ -93,7 +90,8 @@ export class GeminiProvider implements AiProvider {
 
       const promptTokens = response.usageMetadata?.promptTokenCount || 200;
       const completionTokens = response.usageMetadata?.candidatesTokenCount || 100;
-      const totalTokens = response.usageMetadata?.totalTokenCount || promptTokens + completionTokens;
+      const totalTokens =
+        response.usageMetadata?.totalTokenCount || promptTokens + completionTokens;
 
       return {
         data: validated,
@@ -148,7 +146,8 @@ export class GeminiProvider implements AiProvider {
 
       const promptTokens = response.usageMetadata?.promptTokenCount || 300;
       const completionTokens = response.usageMetadata?.candidatesTokenCount || 150;
-      const totalTokens = response.usageMetadata?.totalTokenCount || promptTokens + completionTokens;
+      const totalTokens =
+        response.usageMetadata?.totalTokenCount || promptTokens + completionTokens;
 
       return {
         data: validated,
@@ -183,7 +182,10 @@ export class GeminiProvider implements AiProvider {
       systemInstruction: systemPrompt,
       generationConfig: {
         responseMimeType: 'application/json',
-        responseSchema: toGeminiResponseSchema(AI_SCHEMAS.learningPath.zod, 'GeneratedLearningPath'),
+        responseSchema: toGeminiResponseSchema(
+          AI_SCHEMAS.learningPath.zod,
+          'GeneratedLearningPath',
+        ),
         temperature: 0.5,
       },
     });
@@ -203,7 +205,8 @@ export class GeminiProvider implements AiProvider {
 
       const promptTokens = response.usageMetadata?.promptTokenCount || 400;
       const completionTokens = response.usageMetadata?.candidatesTokenCount || 250;
-      const totalTokens = response.usageMetadata?.totalTokenCount || promptTokens + completionTokens;
+      const totalTokens =
+        response.usageMetadata?.totalTokenCount || promptTokens + completionTokens;
 
       return {
         data: validated,

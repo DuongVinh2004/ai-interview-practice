@@ -113,7 +113,8 @@ export class SemanticCacheService {
       });
 
       if (exactMatch) {
-        const isExpired = Date.now() - exactMatch.createdAt.getTime() > exactMatch.ttlSeconds * 1000;
+        const isExpired =
+          Date.now() - exactMatch.createdAt.getTime() > exactMatch.ttlSeconds * 1000;
         if (!isExpired) {
           await this.prisma.semanticCache.update({
             where: { id: exactMatch.id },

@@ -116,7 +116,9 @@ export class AudioOrchestratorService {
       }
 
       if (!this.circuitBreaker.canExecute(providerName, 'audio-transcribe')) {
-        this.logger.warn(`Circuit breaker OPEN for [${providerName}:audio-transcribe]. Cascading...`);
+        this.logger.warn(
+          `Circuit breaker OPEN for [${providerName}:audio-transcribe]. Cascading...`,
+        );
         continue;
       }
 
@@ -196,7 +198,9 @@ export class AudioOrchestratorService {
       }
 
       if (!this.circuitBreaker.canExecute(providerName, 'audio-synthesize')) {
-        this.logger.warn(`Circuit breaker OPEN for [${providerName}:audio-synthesize]. Cascading...`);
+        this.logger.warn(
+          `Circuit breaker OPEN for [${providerName}:audio-synthesize]. Cascading...`,
+        );
         continue;
       }
 

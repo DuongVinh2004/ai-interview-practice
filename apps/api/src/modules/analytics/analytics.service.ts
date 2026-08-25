@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
-import {
-  CompetencyArea,
-  SessionState,
-} from '@ai-interview/contracts';
+import { CompetencyArea, SessionState } from '@ai-interview/contracts';
 
 interface CompetencyMapping {
   area: CompetencyArea;
@@ -17,31 +14,100 @@ const COMPETENCY_DEFINITIONS: CompetencyMapping[] = [
     area: CompetencyArea.SYSTEM_DESIGN,
     name: 'System Design & Scalability',
     description: 'Distributed systems, load balancing, caching, queuing, and high availability.',
-    keywords: ['system design', 'scalability', 'distributed', 'cache', 'queue', 'kafka', 'redis', 'cdn', 'microservice', 'load balancer', 'throughput', 'latency'],
+    keywords: [
+      'system design',
+      'scalability',
+      'distributed',
+      'cache',
+      'queue',
+      'kafka',
+      'redis',
+      'cdn',
+      'microservice',
+      'load balancer',
+      'throughput',
+      'latency',
+    ],
   },
   {
     area: CompetencyArea.LANGUAGE_CORE,
     name: 'Core Language & Fundamentals',
-    description: 'Type systems, runtime internals, event loop, memory management, and asynchronous I/O.',
-    keywords: ['typescript', 'javascript', 'event loop', 'async', 'promise', 'memory', 'closure', 'prototype', 'v8', 'garbage collection', 'concurrency model'],
+    description:
+      'Type systems, runtime internals, event loop, memory management, and asynchronous I/O.',
+    keywords: [
+      'typescript',
+      'javascript',
+      'event loop',
+      'async',
+      'promise',
+      'memory',
+      'closure',
+      'prototype',
+      'v8',
+      'garbage collection',
+      'concurrency model',
+    ],
   },
   {
     area: CompetencyArea.DATABASE_CONCURRENCY,
     name: 'Databases & Concurrency',
-    description: 'Data modeling, ACID, indexing, query optimization, lock contention, and replication.',
-    keywords: ['database', 'sql', 'postgresql', 'transaction', 'acid', 'index', 'lock', 'isolation', 'concurrency', 'sharding', 'prisma', 'nosql', 'query'],
+    description:
+      'Data modeling, ACID, indexing, query optimization, lock contention, and replication.',
+    keywords: [
+      'database',
+      'sql',
+      'postgresql',
+      'transaction',
+      'acid',
+      'index',
+      'lock',
+      'isolation',
+      'concurrency',
+      'sharding',
+      'prisma',
+      'nosql',
+      'query',
+    ],
   },
   {
     area: CompetencyArea.ARCHITECTURE_PATTERNS,
     name: 'Software Architecture & Patterns',
-    description: 'Clean architecture, SOLID principles, domain-driven design, modularity, and APIs.',
-    keywords: ['architecture', 'solid', 'design pattern', 'clean architecture', 'dependency injection', 'rest', 'graphql', 'nestjs', 'react', 'modular', 'coupling', 'cohesion'],
+    description:
+      'Clean architecture, SOLID principles, domain-driven design, modularity, and APIs.',
+    keywords: [
+      'architecture',
+      'solid',
+      'design pattern',
+      'clean architecture',
+      'dependency injection',
+      'rest',
+      'graphql',
+      'nestjs',
+      'react',
+      'modular',
+      'coupling',
+      'cohesion',
+    ],
   },
   {
     area: CompetencyArea.RESILIENCE_SECURITY,
     name: 'Resilience & Security',
-    description: 'Circuit breakers, rate limiting, authentication, defensive coding, and error handling.',
-    keywords: ['resilience', 'security', 'circuit breaker', 'rate limit', 'auth', 'jwt', 'owasp', 'injection', 'fallback', 'timeout', 'retry', 'error handling'],
+    description:
+      'Circuit breakers, rate limiting, authentication, defensive coding, and error handling.',
+    keywords: [
+      'resilience',
+      'security',
+      'circuit breaker',
+      'rate limit',
+      'auth',
+      'jwt',
+      'owasp',
+      'injection',
+      'fallback',
+      'timeout',
+      'retry',
+      'error handling',
+    ],
   },
 ];
 
@@ -201,7 +267,10 @@ export class AnalyticsService {
     // 5. Rank top strengths and growth areas
     const sorted = [...competencies].sort((a, b) => b.score - a.score);
     const topStrengths = sorted.slice(0, 2).map(c => c.name);
-    const growthAreas = sorted.slice(-2).reverse().map(c => c.name);
+    const growthAreas = sorted
+      .slice(-2)
+      .reverse()
+      .map(c => c.name);
 
     return {
       userId,

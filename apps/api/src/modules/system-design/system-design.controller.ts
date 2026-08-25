@@ -1,11 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -22,7 +15,7 @@ export class SystemDesignController {
   constructor(
     private readonly canvasService: CanvasService,
     private readonly designAnalyzerService: DesignAnalyzerService,
-    private readonly designEvaluationService: DesignEvaluationService
+    private readonly designEvaluationService: DesignEvaluationService,
   ) {}
 
   @Post('init')
@@ -30,7 +23,7 @@ export class SystemDesignController {
   async initCanvas(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
-    @Body() dto: InitCanvasSessionDto
+    @Body() dto: InitCanvasSessionDto,
   ) {
     return this.canvasService.initSession(userId, interviewId, dto.initialPrompt);
   }
@@ -40,14 +33,14 @@ export class SystemDesignController {
   async uploadSnapshot(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
-    @Body() dto: UploadCanvasSnapshotDto
+    @Body() dto: UploadCanvasSnapshotDto,
   ) {
     return this.canvasService.saveSnapshot(
       userId,
       interviewId,
       dto.imageUrl,
       dto.canvasStateJson,
-      dto.elapsedSeconds || 0
+      dto.elapsedSeconds || 0,
     );
   }
 
@@ -56,40 +49,33 @@ export class SystemDesignController {
   async analyzeCanvas(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
-    @Body() dto: Partial<UploadCanvasSnapshotDto>
+    @Body() dto: Partial<UploadCanvasSnapshotDto>,
   ) {
     return this.designAnalyzerService.analyzeSnapshot(
       userId,
       interviewId,
       dto.imageUrl,
-      dto.canvasStateJson
+      dto.canvasStateJson,
     );
   }
 
   @Get('history')
   @ApiOperation({ summary: 'Get all canvas snapshots for time-lapse playback' })
-  async getSnapshotHistory(
-    @CurrentUser('sub') userId: string,
-    @Param('id') interviewId: string,
-  ) {
+  async getSnapshotHistory(@CurrentUser('sub') userId: string, @Param('id') interviewId: string) {
     return this.canvasService.getSnapshotHistory(userId, interviewId);
   }
 
   @Post('evaluate')
-  @ApiOperation({ summary: 'Complete interview turn and evaluate design across 5 rubric dimensions' })
-  async evaluateDesign(
-    @CurrentUser('sub') userId: string,
-    @Param('id') interviewId: string,
-  ) {
+  @ApiOperation({
+    summary: 'Complete interview turn and evaluate design across 5 rubric dimensions',
+  })
+  async evaluateDesign(@CurrentUser('sub') userId: string, @Param('id') interviewId: string) {
     return this.designEvaluationService.evaluateSession(userId, interviewId);
   }
 
   @Get('export')
   @ApiOperation({ summary: 'Get export metadata for system design canvas' })
-  async exportCanvas(
-    @CurrentUser('sub') userId: string,
-    @Param('id') interviewId: string,
-  ) {
+  async exportCanvas(@CurrentUser('sub') userId: string, @Param('id') interviewId: string) {
     const session = await this.canvasService.getSession(userId, interviewId);
     return {
       interviewId,

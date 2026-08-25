@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { FSRSEngine, FSRSCard } from './fsrs/fsrs-engine';
 import {
@@ -8,11 +14,7 @@ import {
   ReviewCardDto,
   AutoGenerateFlashcardsDto,
 } from './dto/flashcard.dto';
-import {
-  CardType,
-  CardState,
-  FlashcardStatsDto,
-} from '@ai-interview/contracts';
+import { CardType, CardState, FlashcardStatsDto } from '@ai-interview/contracts';
 
 @Injectable()
 export class FlashcardService {
@@ -83,7 +85,7 @@ export class FlashcardService {
           cardCount: deck._count.flashcards,
           dueCount,
         };
-      })
+      }),
     );
 
     return enriched;
@@ -379,22 +381,30 @@ export class FlashcardService {
   async getStats(userId: string): Promise<FlashcardStatsDto> {
     const now = new Date();
 
-    const [totalCards, dueToday, newCards, learningCards, reviewCards, relearningCards, userStreak, reviewLogs] =
-      await Promise.all([
-        this.prisma.flashcard.count({ where: { deck: { userId } } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, due: { lte: now } } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.NEW } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.LEARNING } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.REVIEW } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.RELEARNING } }),
-        this.prisma.userStreak.findUnique({ where: { userId } }),
-        this.prisma.reviewLog.findMany({
-          where: { flashcard: { deck: { userId } } },
-          select: { reviewedAt: true },
-          orderBy: { reviewedAt: 'desc' },
-          take: 365,
-        }),
-      ]);
+    const [
+      totalCards,
+      dueToday,
+      newCards,
+      learningCards,
+      reviewCards,
+      relearningCards,
+      userStreak,
+      reviewLogs,
+    ] = await Promise.all([
+      this.prisma.flashcard.count({ where: { deck: { userId } } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, due: { lte: now } } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.NEW } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.LEARNING } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.REVIEW } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.RELEARNING } }),
+      this.prisma.userStreak.findUnique({ where: { userId } }),
+      this.prisma.reviewLog.findMany({
+        where: { flashcard: { deck: { userId } } },
+        select: { reviewedAt: true },
+        orderBy: { reviewedAt: 'desc' },
+        take: 365,
+      }),
+    ]);
 
     // Aggregate review logs by date for activity heatmap
     const countsByDate: Record<string, number> = {};
@@ -415,7 +425,9 @@ export class FlashcardService {
       streak: {
         currentStreak: userStreak?.currentStreak || 0,
         longestStreak: userStreak?.longestStreak || 0,
-        lastReviewDate: userStreak?.lastReviewDate ? userStreak.lastReviewDate.toISOString().split('T')[0] : null,
+        lastReviewDate: userStreak?.lastReviewDate
+          ? userStreak.lastReviewDate.toISOString().split('T')[0]
+          : null,
         totalReviews: userStreak?.totalReviews || 0,
       },
       heatmap,

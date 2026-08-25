@@ -59,11 +59,11 @@ export const CompetencyBreakdownItemSchema = z.object({
   area: z.nativeEnum(CompetencyArea),
   name: z.string(),
   currentScore: z.number(), // 0 - 10
-  targetScore: z.number(),  // 0 - 10
-  weight: z.number(),       // 0 - 1.0
+  targetScore: z.number(), // 0 - 10
+  weight: z.number(), // 0 - 1.0
   fulfillmentPercentage: z.number(), // min(score/target, 1.0) * 100
   status: z.enum(['BELOW_TARGET', 'APPROACHING', 'TARGET_MET']),
-  velocity: z.number(),     // points per week
+  velocity: z.number(), // points per week
   estimatedWeeksToTarget: z.number().nullable(),
 });
 
@@ -112,7 +112,7 @@ export const ReadinessDashboardResponseSchema = z.object({
       targetScore: z.number(),
       achieved: z.boolean(),
       achievedAt: z.string().nullable().optional(),
-    })
+    }),
   ),
   roadmap: z.array(RoadmapActionItemSchema),
   disclaimer: z.string(),

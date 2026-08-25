@@ -157,9 +157,9 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         scheduledAt: futureDate,
       });
 
-      await expect(
-        bookingService.bookSession(candidateId, mentorId, futureDate),
-      ).rejects.toThrow(ConflictException);
+      await expect(bookingService.bookSession(candidateId, mentorId, futureDate)).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('rejects booking when candidate attempts to book themselves', async () => {
@@ -174,9 +174,9 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         user: { email: 'self@test.com' },
       });
 
-      await expect(
-        bookingService.bookSession(candidateId, mentorId, futureDate),
-      ).rejects.toThrow(BadRequestException);
+      await expect(bookingService.bookSession(candidateId, mentorId, futureDate)).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -192,7 +192,10 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         candidateId: candidateUserId,
         scheduledAt: new Date(),
         status: LiveSessionStatus.SCHEDULED,
-        mentor: { userId: mentorUserId, user: { email: 'mentor@test.com', profile: { fullName: 'Sarah Connor' } } },
+        mentor: {
+          userId: mentorUserId,
+          user: { email: 'mentor@test.com', profile: { fullName: 'Sarah Connor' } },
+        },
         candidate: { profile: { fullName: 'Alex Rivera' } },
       });
       mockPrisma.liveSession.update.mockResolvedValue({});
@@ -258,13 +261,11 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
       mockPrisma.evaluation.update.mockResolvedValue({
         id: evalId,
         score: 8.5,
-        conciseFeedback: 'AI Evaluation feedback text.\n\n[Mentor Score Override ... Reason: Candidate explained caching strategy during follow-up.]',
+        conciseFeedback:
+          'AI Evaluation feedback text.\n\n[Mentor Score Override ... Reason: Candidate explained caching strategy during follow-up.]',
       });
 
-      mockPrisma.evaluation.findMany.mockResolvedValue([
-        { score: 8.5 },
-        { score: 7.5 },
-      ]);
+      mockPrisma.evaluation.findMany.mockResolvedValue([{ score: 8.5 }, { score: 7.5 }]);
       mockPrisma.interviewSession.update.mockResolvedValue({});
 
       const override = await liveSessionService.overrideScore(
@@ -295,7 +296,10 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         },
       ]);
 
-      const result = await copilotHintService.getProbingHints('session-1', 'Distributed Cache Invalidation');
+      const result = await copilotHintService.getProbingHints(
+        'session-1',
+        'Distributed Cache Invalidation',
+      );
       expect(result.hints.length).toBeGreaterThan(0);
       expect(result.hints[0].questionText).toContain('traffic surge');
       expect(result.hints[0].expectedKeySignals.length).toBeGreaterThan(0);

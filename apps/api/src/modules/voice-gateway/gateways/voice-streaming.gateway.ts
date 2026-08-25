@@ -11,11 +11,7 @@ import { WebSocket, Server } from 'ws';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { VadEngineService } from '../services/vad-engine.service';
 import { MockVoiceProvider } from '../providers/mock-voice.provider';
-import {
-  VoiceEventType,
-  VoiceSessionStatus,
-  SpeakerRole,
-} from '@ai-interview/contracts';
+import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/contracts';
 
 interface ClientSessionState {
   ws: WebSocket;
@@ -38,7 +34,10 @@ interface ClientSessionState {
 @WebSocketGateway({
   path: '/voice',
   cors: {
-    origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000', 'http://localhost:5173'],
+    origin: process.env.ALLOWED_ORIGINS?.split(',') || [
+      'http://localhost:3000',
+      'http://localhost:5173',
+    ],
     credentials: true,
   },
 })
@@ -77,7 +76,9 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
         }
       }
       if (token) {
-        const secret = this.configService.get<string>('jwt.accessSecret') || this.configService.get<string>('JWT_ACCESS_SECRET');
+        const secret =
+          this.configService.get<string>('jwt.accessSecret') ||
+          this.configService.get<string>('JWT_ACCESS_SECRET');
         authenticatedUser = this.jwtService.verify(token, { secret });
         userId = authenticatedUser?.sub;
         this.logger.log(`Authenticated WebSocket client: ${userId}`);
@@ -171,7 +172,9 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
     if (!state.userId && payload.token) {
       try {
-        const secret = this.configService.get<string>('jwt.accessSecret') || this.configService.get<string>('JWT_ACCESS_SECRET');
+        const secret =
+          this.configService.get<string>('jwt.accessSecret') ||
+          this.configService.get<string>('JWT_ACCESS_SECRET');
         state.authenticatedUser = this.jwtService.verify(payload.token, { secret });
         state.userId = state.authenticatedUser?.sub;
       } catch (err: any) {
@@ -243,7 +246,8 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
     // Initial interviewer question
     const firstTurn = interview.turns[0];
-    const initialQuestion = firstTurn?.question?.content ||
+    const initialQuestion =
+      firstTurn?.question?.content ||
       `Welcome to your live voice technical interview for ${interview.jobRole?.name || 'Software Engineer'}. Let's begin: Could you explain your approach to designing resilient distributed architectures?`;
 
     await this.streamAiVoiceResponse(client, state, initialQuestion);
@@ -255,7 +259,9 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
     // H-008: Reject unauthenticated binary frames / pre-auth buffer DoS
     if (!state.userId || !state.voiceSessionId) {
-      this.logger.warn('Rejecting binary audio from unauthenticated or unestablished voice connection.');
+      this.logger.warn(
+        'Rejecting binary audio from unauthenticated or unestablished voice connection.',
+      );
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
         message: 'Authentication and voice:connect required before streaming audio.',
@@ -407,7 +413,9 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       },
     });
 
-    this.logger.log(`Finalized VoiceSession ${state.voiceSessionId} (Duration: ${durationSec}s, BargeIns: ${state.bargeInCount})`);
+    this.logger.log(
+      `Finalized VoiceSession ${state.voiceSessionId} (Duration: ${durationSec}s, BargeIns: ${state.bargeInCount})`,
+    );
   }
 
   private sendJson(client: WebSocket, payload: any) {

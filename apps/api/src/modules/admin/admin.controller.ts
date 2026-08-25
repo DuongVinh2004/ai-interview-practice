@@ -76,7 +76,9 @@ export class AdminController {
   }
 
   @Get('ai/metrics')
-  @ApiOperation({ summary: 'Get AI telemetry aggregated metrics & circuit breaker states (Admin only)' })
+  @ApiOperation({
+    summary: 'Get AI telemetry aggregated metrics & circuit breaker states (Admin only)',
+  })
   async getAiMetrics() {
     return this.adminService.getAiMetrics();
   }
@@ -91,23 +93,26 @@ export class AdminController {
   @UseGuards(MfaStepUpGuard)
   @ApiOperation({ summary: 'Activate a specific prompt version (Admin with Step-Up only)' })
   @ApiParam({ name: 'id', description: 'Prompt version ID' })
-  async activatePromptVersion(
-    @CurrentUser('sub') adminId: string,
-    @Param('id') versionId: string,
-  ) {
+  async activatePromptVersion(@CurrentUser('sub') adminId: string, @Param('id') versionId: string) {
     return this.adminService.activatePromptVersion(adminId, versionId);
   }
 
   // --- AI Evaluation Regression Harness Endpoints (Epic 9) ---
 
   @Post('ai/eval/run')
-  @ApiOperation({ summary: 'Trigger a full run of the AI evaluation regression harness against Golden Dataset v2 (Admin only)' })
+  @ApiOperation({
+    summary:
+      'Trigger a full run of the AI evaluation regression harness against Golden Dataset v2 (Admin only)',
+  })
   async runAiEvaluation() {
     return this.evalHarnessService.runEvaluationHarness();
   }
 
   @Get('ai/eval/latest')
-  @ApiOperation({ summary: 'Retrieve the latest AI evaluation harness report, slice metrics, and quality gate status (Admin only)' })
+  @ApiOperation({
+    summary:
+      'Retrieve the latest AI evaluation harness report, slice metrics, and quality gate status (Admin only)',
+  })
   async getLatestAiEvaluation() {
     return this.evalHarnessService.getLatestReport();
   }
@@ -115,7 +120,9 @@ export class AdminController {
   // --- Semantic Cache & LLM Health Endpoints (F013) ---
 
   @Get('llm/health')
-  @ApiOperation({ summary: 'Get LLM providers health, circuit breaker states, and priority chain (Admin only)' })
+  @ApiOperation({
+    summary: 'Get LLM providers health, circuit breaker states, and priority chain (Admin only)',
+  })
   async getLlmHealth() {
     return this.adminService.getLlmHealth();
   }
@@ -128,7 +135,9 @@ export class AdminController {
   }
 
   @Get('llm/metrics')
-  @ApiOperation({ summary: 'Get semantic cache hit rate, size, and cost savings metrics (Admin only)' })
+  @ApiOperation({
+    summary: 'Get semantic cache hit rate, size, and cost savings metrics (Admin only)',
+  })
   async getSemanticCacheMetrics() {
     return this.adminService.getSemanticCacheMetrics();
   }

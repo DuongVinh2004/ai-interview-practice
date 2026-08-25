@@ -17,14 +17,15 @@ export function useSkillGraph() {
     useQuery<BenchmarkRankingDto>({
       queryKey: ['skills', 'benchmark', role, level],
       queryFn: () =>
-        apiClient<BenchmarkRankingDto>(`/profile/skills/benchmark?role=${encodeURIComponent(role)}&level=${encodeURIComponent(level)}`),
+        apiClient<BenchmarkRankingDto>(
+          `/profile/skills/benchmark?role=${encodeURIComponent(role)}&level=${encodeURIComponent(level)}`,
+        ),
     });
 
   const useProgress = (period: '7d' | '30d' | '90d' | '180d' | '365d' = '30d') =>
     useQuery<SkillProgressTrendDto>({
       queryKey: ['skills', 'progress', period],
-      queryFn: () =>
-        apiClient<SkillProgressTrendDto>(`/profile/skills/progress?period=${period}`),
+      queryFn: () => apiClient<SkillProgressTrendDto>(`/profile/skills/progress?period=${period}`),
     });
 
   const gapsQuery = useQuery<GapAnalysisResponseDto>({

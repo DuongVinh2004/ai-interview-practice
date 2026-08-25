@@ -7,7 +7,9 @@ export class UpdatePortfolioSettingsDto {
   @IsOptional()
   @IsString()
   @Length(3, 30)
-  @Matches(/^[a-zA-Z0-9_-]+$/, { message: 'Username can only contain letters, numbers, underscores and hyphens' })
+  @Matches(/^[a-zA-Z0-9_-]+$/, {
+    message: 'Username can only contain letters, numbers, underscores and hyphens',
+  })
   username?: string;
 
   @ApiPropertyOptional()
@@ -74,4 +76,3 @@ export class RevokeCertificateDto {
   @IsString()
   reason?: string;
 }
-

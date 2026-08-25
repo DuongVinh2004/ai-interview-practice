@@ -98,7 +98,7 @@ describe('Epic 4 Voice Mode & AudioAnswerRecorder', () => {
     render(<AudioAnswerRecorder onAnswerReady={mockOnAnswerReady} sessionId="test-session-1" />);
 
     const recordBtn = screen.getByTestId('record-toggle-btn');
-    
+
     // Start recording
     fireEvent.click(recordBtn);
 

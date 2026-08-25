@@ -53,7 +53,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       user.tokenVersion !== undefined &&
       payload.tokenVersion !== user.tokenVersion
     ) {
-      throw new UnauthorizedException('Session invalidated due to password change or security update');
+      throw new UnauthorizedException(
+        'Session invalidated due to password change or security update',
+      );
     }
 
     return {

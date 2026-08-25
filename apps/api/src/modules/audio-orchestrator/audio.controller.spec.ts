@@ -26,9 +26,7 @@ describe('AudioController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AudioController],
-      providers: [
-        { provide: AudioOrchestratorService, useValue: mockAudioService },
-      ],
+      providers: [{ provide: AudioOrchestratorService, useValue: mockAudioService }],
     }).compile();
 
     controller = module.get<AudioController>(AudioController);
@@ -82,9 +80,7 @@ describe('AudioController', () => {
     });
 
     it('rejects missing file with 400 DomainException', async () => {
-      await expect(controller.transcribeAudio(undefined)).rejects.toThrow(
-        /No audio file uploaded/,
-      );
+      await expect(controller.transcribeAudio(undefined)).rejects.toThrow(/No audio file uploaded/);
     });
   });
 

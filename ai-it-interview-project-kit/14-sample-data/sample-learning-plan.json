@@ -10,8 +10,12 @@
       "title": "Làm chủ atomic idempotency",
       "reason": "Câu trả lời chưa liên kết business transaction với idempotency record.",
       "activities": [
-        {"type": "reading", "title": "Transaction và unique constraint", "estimatedMinutes": 25},
-        {"type": "practice", "title": "Thiết kế endpoint có retry đồng thời", "estimatedMinutes": 35}
+        { "type": "reading", "title": "Transaction và unique constraint", "estimatedMinutes": 25 },
+        {
+          "type": "practice",
+          "title": "Thiết kế endpoint có retry đồng thời",
+          "estimatedMinutes": 35
+        }
       ],
       "successCheck": "Giải thích được race condition và viết pseudocode transaction."
     }

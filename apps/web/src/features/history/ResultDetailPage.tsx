@@ -47,7 +47,10 @@ export function ResultDetailPage() {
   const [reEvalReason, setReEvalReason] = useState('');
 
   // F006 Tutor & Retry State
-  const [activeTutorTurn, setActiveTutorTurn] = useState<{ turnNumber: number; questionContent: string } | null>(null);
+  const [activeTutorTurn, setActiveTutorTurn] = useState<{
+    turnNumber: number;
+    questionContent: string;
+  } | null>(null);
   const [activeRetryTurn, setActiveRetryTurn] = useState<{
     turnNumber: number;
     questionContent: string;
@@ -65,7 +68,6 @@ export function ResultDetailPage() {
     isSubmittingRetry,
     rateTutor,
   } = useTutor();
-
 
   const {
     data: result,
@@ -190,12 +192,7 @@ export function ResultDetailPage() {
             <span>{t.share.shareTitle}</span>
           </Button>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleExportJson}
-            className="gap-1.5"
-          >
+          <Button variant="outline" size="sm" onClick={handleExportJson} className="gap-1.5">
             <Download className="h-4 w-4" />
             <span>{t.share.exportJson}</span>
           </Button>
@@ -271,13 +268,20 @@ export function ResultDetailPage() {
 
       {/* STAR Assessment Radar Breakdown (When Behavioral Mode) */}
       {result.sessionMode === 'BEHAVIORAL' && (
-        <Card className="border-indigo-200 bg-gradient-to-br from-indigo-50/40 to-white shadow-sm" data-testid="star-assessment-section">
+        <Card
+          className="border-indigo-200 bg-gradient-to-br from-indigo-50/40 to-white shadow-sm"
+          data-testid="star-assessment-section"
+        >
           <CardHeader className="bg-indigo-50/60 pb-3 border-b border-indigo-100 flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-indigo-600" />
-              <CardTitle className="text-indigo-950">STAR Behavioral Competency Breakdown</CardTitle>
+              <CardTitle className="text-indigo-950">
+                STAR Behavioral Competency Breakdown
+              </CardTitle>
             </div>
-            <Badge variant="default" className="bg-indigo-600 text-white">STAR Methodology</Badge>
+            <Badge variant="default" className="bg-indigo-600 text-white">
+              STAR Methodology
+            </Badge>
           </CardHeader>
           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-around gap-6">
             <StarRadarChart
@@ -292,9 +296,12 @@ export function ResultDetailPage() {
             />
             <div className="space-y-3 max-w-md text-xs text-slate-700">
               <div className="p-3 bg-white rounded-lg border border-slate-200">
-                <span className="font-bold text-indigo-900 block mb-1">Methodology Assessment:</span>
+                <span className="font-bold text-indigo-900 block mb-1">
+                  Methodology Assessment:
+                </span>
                 <p>
-                  Demonstrated structured behavioral storytelling with clear action-to-impact alignment across all evaluated turns.
+                  Demonstrated structured behavioral storytelling with clear action-to-impact
+                  alignment across all evaluated turns.
                 </p>
               </div>
             </div>
@@ -399,7 +406,9 @@ export function ResultDetailPage() {
                         {item.searchKeywords?.length > 0 && (
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <Search className="h-3 w-3 text-slate-400" />
-                            <span className="text-[10px] text-slate-400 font-medium">Keywords:</span>
+                            <span className="text-[10px] text-slate-400 font-medium">
+                              Keywords:
+                            </span>
                             {item.searchKeywords.map((kw: string, kidx: number) => (
                               <span
                                 key={kidx}
@@ -458,7 +467,10 @@ export function ResultDetailPage() {
                       size="sm"
                       onClick={async () => {
                         if (!sessionId) return;
-                        await createTutorSession({ interviewId: sessionId, turnNumber: turn.turnNumber });
+                        await createTutorSession({
+                          interviewId: sessionId,
+                          turnNumber: turn.turnNumber,
+                        });
                         setActiveTutorTurn({
                           turnNumber: turn.turnNumber,
                           questionContent: turn.question?.content || '',

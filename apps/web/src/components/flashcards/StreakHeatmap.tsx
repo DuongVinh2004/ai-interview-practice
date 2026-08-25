@@ -36,7 +36,10 @@ export const StreakHeatmap: React.FC<StreakHeatmapProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4" data-testid="streak-heatmap">
+    <div
+      className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4"
+      data-testid="streak-heatmap"
+    >
       {/* Streak Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -66,7 +69,7 @@ export const StreakHeatmap: React.FC<StreakHeatmapProps> = ({
             key={d.dateStr}
             title={`${d.dateStr}: ${d.count} lượt ôn`}
             className={`h-7 rounded-md border flex flex-col items-center justify-center text-[10px] font-semibold transition-all ${getIntensityClass(
-              d.count
+              d.count,
             )}`}
           >
             {d.count > 0 ? d.count : ''}
@@ -75,7 +78,9 @@ export const StreakHeatmap: React.FC<StreakHeatmapProps> = ({
       </div>
 
       <div className="flex items-center justify-between text-[11px] text-slate-400 pt-1">
-        <span>Tổng cộng: <strong className="text-slate-700">{streak.totalReviews}</strong> lượt ôn luyện</span>
+        <span>
+          Tổng cộng: <strong className="text-slate-700">{streak.totalReviews}</strong> lượt ôn luyện
+        </span>
         <div className="flex items-center space-x-1">
           <span>Ít</span>
           <div className="w-3 h-3 bg-slate-100 border rounded" />

@@ -10,7 +10,7 @@ export class PercentileService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly skillAggregationService: SkillAggregationService
+    private readonly skillAggregationService: SkillAggregationService,
   ) {}
 
   /**
@@ -19,7 +19,7 @@ export class PercentileService {
   async getCandidateBenchmarkRanking(
     userId: string,
     jobRoleSlug: string = 'backend',
-    senioritySlug: string = 'senior'
+    senioritySlug: string = 'senior',
   ): Promise<BenchmarkRankingDto> {
     const graph = await this.skillAggregationService.getCandidateSkillGraph(userId);
     const userScore = graph.overallScore;
@@ -93,7 +93,9 @@ export class PercentileService {
    */
   async refreshMaterializedView(): Promise<void> {
     try {
-      await this.prisma.$executeRawUnsafe(`REFRESH MATERIALIZED VIEW CONCURRENTLY mv_skill_percentiles;`);
+      await this.prisma.$executeRawUnsafe(
+        `REFRESH MATERIALIZED VIEW CONCURRENTLY mv_skill_percentiles;`,
+      );
       this.logger.log('Materialized view mv_skill_percentiles refreshed successfully');
     } catch (err: any) {
       this.logger.warn(`Could not refresh mv_skill_percentiles concurrently: ${err.message}`);

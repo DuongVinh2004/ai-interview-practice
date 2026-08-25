@@ -13,12 +13,15 @@ export class CertificateController {
   constructor(private readonly certificateService: CertificateService) {}
 
   @Post('generate')
-  @ApiOperation({ summary: 'Generate digital verified certificate for candidate (Gold/Platinum required)' })
-  async generate(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: GenerateCertificateDto,
-  ) {
-    return this.certificateService.generateCertificate(userId, dto.competencyArea, dto.type || 'COMPETENCY');
+  @ApiOperation({
+    summary: 'Generate digital verified certificate for candidate (Gold/Platinum required)',
+  })
+  async generate(@CurrentUser('sub') userId: string, @Body() dto: GenerateCertificateDto) {
+    return this.certificateService.generateCertificate(
+      userId,
+      dto.competencyArea,
+      dto.type || 'COMPETENCY',
+    );
   }
 
   @Get('my')
@@ -29,10 +32,7 @@ export class CertificateController {
 
   @Get(':id/download')
   @ApiOperation({ summary: 'Download certificate document and metadata' })
-  async download(
-    @Param('id') certId: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  async download(@Param('id') certId: string, @CurrentUser('sub') userId: string) {
     return this.certificateService.downloadCertificate(certId, userId);
   }
 
