@@ -28,10 +28,10 @@ describe('Stripe Webhook Handlers & Deduplication (P1-005, P2-001)', () => {
     $transaction: jest.fn(cb => (typeof cb === 'function' ? cb(mockPrisma) : Promise.all(cb))),
   };
 
-  const secret = 'whsec_test_secret_1234567890';
+  const secret = 'mock_webhook_secret_for_tests_only';
   const mockConfigService = {
     get: jest.fn((key: string, defaultVal?: any) => {
-      if (key === 'STRIPE_SECRET_KEY') return 'sk_test_123';
+      if (key === 'STRIPE_SECRET_KEY') return 'mock_stripe_key_for_tests';
       if (key === 'STRIPE_WEBHOOK_SECRET') return secret;
       return defaultVal;
     }),

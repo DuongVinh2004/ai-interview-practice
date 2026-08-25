@@ -161,14 +161,14 @@ describe('BillingService (F014)', () => {
 
   it('should verify Stripe webhook signature and reject forged signatures', async () => {
     const stripeProvider = new StripeProvider({
-      get: jest.fn((k: string) => (k === 'STRIPE_WEBHOOK_SECRET' ? 'whsec_test_secret_123' : '')),
+      get: jest.fn((k: string) => (k === 'STRIPE_WEBHOOK_SECRET' ? 'mock_test_webhook_secret_123' : '')),
     } as any);
 
     const crypto = await import('crypto');
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const payload = JSON.stringify({ id: 'evt_123', type: 'invoice.payment_succeeded' });
     const signature = crypto
-      .createHmac('sha256', 'whsec_test_secret_123')
+      .createHmac('sha256', 'mock_test_webhook_secret_123')
       .update(`${timestamp}.${payload}`, 'utf8')
       .digest('hex');
 
