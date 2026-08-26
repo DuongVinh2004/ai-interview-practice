@@ -100,7 +100,8 @@ export class ReadinessService {
       if (turn.session.competencyArea) {
         area = turn.session.competencyArea as unknown as CompetencyArea;
       } else {
-        const text = `${turn.question?.keyFocus || ''} ${turn.question?.content || ''}`.toLowerCase();
+        const text =
+          `${turn.question?.keyFocus || ''} ${turn.question?.content || ''}`.toLowerCase();
         if (
           text.includes('database') ||
           text.includes('sql') ||

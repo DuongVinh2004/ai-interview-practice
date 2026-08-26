@@ -557,7 +557,10 @@ export function ResultDetailPage() {
             const evalData = turn.answer?.evaluation;
 
             return (
-              <Card key={turn.id ?? turn.turnNumber ?? idx} className="border-slate-200 shadow-xs overflow-hidden">
+              <Card
+                key={turn.id ?? turn.turnNumber ?? idx}
+                className="border-slate-200 shadow-xs overflow-hidden"
+              >
                 <button
                   type="button"
                   onClick={() => toggleTurnAccordion(turn.turnNumber)}

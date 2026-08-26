@@ -1,7 +1,8 @@
 # BÁO CÁO CÁC LỖI PHÁT HIỆN MỚI (POST-IMPLEMENTATION AUDIT FINDINGS)
+
 **Ngày kiểm định:** 2026-08-26  
 **Trạng thái phát hành đề xuất:** NO-GO  
-**Độ tin cậy:** HIGH (Kiểm định đối kháng độc lập)  
+**Độ tin cậy:** HIGH (Kiểm định đối kháng độc lập)
 
 Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền hạn (Authorization/Authentication), lỗi toàn vẹn dữ liệu giao dịch, lỗi xử lý bất đồng bộ và khiếm khuyết cấu hình hạ tầng được phát hiện trong cuộc kiểm định độc lập sau triển khai cả 3 phases. Dùng làm backlog chi tiết để triển khai khắc phục (remediation) tiếp theo.
 
@@ -10,7 +11,8 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ## 1. DANH SÁCH TOÀN BỘ BUG MỚI PHÁT HIỆN
 
 ### [NEW-SEC-01] P1 (High) — Infinite Quota Bypass for Interview Sessions (Thiếu Sink Ghi Nhận Hạn Mức)
-- **Vị trí mã nguồn:** 
+
+- **Vị trí mã nguồn:**
   - [interview.controller.ts:46-55](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/interview/interview.controller.ts#L46-L55)
   - [quota.guard.ts:34-41](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/billing/guards/quota.guard.ts#L34-L41)
   - [interview.service.ts:41-111](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/interview/interview.service.ts#L41-L111)
@@ -22,6 +24,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-02] P1 (High) — Hardcoded Fallback Secret in Production Certificate Authority (F010)
+
 - **Vị trí mã nguồn:**
   - [signature.service.ts:8-10](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/portfolio/services/signature.service.ts#L8-L10)
   - [env.validation.ts:3-67](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/platform/config/env.validation.ts#L3-L67)
@@ -33,6 +36,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-05] P1 (High) — Account Deletion Leaves Recurring Stripe Subscriptions Active (Orphan Billing & Privacy Violation)
+
 - **Vị trí mã nguồn:**
   - [profile.service.ts:512-572](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/profile/profile.service.ts#L512-L572)
   - [billing.service.ts:541-590](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/billing/billing.service.ts#L541-L590)
@@ -44,6 +48,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-AUTH-01] P1 (High) — Ineffective Admin MFA Token Enforcement (Advisory Response Still Issues Full Access Tokens)
+
 - **Vị trí mã nguồn:**
   - [auth.service.ts:248-256](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/auth/auth.service.ts#L248-L256)
   - [jwt.strategy.ts:25-78](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/auth/strategies/jwt.strategy.ts#L25-L78)
@@ -55,6 +60,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-ASYNC-01] P1 (High) — Silent Terminal Evaluation Drop for Completed Interview Learning Paths (Swallowed Queue Error)
+
 - **Vị trí mã nguồn:**
   - [evaluation.processor.ts:256-267](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/evaluation/evaluation.processor.ts#L256-L267)
   - [evaluation.processor.ts:388-406](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/evaluation/evaluation.processor.ts#L388-L406)
@@ -65,6 +71,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-OPS-01] P1 (High) — Incomplete Production Secrets in Terraform & ECS Task Definitions
+
 - **Vị trí mã nguồn:**
   - [secrets/main.tf:38-46](file:///C:/Users/Duong%20Vinh/ai-interview-practice/infra/terraform/modules/secrets/main.tf#L38-L46)
   - [compute/main.tf:330-385](file:///C:/Users/Duong%20Vinh/ai-interview-practice/infra/terraform/modules/compute/main.tf#L330-L385)
@@ -75,6 +82,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-03] P2 (Medium) — Cleartext JWT Access Token Exposure in Server/Proxy Logs via SSE Query Parameter
+
 - **Vị trí mã nguồn:**
   - [interview.controller.ts:145-160](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/interview/interview.controller.ts#L145-L160)
   - [nginx.conf:36-52](file:///C:/Users/Duong%20Vinh/ai-interview-practice/infra/nginx/nginx.conf#L36-L52)
@@ -85,6 +93,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-04] P2 (Medium) — Concurrent Refresh Token Revocation Race Condition (Session Drop)
+
 - **Vị trí mã nguồn:**
   - [api-client.ts:53-79](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/web/src/lib/api-client.ts#L53-L79)
   - [auth.service.ts:281-350](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/auth/auth.service.ts#L281-L350)
@@ -95,6 +104,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-06] P2 (Medium) — Overbroad Mentor Score Override Across Entire Candidate History (Missing Foreign Key Binding)
+
 - **Vị trí mã nguồn:**
   - [live-session.service.ts:206-247](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/mentor/services/live-session.service.ts#L206-L247)
   - [schema.prisma:1455-1478](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/prisma/schema.prisma#L1455-L1478)
@@ -105,6 +115,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-AUTH-02] P2 (Medium) — Middleware Lifecycle Dead Code in B2B Single-Tenant Auto-Resolution
+
 - **Vị trí mã nguồn:**
   - [tenant-context.middleware.ts:17-47](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/b2b/middleware/tenant-context.middleware.ts#L17-L47)
   - [tenant-role.guard.ts:34-49](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/b2b/guards/tenant-role.guard.ts#L34-L49)
@@ -115,6 +126,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-FUNC-01] P2 (Medium) — Synthetic Length-Based Score Inflation in Socratic Tutor Retry (F006)
+
 - **Vị trí mã nguồn:**
   - [tutor.service.ts:294-303](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/tutor/tutor.service.ts#L294-L303)
 - **Mô tả:** Trong tính năng Socratic Tutor Retry, hệ thống không gọi AI chấm điểm lại mà tăng điểm cơ học dựa trên độ dài của câu trả lời mới so với câu trả lời cũ (`dto.retryAnswer.length - originalAnswer.length > 50`). Điểm số này được trực tiếp lưu vào bảng `question_retries`.
@@ -124,6 +136,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-FUNC-03] P2 (Medium) — Ephemeral In-Memory Signing Key in MockMediaProvider Breaks Across Multi-Replica/Restarts
+
 - **Vị trí mã nguồn:**
   - [mock-media.provider.ts:7](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/mentor/providers/mock-media.provider.ts#L7)
   - [mentor.module.ts:20](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/mentor/mentor.module.ts#L20)
@@ -134,6 +147,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-PRIV-01] P2 (Medium) — B2B CSV Roster Import Generates Unreachable Credentials & Lacks User Consent (F011)
+
 - **Vị trí mã nguồn:**
   - [cohort.service.ts:140-178](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/b2b/services/cohort.service.ts#L140-L178)
   - [tenant-context.middleware.ts:34-47](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/b2b/middleware/tenant-context.middleware.ts#L34-L47)
@@ -144,6 +158,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-DATA-01] P3 (Low) — Timezone Inconsistency in Flashcard FSRS Spaced-Repetition Streak Calculation (F005)
+
 - **Vị trí mã nguồn:**
   - [flashcard.service.ts:232-264](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/flashcards/flashcard.service.ts#L232-L264)
 - **Mô tả:** Việc sử dụng `now.toISOString().split('T')[0]` để tính ngày học bài cho streak dựa theo mốc giờ UTC.
@@ -153,6 +168,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-ARCH-01] P3 (Low) — Database Column Overloading (`pdfUrl`) for JSON Payment Metadata
+
 - **Vị trí mã nguồn:**
   - [billing.service.ts:404](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/billing/billing.service.ts#L404)
 - **Mô tả:** Trong luồng tạo VietQR PayOS payment link, dữ liệu `{ planSlug, billingCycle }` được ép kiểu JSON string và lưu vào cột `pdfUrl` của bảng `Invoice` để làm siêu dữ liệu lưu vết.
@@ -162,6 +178,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-INFRA-01] P3 (Low) — Nginx WebSocket Upgrade Header Case-Sensitivity
+
 - **Vị trí mã nguồn:**
   - [nginx.conf:18-21](file:///C:/Users/Duong%20Vinh/ai-interview-practice/infra/nginx/nginx.conf#L18-L21)
 - **Mô tả:** Rule `map $http_upgrade $is_websocket_upgrade` chỉ match tĩnh `~*^websocket$`. Trong môi trường HTTP/1.1, client có thể gửi header `Connection: Upgrade, keep-alive`. Rule hiện tại proxy tĩnh `proxy_set_header Connection upgrade;` cho `/voice` thay vì dùng `$http_connection` map.
@@ -171,6 +188,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-07] P1 (High) — Unverified MFA Admin BOLA Across All Protected Service Domains
+
 - **Vị trí mã nguồn:**
   - [interview.controller.ts:60-66](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/interview/interview.controller.ts#L60-L66) -> [interview.service.ts:229,254,287](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/interview/interview.service.ts#L229)
   - [history-report.service.ts:136](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/history-report/history-report.service.ts#L136)
@@ -185,6 +203,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-FUNC-04] P1 (High) — Hardcoded Mock Vision Injection in Canvas Diagram Analysis (F003)
+
 - **Vị trí mã nguồn:**
   - [design-analyzer.service.ts:10-14](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/system-design/services/design-analyzer.service.ts#L10-L14)
   - [design-analyzer.service.ts:50-54](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/system-design/services/design-analyzer.service.ts#L50-L54)
@@ -195,6 +214,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-FUNC-05] P1 (High) — Socratic AI Tutor (F006) Is Entirely Canned Keyword Matching with Simulated Streaming (Zero LLM Invocation)
+
 - **Vị trí mã nguồn:**
   - [tutor.service.ts:145-258](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/tutor/tutor.service.ts#L145-L258)
 - **Mô tả:** Tính năng Socratic AI Tutor trò chuyện trực tiếp không gọi bất kỳ LLM provider nào (OpenAI/Gemini/Anthropic). Phương thức `generateSocraticResponse` chỉ kiểm tra chuỗi tĩnh bằng `msg.includes()`, sau đó dùng vòng lặp `for` với `setTimeout(r, 15)` để tạo hiệu ứng streaming giả tạo token-by-token.
@@ -204,6 +224,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-08] P2 (Medium) — Public Certificate Verification Allows Unbounded Denial of Service & Database Contention
+
 - **Vị trí mã nguồn:**
   - [verification.controller.ts:12-16](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/portfolio/controllers/verification.controller.ts#L12-L16)
   - [certificate.service.ts:112-147](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/portfolio/services/certificate.service.ts#L112-L147)
@@ -214,6 +235,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-SEC-09] P2 (Medium) — Unhandled Ciphertext Decode in `TotpUtil.decryptSecret` Crashes Process on Corrupted Secrets
+
 - **Vị trí mã nguồn:**
   - [totp.util.ts:165-185](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/auth/utils/totp.util.ts#L165-L185)
   - [auth.service.ts:517,629,787](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/auth/auth.service.ts#L517)
@@ -224,6 +246,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-OPS-02] P2 (Medium) — Default Docker Compose Production Crashes AI Router Startup
+
 - **Vị trí mã nguồn:**
   - [docker-compose.yml:50-92](file:///C:/Users/Duong%20Vinh/ai-interview-practice/docker-compose.yml#L50-L92)
   - [provider-router.service.ts:85-93](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/ai-orchestrator/router/provider-router.service.ts#L85-L93)
@@ -234,6 +257,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-FE-01] P1 (High) — Hardcoded Blank Canvas SVG Data URI in System Design Whiteboard (F003)
+
 - **Vị trí mã nguồn:**
   - [WhiteboardRoom.tsx:106,115](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/web/src/features/system-design/WhiteboardRoom.tsx#L106)
 - **Mô tả:** Trong giao diện Whiteboard System Design, các hàm `handleSaveSnapshot` và `handleTriggerAnalysis` hardcode chuỗi dữ liệu `snapshotUrl = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>'` thay vì xuất hình ảnh hoặc SVG thực tế từ các phần tử do ứng viên vẽ.
@@ -243,6 +267,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-EVENT-01] P1 (High) — Event Payload Contract Mismatch Breaks Interview Completion Email Notifications
+
 - **Vị trí mã nguồn:**
   - [evaluation.processor.ts:413-418](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/evaluation/evaluation.processor.ts#L413-L418)
   - [email-events.listener.ts:64-75](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/email/listeners/email-events.listener.ts#L64-L75)
@@ -253,6 +278,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-DATA-02] P2 (Medium) — Non-Atomic `totalXp` Calculation Causes Lost Updates Under Concurrency
+
 - **Vị trí mã nguồn:**
   - [xp.service.ts:119-141](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/gamification/xp.service.ts#L119-L141)
 - **Mô tả:** `newTotalXp` được tính toán trong bộ nhớ Node.js `(existing?.totalXp || 0) + amount` và ghi đè dưới dạng giá trị tuyệt đối trong Prisma update (`totalXp: newTotalXp`), trong khi `dailyXp` dùng atomic `{ increment: amount }`. Khi có 2 tác vụ cộng XP đồng thời (ví dụ: hoàn thành câu hỏi + bonus streak), tác vụ sau ghi đè tác vụ trước gây mất XP và lệch level. Ngoài ra, event `gamification.xp_awarded` được emit bên trong transaction trước khi commit.
@@ -262,6 +288,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-ANALYTICS-01] P2 (Medium) — Non-Authoritative Mock Evaluations Contaminate Candidate Competency Radar
+
 - **Vị trí mã nguồn:**
   - [analytics.service.ts:125-165](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/analytics/analytics.service.ts#L125-L165)
 - **Mô tả:** `AnalyticsService.getCompetencyRadar` tổng hợp tất cả các bản ghi `turn.answer.evaluation` mà không lọc theo điều kiện `authorityState === 'AUTHORITATIVE'`. Các bản đánh giá từ Mock Provider hoặc bản đánh giá chưa được kiểm định (`needsReview === true`) vẫn bị tính vào biểu đồ radar năng lực chính thức.
@@ -271,6 +298,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-READINESS-01] P2 (Medium) — Default Null `competencyArea` Forces All Session Turns into `SYSTEM_DESIGN`
+
 - **Vị trí mã nguồn:**
   - [readiness.service.ts:97-100](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/readiness/services/readiness.service.ts#L97-L100)
 - **Mô tả:** `turn.session.competencyArea ? (turn.session.competencyArea as CompetencyArea) : CompetencyArea.SYSTEM_DESIGN`. Vì các phiên phỏng vấn thông thường (Fullstack, Backend, Frontend) không gán trường `competencyArea` cho từng session, tất cả các câu hỏi được gom hết vào `SYSTEM_DESIGN`. 4 nhóm năng lực cốt lõi còn lại (Language Core, Database, Architecture, Resilience) nhận điểm 0.
@@ -280,6 +308,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-FUNC-06] P2 (Medium) — Flashcard Auto-Generation Uses Static Hardcoded Template Instead of AI (F005)
+
 - **Vị trí mã nguồn:**
   - [flashcard.service.ts:338-342](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/flashcards/flashcard.service.ts#L338-L342)
 - **Mô tả:** Tính năng tự động tạo Flashcard ôn tập từ điểm yếu phỏng vấn (`autoGenerateFlashcards`) gắn cứng nội dung mặt sau thẻ (backContent) bằng đoạn văn mẫu tĩnh: `Ensure fault isolation and clear resource limits... Discuss failure modes...` mà không hề gọi AI Orchestrator hay LLM để giải thích điểm yếu đó.
@@ -289,6 +318,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-ASYNC-02] P2 (Medium) — Silent Learning Path Generation Failure Leaves Frontend in Permanent Spinner
+
 - **Vị trí mã nguồn:**
   - [learning-path.processor.ts:117-138](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/learning-path/learning-path.processor.ts#L117-L138)
 - **Mô tả:** Khi `LearningPathProcessor` gặp lỗi và vượt quá số lần retry, nó cập nhật trạng thái `FAILED` vào cơ sở dữ liệu nhưng không phát bất kỳ sự kiện SSE nào (ví dụ `SseEventType.SESSION_FAILED` hoặc `LEARNING_PATH_FAILED`) tới client.
@@ -298,6 +328,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-OPS-03] P2 (Medium) — Streak Reminder Cron Fails Over to Local Lock Causing Duplicate Multi-Pod Spam
+
 - **Vị trí mã nguồn:**
   - [streak-reminder.cron.ts:105-116](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/notifications/streak-reminder.cron.ts#L105-L116)
 - **Mô tả:** Khi Redis gặp trục trặc tạm thời, hàm `acquireDistributedLock` tự động chuyển sang cơ chế khóa bộ nhớ cục bộ (`localExecutionLocks`). Trong mô hình chạy 4 replicas (2 API + 2 Worker), cả 4 pods đều chiếm được khóa cục bộ và đồng thời gửi 4 thông báo push trùng lặp tới cùng một người dùng lúc 8 giờ tối.
@@ -307,6 +338,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-B2B-01] P2 (Medium) — Cohort Analytics Conflates Tenant-Wide Sessions with Cohort Assignment Completions
+
 - **Vị trí mã nguồn:**
   - [cohort-analytics.service.ts:140-141](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/b2b/services/cohort-analytics.service.ts#L140-L141)
   - [assignment.service.ts:92](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/b2b/services/assignment.service.ts#L92)
@@ -317,6 +349,7 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 ---
 
 ### [NEW-BILLING-01] P3 (Low) — Missing Payment Succeeded Confirmation Event for Stripe Subscriptions
+
 - **Vị trí mã nguồn:**
   - [stripe.provider.ts:253-313](file:///C:/Users/Duong%20Vinh/ai-interview-practice/apps/api/src/modules/billing/providers/stripe.provider.ts#L253-L313)
 - **Mô tả:** Trong webhook của Stripe (`checkout.session.completed` và `invoice.payment_succeeded`), sau khi kích hoạt gói thuê bao và tạo hóa đơn, hệ thống không phát sự kiện `billing.payment_succeeded` (như đã làm ở PayOS).
@@ -327,40 +360,40 @@ Tài liệu này tổng hợp toàn bộ các lỗi bảo mật, lỗi quyền h
 
 ## 2. BẢNG PHÂN LOẠI & THỨ TỰ ƯU TIÊN KHẮC PHỤC (REMEDIATION ROADMAP)
 
-| Thứ tự | ID Lỗi | Mức độ | Nhóm chuyên môn | Mục tiêu xử lý |
-| :---: | :--- | :---: | :--- | :--- |
-| **1** | `NEW-SEC-05` | **P1** | Billing / Privacy | Hủy subscription Stripe ngay khi xóa tài khoản; tránh trừ tiền oan. |
-| **2** | `NEW-SEC-01` | **P1** | Billing / Quota | Gọi `usageMeter.checkAndConsumeQuota` khi tạo interview session. |
-| **3** | `NEW-AUTH-01` | **P1** | Auth / Identity | Cấp token `tokenType: 'mfa_enrollment'` cho admin chưa bật MFA. |
-| **4** | `NEW-SEC-07` | **P1** | Authorization | Kiểm tra `mfaVerified` khi bypass bằng role `ADMIN` tại mọi service layer. |
-| **5** | `NEW-FE-01` | **P1** | Frontend / Canvas | Xuất dữ liệu Canvas/SVG thực tế thay vì hardcode chuỗi SVG rỗng. |
-| **6** | `NEW-EVENT-01` | **P1** | Event / Email | Truyền `email` vào payload của `interview.completed` event. |
-| **7** | `NEW-FUNC-04` | **P1** | AI / Vision | Tiêm `@Inject('VISION_PROVIDER')` trong `DesignAnalyzerService`. |
-| **8** | `NEW-FUNC-05` | **P1** | AI / Tutor | Tích hợp LLM streaming thực sự cho Socratic Tutor thay vì chuỗi tĩnh. |
-| **9** | `NEW-ASYNC-01` | **P1** | Async / Queue | Thêm Transactional Outbox chống mất Learning Path khi hoàn thành phỏng vấn. |
-| **10** | `NEW-OPS-01` | **P1** | DevOps / Infra | Bổ sung đầy đủ 7 secret keys vào Terraform Secrets Manager & ECS Task. |
-| **11** | `NEW-SEC-02` | **P1** | Security / Crypto | Khai báo `CERTIFICATE_SECRET` trong EnvSchema & ECS config. |
-| **12** | `NEW-DATA-02` | **P2** | Gamification | Dùng atomic increment cho `totalXp` chống race condition mất điểm. |
-| **13** | `NEW-READINESS-01` | **P2** | Analytics / Score | Map competency theo category câu hỏi thay vì fallback về System Design. |
-| **14** | `NEW-ANALYTICS-01` | **P2** | Analytics | Lọc `authorityState === 'AUTHORITATIVE'` khi tính Competency Radar. |
-| **15** | `NEW-SEC-04` | **P2** | Frontend / Auth | Thêm Mutex lock chống race condition khi refresh access token. |
-| **16** | `NEW-SEC-06` | **P2** | Authorization | Thêm `interviewId` vào `LiveSession` schema để cô lập quyền sửa điểm. |
-| **17** | `NEW-SEC-08` | **P2** | Security / DoS | Thêm `@Throttle` và async view buffer cho public certificate verification. |
-| **18** | `NEW-SEC-09` | **P2** | Security / Crypto | Xử lý ngoại lệ fail-closed an toàn trong `TotpUtil.decryptSecret`. |
-| **19** | `NEW-FUNC-06` | **P2** | AI / Flashcards | Tích hợp AI tạo nội dung ôn tập điểm yếu thay vì template tĩnh. |
-| **20** | `NEW-ASYNC-02` | **P2** | Async / Realtime | Phát sự kiện SSE báo lỗi khi sinh Learning Path thất bại. |
-| **21** | `NEW-OPS-03` | **P2** | Cron / Reliability | Fail-closed distributed lock cho cron nhắc nhở học tập. |
-| **22** | `NEW-B2B-01` | **P2** | B2B / Analytics | Lọc session theo `assignmentId` khi tính tiến độ hoàn thành cohort. |
-| **23** | `NEW-OPS-02` | **P2** | DevOps / Docker | Đồng bộ `AI_ALLOW_MOCK` trong `docker-compose.yml`. |
-| **24** | `NEW-AUTH-02` | **P2** | B2B / Auth | Chuyển auto-resolve single-tenant từ Middleware sang Guard. |
-| **25** | `NEW-SEC-03` | **P2** | Realtime / Security | Chuyển token SSE từ URL Query Param sang Header hoặc Ephemeral Ticket. |
-| **26** | `NEW-FUNC-01` | **P2** | AI / Correctness | Thay logic chấm điểm độ dài chuỗi bằng AI rubric thực sự cho Socratic Retry. |
-| **27** | `NEW-FUNC-03` | **P2** | Mentor / Media | Đồng bộ Signing Key media provider qua ConfigService. |
-| **28** | `NEW-PRIV-01` | **P2** | B2B / Privacy | Chuyển CSV roster import sang gửi email invitation token. |
-| **29** | `NEW-BILLING-01` | **P3** | Billing / Email | Phát sự kiện `billing.payment_succeeded` trong Stripe webhook. |
-| **30** | `NEW-ARCH-01` | **P3** | Database / Clean | Tách cột JSON metadata riêng khỏi cột `pdfUrl`. |
-| **31** | `NEW-DATA-01` | **P3** | Data / Timezone | Tính streak Flashcard theo múi giờ người dùng. |
-| **32** | `NEW-INFRA-01` | **P3** | Nginx / Network | Chuẩn hóa Nginx map cho header Connection upgrade. |
+| Thứ tự | ID Lỗi             | Mức độ | Nhóm chuyên môn     | Mục tiêu xử lý                                                               |
+| :----: | :----------------- | :----: | :------------------ | :--------------------------------------------------------------------------- |
+| **1**  | `NEW-SEC-05`       | **P1** | Billing / Privacy   | Hủy subscription Stripe ngay khi xóa tài khoản; tránh trừ tiền oan.          |
+| **2**  | `NEW-SEC-01`       | **P1** | Billing / Quota     | Gọi `usageMeter.checkAndConsumeQuota` khi tạo interview session.             |
+| **3**  | `NEW-AUTH-01`      | **P1** | Auth / Identity     | Cấp token `tokenType: 'mfa_enrollment'` cho admin chưa bật MFA.              |
+| **4**  | `NEW-SEC-07`       | **P1** | Authorization       | Kiểm tra `mfaVerified` khi bypass bằng role `ADMIN` tại mọi service layer.   |
+| **5**  | `NEW-FE-01`        | **P1** | Frontend / Canvas   | Xuất dữ liệu Canvas/SVG thực tế thay vì hardcode chuỗi SVG rỗng.             |
+| **6**  | `NEW-EVENT-01`     | **P1** | Event / Email       | Truyền `email` vào payload của `interview.completed` event.                  |
+| **7**  | `NEW-FUNC-04`      | **P1** | AI / Vision         | Tiêm `@Inject('VISION_PROVIDER')` trong `DesignAnalyzerService`.             |
+| **8**  | `NEW-FUNC-05`      | **P1** | AI / Tutor          | Tích hợp LLM streaming thực sự cho Socratic Tutor thay vì chuỗi tĩnh.        |
+| **9**  | `NEW-ASYNC-01`     | **P1** | Async / Queue       | Thêm Transactional Outbox chống mất Learning Path khi hoàn thành phỏng vấn.  |
+| **10** | `NEW-OPS-01`       | **P1** | DevOps / Infra      | Bổ sung đầy đủ 7 secret keys vào Terraform Secrets Manager & ECS Task.       |
+| **11** | `NEW-SEC-02`       | **P1** | Security / Crypto   | Khai báo `CERTIFICATE_SECRET` trong EnvSchema & ECS config.                  |
+| **12** | `NEW-DATA-02`      | **P2** | Gamification        | Dùng atomic increment cho `totalXp` chống race condition mất điểm.           |
+| **13** | `NEW-READINESS-01` | **P2** | Analytics / Score   | Map competency theo category câu hỏi thay vì fallback về System Design.      |
+| **14** | `NEW-ANALYTICS-01` | **P2** | Analytics           | Lọc `authorityState === 'AUTHORITATIVE'` khi tính Competency Radar.          |
+| **15** | `NEW-SEC-04`       | **P2** | Frontend / Auth     | Thêm Mutex lock chống race condition khi refresh access token.               |
+| **16** | `NEW-SEC-06`       | **P2** | Authorization       | Thêm `interviewId` vào `LiveSession` schema để cô lập quyền sửa điểm.        |
+| **17** | `NEW-SEC-08`       | **P2** | Security / DoS      | Thêm `@Throttle` và async view buffer cho public certificate verification.   |
+| **18** | `NEW-SEC-09`       | **P2** | Security / Crypto   | Xử lý ngoại lệ fail-closed an toàn trong `TotpUtil.decryptSecret`.           |
+| **19** | `NEW-FUNC-06`      | **P2** | AI / Flashcards     | Tích hợp AI tạo nội dung ôn tập điểm yếu thay vì template tĩnh.              |
+| **20** | `NEW-ASYNC-02`     | **P2** | Async / Realtime    | Phát sự kiện SSE báo lỗi khi sinh Learning Path thất bại.                    |
+| **21** | `NEW-OPS-03`       | **P2** | Cron / Reliability  | Fail-closed distributed lock cho cron nhắc nhở học tập.                      |
+| **22** | `NEW-B2B-01`       | **P2** | B2B / Analytics     | Lọc session theo `assignmentId` khi tính tiến độ hoàn thành cohort.          |
+| **23** | `NEW-OPS-02`       | **P2** | DevOps / Docker     | Đồng bộ `AI_ALLOW_MOCK` trong `docker-compose.yml`.                          |
+| **24** | `NEW-AUTH-02`      | **P2** | B2B / Auth          | Chuyển auto-resolve single-tenant từ Middleware sang Guard.                  |
+| **25** | `NEW-SEC-03`       | **P2** | Realtime / Security | Chuyển token SSE từ URL Query Param sang Header hoặc Ephemeral Ticket.       |
+| **26** | `NEW-FUNC-01`      | **P2** | AI / Correctness    | Thay logic chấm điểm độ dài chuỗi bằng AI rubric thực sự cho Socratic Retry. |
+| **27** | `NEW-FUNC-03`      | **P2** | Mentor / Media      | Đồng bộ Signing Key media provider qua ConfigService.                        |
+| **28** | `NEW-PRIV-01`      | **P2** | B2B / Privacy       | Chuyển CSV roster import sang gửi email invitation token.                    |
+| **29** | `NEW-BILLING-01`   | **P3** | Billing / Email     | Phát sự kiện `billing.payment_succeeded` trong Stripe webhook.               |
+| **30** | `NEW-ARCH-01`      | **P3** | Database / Clean    | Tách cột JSON metadata riêng khỏi cột `pdfUrl`.                              |
+| **31** | `NEW-DATA-01`      | **P3** | Data / Timezone     | Tính streak Flashcard theo múi giờ người dùng.                               |
+| **32** | `NEW-INFRA-01`     | **P3** | Nginx / Network     | Chuẩn hóa Nginx map cho header Connection upgrade.                           |
 
 ---
 

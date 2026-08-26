@@ -48,6 +48,7 @@ jobs:
             -v "$PWD:/repo:ro" \
             docker.io/zricethezav/gitleaks@sha256:bf00b5e039f0fad4b32935dc5ec1e358f227ccd097bcb64b971f0331072fe2ae \
             git /repo --log-opts="$GITLEAKS_LOG_OPTS" --config /repo/.gitleaks.toml \
+            --gitleaks-ignore-path /repo/.gitleaksignore \
             --redact --no-banner --verbose --exit-code 1
 
   sast-semgrep:

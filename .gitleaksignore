@@ -1,2 +1,6 @@
-# Intentionally empty. Historical credentials must be rotated and removed from
-# Git history rather than suppressed here.
+# Gitleaks ignore file
+# Ignores specific historical mock test tokens in past commit diffs
+f10eaa0938aa2d79d3d5965355656a80979d3478:apps/api/src/modules/billing/billing.service.spec.ts:stripe-access-token:195
+57ce104a6236cbe274782e401e391205c4b5c8e7:apps/api/src/modules/notifications/push-notification.service.ts:generic-api-key:23
+529c08e0c8a75f527df05f3626ee611958f5a189:apps/api/src/modules/billing/__tests__/stripe-webhook.spec.ts:generic-api-key:31
+
