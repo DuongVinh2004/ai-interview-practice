@@ -1,8 +1,10 @@
 # Stage 1: Base
-FROM node:20.18.0-alpine3.20 AS base
+FROM node:22.13.0-alpine3.20@sha256:db8dcb90326a0116375414e9a7c068a6b87a4422b7da37b5c6cd026f7c7835d3 AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
+RUN npm install --global --ignore-scripts corepack@0.34.0 \
+    && corepack enable \
+    && corepack prepare pnpm@11.0.9 --activate
 
 # Stage 2: Dependencies
 FROM base AS dependencies
@@ -28,7 +30,7 @@ RUN cd apps/api && npx prisma generate
 RUN pnpm --filter api build
 
 # Stage 4: Production Runner
-FROM node:20.18.0-alpine3.20 AS runner
+FROM node:22.13.0-alpine3.20@sha256:db8dcb90326a0116375414e9a7c068a6b87a4422b7da37b5c6cd026f7c7835d3 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
@@ -44,4 +46,3 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/v1/health/ready || exit 1
 
 CMD ["node", "apps/api/dist/main.js"]
-

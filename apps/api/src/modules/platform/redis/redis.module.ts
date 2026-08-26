@@ -2,6 +2,7 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { RedisService } from './redis.service';
+import { createRedisConnectionOptions } from './redis.options';
 import { QueueName } from '@ai-interview/contracts';
 
 export const DEFAULT_DURABLE_JOB_OPTIONS = {
@@ -23,11 +24,7 @@ export const DEFAULT_DURABLE_JOB_OPTIONS = {
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        connection: {
-          host: configService.get<string>('redis.host', 'localhost'),
-          port: configService.get<number>('redis.port', 6379),
-          password: configService.get<string>('redis.password') || undefined,
-        },
+        connection: createRedisConnectionOptions(configService),
         defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS,
       }),
       inject: [ConfigService],

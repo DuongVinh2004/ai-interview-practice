@@ -1,19 +1,9 @@
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Allowlist for test fixtures, mock data, and documentation examples"
-paths = [
-  '''(?i)__tests__/.*''',
-  '''(?i).*\.spec\.ts''',
-  '''(?i).*\.test\.ts''',
-  '''(?i).*\.test\.tsx''',
-  '''(?i)apps/api/test/.*''',
-  '''(?i)infra/scripts/.*''',
-]
-regexes = [
-  '''(?i)mock_[a-zA-Z0-9_-]+''',
-  '''(?i)test-[a-zA-Z0-9_-]+''',
-  '''(?i)whsec_[a-zA-Z0-9_-]+''',
-  '''(?i)sk_test_[a-zA-Z0-9_-]+''',
-]
+[[allowlists]]
+description = "Empty provider-key placeholders in the committed environment template"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(?:^|/)\.env\.example$''']
+regexes = ['''^ELEVENLABS_API_KEY=$''']

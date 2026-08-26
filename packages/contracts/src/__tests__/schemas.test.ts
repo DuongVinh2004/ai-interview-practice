@@ -27,9 +27,34 @@ import {
   BookSessionSchema,
   CreateCohortSchema,
   CreateAssignmentSchema,
+  MfaEnableResponseSchema,
+  UserRole,
+  UserStatus,
 } from '../index';
 
 describe('Contracts Validation Schemas', () => {
+  it('validates MFA enable responses carrying the replacement authenticated session', () => {
+    const result = MfaEnableResponseSchema.safeParse({
+      success: true,
+      mfaEnabled: true,
+      recoveryCodes: Array.from({ length: 8 }, (_, index) => `CODE-${index}`),
+      user: {
+        id: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
+        email: 'candidate@example.com',
+        role: UserRole.CANDIDATE,
+        status: UserStatus.ACTIVE,
+        mfaEnabled: true,
+        createdAt: '2026-08-26T00:00:00.000Z',
+      },
+      accessToken: 'replacement-access-token',
+      refreshToken: 'replacement-refresh-token',
+      expiresIn: 900,
+      message: 'MFA enabled',
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it('validates RegisterDto correctly', () => {
     const valid = RegisterDtoSchema.safeParse({
       email: 'test@example.com',

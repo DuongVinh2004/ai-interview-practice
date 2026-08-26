@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProfileService } from './profile.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { UserRole, UserStatus, SessionState, CompetencyArea } from '@ai-interview/contracts';
+import { BillingService } from '../billing/billing.service';
 
 describe('ProfileService', () => {
   let service: ProfileService;
   let prisma: any;
+  let billingService: any;
 
   beforeEach(async () => {
     prisma = {
@@ -20,6 +22,9 @@ describe('ProfileService', () => {
         findMany: jest.fn(),
       },
     };
+    billingService = {
+      cancelSubscriptionsForAccountDeletion: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -28,6 +33,7 @@ describe('ProfileService', () => {
           provide: PrismaService,
           useValue: prisma,
         },
+        { provide: BillingService, useValue: billingService },
       ],
     }).compile();
 
@@ -283,11 +289,15 @@ describe('ProfileService', () => {
       prisma.user.update = jest.fn().mockResolvedValue({});
       prisma.userProfile = { update: jest.fn().mockResolvedValue({}) };
       prisma.userDocument = { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) };
+      prisma.refreshToken = { updateMany: jest.fn().mockResolvedValue({ count: 2 }) };
       prisma.auditLog = { create: jest.fn().mockResolvedValue({}) };
       prisma.$transaction = jest.fn(async (cb: any) => cb(prisma));
 
       const result = await service.deleteAccount('user-to-delete');
       expect(result.success).toBe(true);
+      expect(billingService.cancelSubscriptionsForAccountDeletion).toHaveBeenCalledWith(
+        'user-to-delete',
+      );
       expect(prisma.userProfile.update).toHaveBeenCalledWith({
         where: { userId: 'user-to-delete' },
         data: expect.objectContaining({ fullName: 'Deleted User', bio: null }),
@@ -298,7 +308,13 @@ describe('ProfileService', () => {
         data: expect.objectContaining({
           status: UserStatus.LOCKED,
           email: 'deleted_user-to-delete@anonymized.local',
+          tokenVersion: { increment: 1 },
         }),
+      });
+
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-to-delete', isRevoked: false },
+        data: { isRevoked: true },
       });
 
       expect(prisma.userDocument.deleteMany).toHaveBeenCalledWith({

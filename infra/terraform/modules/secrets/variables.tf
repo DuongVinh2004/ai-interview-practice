@@ -7,6 +7,18 @@ variable "db_password" {
   sensitive = true
 }
 
+variable "db_endpoint" {
+  type = string
+}
+
+variable "db_username" {
+  type = string
+}
+
+variable "db_name" {
+  type = string
+}
+
 variable "redis_auth_token" {
   type      = string
   sensitive = true

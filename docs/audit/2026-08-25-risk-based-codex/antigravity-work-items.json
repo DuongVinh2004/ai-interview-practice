@@ -1,5 +1,7 @@
 {
   "audit": {
+    "status": "retired-historical-artifact",
+    "executionPolicy": "Do not use Antigravity. Codex performs implementation and verification directly under the root AGENTS.md policy.",
     "repository": "C:\\Users\\Duong Vinh\\ai-interview-practice",
     "branch": "feat/uiux-transformation-roadmap",
     "head": "57ce104a6236cbe274782e401e391205c4b5c8e7",

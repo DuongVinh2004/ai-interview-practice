@@ -137,6 +137,56 @@ export class UsageMeterService {
     );
   }
 
+  async checkAndConsumeQuotaInTransaction(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    metric: BillingMetric,
+    quantity = 1,
+  ): Promise<{ allowed: boolean; currentUsage: number; limit: number; remaining: number }> {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const subscription = await tx.subscription.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      include: { plan: true },
+    });
+
+    let limit = FREE_LIMITS[metric] || 10;
+    if (subscription) {
+      const limits = subscription.plan.limits as any;
+      if (metric === BillingMetric.SESSION_COUNT) {
+        limit = limits?.sessionsPerMonth || 20;
+      } else if (metric === BillingMetric.AI_TOKEN) {
+        limit = 200000;
+      } else if (metric === BillingMetric.AUDIO_MINUTE) {
+        limit = limits?.voiceMinutesPerMonth || 60;
+      }
+    }
+
+    const records = await tx.usageRecord.aggregate({
+      where: { userId, metric, recordedAt: { gte: startOfMonth } },
+      _sum: { quantity: true },
+    });
+    const currentUsage = records._sum.quantity || 0;
+    if (currentUsage + quantity > limit) {
+      throw new DomainException(
+        ErrorCode.QUOTA_EXCEEDED,
+        `Monthly quota exceeded for ${metric}. Limit: ${limit}, Used: ${currentUsage}, Requested: ${quantity}`,
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    await tx.usageRecord.create({ data: { userId, metric, quantity } });
+    const newUsage = currentUsage + quantity;
+    return {
+      allowed: true,
+      currentUsage: newUsage,
+      limit,
+      remaining: Math.max(0, limit - newUsage),
+    };
+  }
+
   async recordUsage(userId: string, metric: BillingMetric, quantity: number): Promise<void> {
     await this.prisma.usageRecord.create({
       data: {

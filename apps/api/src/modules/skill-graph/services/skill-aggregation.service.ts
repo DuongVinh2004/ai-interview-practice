@@ -210,10 +210,22 @@ export class SkillAggregationService {
     };
   }
 
+  private seedingPromise: Promise<void> | null = null;
+
   /**
    * Seed default 5 Areas x 4 Sub-Competencies = 20 root skill nodes if taxonomy empty
    */
   async seedDefaultSkillNodes(): Promise<void> {
+    if (this.seedingPromise) {
+      return this.seedingPromise;
+    }
+    this.seedingPromise = this.executeSeedDefaultSkillNodes().finally(() => {
+      this.seedingPromise = null;
+    });
+    return this.seedingPromise;
+  }
+
+  private async executeSeedDefaultSkillNodes(): Promise<void> {
     const areas = [
       {
         area: CompetencyArea.SYSTEM_DESIGN,
@@ -248,19 +260,26 @@ export class SkillAggregationService {
     ];
 
     for (const a of areas) {
-      const parent = await this.prisma.skillNode.upsert({
-        where: { slug: a.slug },
-        update: {},
-        create: {
-          slug: a.slug,
-          name: a.name,
-          nameVi: a.nameVi,
-          competencyArea: a.area as any,
-          level: 1,
-          weight: 1.0,
-          isActive: true,
-        },
-      });
+      let parent: any;
+      try {
+        parent = await this.prisma.skillNode.upsert({
+          where: { slug: a.slug },
+          update: {},
+          create: {
+            slug: a.slug,
+            name: a.name,
+            nameVi: a.nameVi,
+            competencyArea: a.area as any,
+            level: 1,
+            weight: 1.0,
+            isActive: true,
+          },
+        });
+      } catch (err) {
+        parent = await this.prisma.skillNode.findUnique({ where: { slug: a.slug } });
+      }
+
+      if (!parent) continue;
 
       const subCompetencies = [
         {
@@ -287,21 +306,25 @@ export class SkillAggregationService {
 
       for (let i = 0; i < subCompetencies.length; i++) {
         const sub = subCompetencies[i];
-        await this.prisma.skillNode.upsert({
-          where: { slug: sub.slug },
-          update: {},
-          create: {
-            parentId: parent.id,
-            competencyArea: a.area as any,
-            slug: sub.slug,
-            name: sub.name,
-            nameVi: sub.nameVi,
-            level: 2,
-            weight: 1.0,
-            order: i,
-            isActive: true,
-          },
-        });
+        try {
+          await this.prisma.skillNode.upsert({
+            where: { slug: sub.slug },
+            update: {},
+            create: {
+              parentId: parent.id,
+              competencyArea: a.area as any,
+              slug: sub.slug,
+              name: sub.name,
+              nameVi: sub.nameVi,
+              level: 2,
+              weight: 1.0,
+              order: i,
+              isActive: true,
+            },
+          });
+        } catch {
+          // Ignore concurrent upsert collision on slug
+        }
       }
     }
   }

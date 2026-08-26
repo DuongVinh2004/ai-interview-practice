@@ -1,12 +1,18 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class SignatureService {
   private readonly secret: string;
 
-  constructor() {
-    this.secret = process.env.CERTIFICATE_SECRET || 'ai-interview-practice-secret-cert-key-2026';
+  constructor(@Optional() configService?: ConfigService) {
+    const configuredSecret =
+      configService?.get<string>('CERTIFICATE_SECRET') || process.env.CERTIFICATE_SECRET;
+    if (!configuredSecret && process.env.NODE_ENV === 'production') {
+      throw new Error('FATAL: CERTIFICATE_SECRET must be configured in production');
+    }
+    this.secret = configuredSecret || 'development-only-certificate-secret-not-for-production';
   }
 
   generateSignature(

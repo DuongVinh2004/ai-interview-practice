@@ -52,6 +52,7 @@ describe('BillingService (F014)', () => {
           .mockResolvedValue({ id: '00000000-0000-0000-0000-000000000002', email: 'dev@test.com' }),
       },
       subscription: {
+        findMany: jest.fn().mockResolvedValue([]),
         findFirst: jest.fn().mockResolvedValue({
           id: '00000000-0000-0000-0000-000000000003',
           userId: '00000000-0000-0000-0000-000000000002',
@@ -76,6 +77,7 @@ describe('BillingService (F014)', () => {
           cancelAtPeriodEnd: true,
           canceledAt: new Date(),
         }),
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       invoice: {
         create: jest.fn().mockResolvedValue({ id: 'inv-1' }),
@@ -192,7 +194,7 @@ describe('BillingService (F014)', () => {
     });
     const mockCheckout = jest.spyOn(mockBillingProvider, 'createCheckoutSession');
     configGet.mockImplementation((key, defaultValue) =>
-      key === 'STRIPE_SECRET_KEY' ? 'sk_test_configured' : defaultValue,
+      key === 'STRIPE_SECRET_KEY' ? 'configured-test-value' : defaultValue,
     );
 
     try {
@@ -220,6 +222,31 @@ describe('BillingService (F014)', () => {
     expect(prismaMock.subscription.update).toHaveBeenCalled();
   });
 
+  it('cancels Stripe recurring billing before account deletion', async () => {
+    prismaMock.subscription.findMany.mockResolvedValue([
+      {
+        id: 'subscription-1',
+        provider: 'STRIPE',
+        providerSubId: 'sub_remote_1',
+      },
+    ]);
+    const cancelStripe = jest
+      .spyOn(stripeProvider, 'cancelSubscriptionImmediately')
+      .mockResolvedValue(undefined);
+
+    await service.cancelSubscriptionsForAccountDeletion('user-1');
+
+    expect(cancelStripe).toHaveBeenCalledWith('sub_remote_1');
+    expect(prismaMock.subscription.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['subscription-1'] } },
+      data: {
+        status: SubscriptionStatus.CANCELED,
+        cancelAtPeriodEnd: false,
+        canceledAt: expect.any(Date),
+      },
+    });
+  });
+
   it('should validate valid promo code and reject invalid code', async () => {
     const validPromo = await service.validatePromoCode('PROMO20');
     expect(validPromo.valid).toBe(true);
@@ -230,17 +257,16 @@ describe('BillingService (F014)', () => {
   });
 
   it('should verify Stripe webhook signature and reject forged signatures', async () => {
+    const webhookSecret = (await import('crypto')).randomBytes(32);
     const stripeProvider = new StripeProvider({
-      get: jest.fn((k: string) =>
-        k === 'STRIPE_WEBHOOK_SECRET' ? 'mock_test_webhook_secret_123' : '',
-      ),
+      get: jest.fn((k: string) => (k === 'STRIPE_WEBHOOK_SECRET' ? webhookSecret : '')),
     } as any);
 
     const crypto = await import('crypto');
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const payload = JSON.stringify({ id: 'evt_123', type: 'invoice.payment_succeeded' });
     const signature = crypto
-      .createHmac('sha256', 'mock_test_webhook_secret_123')
+      .createHmac('sha256', webhookSecret)
       .update(`${timestamp}.${payload}`, 'utf8')
       .digest('hex');
 

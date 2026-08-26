@@ -20,6 +20,48 @@ interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
+let activeRefreshPromise: Promise<string | null> | null = null;
+
+async function performTokenRefresh(): Promise<string | null> {
+  if (activeRefreshPromise) {
+    return activeRefreshPromise;
+  }
+
+  activeRefreshPromise = (async () => {
+    const authStore = useAuthStore.getState();
+    const currentRefreshToken = authStore.refreshToken;
+    if (!currentRefreshToken) {
+      authStore.logout();
+      return null;
+    }
+
+    try {
+      const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken: currentRefreshToken }),
+      });
+
+      if (refreshResponse.ok) {
+        const refreshData = await refreshResponse.json();
+        const payload = refreshData.data || refreshData;
+        authStore.setAuth(payload.user, payload.accessToken, payload.refreshToken);
+        return payload.accessToken as string;
+      } else {
+        authStore.logout();
+        return null;
+      }
+    } catch {
+      authStore.logout();
+      return null;
+    } finally {
+      activeRefreshPromise = null;
+    }
+  })();
+
+  return activeRefreshPromise;
+}
+
 export async function apiClient<T = any>(
   endpoint: string,
   options: RequestOptions = {},
@@ -50,31 +92,15 @@ export async function apiClient<T = any>(
     headers: reqHeaders,
   });
 
-  // Handle 401 unauthorized & refresh token attempt
+  // Handle 401 unauthorized & refresh token attempt with global mutex lock (NEW-SEC-04)
   if (response.status === 401 && !skipAuth && authStore.refreshToken) {
-    try {
-      const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: authStore.refreshToken }),
+    const newAccessToken = await performTokenRefresh();
+    if (newAccessToken) {
+      reqHeaders['Authorization'] = `Bearer ${newAccessToken}`;
+      response = await fetch(url, {
+        ...customConfig,
+        headers: reqHeaders,
       });
-
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        const payload = refreshData.data || refreshData;
-        authStore.setAuth(payload.user, payload.accessToken, payload.refreshToken);
-
-        // Retry original request with new access token
-        reqHeaders['Authorization'] = `Bearer ${payload.accessToken}`;
-        response = await fetch(url, {
-          ...customConfig,
-          headers: reqHeaders,
-        });
-      } else {
-        authStore.logout();
-      }
-    } catch {
-      authStore.logout();
     }
   }
 

@@ -314,16 +314,20 @@ export class ShareService {
 
     // Calculate rubric averages
     const turnsWithEval = session.turns.filter(t => t.answer?.evaluation);
+    const authoritativeTurns = turnsWithEval.filter(
+      t => t.answer!.evaluation!.authorityState === 'AUTHORITATIVE',
+    );
+    const scoreableTurns = authoritativeTurns.length > 0 ? authoritativeTurns : turnsWithEval;
     let avgAccuracy = 0;
     let avgDepth = 0;
     let avgClarity = 0;
 
-    if (turnsWithEval.length > 0) {
+    if (scoreableTurns.length > 0) {
       let totalAcc = 0;
       let totalDepth = 0;
       let totalClarity = 0;
 
-      for (const t of turnsWithEval) {
+      for (const t of scoreableTurns) {
         const rubric = t.answer!.evaluation!.rubricScores as any;
         if (rubric) {
           totalAcc += rubric.technicalAccuracy || 0;
@@ -332,10 +336,20 @@ export class ShareService {
         }
       }
 
-      avgAccuracy = Number((totalAcc / turnsWithEval.length).toFixed(1));
-      avgDepth = Number((totalDepth / turnsWithEval.length).toFixed(1));
-      avgClarity = Number((totalClarity / turnsWithEval.length).toFixed(1));
+      avgAccuracy = Number((totalAcc / scoreableTurns.length).toFixed(1));
+      avgDepth = Number((totalDepth / scoreableTurns.length).toFixed(1));
+      avgClarity = Number((totalClarity / scoreableTurns.length).toFixed(1));
     }
+
+    const effectiveOverallScore =
+      scoreableTurns.length > 0
+        ? Number(
+            (
+              scoreableTurns.reduce((sum, t) => sum + t.answer!.evaluation!.score, 0) /
+              scoreableTurns.length
+            ).toFixed(1),
+          )
+        : session.overallScore;
 
     return {
       shareTokenId: shareToken.id,
@@ -358,7 +372,7 @@ export class ShareService {
       session: {
         id: session.id,
         state: session.state,
-        overallScore: session.overallScore,
+        overallScore: effectiveOverallScore,
         completedAt: session.completedAt?.toISOString() || null,
         jobRole: session.jobRole,
         seniorityLevel: session.seniorityLevel,

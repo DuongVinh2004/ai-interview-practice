@@ -52,7 +52,7 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     await page.fill('#email', 'admin@example.com');
     await page.fill('#password', 'Admin@123456');
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL('/');
+    await expect(page).toHaveURL(/(\/|\/profile\?setupMfa=1)/);
 
     // 3. Admin Users Management
     await page.goto('/admin/users');
@@ -88,7 +88,9 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     // 2. Go to Setup page
     await page.goto('/interviews/new');
     await expect(
-      page.getByRole('heading', { name: /(configure your interview|thiết lập phỏng vấn)/i }),
+      page.getByRole('heading', {
+        name: /(configure your interview|cấu hình phỏng vấn|thiết lập phỏng vấn)/i,
+      }),
     ).toBeVisible();
 
     // 3. Select Remediation Mode

@@ -1,4 +1,6 @@
-# Control Plane operating mode
+# Control Plane operating mode (retired historical document)
+
+> Retired: do not use the Antigravity executor described below. Codex performs assigned repository work directly under the root `AGENTS.md` policy. This file remains only as historical audit material.
 
 This project uses ChatGPT/Codex-style reasoning as the **Control Plane** and Antigravity as a bounded local executor. The canonical protocol is `16-codex/SUPERVISOR-PROTOCOL.md`.
 

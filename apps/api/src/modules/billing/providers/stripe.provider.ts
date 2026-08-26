@@ -87,6 +87,28 @@ export class StripeProvider implements BillingProvider {
     }
   }
 
+  async cancelSubscriptionImmediately(providerSubscriptionId: string): Promise<void> {
+    if (!this.apiKey) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new BadRequestException('Stripe cancellation is unavailable in production');
+      }
+      return;
+    }
+
+    const response = await fetch(
+      `https://api.stripe.com/v1/subscriptions/${encodeURIComponent(providerSubscriptionId)}`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${this.apiKey}` },
+      },
+    );
+    if (!response.ok && response.status !== 404) {
+      throw new BadRequestException(
+        `Stripe subscription cancellation failed with status ${response.status}`,
+      );
+    }
+  }
+
   async createCustomerPortalSession(
     customerId: string,
     returnUrl: string,

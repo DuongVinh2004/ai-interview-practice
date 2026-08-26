@@ -40,9 +40,11 @@ export const requestPushSubscription = async (): Promise<boolean> => {
     const registration = await navigator.serviceWorker.ready;
     let subscription = await registration.pushManager.getSubscription();
 
-    const publicVapidKey =
-      (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY ||
-      'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBKr3qBUYI-B5xeE5N5vnJYw';
+    const publicVapidKey = (import.meta as any).env?.VITE_VAPID_PUBLIC_KEY;
+    if (!publicVapidKey) {
+      console.warn('Web Push is disabled because VITE_VAPID_PUBLIC_KEY is not configured.');
+      return false;
+    }
 
     if (!subscription) {
       const convertedVapidKey = urlBase64ToUint8Array(publicVapidKey);

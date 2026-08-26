@@ -275,6 +275,32 @@ export class BillingService {
     };
   }
 
+  async cancelSubscriptionsForAccountDeletion(userId: string): Promise<void> {
+    const subscriptions = await this.prisma.subscription.findMany({
+      where: {
+        userId,
+        status: { in: ['TRIALING', 'ACTIVE', 'PAST_DUE', 'UNPAID'] },
+      },
+    });
+
+    for (const subscription of subscriptions) {
+      if (subscription.provider === 'STRIPE' && subscription.providerSubId) {
+        await this.stripeBilling.cancelSubscriptionImmediately(subscription.providerSubId);
+      }
+    }
+
+    if (subscriptions.length > 0) {
+      await this.prisma.subscription.updateMany({
+        where: { id: { in: subscriptions.map(subscription => subscription.id) } },
+        data: {
+          status: SubscriptionStatus.CANCELED,
+          cancelAtPeriodEnd: false,
+          canceledAt: new Date(),
+        },
+      });
+    }
+  }
+
   async getInvoices(userId: string): Promise<InvoiceDto[]> {
     const invoices = await this.prisma.invoice.findMany({
       where: { userId },

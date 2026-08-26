@@ -63,12 +63,14 @@ export class EvaluationProcessor extends WorkerHost {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: sessionId },
       include: {
+        user: { include: { profile: true } },
         jobRole: true,
         seniorityLevel: true,
         turns: {
           where: { id: turnId },
           include: { question: true, answer: true },
         },
+        learningPath: true,
       },
     });
 
@@ -92,6 +94,14 @@ export class EvaluationProcessor extends WorkerHost {
 
     const turn = session.turns[0];
     if (turn.status === 'EVALUATED') {
+      const totalTurns = session.totalTurns && session.totalTurns >= 1 ? session.totalTurns : 5;
+      if (
+        session.state === SessionState.COMPLETED &&
+        turnNumber >= totalTurns &&
+        !session.learningPath
+      ) {
+        await this.enqueueLearningPath(sessionId, traceparent);
+      }
       this.logger.warn(
         `Turn ${turn.turnNumber} for session ${sessionId} is already evaluated. Skipping duplicate execution.`,
       );
@@ -228,6 +238,7 @@ export class EvaluationProcessor extends WorkerHost {
         });
 
         let didTransition = false;
+        let overallScore: number | null = null;
         if (isFinalTurn) {
           // Calculate overall score from all turns
           // Prefer AUTHORITATIVE evaluations; fall back to all evaluations if none exist (e.g., mock provider in dev)
@@ -250,7 +261,7 @@ export class EvaluationProcessor extends WorkerHost {
           }
 
           const totalScore = allEvaluations.reduce((sum, e) => sum + e.score, 0);
-          const overallScore = Number((totalScore / Math.max(allEvaluations.length, 1)).toFixed(1));
+          overallScore = Number((totalScore / Math.max(allEvaluations.length, 1)).toFixed(1));
 
           const completeResult = await tx.interviewSession.updateMany({
             where: {
@@ -288,10 +299,10 @@ export class EvaluationProcessor extends WorkerHost {
           didTransition = activeResult.count > 0;
         }
 
-        return { evalRecord, didTransition };
+        return { evalRecord, didTransition, overallScore };
       });
 
-      const { evalRecord, didTransition } = evaluation;
+      const { evalRecord, didTransition, overallScore } = evaluation;
 
       this.logger.log(
         `Evaluation saved for session ${sessionId} turn ${turnNumber}. Score: ${evaluationResult.score}/10.`,
@@ -384,37 +395,32 @@ export class EvaluationProcessor extends WorkerHost {
           );
         }
       } else {
-        if (isFinalTurn) {
-          // Enqueue learning path generation after 5th turn completed
-          const lpJobId = `lp-${sessionId}`;
-          try {
-            await this.learningPathQueue.add(
-              JobName.GENERATE_LEARNING_PATH,
-              { sessionId, traceparent },
-              {
-                jobId: lpJobId,
-                attempts: 3,
-                backoff: { type: 'exponential', delay: 1000 },
-              },
-            );
-          } catch (lpErr: any) {
-            this.logger.warn(
-              `Failed to enqueue learning path generation immediately: ${lpErr.message}`,
-            );
-          }
-
+        if (didTransition) {
           this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_UPDATED, {
             sessionId,
             state: SessionState.COMPLETED,
           });
 
-          // Emit interview.completed for gamification XP & Badges
+          // Emit interview.completed for gamification XP & Badges & Email Notifications
           this.eventEmitter?.emit('interview.completed', {
             userId: session.userId,
+            email: session.user?.email || '',
+            userName: session.user?.profile?.fullName || 'Candidate',
+            jobRole: session.jobRole?.name || 'Software Engineer',
             sessionId,
-            overallScore: evaluationResult.score,
+            overallScore: overallScore ?? evaluationResult.score,
             sessionMode: session.sessionMode,
+            keyStrengths: evaluationResult.strengths,
+            growthAreas: evaluationResult.improvements,
           });
+
+          // Queue last: if dispatch fails BullMQ retries this evaluation job, whose duplicate
+          // recovery path above re-attempts the deterministic learning-path job ID.
+          await this.enqueueLearningPath(sessionId, traceparent);
+        } else {
+          this.logger.warn(
+            `Session ${sessionId} is already terminal. Skipping completion side effects.`,
+          );
         }
       }
 
@@ -455,5 +461,17 @@ export class EvaluationProcessor extends WorkerHost {
       }
       throw error;
     }
+  }
+
+  private async enqueueLearningPath(sessionId: string, traceparent?: string): Promise<void> {
+    await this.learningPathQueue.add(
+      JobName.GENERATE_LEARNING_PATH,
+      { sessionId, traceparent },
+      {
+        jobId: `lp-${sessionId}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+      },
+    );
   }
 }

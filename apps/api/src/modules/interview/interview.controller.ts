@@ -13,6 +13,7 @@ import {
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiParam } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { InterviewService } from './interview.service';
@@ -138,6 +139,7 @@ export class InterviewController {
     );
   }
 
+  @SkipThrottle({ default: true, short: true })
   @Public()
   @Sse(':id/events')
   @ApiOperation({ summary: 'Server-Sent Events stream for real-time interview progression' })

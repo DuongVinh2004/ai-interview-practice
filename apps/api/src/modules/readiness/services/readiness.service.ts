@@ -80,6 +80,7 @@ export class ReadinessService {
         answer: { evaluation: { isNot: null } },
       },
       include: {
+        question: true,
         answer: { include: { evaluation: true } },
         session: true,
       },
@@ -95,9 +96,56 @@ export class ReadinessService {
     };
 
     for (const turn of turns) {
-      const area = turn.session.competencyArea
-        ? (turn.session.competencyArea as unknown as CompetencyArea)
-        : CompetencyArea.SYSTEM_DESIGN;
+      let area: CompetencyArea = CompetencyArea.SYSTEM_DESIGN;
+      if (turn.session.competencyArea) {
+        area = turn.session.competencyArea as unknown as CompetencyArea;
+      } else {
+        const text = `${turn.question?.keyFocus || ''} ${turn.question?.content || ''}`.toLowerCase();
+        if (
+          text.includes('database') ||
+          text.includes('sql') ||
+          text.includes('acid') ||
+          text.includes('index') ||
+          text.includes('concurrency') ||
+          text.includes('transaction')
+        ) {
+          area = CompetencyArea.DATABASE_CONCURRENCY;
+        } else if (
+          text.includes('security') ||
+          text.includes('resilience') ||
+          text.includes('circuit') ||
+          text.includes('auth') ||
+          text.includes('rate limit')
+        ) {
+          area = CompetencyArea.RESILIENCE_SECURITY;
+        } else if (
+          text.includes('architecture') ||
+          text.includes('pattern') ||
+          text.includes('solid') ||
+          text.includes('clean') ||
+          text.includes('coupling')
+        ) {
+          area = CompetencyArea.ARCHITECTURE_PATTERNS;
+        } else if (
+          text.includes('typescript') ||
+          text.includes('javascript') ||
+          text.includes('event loop') ||
+          text.includes('memory') ||
+          text.includes('async')
+        ) {
+          area = CompetencyArea.LANGUAGE_CORE;
+        } else {
+          const areaList = [
+            CompetencyArea.SYSTEM_DESIGN,
+            CompetencyArea.LANGUAGE_CORE,
+            CompetencyArea.DATABASE_CONCURRENCY,
+            CompetencyArea.ARCHITECTURE_PATTERNS,
+            CompetencyArea.RESILIENCE_SECURITY,
+          ];
+          area = areaList[(turn.turnNumber - 1) % areaList.length];
+        }
+      }
+
       if (turn.answer?.evaluation?.score != null) {
         areaScoresMap[area].push(turn.answer.evaluation.score);
       }

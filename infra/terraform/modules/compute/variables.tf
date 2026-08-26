@@ -26,8 +26,18 @@ variable "secrets_arn" {
   type = string
 }
 
-variable "db_endpoint" {
+variable "secrets_kms_key_arn" {
   type = string
+}
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for the public HTTPS listener"
+  type        = string
+
+  validation {
+    condition     = can(regex("^arn:aws:acm:", var.certificate_arn))
+    error_message = "certificate_arn must be a valid ACM certificate ARN."
+  }
 }
 
 variable "redis_endpoint" {
@@ -35,6 +45,10 @@ variable "redis_endpoint" {
 }
 
 variable "s3_bucket_name" {
+  type = string
+}
+
+variable "storage_kms_key_arn" {
   type = string
 }
 
@@ -56,38 +70,4 @@ variable "worker_cpu" {
 variable "worker_memory" {
   type    = number
   default = 1024
-}
-
-variable "jwt_access_secret" {
-  type      = string
-  sensitive = true
-  default   = "production-jwt-access-secret-min-32-chars-override"
-}
-
-variable "jwt_refresh_secret" {
-  type      = string
-  sensitive = true
-  default   = "production-jwt-refresh-secret-min-32-chars-override"
-}
-
-variable "db_username" {
-  type    = string
-  default = "postgres"
-}
-
-variable "db_password" {
-  type      = string
-  sensitive = true
-  default   = ""
-}
-
-variable "db_name" {
-  type    = string
-  default = "ai_interview_practice"
-}
-
-variable "redis_auth_token" {
-  type      = string
-  sensitive = true
-  default   = ""
 }

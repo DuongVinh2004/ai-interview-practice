@@ -102,8 +102,24 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
     setElements(prev => [...prev, newElement]);
   };
 
+  const generateCanvasSvgDataUri = (elems: CanvasElement[]) => {
+    const svgElements = elems
+      .map(
+        el =>
+          `<g transform="translate(${el.x},${el.y})">` +
+          `<rect width="${el.width}" height="${el.height}" rx="8" fill="${el.color}" stroke="#0f172a" stroke-width="1.5" />` +
+          `<text x="${el.width / 2}" y="${el.height / 2 + 5}" text-anchor="middle" fill="#ffffff" font-size="12" font-family="system-ui, sans-serif" font-weight="600">${el.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>` +
+          `</g>`,
+      )
+      .join('');
+
+    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="100%" height="100%" fill="#f8fafc" /><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="1"/></pattern><rect width="100%" height="100%" fill="url(#grid)" />${svgElements}</svg>`;
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svgString)}`;
+  };
+
   const handleSaveSnapshot = async () => {
-    const snapshotUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>`;
+    const snapshotUrl = generateCanvasSvgDataUri(elements);
     await saveSnapshot({
       imageUrl: snapshotUrl,
       canvasStateJson: { elements },
@@ -112,7 +128,7 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
   };
 
   const handleTriggerAnalysis = async () => {
-    const snapshotUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>`;
+    const snapshotUrl = generateCanvasSvgDataUri(elements);
     await analyzeCanvas({
       imageUrl: snapshotUrl,
       canvasStateJson: { elements },

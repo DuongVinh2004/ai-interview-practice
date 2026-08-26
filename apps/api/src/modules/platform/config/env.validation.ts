@@ -9,10 +9,13 @@ export const EnvSchema = z.object({
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional().default(''),
+  REDIS_TLS: z.enum(['true', 'false']).default('false'),
   JWT_ACCESS_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_SECRET: z.string().min(16),
   JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+  MFA_ENCRYPTION_KEY: z.string().min(32).optional(),
+  CERTIFICATE_SECRET: z.string().min(32).optional(),
   THROTTLE_TTL: z.coerce.number().default(60),
   THROTTLE_LIMIT: z.coerce.number().default(100),
   AI_PROVIDER: z
@@ -74,6 +77,16 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
       .map(err => `${err.path.join('.')}: ${err.message}`)
       .join('\n');
     throw new Error(`❌ Configuration validation error:\n${errorDetails}`);
+  }
+  if (result.data.NODE_ENV === 'production') {
+    const missingSecrets = ['MFA_ENCRYPTION_KEY', 'CERTIFICATE_SECRET'].filter(
+      key => !result.data[key as keyof EnvConfig],
+    );
+    if (missingSecrets.length > 0) {
+      throw new Error(
+        `❌ Configuration validation error:\n${missingSecrets.join(', ')} must be configured in production`,
+      );
+    }
   }
   return result.data;
 }

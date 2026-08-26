@@ -7,6 +7,7 @@ import { MetricsService } from '../../platform/metrics/metrics.service';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
 import { ErrorCode, SessionState } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../../ai-orchestrator/ai-orchestrator.service';
+import { UsageMeterService } from '../../billing/usage-meter.service';
 
 describe('Interview Submission State Machine & CAS (P1-009)', () => {
   let interviewService: InterviewService;
@@ -65,6 +66,10 @@ describe('Interview Submission State Machine & CAS (P1-009)', () => {
         { provide: SseService, useValue: mockSseService },
         { provide: MetricsService, useValue: mockMetricsService },
         { provide: AiOrchestratorService, useValue: mockAiOrchestrator },
+        {
+          provide: UsageMeterService,
+          useValue: { checkAndConsumeQuotaInTransaction: jest.fn() },
+        },
         { provide: 'BullQueue_question-generation', useValue: mockQuestionQueue },
         { provide: 'BullQueue_answer-evaluation', useValue: mockEvaluationQueue },
       ],

@@ -112,6 +112,10 @@ export const MfaEnableResponseSchema = z.object({
   success: z.boolean(),
   mfaEnabled: z.boolean(),
   recoveryCodes: z.array(z.string()),
+  user: UserDtoSchema,
+  accessToken: z.string().min(1),
+  refreshToken: z.string().min(1),
+  expiresIn: z.number().positive(),
   message: z.string(),
 });
 

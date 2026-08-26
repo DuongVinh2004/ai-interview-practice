@@ -55,6 +55,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       AI_PROVIDER: ${AI_PROVIDER:-mock}
+      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-true}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -84,6 +85,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       AI_PROVIDER: ${AI_PROVIDER:-mock}
+      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-true}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -104,7 +106,7 @@ services:
     container_name: ai_interview_web
     restart: unless-stopped
     ports:
-      - '5173:80'
+      - '5173:8080'
     depends_on:
       - api
     networks:
@@ -116,7 +118,7 @@ services:
     container_name: ai_interview_nginx
     restart: unless-stopped
     ports:
-      - '80:80'
+      - '80:8080'
     depends_on:
       - api
       - web

@@ -6,6 +6,7 @@ import { SseService } from '../platform/sse/sse.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { QueueName, UserRole } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
+import { UsageMeterService } from '../billing/usage-meter.service';
 
 describe('InterviewService (Unit)', () => {
   let service: InterviewService;
@@ -13,9 +14,11 @@ describe('InterviewService (Unit)', () => {
   let sseService: any;
   let questionQueue: any;
   let evaluationQueue: any;
+  let usageMeter: any;
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(async (callback: any) => callback(prisma)),
       interviewSession: {
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -40,6 +43,7 @@ describe('InterviewService (Unit)', () => {
 
     questionQueue = { add: jest.fn() };
     evaluationQueue = { add: jest.fn() };
+    usageMeter = { checkAndConsumeQuotaInTransaction: jest.fn().mockResolvedValue({}) };
 
     const mockAiOrchestrator = {
       evaluateAnswer: jest.fn().mockResolvedValue({
@@ -61,6 +65,7 @@ describe('InterviewService (Unit)', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: SseService, useValue: sseService },
         { provide: AiOrchestratorService, useValue: mockAiOrchestrator },
+        { provide: UsageMeterService, useValue: usageMeter },
         { provide: getQueueToken(QueueName.QUESTION_GENERATION), useValue: questionQueue },
         { provide: getQueueToken(QueueName.ANSWER_EVALUATION), useValue: evaluationQueue },
       ],
@@ -307,6 +312,11 @@ describe('InterviewService (Unit)', () => {
       expect(result.competencyArea).toBe('DATABASE_CONCURRENCY');
       expect(result.totalTurns).toBe(3);
       expect(result.turns).toHaveLength(3);
+      expect(usageMeter.checkAndConsumeQuotaInTransaction).toHaveBeenCalledWith(
+        prisma,
+        'user-1',
+        'SESSION_COUNT',
+      );
       expect(prisma.auditLog.create).toHaveBeenCalled();
     });
   });

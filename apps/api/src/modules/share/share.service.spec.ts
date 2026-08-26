@@ -149,6 +149,61 @@ describe('ShareService', () => {
     await expect(service.getPublicSharedResult('expired-token')).rejects.toThrow(DomainException);
   });
 
+  it('uses authoritative evaluations for the public overall score', async () => {
+    const makeTurn = (turnNumber: number, score: number, authorityState: string) => ({
+      turnNumber,
+      difficulty: 2,
+      status: 'EVALUATED',
+      question: { content: `Question ${turnNumber}`, keyFocus: 'Focus' },
+      answer: {
+        content: `Answer ${turnNumber}`,
+        submittedAt: new Date(),
+        evaluation: {
+          score,
+          authorityState,
+          rubricScores: { technicalAccuracy: score, depth: score, clarity: score },
+          strengths: [],
+          improvements: [],
+          conciseFeedback: 'Feedback',
+          evidence: [],
+        },
+      },
+    });
+
+    prisma.shareToken.findUnique.mockResolvedValue({
+      id: 'token-id-authoritative',
+      token: 'authoritative-token',
+      isRevoked: false,
+      isAnonymized: true,
+      expiresAt: new Date(Date.now() + 86400000),
+      viewCount: 0,
+      createdAt: new Date(),
+      mentorFeedback: [],
+      session: {
+        id: mockSessionId,
+        state: SessionState.COMPLETED,
+        overallScore: 9.9,
+        completedAt: new Date(),
+        jobRole: { name: 'Backend Engineer' },
+        seniorityLevel: { name: 'Senior' },
+        technologies: [],
+        user: { email: 'candidate@example.com', profile: { fullName: 'Candidate' } },
+        turns: [
+          makeTurn(1, 4, 'AUTHORITATIVE'),
+          makeTurn(2, 6, 'AUTHORITATIVE'),
+          makeTurn(3, 10, 'NEEDS_REVIEW'),
+        ],
+        learningPath: null,
+      },
+    });
+    prisma.shareToken.update.mockResolvedValue({});
+
+    const result = await service.getPublicSharedResult('authoritative-token');
+
+    expect(result.session.overallScore).toBe(5);
+    expect(result.session.rubricAverages.technicalAccuracy).toBe(5);
+  });
+
   it('should allow adding mentor feedback to a shared session', async () => {
     prisma.shareToken.findUnique.mockResolvedValue({
       id: 'token-id-1',

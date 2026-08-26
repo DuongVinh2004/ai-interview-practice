@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 
 export function ProfilePage() {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, setAuth, logout } = useAuthStore();
   const { t } = useI18nStore();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -178,13 +178,18 @@ export function ProfilePage() {
         method: 'POST',
         body: JSON.stringify({ code: mfaVerifyCode.trim() }),
       });
+      if (!res.accessToken || !res.refreshToken || !res.user) {
+        await logout();
+        setErrorMsg(
+          'Two-factor authentication was enabled, but session rotation failed. Sign in again.',
+        );
+        return;
+      }
+      setAuth(res.user, res.accessToken, res.refreshToken);
       setRecoveryCodes(res.recoveryCodes);
       setMfaSetupData(null);
       setMfaVerifyCode('');
       setSuccessMsg(res.message);
-      if (user) {
-        setUser({ ...user, mfaEnabled: true });
-      }
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to enable MFA');

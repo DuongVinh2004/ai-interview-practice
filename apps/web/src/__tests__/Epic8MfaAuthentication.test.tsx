@@ -117,6 +117,18 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
                 data: {
                   success: true,
                   mfaEnabled: true,
+                  user: {
+                    id: 'user-1',
+                    email: 'alex@example.com',
+                    role: UserRole.CANDIDATE,
+                    status: UserStatus.ACTIVE,
+                    mfaEnabled: true,
+                    createdAt: '2026-08-01T00:00:00Z',
+                    profile: { id: 'prof-1', fullName: 'Alex Nguyen' },
+                  },
+                  accessToken: 'post-mfa-access-token',
+                  refreshToken: 'post-mfa-refresh-token',
+                  expiresIn: 900,
                   recoveryCodes: [
                     'A1B2-C3D4-E5',
                     'F6G7-H8J9-K0',
@@ -381,6 +393,10 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
       expect(screen.getByText('M6N7-P8Q9-R0')).toBeInTheDocument();
       expect(screen.getByText(/Copy Codes|Sao chép mã/i)).toBeInTheDocument();
       expect(screen.getByText(/Download TXT|Tải file TXT/i)).toBeInTheDocument();
+      expect(useAuthStore.getState().accessToken).toBe('post-mfa-access-token');
+      expect(useAuthStore.getState().refreshToken).toBe('post-mfa-refresh-token');
+      expect(useAuthStore.getState().user?.mfaEnabled).toBe(true);
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });
   });
 });

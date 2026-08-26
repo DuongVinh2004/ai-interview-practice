@@ -21,15 +21,23 @@ export function useInterviewSse({
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const onEventRef = useRef(onEvent);
+  const onSessionUpdatedRef = useRef(onSessionUpdated);
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+    onSessionUpdatedRef.current = onSessionUpdated;
+  });
+
   const pollStatus = useCallback(async () => {
     if (!sessionId) return;
     try {
       await apiClient(`/interviews/${sessionId}/status`);
-      onSessionUpdated?.();
+      onSessionUpdatedRef.current?.();
     } catch (err) {
       console.warn('Polling status error:', err);
     }
-  }, [sessionId, onSessionUpdated]);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId || !enabled) {
@@ -66,8 +74,8 @@ export function useInterviewSse({
         try {
           const payload = JSON.parse(event.data);
           if (payload.type !== SseEventType.HEARTBEAT) {
-            onEvent?.(payload.type, payload.data);
-            onSessionUpdated?.();
+            onEventRef.current?.(payload.type, payload.data);
+            onSessionUpdatedRef.current?.();
           }
         } catch {
           // non-json or ping
@@ -102,7 +110,7 @@ export function useInterviewSse({
       }
       setIsConnected(false);
     };
-  }, [sessionId, enabled, onEvent, onSessionUpdated, pollStatus]);
+  }, [sessionId, enabled, pollStatus]);
 
   return { isConnected, usingFallbackPolling };
 }

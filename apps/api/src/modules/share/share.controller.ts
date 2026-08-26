@@ -25,7 +25,7 @@ import { Response } from 'express';
 export class ShareController {
   constructor(private readonly shareService: ShareService) {}
 
-  @Post('share')
+  @Post(['share', 'shares'])
   @ApiOperation({ summary: 'Create a secure, time-limited share link for mentor review' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async createShareLink(

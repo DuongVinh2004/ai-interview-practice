@@ -246,7 +246,7 @@ export class AuthService {
 
     // Enforce: Admin must setup MFA if not yet enabled (SEC-003)
     if (user.role === UserRole.ADMIN && !user.mfaEnabled) {
-      const authResponse = await this.generateAuthResponse(user, false);
+      const authResponse = this.generateMfaEnrollmentResponse(user);
       return {
         ...authResponse,
         forceMfaSetup: true,
@@ -536,18 +536,19 @@ export class AuthService {
       })),
     );
 
-    await this.prisma.$transaction([
-      this.prisma.recoveryCode.deleteMany({ where: { userId } }),
-      this.prisma.recoveryCode.createMany({ data: hashedCodes }),
-      this.prisma.refreshToken.updateMany({
+    const authResponse = await this.prisma.$transaction(async tx => {
+      await tx.recoveryCode.deleteMany({ where: { userId } });
+      await tx.recoveryCode.createMany({ data: hashedCodes });
+      await tx.refreshToken.updateMany({
         where: { userId, isRevoked: false },
         data: { isRevoked: true },
-      }),
-      this.prisma.user.update({
+      });
+      const updatedUser = await tx.user.update({
         where: { id: userId },
         data: { mfaEnabled: true, tokenVersion: { increment: 1 } },
-      }),
-      this.prisma.auditLog.create({
+        include: { profile: true },
+      });
+      await tx.auditLog.create({
         data: {
           userId,
           action: AuditAction.MFA_ENABLED,
@@ -555,8 +556,12 @@ export class AuthService {
           resourceId: userId,
           details: { recoveryCodesCount: plainRecoveryCodes.length },
         },
-      }),
-    ]);
+      });
+
+      // The old token family was revoked above, so issue the replacement pair
+      // atomically with the new tokenVersion and verified MFA state.
+      return this.generateAuthResponse(updatedUser, true, undefined, tx);
+    });
 
     this.logger.log(`MFA enabled successfully for user ${userId}`);
 
@@ -564,6 +569,10 @@ export class AuthService {
       success: true,
       mfaEnabled: true,
       recoveryCodes: plainRecoveryCodes,
+      user: authResponse.user!,
+      accessToken: authResponse.accessToken!,
+      refreshToken: authResponse.refreshToken || '',
+      expiresIn: authResponse.expiresIn || 900,
       message:
         'Two-factor authentication has been enabled. Please save your recovery backup codes securely.',
     };
@@ -842,6 +851,9 @@ export class AuthService {
     user: any,
     mfaVerified = false,
     familyId?: string,
+    tokenStore: {
+      refreshToken: { create: (args: any) => Promise<unknown> };
+    } = this.prisma,
   ): Promise<AuthResponse> {
     const isMfaActive = user.mfaEnabled || false;
     const payload = {
@@ -866,7 +878,7 @@ export class AuthService {
     const expiresAt = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1000);
     const tokenFamilyId = familyId || crypto.randomUUID();
 
-    await this.prisma.refreshToken.create({
+    await tokenStore.refreshToken.create({
       data: {
         userId: user.id,
         familyId: tokenFamilyId,
@@ -880,6 +892,30 @@ export class AuthService {
       accessToken,
       refreshToken: rawRefreshToken,
       expiresIn: 15 * 60, // seconds
+    };
+  }
+
+  private generateMfaEnrollmentResponse(user: any): AuthResponse {
+    const accessToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        tokenType: 'mfa_enrollment',
+        tokenVersion: user.tokenVersion || 0,
+        mfaVerified: false,
+      },
+      {
+        secret: this.configService.get<string>('jwt.accessSecret'),
+        expiresIn: '15m',
+      },
+    );
+
+    return {
+      user: this.mapToUserDto(user),
+      accessToken,
+      expiresIn: 15 * 60,
     };
   }
 

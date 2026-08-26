@@ -92,6 +92,7 @@ describe('AuthService (Unit)', () => {
 
       expect(res.accessToken).toBe('mock-jwt-access-token');
       expect(res.refreshToken).toBeDefined();
+      expect(prisma.refreshToken.create).toHaveBeenCalled();
       expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
         where: { id: mockStoredToken.id, isRevoked: false },
         data: { isRevoked: true },
@@ -171,7 +172,8 @@ describe('AuthService (Unit)', () => {
       expect(res.forceMfaSetup).toBe(true);
       expect(res.mfaRequired).toBeUndefined();
       expect(res.mfaSessionToken).toBeUndefined();
-      expect(res.refreshToken).toBeDefined();
+      expect(res.refreshToken).toBeUndefined();
+      expect(prisma.refreshToken.create).not.toHaveBeenCalled();
       expect(res.message).toContain('Administrator accounts require MFA');
       expect(res.accessToken).toBeDefined();
       // Access token was generated with mfaVerified = false
@@ -179,6 +181,7 @@ describe('AuthService (Unit)', () => {
         expect.objectContaining({
           sub: 'admin-uuid-1',
           role: UserRole.ADMIN,
+          tokenType: 'mfa_enrollment',
           mfaVerified: false,
         }),
         expect.anything(),

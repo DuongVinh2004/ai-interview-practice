@@ -189,10 +189,11 @@ export class CodeExecutionService {
 
     // Save individual test results
     if (execResult.testResults && execResult.testResults.length > 0) {
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       await this.prisma.codeExecutionResult.createMany({
         data: execResult.testResults.map(tr => ({
           submissionId: submission.id,
-          testCaseId: tr.testCaseId || null,
+          testCaseId: tr.testCaseId && UUID_REGEX.test(tr.testCaseId) ? tr.testCaseId : null,
           status: (tr.passed ? SubmissionStatus.COMPLETED : SubmissionStatus.FAILED) as any,
           stdout: execResult.stdout,
           stderr: tr.errorMsg || execResult.stderr,

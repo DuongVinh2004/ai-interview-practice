@@ -1,8 +1,10 @@
 # Stage 1: Base
-FROM node:20.18.0-alpine3.20 AS base
+FROM node:22.13.0-alpine3.20@sha256:db8dcb90326a0116375414e9a7c068a6b87a4422b7da37b5c6cd026f7c7835d3 AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
+RUN npm install --global --ignore-scripts corepack@0.34.0 \
+    && corepack enable \
+    && corepack prepare pnpm@11.0.9 --activate
 
 # Stage 2: Dependencies
 FROM base AS dependencies
@@ -27,8 +29,9 @@ RUN pnpm --filter contracts build
 RUN pnpm --filter web build
 
 # Stage 4: Production Static Web Server
-FROM nginx:1.27.2-alpine3.20 AS runner
+FROM nginxinc/nginx-unprivileged:1.27.2-alpine@sha256:5318ef1dbe33bebd2312c4ad64731c424d68fa0f7349870dda10b8d173fedc2e AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY infra/nginx/web.conf /etc/nginx/conf.d/default.conf
-EXPOSE 80
+USER nginx
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

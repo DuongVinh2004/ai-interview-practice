@@ -139,6 +139,18 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
 
     expect(result.newScore).toBe(9.0);
     expect(result.overriddenByMentorId).toBe('mentor-profile-1');
+    expect(mockPrisma.evaluation.update).toHaveBeenCalledWith({
+      where: { id: evaluationId },
+      data: expect.objectContaining({
+        score: 9.0,
+        needsReview: false,
+        authorityState: 'AUTHORITATIVE',
+      }),
+    });
+    expect(mockPrisma.interviewSession.update).toHaveBeenCalledWith({
+      where: { id: sessionId },
+      data: { overallScore: 9.0 },
+    });
     expect(mockPrisma.auditLog.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         action: 'EVALUATION_OVERRIDDEN',

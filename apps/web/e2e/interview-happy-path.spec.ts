@@ -15,16 +15,22 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
 
     // 3. Land on Dashboard
     await expect(page).toHaveURL('/');
-    await expect(page.getByText(/welcome back/i)).toBeVisible();
+    await expect(page.getByText(/(welcome back|chào mừng trở lại)/i)).toBeVisible();
 
     // 4. Navigate to Setup page
-    await page.click('a:has-text("Start New Interview")');
+    await page.click(
+      'a:has-text("Start New Interview"), a:has-text("Bắt đầu Phỏng vấn Mới"), a[href="/interviews/new"]',
+    );
     await expect(page).toHaveURL('/interviews/new');
-    await expect(page.getByRole('heading', { name: /configure your interview/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: /(configure your interview|cấu hình phỏng vấn|thiết lập phỏng vấn)/i,
+      }),
+    ).toBeVisible();
 
     // 5. Select technology and start interview
     await page.click('button:has-text("TypeScript")');
-    await page.click('button:has-text("Begin 5-Question Interview")');
+    await page.click('button:has-text("Begin 5-Question Interview"), button:has-text("Bắt đầu")');
 
     // 6. Enter Interview Room
     await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/);

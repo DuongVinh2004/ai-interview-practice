@@ -286,6 +286,8 @@ export class LiveSessionService {
         data: {
           score: newScore,
           conciseFeedback: auditFeedback,
+          needsReview: false,
+          authorityState: 'AUTHORITATIVE',
           ...(run ? { currentRunId: run.id } : {}),
         },
       });

@@ -104,7 +104,7 @@ export class XpService {
       };
     }
 
-    return this.prisma.$transaction(async tx => {
+    const result = await this.prisma.$transaction(async tx => {
       // 1. Log transaction
       const transaction = await tx.xpTransaction.create({
         data: {
@@ -127,42 +127,18 @@ export class XpService {
         where: { userId },
         create: {
           userId,
-          totalXp: newTotalXp,
+          totalXp: amount,
           currentLevel: levelInfo.level,
           dailyXp: amount,
           lastEarnedAt: new Date(),
         },
         update: {
-          totalXp: newTotalXp,
+          totalXp: { increment: amount },
           currentLevel: levelInfo.level,
           dailyXp: { increment: amount },
           lastEarnedAt: new Date(),
         },
       });
-
-      // 3. Emit events
-      this.eventEmitter.emit('gamification.xp_awarded', {
-        userId,
-        amount,
-        source,
-        totalXp: newTotalXp,
-        currentLevel: levelInfo.level,
-        isLevelUp,
-      });
-
-      if (isLevelUp) {
-        this.logger.log(
-          `User ${userId} leveled up from ${oldLevel} to ${levelInfo.level} (${levelInfo.levelTitle})!`,
-        );
-        this.eventEmitter.emit('gamification.level_up', {
-          userId,
-          oldLevel,
-          newLevel: levelInfo.level,
-          totalXp: newTotalXp,
-          levelTitle: levelInfo.levelTitle,
-          levelTitleVi: levelInfo.levelTitleVi,
-        });
-      }
 
       return {
         userXp,
@@ -170,8 +146,42 @@ export class XpService {
         isLevelUp,
         oldLevel,
         newLevel: levelInfo.level,
+        newTotalXp: userXp?.totalXp ?? newTotalXp,
+        levelInfo,
       };
     });
+
+    // 3. Emit events AFTER transaction successfully commits
+    this.eventEmitter.emit('gamification.xp_awarded', {
+      userId,
+      amount,
+      source,
+      totalXp: result.newTotalXp,
+      currentLevel: result.newLevel,
+      isLevelUp: result.isLevelUp,
+    });
+
+    if (result.isLevelUp) {
+      this.logger.log(
+        `User ${userId} leveled up from ${result.oldLevel} to ${result.newLevel} (${result.levelInfo.levelTitle})!`,
+      );
+      this.eventEmitter.emit('gamification.level_up', {
+        userId,
+        oldLevel: result.oldLevel,
+        newLevel: result.newLevel,
+        totalXp: result.newTotalXp,
+        levelTitle: result.levelInfo.levelTitle,
+        levelTitleVi: result.levelInfo.levelTitleVi,
+      });
+    }
+
+    return {
+      userXp: result.userXp,
+      transaction: result.transaction,
+      isLevelUp: result.isLevelUp,
+      oldLevel: result.oldLevel,
+      newLevel: result.newLevel,
+    };
   }
 
   async claimDailyLogin(userId: string): Promise<{

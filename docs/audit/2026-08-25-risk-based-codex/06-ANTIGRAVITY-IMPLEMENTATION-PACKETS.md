@@ -1,6 +1,6 @@
-# Antigravity implementation packets
+# Retired executor packets (historical audit artifact)
 
-These 19 packets cover every confirmed P1/P2 finding. They are specifications only; this audit did not invoke Antigravity or change product code. Every packet inherits this safety contract: capture `git status --short --untracked-files=all` before and after; preserve all pre-existing dirty, staged and untracked state; make a minimal patch only inside Allowed scope; never clean/reset/restore/stash/delete; stop on overlap or destructive/database/production action; return the exact diff, commands, exit codes, skipped checks and residual risk. Warnings outside the packet are evidence, not authority for unrelated cleanup.
+These 19 packets are retained only as historical finding specifications. They must not be sent to or executed by Antigravity. Codex performs repository work directly and records the exact diff, commands, exit codes, skipped checks, and residual risk under the root `AGENTS.md` policy.
 
 ## AG-PACKET-001 — SEC-001 Unsigned PayOS fallback
 
@@ -20,7 +20,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** one verified callback performs one authorized transition.
 - **Negative/fail-closed behavior:** unverifiable callback performs zero reads used for authority and zero writes.
 - **Rollout and rollback:** deploy behind logging/metric of verification outcome; rollback only to previous signed verifier, never unsigned fallback.
-- **Evidence Antigravity must return:** patch, verifier contract, test output, mutation-count evidence for rejection cases.
+- **Evidence Codex must record:** patch, verifier contract, test output, mutation-count evidence for rejection cases.
 - **Completion checklist:** all tests pass; raw-body path proven; secrets absent from logs; dirty baseline preserved.
 - **Stop conditions:** provider signature algorithm/raw-body contract cannot be confirmed; change would accept unsigned traffic.
 - **Non-goals:** billing UI, price changes, provider migration.
@@ -43,7 +43,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** authorized user streams only to their permitted session.
 - **Negative/fail-closed behavior:** invalid/ambiguous identity is disconnected before processing audio.
 - **Rollout and rollback:** dual-protocol observation only if both paths fully verify; rollback to last fully verified handshake.
-- **Evidence Antigravity must return:** protocol diff, test transcript, logs proving no credential exposure.
+- **Evidence Codex must record:** protocol diff, test transcript, logs proving no credential exposure.
 - **Completion checklist:** canonical verification reused; session binding covered; disconnect behavior tested.
 - **Stop conditions:** revocation/session-authority source is unknown; compatibility requires accepting unverified credentials.
 - **Non-goals:** speech quality, STT provider selection.
@@ -66,7 +66,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** enrolled/challenged admin reaches authorized endpoints.
 - **Negative/fail-closed behavior:** all incomplete/unknown MFA states return denial without privileged token.
 - **Rollout and rollback:** inventory existing admins; staged enforcement with audited enrollment; never rollback to bypass.
-- **Evidence Antigravity must return:** state machine, test matrix/output, migration/rollback evidence if used.
+- **Evidence Codex must record:** state machine, test matrix/output, migration/rollback evidence if used.
 - **Completion checklist:** guard covers every admin route; recovery audited; no secret logged.
 - **Stop conditions:** admin ownership/state cannot be established; destructive credential migration required.
 - **Non-goals:** redesigning the admin console.
@@ -89,7 +89,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** successful logout makes old refresh/session credential unusable.
 - **Negative/fail-closed behavior:** UI does not claim durable server logout when revocation is unconfirmed.
 - **Rollout and rollback:** observe revocation failures; rollback only UI orchestration, retaining server revocation.
-- **Evidence Antigravity must return:** client/server trace and test proving credential reuse rejected.
+- **Evidence Codex must record:** client/server trace and test proving credential reuse rejected.
 - **Completion checklist:** endpoint invoked once/idempotently; caches handled; dirty baseline preserved.
 - **Stop conditions:** endpoint semantics cannot be determined; fix would expose token or weaken revocation.
 - **Non-goals:** global device/session management.
@@ -112,7 +112,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** same-user navigation retains permitted cache benefits.
 - **Negative/fail-closed behavior:** identity ambiguity yields empty private cache, never previous-user data.
 - **Rollout and rollback:** version cache names and delete only exact legacy app caches; rollback must retain isolation.
-- **Evidence Antigravity must return:** enumerated cache names/keys, browser trace, A/B isolation test output.
+- **Evidence Codex must record:** enumerated cache names/keys, browser trace, A/B isolation test output.
 - **Completion checklist:** all private routes classified; logout/account switch purges; public cache unaffected.
 - **Stop conditions:** cleanup target is wildcard/ambiguous; operation risks unrelated browser/user data.
 - **Non-goals:** general performance tuning.
@@ -135,7 +135,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** verified provider result persists with provenance.
 - **Negative/fail-closed behavior:** missing/untrusted result cannot create asset authority or score.
 - **Rollout and rollback:** inventory mock-derived records before any remediation; rollback retains fail-closed production guard.
-- **Evidence Antigravity must return:** mode matrix, persistence assertions, focused outputs and data compatibility note.
+- **Evidence Codex must record:** mode matrix, persistence assertions, focused outputs and data compatibility note.
 - **Completion checklist:** no implicit mock default; production guard tested; user-visible failure defined.
 - **Stop conditions:** historical data mutation required; provider contract unknown.
 - **Non-goals:** choosing new storage/vision vendors.
@@ -158,7 +158,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** intent reaches downstream once in effect despite retries.
 - **Negative/fail-closed behavior:** system never silently reports full completion with undiscoverable missing work.
 - **Rollout and rollback:** migrate additively; deploy consumers before producers; rollback leaves durable intents readable.
-- **Evidence Antigravity must return:** failure-injection trace, state diagram, idempotency proof, migration/rollback output.
+- **Evidence Codex must record:** failure-injection trace, state diagram, idempotency proof, migration/rollback output.
 - **Completion checklist:** all crash points tested; alertable backlog metric; no swallowed enqueue failure.
 - **Stop conditions:** destructive migration/data reset; queue semantics cannot be reproduced.
 - **Non-goals:** wholesale queue replacement.
@@ -181,7 +181,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** same digest boots both intended entrypoints with complete configuration.
 - **Negative/fail-closed behavior:** missing/malformed secret or incompatible Redis/DB config blocks startup clearly.
 - **Rollout and rollback:** publish new immutable tag; canary tasks; retain prior known-good tag/task definition.
-- **Evidence Antigravity must return:** image paths, boot logs, config matrix, redacted plan, rollback tag.
+- **Evidence Codex must record:** image paths, boot logs, config matrix, redacted plan, rollback tag.
 - **Completion checklist:** API/worker smoke green; no secret leakage; no apply/deploy executed.
 - **Stop conditions:** requires production mutation/secret read; canonical path or runtime contract unresolved.
 - **Non-goals:** provisioning infrastructure or changing capacity.
@@ -204,7 +204,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** valid ephemeral stack passes all named gates.
 - **Negative/fail-closed behavior:** missing suite, config or boot readiness fails the job.
 - **Rollout and rollback:** introduce observable required jobs before protection change; rollback preserves last effective gates.
-- **Evidence Antigravity must return:** exact discovered test counts, job logs, image smoke logs, skipped checks.
+- **Evidence Codex must record:** exact discovered test counts, job logs, image smoke logs, skipped checks.
 - **Completion checklist:** integration explicitly named; both entrypoints boot; no production contact; durations bounded.
 - **Stop conditions:** environment cannot be proven disposable; workflow needs external secrets not approved.
 - **Non-goals:** full CI redesign or broad test expansion.
@@ -227,7 +227,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** authorized relationship receives only scoped object.
 - **Negative/fail-closed behavior:** unknown relationship returns no content/metadata.
 - **Rollout and rollback:** monitor denial rates; rollback only to an equally scoped predicate.
-- **Evidence Antigravity must return:** access matrix, query predicate diff, test output.
+- **Evidence Codex must record:** access matrix, query predicate diff, test output.
 - **Completion checklist:** every route covered; enumeration resisted; dirty state preserved.
 - **Stop conditions:** role policy ambiguous enough to broaden access.
 - **Non-goals:** behavioral model redesign.
@@ -250,7 +250,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** owner gets bounded access to registered object.
 - **Negative/fail-closed behavior:** absent/ambiguous registry record yields no signed URL/content.
 - **Rollout and rollback:** inventory only first; migrate additively with approval; rollback retains ownership check.
-- **Evidence Antigravity must return:** legacy inventory method, auth matrix, signed-URL assertions.
+- **Evidence Codex must record:** legacy inventory method, auth matrix, signed-URL assertions.
 - **Completion checklist:** all storage actions scoped; sensitive URL absent from logs.
 - **Stop conditions:** requires deleting/moving objects or guessing legacy ownership.
 - **Non-goals:** storage vendor migration.
@@ -273,7 +273,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** assigned mentor performs one bounded, audited override.
 - **Negative/fail-closed behavior:** role without relationship cannot mutate score.
 - **Rollout and rollback:** deploy audit/read path before enforcement if migration required; never rollback to role-only authority.
-- **Evidence Antigravity must return:** policy matrix, transactional test output, audit example with redaction.
+- **Evidence Codex must record:** policy matrix, transactional test output, audit example with redaction.
 - **Completion checklist:** scoped query; reason/bounds; concurrency and audit covered.
 - **Stop conditions:** assignment source or admin policy unresolved.
 - **Non-goals:** recalibrating scores.
@@ -296,7 +296,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** permitted suite executes within bounded concurrency.
 - **Negative/fail-closed behavior:** over-limit request submits zero external jobs.
 - **Rollout and rollback:** observe near-limit metrics; adjust config within owner-approved ceiling, not remove cap.
-- **Evidence Antigravity must return:** limits table, mock submission count assertions, latency/resource evidence.
+- **Evidence Codex must record:** limits table, mock submission count assertions, latency/resource evidence.
 - **Completion checklist:** pre-dispatch validation; limiter tested; errors documented.
 - **Stop conditions:** test contacts paid/production provider without approval.
 - **Non-goals:** grader replacement.
@@ -319,7 +319,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** operations correlate by safe ID.
 - **Negative/fail-closed behavior:** serializer drops unknown sensitive fields rather than emitting them.
 - **Rollout and rollback:** deploy redaction first; owner decides token rotation/log purge under separate authorized procedure.
-- **Evidence Antigravity must return:** before/after field schema, captured logs proving absence, search results.
+- **Evidence Codex must record:** before/after field schema, captured logs proving absence, search results.
 - **Completion checklist:** source and central defense; errors covered; no log deletion attempted.
 - **Stop conditions:** asks to delete logs or rotate production credentials without exact authorization.
 - **Non-goals:** log-platform retention changes.
@@ -342,7 +342,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** authorized event emitted by worker reaches correct client once in effect.
 - **Negative/fail-closed behavior:** unauthenticated/cross-user subscription receives no event metadata.
 - **Rollout and rollback:** feature flag transport; polling is safe fallback; rollback disables stream, not authorization.
-- **Evidence Antigravity must return:** topology trace, reconnect test, auth matrix, fallback evidence.
+- **Evidence Codex must record:** topology trace, reconnect test, auth matrix, fallback evidence.
 - **Completion checklist:** cross-process proven; no URL token; user isolation tested.
 - **Stop conditions:** transport requires credential leakage or production broker mutation.
 - **Non-goals:** replacing all realtime features.
@@ -365,7 +365,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** intended role performs bounded idempotent work.
 - **Negative/fail-closed behavior:** wrong/unknown role refuses duplicate capability registration.
 - **Rollout and rollback:** deploy role-aware artifact then task definitions; retain compatible old consumers during drain.
-- **Evidence Antigravity must return:** module graph, two-replica test, query/send counts, boot logs.
+- **Evidence Codex must record:** module graph, two-replica test, query/send counts, boot logs.
 - **Completion checklist:** roles explicit; singleton semantics proven; batching bounded.
 - **Stop conditions:** needs live deployment change or destructive queue drain.
 - **Non-goals:** notification feature redesign.
@@ -388,7 +388,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** verified subject request returns complete manifest and reaches policy-compliant state.
 - **Negative/fail-closed behavior:** expired/restricted data is not served; uncertain ownership does not delete/export.
 - **Rollout and rollback:** inventory/dry-run/report first; additive state; human-approved production procedure separate.
-- **Evidence Antigravity must return:** approved data map, fixture manifest diff, lifecycle tests, migration/rollback plan.
+- **Evidence Codex must record:** approved data map, fixture manifest diff, lifecycle tests, migration/rollback plan.
 - **Completion checklist:** owner approvals recorded; every User relation classified; metrics/audit present; no real data mutation.
 - **Stop conditions:** retention policy unresolved; any command would delete/alter real data.
 - **Non-goals:** executing production deletion, backup erasure or legal-policy invention.
@@ -411,7 +411,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** ready task receives traffic and worker telemetry is collected.
 - **Negative/fail-closed behavior:** dependency-unready API is removed from traffic; missing worker telemetry alerts.
 - **Rollout and rollback:** canary probe thresholds; retain liveness endpoint; rollback target-group path only to verified safe probe.
-- **Evidence Antigravity must return:** probe truth table, scrape sample, redacted plan, alert evaluation/test.
+- **Evidence Codex must record:** probe truth table, scrape sample, redacted plan, alert evaluation/test.
 - **Completion checklist:** live/ready distinct; worker observable; alerts owned/runbook-linked.
 - **Stop conditions:** requires applying infrastructure or weakening endpoint authentication.
 - **Non-goals:** general dashboard redesign.
@@ -434,7 +434,7 @@ These 19 packets cover every confirmed P1/P2 finding. They are specifications on
 - **Positive behavior:** keyboard user completes each critical flow with stable focus.
 - **Negative/fail-closed behavior:** focus never escapes to actionable background; noninteractive element is not exposed as control.
 - **Rollout and rollback:** migrate consumers incrementally behind shared compatible API; rollback individual consumer only if shared guarantees remain.
-- **Evidence Antigravity must return:** accessibility tree/axe output, keyboard trace, screenshots only as supplemental evidence.
+- **Evidence Codex must record:** accessibility tree/axe output, keyboard trace, screenshots only as supplemental evidence.
 - **Completion checklist:** all listed consumers migrated; focus assertions pass; no pointer regression.
 - **Stop conditions:** change would alter payment/score business semantics or needs broad redesign.
 - **Non-goals:** full-site WCAG certification.

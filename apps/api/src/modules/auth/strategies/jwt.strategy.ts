@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { JwtPayload, UserStatus, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -15,6 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
+      passReqToCallback: true,
       secretOrKey: configService.get<string>(
         'jwt.accessSecret',
         'dev-access-secret-min-32-chars-ok',
@@ -22,7 +24,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<JwtPayload> {
+  async validate(req: Request, payload: JwtPayload): Promise<JwtPayload> {
     // Reject temporary MFA challenge tokens attempting to access protected routes (B-001)
     if (payload.tokenType === 'mfa_challenge') {
       throw new UnauthorizedException(
@@ -30,11 +32,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       );
     }
 
-    // Reject MFA enrollment tokens — admin must complete TOTP setup first (SEC-003)
+    // Enrollment tokens can only access the two endpoints required to complete enrollment.
     if (payload.tokenType === 'mfa_enrollment') {
-      throw new UnauthorizedException(
-        'MFA enrollment required. Please complete MFA setup before accessing this resource.',
-      );
+      const requestPath = (req.originalUrl || req.path || '').split('?')[0];
+      const isEnrollmentEndpoint =
+        req.method === 'POST' && /\/auth\/mfa\/(setup|enable)\/?$/.test(requestPath);
+      if (!isEnrollmentEndpoint) {
+        throw new UnauthorizedException(
+          'MFA enrollment required. Please complete MFA setup before accessing this resource.',
+        );
+      }
     }
 
     const user = await this.prisma.user.findUnique({

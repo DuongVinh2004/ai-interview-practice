@@ -107,8 +107,12 @@ describe('RefreshToken Family & Security (P1-008, P1-001)', () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       id: userId,
       email: 'mfa@example.com',
+      role: UserRole.CANDIDATE,
+      status: UserStatus.ACTIVE,
       mfaEnabled: false,
       mfaSecret: 'encrypted-secret',
+      tokenVersion: 0,
+      createdAt: new Date('2026-08-26T00:00:00Z'),
     });
 
     // Mock TotpUtil verify inside authService
@@ -119,7 +123,16 @@ describe('RefreshToken Family & Security (P1-008, P1-001)', () => {
     mockPrisma.recoveryCode.deleteMany.mockResolvedValue({ count: 0 });
     mockPrisma.recoveryCode.createMany.mockResolvedValue({ count: 8 });
     mockPrisma.refreshToken.updateMany.mockResolvedValue({ count: 3 });
-    mockPrisma.user.update.mockResolvedValue({ id: userId, mfaEnabled: true });
+    mockPrisma.user.update.mockResolvedValue({
+      id: userId,
+      email: 'mfa@example.com',
+      role: UserRole.CANDIDATE,
+      status: UserStatus.ACTIVE,
+      mfaEnabled: true,
+      tokenVersion: 1,
+      createdAt: new Date('2026-08-26T00:00:00Z'),
+      profile: null,
+    });
     mockPrisma.auditLog.create.mockResolvedValue({});
 
     const result = await authService.enableMfa(userId, enableDtoCode);
@@ -132,9 +145,14 @@ describe('RefreshToken Family & Security (P1-008, P1-001)', () => {
     });
 
     // Verify tokenVersion was incremented
-    expect(mockPrisma.user.update).toHaveBeenCalledWith({
-      where: { id: userId },
-      data: { mfaEnabled: true, tokenVersion: { increment: 1 } },
-    });
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: userId },
+        data: { mfaEnabled: true, tokenVersion: { increment: 1 } },
+        include: { profile: true },
+      }),
+    );
+    expect(result.accessToken).toBe('mock.jwt.token');
+    expect(result.refreshToken).toBeDefined();
   });
 });

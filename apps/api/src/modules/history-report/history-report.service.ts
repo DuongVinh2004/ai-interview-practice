@@ -200,6 +200,7 @@ export class HistoryReportService {
         clarity: avgClarity,
       },
       turns: session.turns.map(t => ({
+        id: t.id,
         turnNumber: t.turnNumber,
         difficulty: t.difficulty,
         status: t.status,

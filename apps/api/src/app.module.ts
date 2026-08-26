@@ -39,9 +39,14 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
   imports: [
     ThrottlerModule.forRoot([
       {
-        name: 'short',
+        name: 'default',
         ttl: 60000, // 1 minute
         limit: 100, // 100 requests per min
+      },
+      {
+        name: 'short',
+        ttl: 60000,
+        limit: 100,
       },
     ]),
     PlatformModule,

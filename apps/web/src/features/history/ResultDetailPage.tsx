@@ -280,9 +280,9 @@ export function ResultDetailPage() {
               </h1>
               <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-300">
                 <span className="text-slate-400">Tech Stack:</span>
-                {result.technologies?.map((tech: any) => (
+                {result.technologies?.map((tech: any, idx: number) => (
                   <span
-                    key={tech.id}
+                    key={tech.id || tech.name || idx}
                     className="px-2 py-0.5 bg-slate-800 text-emerald-400 rounded border border-slate-700 font-mono text-[11px]"
                   >
                     {tech.name}
@@ -552,12 +552,12 @@ export function ResultDetailPage() {
         </div>
 
         <div className="space-y-3">
-          {result.turns?.map((turn: any) => {
+          {result.turns?.map((turn: any, idx: number) => {
             const isExpanded = expandedTurns[turn.turnNumber] ?? false;
             const evalData = turn.answer?.evaluation;
 
             return (
-              <Card key={turn.id} className="border-slate-200 shadow-xs overflow-hidden">
+              <Card key={turn.id ?? turn.turnNumber ?? idx} className="border-slate-200 shadow-xs overflow-hidden">
                 <button
                   type="button"
                   onClick={() => toggleTurnAccordion(turn.turnNumber)}

@@ -38,14 +38,14 @@ resource "aws_db_parameter_group" "pg16" {
 }
 
 resource "aws_db_instance" "postgres" {
-  identifier        = "ai-interview-postgres-${var.environment}"
-  engine            = "postgres"
-  engine_version    = "16.2"
-  instance_class    = var.instance_class
-  allocated_storage = 50
+  identifier            = "ai-interview-postgres-${var.environment}"
+  engine                = "postgres"
+  engine_version        = "16.2"
+  instance_class        = var.instance_class
+  allocated_storage     = 50
   max_allocated_storage = 200
-  storage_type      = "gp3"
-  storage_encrypted = true
+  storage_type          = "gp3"
+  storage_encrypted     = true
 
   db_name  = var.db_name
   username = var.db_username
@@ -57,16 +57,17 @@ resource "aws_db_instance" "postgres" {
   parameter_group_name   = aws_db_parameter_group.pg16.name
 
   backup_retention_period   = 14
-  backup_window             = "18:00-19:00" # UTC
+  backup_window             = "18:00-19:00"         # UTC
   maintenance_window        = "Sun:20:00-Sun:21:00" # UTC
   copy_tags_to_snapshot     = true
   deletion_protection       = var.environment == "production" ? true : false
   skip_final_snapshot       = var.environment == "production" ? false : true
   final_snapshot_identifier = "ai-interview-final-snapshot-${var.environment}"
 
-  auto_minor_version_upgrade = true
-  performance_insights_enabled = true
+  auto_minor_version_upgrade            = true
+  performance_insights_enabled          = true
   performance_insights_retention_period = 7
+  enabled_cloudwatch_logs_exports       = ["postgresql", "upgrade"]
 
   tags = {
     Name = "ai-interview-rds-postgres-${var.environment}"

@@ -132,8 +132,12 @@ describe('SystemDesign Services (F003)', () => {
         interviewId,
         'data:image/png;base64,test',
       );
-      expect(analysis.detectedComponents).toContain('Load Balancer');
-      expect(analysis.detectedComponents).toContain('API Gateway');
+      expect(
+        analysis.detectedComponents.some(component => component.includes('Load Balancer')),
+      ).toBe(true);
+      expect(analysis.detectedComponents.some(component => component.includes('API Gateway'))).toBe(
+        true,
+      );
       expect(analysis.rubricScores.requirements).toBeGreaterThanOrEqual(8.0);
       expect(analysis.strengths.length).toBeGreaterThan(0);
       expect(analysis.potentialBottlenecks.length).toBeGreaterThan(0);

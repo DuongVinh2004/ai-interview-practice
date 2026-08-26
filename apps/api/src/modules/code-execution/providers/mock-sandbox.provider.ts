@@ -44,13 +44,19 @@ export class MockSandboxProvider implements SandboxProvider {
         ? testCases
         : [
             {
-              id: 'case-1',
+              id: '00000000-0000-0000-0000-000000000001',
               input: customInput || '2, 3',
               expectedOutput: '5',
               isHidden: false,
               order: 1,
             },
-            { id: 'case-2', input: '10, -5', expectedOutput: '5', isHidden: true, order: 2 },
+            {
+              id: '00000000-0000-0000-0000-000000000002',
+              input: '10, -5',
+              expectedOutput: '5',
+              isHidden: true,
+              order: 2,
+            },
           ];
 
     const testResults = cases.map(tc => {

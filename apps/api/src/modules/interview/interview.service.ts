@@ -1,6 +1,7 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { SseService } from '../platform/sse/sse.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
@@ -16,6 +17,7 @@ import {
   AuditAction,
   SessionMode,
   CompetencyArea,
+  BillingMetric,
 } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 import {
@@ -23,6 +25,7 @@ import {
   SubmitAnswerRequestDto,
   ReEvaluateTurnRequestDto,
 } from './dto/interview.dto';
+import { UsageMeterService } from '../billing/usage-meter.service';
 
 @Injectable()
 export class InterviewService {
@@ -32,6 +35,7 @@ export class InterviewService {
     private readonly prisma: PrismaService,
     private readonly sseService: SseService,
     private readonly aiOrchestrator: AiOrchestratorService,
+    private readonly usageMeter: UsageMeterService,
     @InjectQueue(QueueName.QUESTION_GENERATION)
     private readonly questionQueue: Queue,
     @InjectQueue(QueueName.ANSWER_EVALUATION)
@@ -75,40 +79,50 @@ export class InterviewService {
     const turnIndices = Array.from({ length: totalTurns }, (_, i) => i + 1);
 
     // Create session, technologies join, and turn rows
-    const session = await this.prisma.interviewSession.create({
-      data: {
-        userId,
-        jobRoleId: dto.jobRoleId,
-        seniorityLevelId: dto.seniorityLevelId,
-        state: SessionState.CREATED,
-        sessionMode,
-        competencyArea,
-        isSandbox,
-        currentTurn: 1,
-        totalTurns,
-        targetDifficulty: 1,
-        technologies: {
-          create: dto.technologyIds.map(techId => ({
-            technologyId: techId,
-          })),
-        },
-        turns: {
-          create: turnIndices.map(turnNum => ({
-            turnNumber: turnNum,
-            difficulty: 1,
-            status: 'PENDING',
-          })),
-        },
+    const session = await this.prisma.$transaction(
+      async tx => {
+        await this.usageMeter.checkAndConsumeQuotaInTransaction(
+          tx,
+          userId,
+          BillingMetric.SESSION_COUNT,
+        );
+        return tx.interviewSession.create({
+          data: {
+            userId,
+            jobRoleId: dto.jobRoleId,
+            seniorityLevelId: dto.seniorityLevelId,
+            state: SessionState.CREATED,
+            sessionMode,
+            competencyArea,
+            isSandbox,
+            currentTurn: 1,
+            totalTurns,
+            targetDifficulty: 1,
+            technologies: {
+              create: dto.technologyIds.map(techId => ({
+                technologyId: techId,
+              })),
+            },
+            turns: {
+              create: turnIndices.map(turnNum => ({
+                turnNumber: turnNum,
+                difficulty: 1,
+                status: 'PENDING',
+              })),
+            },
+          },
+          include: {
+            jobRole: true,
+            seniorityLevel: true,
+            technologies: { include: { technology: true } },
+            turns: {
+              orderBy: { turnNumber: 'asc' },
+            },
+          },
+        });
       },
-      include: {
-        jobRole: true,
-        seniorityLevel: true,
-        technologies: { include: { technology: true } },
-        turns: {
-          orderBy: { turnNumber: 'asc' },
-        },
-      },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10000 },
+    );
 
     const firstTurn = session.turns.find(t => t.turnNumber === 1);
     if (!firstTurn) {

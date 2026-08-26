@@ -17,12 +17,12 @@ Audit này đánh giá **current working tree** của `ai-interview-practice` t�
 4. [Consolidated findings](03-CONSOLIDATED-FINDINGS.md)
 5. [Evidence, tests và limitations](04-EVIDENCE-TESTS-AND-LIMITATIONS.md)
 6. [Remediation roadmap và release gates](05-REMEDIATION-ROADMAP-AND-RELEASE-GATES.md)
-7. [Antigravity implementation packets](06-ANTIGRAVITY-IMPLEMENTATION-PACKETS.md)
-8. [Machine-readable work items](antigravity-work-items.json)
+7. [Retired executor packets (historical only)](06-ANTIGRAVITY-IMPLEMENTATION-PACKETS.md)
+8. [Retired machine-readable work items (historical only)](antigravity-work-items.json)
 9. [Standard Security Scan index](security/SECURITY-SCAN-INDEX.md)
 
-## Cách dùng với Antigravity
+## Tài liệu thực thi đã retire
 
-Không kết nối Antigravity trong audit này. Owner chọn một packet độc lập trong `06`, đối chiếu work item cùng `packetId` trong JSON, rồi giao đúng allowed scope. Mỗi packet bắt buộc chụp Git status trước/sau, giữ nguyên dirty/untracked work, dùng patch nhỏ, chạy focused tests, trả exact diff/command results và dừng nếu cần destructive action hoặc production state. Không chạy packet song song nếu chúng chạm cùng root control.
+Không dùng Antigravity hoặc các packet executor cũ. Hai file mang tên lịch sử được giữ lại chỉ để bảo toàn audit trail và không phải hướng dẫn đang hoạt động. Codex trực tiếp chọn scope, sửa code, chạy kiểm thử, review diff và ghi evidence theo `AGENTS.md` ở root repository.
 
 Ưu tiên thực thi: security/payment/session → deploy/CI → async authority/provider mocks → privacy/authorization → reliability/observability/accessibility. Chỉ xem xét `CONDITIONAL GO` sau khi mọi P1 đóng và các release gates trong `05` có evidence chạy thực tế.
