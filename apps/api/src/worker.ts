@@ -112,10 +112,14 @@ async function bootstrapWorker() {
     logger.log(`Received ${signal}, closing worker gracefully...`);
     try {
       server.close();
-    } catch {}
+    } catch {
+      // ignore close errors during shutdown
+    }
     try {
       await app.close();
-    } catch {}
+    } catch {
+      // ignore close errors during shutdown
+    }
     process.exit(0);
   };
 
