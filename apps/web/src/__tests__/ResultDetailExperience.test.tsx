@@ -119,8 +119,14 @@ describe('ResultDetailExperience (Phase 4)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Fullstack Engineer/i)).toBeInTheDocument();
       expect(screen.getAllByText(/8.8/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getByText(/Báo Cáo Phân Tích Kỹ Thuật Luyện Tập|Formative Technical Practice/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Báo Cáo Phân Tích Kỹ Thuật Luyện Tập|Formative Technical Practice/i),
+      ).toBeInTheDocument();
     });
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('/interviews/session-result-1/result'),
+      expect.anything(),
+    );
   });
 
   it('renders learning path checklist and handles toggle item completion', async () => {
@@ -139,7 +145,9 @@ describe('ResultDetailExperience (Phase 4)', () => {
       expect(screen.getByText(/HIGH PRIORITY/i)).toBeInTheDocument();
     });
 
-    const toggleBtn = screen.getByTitle(/Mark as Completed|Đánh dấu Hoàn thành|Đánh dấu Đã xong|Mark Completed/i);
+    const toggleBtn = screen.getByTitle(
+      /Mark as Completed|Đánh dấu Hoàn thành|Đánh dấu Đã xong|Mark Completed/i,
+    );
     fireEvent.click(toggleBtn);
 
     await waitFor(() => {
@@ -171,8 +179,12 @@ describe('ResultDetailExperience (Phase 4)', () => {
     fireEvent.click(button);
 
     await waitFor(() => {
-      expect(screen.getAllByText(/How do you handle cache invalidation/i).length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText(/Redis pub\/sub for invalidation/i).length).toBeGreaterThanOrEqual(1);
+      expect(
+        screen.getAllByText(/How do you handle cache invalidation/i).length,
+      ).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Redis pub\/sub for invalidation/i).length).toBeGreaterThanOrEqual(
+        1,
+      );
     });
   });
 });

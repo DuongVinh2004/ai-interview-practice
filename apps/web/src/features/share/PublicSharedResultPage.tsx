@@ -26,9 +26,10 @@ export function PublicSharedResultPage() {
   } = useQuery<any>({
     queryKey: ['public-share-report', token, submittedPasscode],
     queryFn: () =>
-      apiClient(
-        `/public/share/${token}${submittedPasscode ? `?passcode=${encodeURIComponent(submittedPasscode)}` : ''}`,
-      ),
+      apiClient(`/public/share/${token}/access`, {
+        method: 'POST',
+        body: JSON.stringify({ passcode: submittedPasscode || undefined }),
+      }),
     enabled: !!token,
     retry: false,
   });
@@ -132,7 +133,8 @@ export function PublicSharedResultPage() {
               Practice Assessment Report • Mentorship & Learning Artifact
             </span>
             <p className="mt-0.5 text-emerald-800 leading-relaxed">
-              This report is shared for peer mentoring and developmental feedback. All scores are formative and reflect practice session performance.
+              This report is shared for peer mentoring and developmental feedback. All scores are
+              formative and reflect practice session performance.
             </p>
           </div>
         </div>

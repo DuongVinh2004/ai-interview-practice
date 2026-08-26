@@ -1,5 +1,5 @@
 # Stage 1: Base
-FROM node:20-alpine AS base
+FROM node:20.18.0-alpine3.20 AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
@@ -27,7 +27,7 @@ RUN pnpm --filter contracts build
 RUN pnpm --filter web build
 
 # Stage 4: Production Static Web Server
-FROM nginx:1.27-alpine AS runner
+FROM nginx:1.27.2-alpine3.20 AS runner
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY infra/nginx/web.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80

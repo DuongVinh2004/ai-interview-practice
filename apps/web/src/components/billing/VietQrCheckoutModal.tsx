@@ -49,7 +49,12 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
       : `https://api.vietqr.io/image/${paymentData.bin || '970422'}-${paymentData.accountNumber || '0987654321'}-compact2.jpg?amount=${paymentData.amount}&addInfo=${encodeURIComponent(paymentData.description || 'AI INT')}&accountName=${encodeURIComponent(paymentData.accountName || 'AI INTERVIEW')}`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn">
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="vietqr-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fadeIn"
+    >
       <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-emerald-600 to-teal-600 text-white">
@@ -58,14 +63,17 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
               <QrCode className="w-4 h-4 text-white" />
             </div>
             <div>
-              <h3 className="font-bold text-sm">Thanh Toán VietQR Tự Động (PayOS)</h3>
+              <h3 id="vietqr-modal-title" className="font-bold text-sm">
+                Thanh Toán VietQR Tự Động (PayOS)
+              </h3>
               <p className="text-[11px] text-emerald-100">Kích hoạt tài khoản ngay lập tức 24/7</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+            aria-label="Close modal"
+            className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-white"
           >
             <X className="w-5 h-5" />
           </button>
@@ -97,19 +105,27 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
 
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
               <span className="text-slate-500 font-medium">Chủ tài khoản:</span>
-              <span className="font-bold text-slate-900">{paymentData.accountName || 'AI INTERVIEW PRACTICE'}</span>
+              <span className="font-bold text-slate-900">
+                {paymentData.accountName || 'AI INTERVIEW PRACTICE'}
+              </span>
             </div>
 
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
               <span className="text-slate-500 font-medium">Số tài khoản:</span>
               <div className="flex items-center space-x-2">
-                <span className="font-mono font-bold text-slate-900">{paymentData.accountNumber || '0987654321'}</span>
+                <span className="font-mono font-bold text-slate-900">
+                  {paymentData.accountNumber || '0987654321'}
+                </span>
                 <button
                   type="button"
                   onClick={() => handleCopy(paymentData.accountNumber || '0987654321', 'acc')}
                   className="p-1 text-slate-500 hover:text-emerald-600"
                 >
-                  {copiedField === 'acc' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedField === 'acc' ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -125,7 +141,11 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
                   onClick={() => handleCopy(String(paymentData.amount), 'amt')}
                   className="p-1 text-emerald-600 hover:text-emerald-800"
                 >
-                  {copiedField === 'amt' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedField === 'amt' ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -133,13 +153,19 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
             <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
               <span className="text-slate-500 font-medium">Nội dung chuyển khoản:</span>
               <div className="flex items-center space-x-2">
-                <span className="font-mono font-bold text-indigo-600">{paymentData.description || 'AI INT'}</span>
+                <span className="font-mono font-bold text-indigo-600">
+                  {paymentData.description || 'AI INT'}
+                </span>
                 <button
                   type="button"
                   onClick={() => handleCopy(paymentData.description || 'AI INT', 'desc')}
                   className="p-1 text-slate-500 hover:text-indigo-600"
                 >
-                  {copiedField === 'desc' ? <Check className="w-3.5 h-3.5 text-indigo-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  {copiedField === 'desc' ? (
+                    <Check className="w-3.5 h-3.5 text-indigo-600" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5" />
+                  )}
                 </button>
               </div>
             </div>
@@ -147,7 +173,9 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
 
           <div className="flex items-center space-x-2 text-[11px] text-slate-500 bg-slate-50 p-2.5 rounded-xl">
             <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-            <span>Chuyển đúng nội dung và số tiền để hệ thống tự động ghi nhận trong 3-5 giây.</span>
+            <span>
+              Chuyển đúng nội dung và số tiền để hệ thống tự động ghi nhận trong 3-5 giây.
+            </span>
           </div>
         </div>
 
@@ -166,7 +194,13 @@ export const VietQrCheckoutModal: React.FC<VietQrCheckoutModalProps> = ({
           )}
 
           <div className="flex items-center space-x-2">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} className="rounded-xl text-xs">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onClose}
+              className="rounded-xl text-xs"
+            >
               Đóng
             </Button>
             <Button

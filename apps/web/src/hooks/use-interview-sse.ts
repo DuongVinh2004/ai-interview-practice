@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { SseEventType } from '@ai-interview/contracts';
 import { apiClient } from '../lib/api-client';
+import { useAuthStore } from '../stores/auth.store';
 
 interface UseInterviewSseOptions {
   sessionId?: string;
@@ -45,7 +46,8 @@ export function useInterviewSse({
     }
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    const sseUrl = `${API_BASE}/interviews/${sessionId}/events`;
+    const accessToken = useAuthStore.getState().accessToken;
+    const sseUrl = `${API_BASE}/interviews/${sessionId}/events${accessToken ? `?token=${encodeURIComponent(accessToken)}` : ''}`;
 
     try {
       const eventSource = new EventSource(sseUrl, { withCredentials: true });

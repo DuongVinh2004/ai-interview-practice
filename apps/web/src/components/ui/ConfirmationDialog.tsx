@@ -43,13 +43,9 @@ export function ConfirmationDialog({
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="sm">
       <div className="flex flex-col items-center text-center p-2">
-        <div className={`p-3 rounded-full mb-4 ${iconBg[variant]}`}>
-          {icons[variant]}
-        </div>
+        <div className={`p-3 rounded-full mb-4 ${iconBg[variant]}`}>{icons[variant]}</div>
         <h3 className="text-lg font-bold text-slate-900 mb-2">{title}</h3>
-        <div className="text-xs sm:text-sm text-slate-600 mb-6 leading-relaxed">
-          {message}
-        </div>
+        <div className="text-xs sm:text-sm text-slate-600 mb-6 leading-relaxed">{message}</div>
         <div className="flex items-center justify-end gap-3 w-full border-t border-slate-100 pt-4">
           <Button
             variant="outline"

@@ -25,17 +25,15 @@ export function Skeleton({
   const inlineStyles: React.CSSProperties = {
     ...style,
     ...(width !== undefined ? { width: typeof width === 'number' ? `${width}px` : width } : {}),
-    ...(height !== undefined ? { height: typeof height === 'number' ? `${height}px` : height } : {}),
+    ...(height !== undefined
+      ? { height: typeof height === 'number' ? `${height}px` : height }
+      : {}),
   };
 
   return (
     <div
       aria-hidden="true"
-      className={cn(
-        'animate-pulse bg-slate-200/80',
-        variantStyles[variant],
-        className,
-      )}
+      className={cn('animate-pulse bg-slate-200/80', variantStyles[variant], className)}
       style={inlineStyles}
       {...props}
     />

@@ -277,8 +277,18 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
             {elements.map(el => (
               <div
                 key={el.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Diagram component ${el.label}`}
+                aria-pressed={selectedElementId === el.id}
                 onClick={() => setSelectedElementId(el.id)}
-                className={`absolute p-2.5 rounded-xl border bg-white shadow-sm flex items-center gap-2 cursor-move transition-all ${
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedElementId(el.id);
+                  }
+                }}
+                className={`absolute p-2.5 rounded-xl border bg-white shadow-sm flex items-center gap-2 cursor-move transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   selectedElementId === el.id
                     ? 'ring-2 ring-emerald-500 border-emerald-500 shadow-md'
                     : 'border-slate-300 hover:border-slate-400'
@@ -299,7 +309,9 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
 
             {/* Multimodal AI Vision Bounding Box Annotations Overlay */}
             <VisualAnnotationOverlay
-              annotations={(evaluation as any)?.annotations || (analysisResult as any)?.annotations || []}
+              annotations={
+                (evaluation as any)?.annotations || (analysisResult as any)?.annotations || []
+              }
             />
           </div>
 

@@ -26,9 +26,8 @@ export function BadgesShowcasePage() {
     { key: 'CODING', label: language === 'vi' ? 'Lập trình' : 'Coding' },
   ];
 
-  const filteredBadges = selectedCategory === 'ALL'
-    ? badges
-    : badges.filter(b => b.category === selectedCategory);
+  const filteredBadges =
+    selectedCategory === 'ALL' ? badges : badges.filter(b => b.category === selectedCategory);
 
   const unlockedCount = badges.filter(b => b.isUnlocked).length;
   const totalCount = badges.length;
@@ -50,12 +49,16 @@ export function BadgesShowcasePage() {
       {/* Header Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-emerald-950 to-slate-900 text-white p-6 sm:p-10 shadow-xl border border-emerald-900/50">
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        
+
         <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
               <Trophy className="w-4 h-4" />
-              <span>{language === 'vi' ? 'Hệ thống Thành tựu & Huy hiệu' : 'Achievements & Badges System'}</span>
+              <span>
+                {language === 'vi'
+                  ? 'Hệ thống Thành tựu & Huy hiệu'
+                  : 'Achievements & Badges System'}
+              </span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
               {language === 'vi' ? 'Bộ Sưu Tập Huy Hiệu' : 'Badge Showcase'}
@@ -81,7 +84,9 @@ export function BadgesShowcasePage() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <span className="text-[11px] text-slate-300 mt-1 block">{progressPercent}% Hoàn thành</span>
+            <span className="text-[11px] text-slate-300 mt-1 block">
+              {progressPercent}% Hoàn thành
+            </span>
           </div>
         </div>
       </div>

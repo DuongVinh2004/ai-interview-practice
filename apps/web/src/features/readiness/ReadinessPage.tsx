@@ -43,7 +43,8 @@ export function ReadinessPage() {
       <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex items-center gap-3 text-xs text-emerald-900 shadow-xs">
         <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
         <p>
-          Mô hình dự báo năng lực phỏng vấn mang tính định hướng học tập cá nhân, hỗ trợ bạn lập kế hoạch ôn tập hiệu quả trước các vòng tuyển dụng thực tế.
+          Mô hình dự báo năng lực phỏng vấn mang tính định hướng học tập cá nhân, hỗ trợ bạn lập kế
+          hoạch ôn tập hiệu quả trước các vòng tuyển dụng thực tế.
         </p>
       </div>
 

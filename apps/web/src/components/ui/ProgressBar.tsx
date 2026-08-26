@@ -56,7 +56,10 @@ export function ProgressBar({
         )}
       >
         <div
-          className={cn('h-full transition-all duration-300 ease-out rounded-full', fillVariants[variant])}
+          className={cn(
+            'h-full transition-all duration-300 ease-out rounded-full',
+            fillVariants[variant],
+          )}
           style={{ width: `${percentage}%` }}
         />
       </div>

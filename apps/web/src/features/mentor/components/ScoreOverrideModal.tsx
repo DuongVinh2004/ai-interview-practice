@@ -60,14 +60,18 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
 
   return (
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="score-override-title"
+      aria-describedby="score-override-desc"
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
       data-testid="score-override-modal"
     >
       <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl p-6 sm:p-8 border border-slate-200">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"
-          aria-label="Close"
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500"
+          aria-label="Close modal"
         >
           <X className="h-5 w-5" />
         </button>
@@ -77,8 +81,10 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
             <ShieldAlert className="h-6 w-6" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-slate-900">Override AI Evaluation Score</h3>
-            <p className="text-xs text-slate-500">
+            <h3 id="score-override-title" className="text-lg font-bold text-slate-900">
+              Override AI Evaluation Score
+            </h3>
+            <p id="score-override-desc" className="text-xs text-slate-500">
               Human-in-the-loop mentor moderation with audit trail
             </p>
           </div>

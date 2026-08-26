@@ -12,7 +12,13 @@ import {
 import { apiClient } from '../../lib/api-client';
 import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -159,11 +165,15 @@ export function SetupInterviewPage() {
     let isValid = true;
 
     if (!selectedRole) {
-      errors.role = language === 'vi' ? 'Vui lòng chọn vị trí mục tiêu.' : 'Please select a job role.';
+      errors.role =
+        language === 'vi' ? 'Vui lòng chọn vị trí mục tiêu.' : 'Please select a job role.';
       isValid = false;
     }
     if (!selectedLevel) {
-      errors.level = language === 'vi' ? 'Vui lòng chọn cấp bậc kinh nghiệm.' : 'Please select a seniority level.';
+      errors.level =
+        language === 'vi'
+          ? 'Vui lòng chọn cấp bậc kinh nghiệm.'
+          : 'Please select a seniority level.';
       isValid = false;
     }
     if (selectedTechs.length === 0) {
@@ -271,9 +281,7 @@ export function SetupInterviewPage() {
 
   const currentRoleObj = roles.find(r => r.id === selectedRole);
   const currentLevelObj = levels.find(l => l.id === selectedLevel);
-  const currentTechNames = technologies
-    .filter(t => selectedTechs.includes(t.id))
-    .map(t => t.name);
+  const currentTechNames = technologies.filter(t => selectedTechs.includes(t.id)).map(t => t.name);
 
   const estimatedMinutes = sessionMode === SessionMode.STANDARD ? 15 : totalTurns * 3;
 
@@ -297,7 +305,9 @@ export function SetupInterviewPage() {
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 mb-2">
             <Sparkles className="h-3.5 w-3.5" />
-            <span>{language === 'vi' ? 'Thiết lập Phiên Luyện tập' : 'Adaptive Practice Setup'}</span>
+            <span>
+              {language === 'vi' ? 'Thiết lập Phiên Luyện tập' : 'Adaptive Practice Setup'}
+            </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
             {language === 'vi' ? 'Cấu Hình Phỏng Vấn' : 'Configure Your Interview'}
@@ -349,7 +359,9 @@ export function SetupInterviewPage() {
                 </CardTitle>
               </div>
               <CardDescription>
-                {language === 'vi' ? 'Định hình bối cảnh phỏng vấn kỹ thuật' : 'Defines the interview context'}
+                {language === 'vi'
+                  ? 'Định hình bối cảnh phỏng vấn kỹ thuật'
+                  : 'Defines the interview context'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -371,7 +383,9 @@ export function SetupInterviewPage() {
                   >
                     <div>
                       <h4 className="font-semibold text-xs text-slate-900">{role.name}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{role.description}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+                        {role.description}
+                      </p>
                     </div>
                     {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
                   </button>
@@ -396,7 +410,9 @@ export function SetupInterviewPage() {
                 </CardTitle>
               </div>
               <CardDescription>
-                {language === 'vi' ? 'Quyết định độ sâu và tiêu chí chấm điểm rubric' : 'Sets baseline question difficulty'}
+                {language === 'vi'
+                  ? 'Quyết định độ sâu và tiêu chí chấm điểm rubric'
+                  : 'Sets baseline question difficulty'}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -418,7 +434,9 @@ export function SetupInterviewPage() {
                   >
                     <div>
                       <h4 className="font-semibold text-xs text-slate-900">{level.name}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{level.description}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+                        {level.description}
+                      </p>
                     </div>
                     {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
                   </button>
@@ -525,7 +543,9 @@ export function SetupInterviewPage() {
                   </Badge>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi' ? '5 câu hỏi thích ứng kiểm tra toàn diện' : '5-turn full adaptive interview'}
+                  {language === 'vi'
+                    ? '5 câu hỏi thích ứng kiểm tra toàn diện'
+                    : '5-turn full adaptive interview'}
                 </p>
               </button>
 
@@ -544,7 +564,9 @@ export function SetupInterviewPage() {
                   <span>Live Coding Sandbox</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi' ? 'Trình soạn thảo mã, thực thi và phân tích độ phức tạp' : 'In-browser sandbox & complexity analysis'}
+                  {language === 'vi'
+                    ? 'Trình soạn thảo mã, thực thi và phân tích độ phức tạp'
+                    : 'In-browser sandbox & complexity analysis'}
                 </p>
               </button>
 
@@ -563,7 +585,9 @@ export function SetupInterviewPage() {
                   <span>STAR Behavioral</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi' ? 'Đánh giá kỹ năng mềm và hành vi chuẩn STAR' : 'STAR behavioral scenario evaluation'}
+                  {language === 'vi'
+                    ? 'Đánh giá kỹ năng mềm và hành vi chuẩn STAR'
+                    : 'STAR behavioral scenario evaluation'}
                 </p>
               </button>
 
@@ -582,7 +606,9 @@ export function SetupInterviewPage() {
                   <span>Live Voice</span>
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi' ? 'Hội thoại trực tiếp bằng giọng nói 2 chiều' : 'Full-duplex real-time voice streaming'}
+                  {language === 'vi'
+                    ? 'Hội thoại trực tiếp bằng giọng nói 2 chiều'
+                    : 'Full-duplex real-time voice streaming'}
                 </p>
               </button>
 
@@ -752,7 +778,9 @@ export function SetupInterviewPage() {
                     className="shadow-sm"
                   >
                     <Sparkles className="w-4 h-4 mr-2" />
-                    <span>{language === 'vi' ? 'Tạo Kịch Bản Phỏng Vấn' : 'Generate Blueprint'}</span>
+                    <span>
+                      {language === 'vi' ? 'Tạo Kịch Bản Phỏng Vấn' : 'Generate Blueprint'}
+                    </span>
                   </Button>
                 </div>
               )}
@@ -788,7 +816,8 @@ export function SetupInterviewPage() {
                   {language === 'vi' ? 'Vị trí & Cấp bậc' : 'Role & Level'}
                 </span>
                 <span className="font-bold text-white text-sm">
-                  {currentRoleObj?.name || 'Fullstack Engineer'} • {currentLevelObj?.name || 'Senior'}
+                  {currentRoleObj?.name || 'Fullstack Engineer'} •{' '}
+                  {currentLevelObj?.name || 'Senior'}
                 </span>
               </div>
 
@@ -797,7 +826,8 @@ export function SetupInterviewPage() {
                   {language === 'vi' ? 'Công nghệ trọng tâm' : 'Selected Technologies'}
                 </span>
                 <span className="font-semibold text-emerald-400 truncate block">
-                  {currentTechNames.join(', ') || (language === 'vi' ? 'Chưa chọn' : 'None selected')}
+                  {currentTechNames.join(', ') ||
+                    (language === 'vi' ? 'Chưa chọn' : 'None selected')}
                 </span>
               </div>
 
@@ -851,7 +881,9 @@ export function SetupInterviewPage() {
                 size="lg"
                 onClick={handleStartInterview}
                 isLoading={isSubmitting}
-                disabled={isSubmitting || !selectedRole || !selectedLevel || selectedTechs.length === 0}
+                disabled={
+                  isSubmitting || !selectedRole || !selectedLevel || selectedTechs.length === 0
+                }
                 leftIcon={<Play className="h-4 w-4" />}
                 className="w-full sm:w-auto px-8 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold shadow-md focus-visible:ring-emerald-400"
               >

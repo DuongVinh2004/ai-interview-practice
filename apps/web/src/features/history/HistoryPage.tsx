@@ -8,7 +8,16 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
-import { History, PlayCircle, ChevronRight, Calendar, Search, X, ChevronLeft, ShieldCheck } from 'lucide-react';
+import {
+  History,
+  PlayCircle,
+  ChevronRight,
+  Calendar,
+  Search,
+  X,
+  ChevronLeft,
+  ShieldCheck,
+} from 'lucide-react';
 
 export function HistoryPage() {
   const { t, language } = useI18nStore();
@@ -74,7 +83,9 @@ export function HistoryPage() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
             <History className="h-6 w-6 text-indigo-600" />
-            <span>{language === 'vi' ? 'Lịch Sử Luyện Tập Phỏng Vấn' : 'Your Interview History'}</span>
+            <span>
+              {language === 'vi' ? 'Lịch Sử Luyện Tập Phỏng Vấn' : 'Your Interview History'}
+            </span>
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             {language === 'vi'

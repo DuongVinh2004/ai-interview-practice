@@ -54,7 +54,10 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
   };
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-30" data-testid="visual-annotation-overlay">
+    <div
+      className="absolute inset-0 pointer-events-none z-30"
+      data-testid="visual-annotation-overlay"
+    >
       {/* Visibility Toggle Button */}
       <div className="absolute top-3 right-3 pointer-events-auto z-40">
         <button
@@ -62,7 +65,11 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
           onClick={() => setShowOverlay(prev => !prev)}
           className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all"
         >
-          {showOverlay ? <EyeOff className="w-3.5 h-3.5 text-slate-500" /> : <Eye className="w-3.5 h-3.5 text-indigo-600" />}
+          {showOverlay ? (
+            <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+          ) : (
+            <Eye className="w-3.5 h-3.5 text-indigo-600" />
+          )}
           <span>{showOverlay ? 'Ẩn nhận xét AI' : `Hiện nhận xét AI (${annotations.length})`}</span>
         </button>
       </div>
@@ -87,8 +94,20 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
               onClick={() => setActiveAnnotationIndex(prev => (prev === idx ? null : idx))}
             >
               {/* Badge Label */}
-              <div className="absolute -top-3 left-2 flex items-center space-x-1 px-2 py-0.5 rounded-full shadow-sm text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm"
-                style={{ backgroundColor: ann.severity === 'critical' ? '#e11d48' : ann.severity === 'warning' ? '#d97706' : ann.severity === 'good' ? '#059669' : '#0284c7', color: '#ffffff' }}>
+              <div
+                className="absolute -top-3 left-2 flex items-center space-x-1 px-2 py-0.5 rounded-full shadow-sm text-[10px] font-bold uppercase tracking-wider backdrop-blur-sm"
+                style={{
+                  backgroundColor:
+                    ann.severity === 'critical'
+                      ? '#e11d48'
+                      : ann.severity === 'warning'
+                        ? '#d97706'
+                        : ann.severity === 'good'
+                          ? '#059669'
+                          : '#0284c7',
+                  color: '#ffffff',
+                }}
+              >
                 <span>{ann.label}</span>
               </div>
 

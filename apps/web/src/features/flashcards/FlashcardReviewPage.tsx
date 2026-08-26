@@ -92,8 +92,8 @@ export function FlashcardReviewPage() {
           </p>
           <div className="pt-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold font-mono">
-              <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-              +{completedCount * 5} XP Đã nhận
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />+
+              {completedCount * 5} XP Đã nhận
             </span>
           </div>
         </div>
@@ -134,7 +134,11 @@ export function FlashcardReviewPage() {
             className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 text-xs"
             title={useSwipeMode ? 'Chuyển sang chế độ bấm nút' : 'Chuyển sang chế độ vuốt (Swipe)'}
           >
-            {useSwipeMode ? <Smartphone className="w-4 h-4 text-emerald-600" /> : <Layout className="w-4 h-4 text-slate-400" />}
+            {useSwipeMode ? (
+              <Smartphone className="w-4 h-4 text-emerald-600" />
+            ) : (
+              <Layout className="w-4 h-4 text-slate-400" />
+            )}
           </button>
 
           <span className="text-xs font-bold text-slate-700">

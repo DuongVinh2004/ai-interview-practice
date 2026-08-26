@@ -32,9 +32,7 @@ export function ErrorState({
         {icon || <AlertTriangle className="h-6 w-6" />}
       </div>
       <h3 className="text-base font-bold text-slate-900 mb-1">{title}</h3>
-      <p className="text-xs sm:text-sm text-slate-600 max-w-sm mb-6 leading-relaxed">
-        {message}
-      </p>
+      <p className="text-xs sm:text-sm text-slate-600 max-w-sm mb-6 leading-relaxed">{message}</p>
       {onRetry && (
         <Button
           variant="outline"

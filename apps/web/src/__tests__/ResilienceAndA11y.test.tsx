@@ -57,7 +57,9 @@ describe('Resilience & Accessibility (Phase 6)', () => {
 
     expect(screen.getByText(/Error 403/i)).toBeInTheDocument();
     expect(screen.getByText(/Không có quyền truy cập|Access Restricted/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Xem Gói Nâng cấp|View Plans/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Xem Gói Nâng cấp|View Plans/i }),
+    ).toBeInTheDocument();
   });
 
   it('OfflineBanner updates visibility on online/offline events', () => {

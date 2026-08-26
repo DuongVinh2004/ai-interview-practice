@@ -40,6 +40,7 @@ export function AudioAnswerRecorder({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [hasRecorded, setHasRecorded] = useState(false);
+  const [isFallbackNotice, setIsFallbackNotice] = useState(false);
 
   const isSpaceKeyDownRef = useRef(false);
 
@@ -62,6 +63,9 @@ export function AudioAnswerRecorder({
 
         if (response && response.text) {
           setTranscribedText(response.text);
+          setIsFallbackNotice(
+            Boolean((response as any).isFallback || response.provider === 'mock'),
+          );
           setHasRecorded(true);
         } else {
           setTranscribeError('No speech detected in audio recording. Please try speaking clearly.');
@@ -159,6 +163,7 @@ export function AudioAnswerRecorder({
     setTranscribedText('');
     setHasRecorded(false);
     setTranscribeError(null);
+    setIsFallbackNotice(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -314,6 +319,25 @@ export function AudioAnswerRecorder({
               {transcribedText.length} / 5000 chars
             </span>
           </div>
+
+          {isFallbackNotice && (
+            <div
+              data-testid="audio-fallback-notice"
+              className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-start gap-2.5"
+            >
+              <span className="text-base leading-none">⚠️</span>
+              <div className="space-y-0.5">
+                <p className="font-semibold text-amber-900">
+                  Lưu ý: Hệ thống đang sử dụng bản ghi âm phiên âm dự phòng (Fallback Mode)
+                </p>
+                <p className="text-amber-800 leading-relaxed">
+                  Dịch vụ nhận diện giọng nói tự động đã kích hoạt cơ chế dự phòng do kết nối mạng
+                  hoặc nhà cung cấp. Vui lòng kiểm tra và chỉnh sửa câu trả lời của bạn dưới đây
+                  trước khi gửi nộp.
+                </p>
+              </div>
+            </div>
+          )}
 
           <Textarea
             id="transcribed-answer"

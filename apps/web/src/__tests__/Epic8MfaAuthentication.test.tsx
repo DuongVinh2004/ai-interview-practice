@@ -223,6 +223,64 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     });
   });
 
+  it('redirects an admin without MFA to enrollment instead of showing the verification form', async () => {
+    const defaultFetch = global.fetch as ReturnType<typeof vi.fn>;
+    global.fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith('/auth/login')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                data: {
+                  user: {
+                    id: 'user-admin-1',
+                    email: 'admin@example.com',
+                    role: UserRole.ADMIN,
+                    status: UserStatus.ACTIVE,
+                    mfaEnabled: false,
+                  },
+                  accessToken: 'restricted-admin-access-token',
+                  refreshToken: 'admin-refresh-token',
+                  forceMfaSetup: true,
+                },
+              }),
+            ),
+        });
+      }
+      return defaultFetch(url, options);
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'admin@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'Admin@123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/mfa/setup'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+    expect(screen.queryByText(/Two-Factor Verification Required/i)).not.toBeInTheDocument();
+  });
+
   it('allows switching to recovery code input on 2-step login', async () => {
     render(
       <QueryClientProvider client={queryClient}>

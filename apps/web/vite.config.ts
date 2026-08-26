@@ -46,14 +46,6 @@ export default defineConfig({
               expiration: { maxEntries: 10, maxAgeSeconds: 60 * 60 * 24 * 365 },
             },
           },
-          {
-            urlPattern: /\/api\/.*\/flashcards\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-flashcards-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 60 * 60 * 24 * 7 },
-            },
-          },
         ],
       },
     }),

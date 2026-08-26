@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/query-client';
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
@@ -36,16 +37,6 @@ import { LeaderboardPage } from './features/gamification/LeaderboardPage';
 import { NotFoundPage } from './features/error/NotFoundPage';
 import { ForbiddenPage } from './features/error/ForbiddenPage';
 import { UserRole } from '@ai-interview/contracts';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5000,
-    },
-  },
-});
 
 export function App() {
   return (

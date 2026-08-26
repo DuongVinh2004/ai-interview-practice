@@ -106,7 +106,9 @@ describe('SetupInterviewExperience (Phase 2)', () => {
     });
 
     // Verify practice disclaimer
-    expect(screen.getByText(/không phải quyết định tuyển dụng|not employment hiring/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/không phải quyết định tuyển dụng|not employment hiring/i),
+    ).toBeInTheDocument();
   });
 
   it('validates technology selection and prevents submit when empty', async () => {
@@ -123,7 +125,9 @@ describe('SetupInterviewExperience (Phase 2)', () => {
     });
 
     // Initially 0 technologies selected, submit button is disabled
-    const startBtn = screen.getByRole('button', { name: /Bắt đầu Phỏng vấn|Start Practice Session/i });
+    const startBtn = screen.getByRole('button', {
+      name: /Bắt đầu Phỏng vấn|Start Practice Session/i,
+    });
     expect(startBtn).toBeDisabled();
   });
 
@@ -144,7 +148,9 @@ describe('SetupInterviewExperience (Phase 2)', () => {
     const techBtn = screen.getByRole('button', { name: /Node.js/i });
     fireEvent.click(techBtn);
 
-    const startBtn = screen.getByRole('button', { name: /Bắt đầu Phỏng vấn|Start Practice Session/i });
+    const startBtn = screen.getByRole('button', {
+      name: /Bắt đầu Phỏng vấn|Start Practice Session/i,
+    });
     expect(startBtn).not.toBeDisabled();
 
     fireEvent.click(startBtn);
@@ -174,7 +180,8 @@ describe('SetupInterviewExperience (Phase 2)', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          text: () => Promise.resolve(JSON.stringify({ data: [{ id: 'role-1', name: 'Backend Engineer' }] })),
+          text: () =>
+            Promise.resolve(JSON.stringify({ data: [{ id: 'role-1', name: 'Backend Engineer' }] })),
         });
       }
       if (url.includes('/taxonomies/levels')) {
@@ -188,7 +195,8 @@ describe('SetupInterviewExperience (Phase 2)', () => {
         return Promise.resolve({
           ok: true,
           status: 200,
-          text: () => Promise.resolve(JSON.stringify({ data: [{ id: 'tech-1', name: 'Node.js' }] })),
+          text: () =>
+            Promise.resolve(JSON.stringify({ data: [{ id: 'tech-1', name: 'Node.js' }] })),
         });
       }
       return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('{}') });
@@ -207,7 +215,9 @@ describe('SetupInterviewExperience (Phase 2)', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: /Node.js/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Bắt đầu Phỏng vấn|Start Practice Session/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /Bắt đầu Phỏng vấn|Start Practice Session/i }),
+    );
 
     await waitFor(() => {
       expect(screen.getByText(/AI Service Temporarily Unavailable/i)).toBeInTheDocument();

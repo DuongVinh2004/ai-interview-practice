@@ -121,7 +121,9 @@ export function DashboardPage() {
               <div className="flex items-center gap-2">
                 <Compass className="h-5 w-5 text-emerald-600" />
                 <h3 className="text-lg sm:text-xl font-bold text-slate-900">
-                  {language === 'vi' ? '3 Bước Khởi Đầu Luyện Tập' : '3 Steps to Master Your Practice'}
+                  {language === 'vi'
+                    ? '3 Bước Khởi Đầu Luyện Tập'
+                    : '3 Steps to Master Your Practice'}
                 </h3>
               </div>
               <p className="text-xs text-slate-600">

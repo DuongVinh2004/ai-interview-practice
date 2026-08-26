@@ -16,7 +16,13 @@ import { formatDifficulty, formatScore } from '../../lib/utils';
 import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Alert } from '../../components/ui/Alert';
 import { Spinner } from '../../components/ui/Spinner';
@@ -112,7 +118,9 @@ export function InterviewRoomPage() {
   // Safe localStorage helper
   const getDraft = (key: string): string | null => {
     try {
-      return typeof window !== 'undefined' && window.localStorage ? window.localStorage.getItem(key) : null;
+      return typeof window !== 'undefined' && window.localStorage
+        ? window.localStorage.getItem(key)
+        : null;
     } catch {
       return null;
     }
@@ -377,7 +385,9 @@ export function InterviewRoomPage() {
     return (
       <div className="max-w-xl mx-auto py-12">
         <ErrorState
-          title={language === 'vi' ? 'Không Thể Tải Phiên Phỏng Vấn' : 'Unable to Load Interview Session'}
+          title={
+            language === 'vi' ? 'Không Thể Tải Phiên Phỏng Vấn' : 'Unable to Load Interview Session'
+          }
           message={
             (queryError as any)?.message ||
             (language === 'vi'
@@ -447,7 +457,9 @@ export function InterviewRoomPage() {
                 </Badge>
               )}
 
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${diffInfo.color}`}>
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded border ${diffInfo.color}`}
+              >
                 {diffInfo.label} {t.interview.difficulty}
               </span>
 
@@ -627,7 +639,8 @@ export function InterviewRoomPage() {
                     <Code2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span className="font-semibold text-slate-800">Live Coding Sandbox:</span>
                     <span>
-                      Write code, run test cases against the engine, and submit for AI complexity review.
+                      Write code, run test cases against the engine, and submit for AI complexity
+                      review.
                     </span>
                   </div>
 
@@ -664,7 +677,9 @@ export function InterviewRoomPage() {
                 /* Standard Textarea Form */
                 <Card className="border-slate-200 shadow-sm">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm sm:text-base">{t.interview.yourResponse}</CardTitle>
+                    <CardTitle className="text-sm sm:text-base">
+                      {t.interview.yourResponse}
+                    </CardTitle>
                     <CardDescription>
                       {language === 'vi'
                         ? 'Trình bày câu trả lời kỹ thuật chi tiết kèm các đánh đổi (trade-offs) thực tế'

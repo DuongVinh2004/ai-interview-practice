@@ -4,13 +4,7 @@
  */
 
 export type SoundEffectType =
-  | 'click'
-  | 'success'
-  | 'error'
-  | 'level_up'
-  | 'xp_coin'
-  | 'streak'
-  | 'card_flip';
+  'click' | 'success' | 'error' | 'level_up' | 'xp_coin' | 'streak' | 'card_flip';
 
 class SfxEngine {
   private audioCtx: AudioContext | null = null;
@@ -44,8 +38,7 @@ class SfxEngine {
     if (typeof window === 'undefined') return null;
     try {
       if (!this.audioCtx) {
-        const AudioContextClass =
-          window.AudioContext || (window as any).webkitAudioContext;
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
         if (AudioContextClass) {
           this.audioCtx = new AudioContextClass();
         }

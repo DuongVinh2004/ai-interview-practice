@@ -64,6 +64,12 @@ export function LoginPage() {
         skipAuth: true,
       });
 
+      if (response.forceMfaSetup) {
+        setAuth(response.user, response.accessToken, response.refreshToken);
+        navigate('/profile?setupMfa=1');
+        return;
+      }
+
       if (response.mfaRequired && response.mfaSessionToken) {
         setMfaRequired(true);
         setMfaSessionToken(response.mfaSessionToken);
@@ -290,15 +296,21 @@ export function LoginPage() {
                 <div className="pt-4 border-t border-slate-100 space-y-2">
                   <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
                     <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
-                    <span>{language === 'vi' ? 'Chế độ thử nghiệm phát triển' : 'Development Quick Access'}</span>
+                    <span>
+                      {language === 'vi'
+                        ? 'Chế độ thử nghiệm phát triển'
+                        : 'Development Quick Access'}
+                    </span>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleQuickLogin(
-                      import.meta.env.VITE_DEMO_CANDIDATE_EMAIL || '',
-                      import.meta.env.VITE_DEMO_CANDIDATE_PASSWORD || '',
-                    )}
+                    onClick={() =>
+                      handleQuickLogin(
+                        import.meta.env.VITE_DEMO_CANDIDATE_EMAIL || '',
+                        import.meta.env.VITE_DEMO_CANDIDATE_PASSWORD || '',
+                      )
+                    }
                     className="w-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
                   >
                     ⚡ {language === 'vi' ? 'Đăng nhập Mẫu Ứng viên' : 'Fill Demo Candidate'}

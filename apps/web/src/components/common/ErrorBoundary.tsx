@@ -47,7 +47,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
             <div className="space-y-1">
               <h2 className="text-xl font-bold text-slate-900">Đã xảy ra lỗi không mong muốn</h2>
               <p className="text-xs text-slate-500">
-                Ứng dụng gặp sự cố khi xử lý dữ liệu. Bạn có thể thử tải lại trang hoặc quay về trang chủ.
+                Ứng dụng gặp sự cố khi xử lý dữ liệu. Bạn có thể thử tải lại trang hoặc quay về
+                trang chủ.
               </p>
             </div>
 

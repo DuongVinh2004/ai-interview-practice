@@ -15,7 +15,10 @@ export interface BreadcrumbsProps {
 
 export function Breadcrumbs({ items, className, showHome = true }: BreadcrumbsProps) {
   return (
-    <nav aria-label="Breadcrumb" className={cn('flex items-center text-xs text-slate-500', className)}>
+    <nav
+      aria-label="Breadcrumb"
+      className={cn('flex items-center text-xs text-slate-500', className)}
+    >
       <ol className="flex items-center space-x-1.5 flex-wrap">
         {showHome && (
           <li className="inline-flex items-center">

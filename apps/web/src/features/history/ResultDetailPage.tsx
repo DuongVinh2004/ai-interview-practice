@@ -4,7 +4,13 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { formatScore } from '../../lib/utils';
 import { useI18nStore } from '../../stores/i18n.store';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -80,7 +86,7 @@ export function ResultDetailPage() {
     refetch,
   } = useQuery<any>({
     queryKey: ['interview-result', sessionId],
-    queryFn: () => apiClient(`/interviews/${sessionId}`),
+    queryFn: () => apiClient(`/interviews/${sessionId}/result`),
     enabled: !!sessionId,
   });
 
@@ -311,18 +317,14 @@ export function ResultDetailPage() {
               </span>
             </div>
             <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <span className="text-xs text-slate-400 block mb-1">
-                {t.interview.depth} (30%)
-              </span>
+              <span className="text-xs text-slate-400 block mb-1">{t.interview.depth} (30%)</span>
               <span className="text-xl font-bold text-white font-mono">
                 {formatScore(result.rubricAverages?.depth)}
                 <span className="text-xs text-slate-400 font-sans"> / 10</span>
               </span>
             </div>
             <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <span className="text-xs text-slate-400 block mb-1">
-                {t.interview.clarity} (30%)
-              </span>
+              <span className="text-xs text-slate-400 block mb-1">{t.interview.clarity} (30%)</span>
               <span className="text-xl font-bold text-white font-mono">
                 {formatScore(result.rubricAverages?.clarity)}
                 <span className="text-xs text-slate-400 font-sans"> / 10</span>
@@ -382,7 +384,9 @@ export function ResultDetailPage() {
             <BookOpen className="h-5 w-5 text-emerald-700" />
             <div>
               <CardTitle className="text-base sm:text-lg text-emerald-950 font-bold">
-                {language === 'vi' ? 'Lộ Trình Học Tập Cá Nhân Hóa' : 'Personalized Learning Roadmap'}
+                {language === 'vi'
+                  ? 'Lộ Trình Học Tập Cá Nhân Hóa'
+                  : 'Personalized Learning Roadmap'}
               </CardTitle>
               <CardDescription>
                 {language === 'vi'
@@ -407,7 +411,8 @@ export function ResultDetailPage() {
               <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
                 <span>{t.practice.goalProgress}</span>
                 <span>
-                  {completedLpItems} / {totalLpItems} ({Math.round((completedLpItems / totalLpItems) * 100)}%)
+                  {completedLpItems} / {totalLpItems} (
+                  {Math.round((completedLpItems / totalLpItems) * 100)}%)
                 </span>
               </div>
               <ProgressBar
@@ -511,7 +516,9 @@ export function ResultDetailPage() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => navigate(`/interviews/new?mode=remediation&competency=SYSTEM_DESIGN`)}
+                          onClick={() =>
+                            navigate(`/interviews/new?mode=remediation&competency=SYSTEM_DESIGN`)
+                          }
                           leftIcon={<Target className="h-3.5 w-3.5 text-indigo-600" />}
                           className="text-xs text-indigo-700 hover:text-indigo-800 hover:bg-indigo-50"
                         >
@@ -538,7 +545,9 @@ export function ResultDetailPage() {
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-slate-700" />
           <h2 className="text-base font-bold text-slate-900">
-            {language === 'vi' ? 'Biên Bản Chi Tiết Các Lượt Phỏng Vấn' : 'Session Transcript & Feedback'}
+            {language === 'vi'
+              ? 'Biên Bản Chi Tiết Các Lượt Phỏng Vấn'
+              : 'Session Transcript & Feedback'}
           </h2>
         </div>
 
@@ -560,7 +569,8 @@ export function ResultDetailPage() {
                     </div>
                     <div>
                       <span className="font-bold text-xs text-slate-900 block">
-                        {t.interview.question} {turn.turnNumber}: {turn.question?.keyFocus || 'Technical Scenario'}
+                        {t.interview.question} {turn.turnNumber}:{' '}
+                        {turn.question?.keyFocus || 'Technical Scenario'}
                       </span>
                       <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
                         {turn.question?.content}
@@ -593,7 +603,9 @@ export function ResultDetailPage() {
                     </div>
 
                     <div>
-                      <h4 className="font-bold text-slate-700 mb-1">{t.interview.submittedAnswer}</h4>
+                      <h4 className="font-bold text-slate-700 mb-1">
+                        {t.interview.submittedAnswer}
+                      </h4>
                       <p className="text-slate-900 bg-white p-3 rounded-xl border border-slate-200 whitespace-pre-wrap leading-relaxed">
                         {turn.answer?.content || '(No answer recorded)'}
                       </p>

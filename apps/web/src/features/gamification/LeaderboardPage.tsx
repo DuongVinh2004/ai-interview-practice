@@ -95,7 +95,9 @@ export function LeaderboardPage() {
         <div className="divide-y divide-slate-100">
           {leaderboard.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-sm">
-              {language === 'vi' ? 'Chưa có ứng viên nào trên bảng xếp hạng.' : 'No candidates ranked yet.'}
+              {language === 'vi'
+                ? 'Chưa có ứng viên nào trên bảng xếp hạng.'
+                : 'No candidates ranked yet.'}
             </div>
           ) : (
             leaderboard.map(entry => (

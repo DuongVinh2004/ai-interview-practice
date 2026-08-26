@@ -1,9 +1,5 @@
 import { create } from 'zustand';
-import {
-  GamificationProfileDto,
-  LevelUpEventDto,
-  BadgeDto,
-} from '@ai-interview/contracts';
+import { GamificationProfileDto, LevelUpEventDto, BadgeDto } from '@ai-interview/contracts';
 import { apiClient } from '../lib/api-client';
 import { sfx, playSFX } from '../lib/sfx-engine';
 

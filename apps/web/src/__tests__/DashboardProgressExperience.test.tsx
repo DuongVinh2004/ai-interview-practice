@@ -67,9 +67,7 @@ describe('Dashboard & History Experience (Phase 5)', () => {
       expect(
         screen.getByText(/Chọn Mục Tiêu Nghề Nghiệp|Set Your Target Stack/i),
       ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Bắt đầu Lượt Đầu Tiên|Launch First Session/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Bắt đầu Lượt Đầu Tiên|Launch First Session/i)).toBeInTheDocument();
     });
   });
 
@@ -85,7 +83,12 @@ describe('Dashboard & History Experience (Phase 5)', () => {
                 data: {
                   totalEvaluatedTurns: 5,
                   competencies: [
-                    { name: 'System Design', competency: 'SYSTEM_DESIGN', score: 8.5, turnsCount: 3 },
+                    {
+                      name: 'System Design',
+                      competency: 'SYSTEM_DESIGN',
+                      score: 8.5,
+                      turnsCount: 3,
+                    },
                     { name: 'Databases', competency: 'DATABASES', score: 7.8, turnsCount: 2 },
                   ],
                   topStrengths: ['System Design', 'Databases'],
@@ -135,9 +138,7 @@ describe('Dashboard & History Experience (Phase 5)', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Bắt đầu Phỏng vấn Mới|Start New Interview/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Bắt đầu Phỏng vấn Mới|Start New Interview/i)).toBeInTheDocument();
       expect(screen.getAllByText(/System Design/i).length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -167,7 +168,13 @@ describe('Dashboard & History Experience (Phase 5)', () => {
                       technologies: [{ id: 't1', name: 'PostgreSQL' }],
                     },
                   ],
-                  meta: { page: 1, totalPages: 1, total: 1, hasNextPage: false, hasPrevPage: false },
+                  meta: {
+                    page: 1,
+                    totalPages: 1,
+                    total: 1,
+                    hasNextPage: false,
+                    hasPrevPage: false,
+                  },
                 },
               }),
             ),

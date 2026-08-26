@@ -72,16 +72,18 @@ export function useSystemDesign(interviewId: string) {
   });
 
   // Mutation to evaluate diagram with Vision AI & visual annotations
-  const evaluateDiagramMutation = useMutation<DesignEvaluationResultDto, Error, EvaluateDiagramDto>({
-    mutationFn: body =>
-      apiClient<DesignEvaluationResultDto>(`/interviews/${interviewId}/canvas/evaluate-diagram`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['system-design', interviewId] });
+  const evaluateDiagramMutation = useMutation<DesignEvaluationResultDto, Error, EvaluateDiagramDto>(
+    {
+      mutationFn: body =>
+        apiClient<DesignEvaluationResultDto>(`/interviews/${interviewId}/canvas/evaluate-diagram`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['system-design', interviewId] });
+      },
     },
-  });
+  );
 
   return {
     session: sessionQuery.data,

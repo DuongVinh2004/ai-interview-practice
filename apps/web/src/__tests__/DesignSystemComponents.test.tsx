@@ -63,12 +63,7 @@ describe('Design System & Shared Components (Phase 1)', () => {
   it('renders Breadcrumbs navigation correctly', () => {
     render(
       <MemoryRouter>
-        <Breadcrumbs
-          items={[
-            { label: 'History', href: '/history' },
-            { label: 'Session #101' },
-          ]}
-        />
+        <Breadcrumbs items={[{ label: 'History', href: '/history' }, { label: 'Session #101' }]} />
       </MemoryRouter>,
     );
 

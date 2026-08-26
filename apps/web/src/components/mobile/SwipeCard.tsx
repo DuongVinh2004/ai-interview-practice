@@ -11,7 +11,7 @@ export interface SwipeCardProps {
   isFlipped: boolean;
   onFlip: () => void;
   onSwipeRight: () => void; // Good / Remembered
-  onSwipeLeft: () => void;  // Again / Review
+  onSwipeLeft: () => void; // Again / Review
 }
 
 export function SwipeCard({
@@ -101,9 +101,7 @@ export function SwipeCard({
             </div>
           ) : (
             <div className="space-y-3">
-              <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">
-                {front}
-              </h3>
+              <h3 className="text-lg sm:text-xl font-bold text-slate-900 leading-snug">{front}</h3>
             </div>
           )}
         </div>
@@ -111,7 +109,11 @@ export function SwipeCard({
         {/* Bottom Hint */}
         <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-400 flex items-center justify-center gap-1">
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>{isFlipped ? 'Chạm để xem lại câu hỏi • Vuốt trái / phải để chấm điểm' : 'Chạm để lật đáp án • Vuốt trái (Chưa nhớ) / Vuốt phải (Nhớ tốt)'}</span>
+          <span>
+            {isFlipped
+              ? 'Chạm để xem lại câu hỏi • Vuốt trái / phải để chấm điểm'
+              : 'Chạm để lật đáp án • Vuốt trái (Chưa nhớ) / Vuốt phải (Nhớ tốt)'}
+          </span>
         </div>
       </motion.div>
     </div>

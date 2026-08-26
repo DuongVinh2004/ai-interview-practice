@@ -1,10 +1,6 @@
 import { useState, useCallback } from 'react';
 import { apiClient } from '../lib/api-client';
-import {
-  PresignUploadResponseDto,
-  FileAssetDto,
-  StorageCategory,
-} from '@ai-interview/contracts';
+import { PresignUploadResponseDto, FileAssetDto, StorageCategory } from '@ai-interview/contracts';
 
 export interface UploadOptions {
   file: File;
@@ -19,7 +15,11 @@ export function useCloudUpload() {
   const [uploadedAsset, setUploadedAsset] = useState<FileAssetDto | null>(null);
 
   const uploadFile = useCallback(
-    async ({ file, category = 'documents', isPublic = false }: UploadOptions): Promise<FileAssetDto> => {
+    async ({
+      file,
+      category = 'documents',
+      isPublic = false,
+    }: UploadOptions): Promise<FileAssetDto> => {
       setIsUploading(true);
       setError(null);
       setProgress(0);

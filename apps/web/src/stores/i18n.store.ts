@@ -882,7 +882,8 @@ export const translations = {
     },
     notifications: {
       streakWarningTitle: '🔥 Giữ vững chuỗi ngày học tập!',
-      streakWarningBody: 'Hoàn thành 1 bài luyện tập ngắn hôm nay để không bị gián đoạn chuỗi ngày.',
+      streakWarningBody:
+        'Hoàn thành 1 bài luyện tập ngắn hôm nay để không bị gián đoạn chuỗi ngày.',
       enableBtn: 'Bật Thông Báo',
       testBtn: 'Gửi Thông Báo Thử',
       testSuccess: 'Đã gửi thông báo thử nghiệm thành công!',

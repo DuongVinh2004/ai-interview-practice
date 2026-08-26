@@ -89,8 +89,8 @@ export function Navbar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate('/login');
   };
 
@@ -371,7 +371,9 @@ export function Navbar() {
                       className="flex items-center gap-2.5 px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-emerald-700"
                     >
                       <Trophy className="h-3.5 w-3.5 text-amber-500" />
-                      <span>{language === 'vi' ? 'Huy hiệu & Thành tựu' : 'Badges & Achievements'}</span>
+                      <span>
+                        {language === 'vi' ? 'Huy hiệu & Thành tựu' : 'Badges & Achievements'}
+                      </span>
                     </Link>
 
                     <Link

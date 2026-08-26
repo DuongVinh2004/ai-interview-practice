@@ -107,12 +107,12 @@ describe('InterviewRoomExperience (Phase 3)', () => {
     );
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/Explain the event loop in Node.js/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Explain the event loop in Node.js/i)).toBeInTheDocument();
       expect(screen.getByText('Concurrency & Event Loop')).toBeInTheDocument();
       expect(
-        screen.getByLabelText(/type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i),
+        screen.getByLabelText(
+          /type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i,
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -130,16 +130,22 @@ describe('InterviewRoomExperience (Phase 3)', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByLabelText(/type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i),
+        screen.getByLabelText(
+          /type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i,
+        ),
       ).toBeInTheDocument();
     });
 
-    const textarea = screen.getByLabelText(/type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i);
-    fireEvent.change(textarea, { target: { value: 'Microtasks run at the end of the current phase.' } });
+    const textarea = screen.getByLabelText(
+      /type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i,
+    );
+    fireEvent.change(textarea, {
+      target: { value: 'Microtasks run at the end of the current phase.' },
+    });
 
-    expect(
-      storageMap['draft-answer-session-active-1-turn-1'],
-    ).toBe('Microtasks run at the end of the current phase.');
+    expect(storageMap['draft-answer-session-active-1-turn-1']).toBe(
+      'Microtasks run at the end of the current phase.',
+    );
   });
 
   it('prevents double-submit when submission is in progress', async () => {
@@ -176,11 +182,15 @@ describe('InterviewRoomExperience (Phase 3)', () => {
 
     await waitFor(() => {
       expect(
-        screen.getByLabelText(/type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i),
+        screen.getByLabelText(
+          /type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i,
+        ),
       ).toBeInTheDocument();
     });
 
-    const textarea = screen.getByLabelText(/type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i);
+    const textarea = screen.getByLabelText(
+      /type your detailed technical explanation|Nhập câu trả lời kỹ thuật chi tiết/i,
+    );
     fireEvent.change(textarea, { target: { value: 'My structured answer.' } });
 
     const submitBtn = screen.getByRole('button', { name: /submit answer|Nộp câu trả lời/i });
@@ -225,7 +235,9 @@ describe('InterviewRoomExperience (Phase 3)', () => {
     await waitFor(() => {
       expect(screen.getByText(/5-Turn Interview Completed|Hoàn thành 5 lượt/i)).toBeInTheDocument();
       expect(screen.getByText(/8.5/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /view full result|Xem Kết quả Chi tiết/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /view full result|Xem Kết quả Chi tiết/i }),
+      ).toBeInTheDocument();
     });
   });
 });

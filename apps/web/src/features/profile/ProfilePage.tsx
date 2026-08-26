@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { useAuthStore } from '../../stores/auth.store';
@@ -27,6 +28,8 @@ export function ProfilePage() {
   const { user, setUser } = useAuthStore();
   const { t } = useI18nStore();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const autoMfaSetupStarted = useRef(false);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [targetRole, setTargetRole] = useState(user?.profile?.targetRole || 'Fullstack Engineer');
@@ -156,6 +159,14 @@ export function ProfilePage() {
       setIsSettingUpMfa(false);
     }
   };
+
+  useEffect(() => {
+    const shouldStartSetup = searchParams.get('setupMfa') === '1';
+    if (shouldStartSetup && !user?.mfaEnabled && !autoMfaSetupStarted.current) {
+      autoMfaSetupStarted.current = true;
+      void handleStartMfaSetup();
+    }
+  }, [searchParams, user?.mfaEnabled]);
 
   const handleConfirmEnableMfa = async (e: React.FormEvent) => {
     e.preventDefault();
