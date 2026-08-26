@@ -13,7 +13,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16.4-alpine3.20
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -27,7 +27,7 @@ jobs:
           --health-retries 5
 
       redis:
-        image: redis:7-alpine
+        image: redis:7.4.1-alpine3.20
         ports:
           - 6379:6379
         options: >-
@@ -38,15 +38,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: 20
+          node-version: 22.13.0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@a3252b78c470c02df07e9d59298aecedc3ccdd6d # v3.0.0
         with:
           version: 11.0.9
           run_install: false
@@ -57,7 +57,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@0c907a75c2c80ebcb7f088228285e798b750cf8f # v4.2.1
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -67,16 +67,24 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Dependency SBOM & Inventory
+        run: |
+          mkdir -p ./artifacts/sbom
+          pnpm list --json --recursive > ./artifacts/sbom/pnpm-dependency-tree.json
+
       - name: Check Formatting
         run: pnpm format:check
 
       - name: Lint Codebase
         run: pnpm lint
 
-      - name: Type Check
-        run: pnpm type-check
+      - name: Build Contracts Package
+        run: pnpm --filter @ai-interview/contracts build
 
-      - name: Generate Prisma Client & Run Migrations
+      - name: Type Check Workspaces
+        run: pnpm --recursive run type-check
+
+      - name: Generate Prisma Client & Validate Migrations
         env:
           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
         run: |
@@ -91,9 +99,20 @@ jobs:
           REDIS_PORT: 6379
           JWT_ACCESS_SECRET: 'test-jwt-secret-key-32-chars-long-here'
           JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-key-32-chars'
+          ALLOW_MOCK_PROVIDERS: 'true'
         run: pnpm test
 
-      - name: Build All Workspaces
+      - name: Run API Integration Tests
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_ACCESS_SECRET: 'ci-test-jwt-access-secret-32-chars-long'
+          JWT_REFRESH_SECRET: 'ci-test-jwt-refresh-secret-32-chars-long'
+          ALLOW_MOCK_PROVIDERS: 'true'
+        run: pnpm --filter api test:integration
+
+      - name: Build Production Artifacts
         run: pnpm build
 
       - name: Run Playwright E2E Tests
@@ -101,6 +120,13 @@ jobs:
           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
           REDIS_HOST: localhost
           REDIS_PORT: 6379
+          JWT_ACCESS_SECRET: 'ci-test-jwt-access-secret-32-chars-long'
+          JWT_REFRESH_SECRET: 'ci-test-jwt-refresh-secret-32-chars-long'
+          ALLOW_MOCK_PROVIDERS: 'true'
         run: |
           pnpm --filter web exec playwright install --with-deps chromium
           pnpm --filter web test:e2e
+
+      - name: Verify Production Docker Build
+        run: |
+          docker build -t ai-interview-api:ci -f apps/api/Dockerfile .

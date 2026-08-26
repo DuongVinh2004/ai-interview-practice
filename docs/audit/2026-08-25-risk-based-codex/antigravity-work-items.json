@@ -1,0 +1,1083 @@
+{
+  "audit": {
+    "repository": "C:\\Users\\Duong Vinh\\ai-interview-practice",
+    "branch": "feat/uiux-transformation-roadmap",
+    "head": "57ce104a6236cbe274782e401e391205c4b5c8e7",
+    "generatedAt": "2026-08-25T19:44:34+07:00",
+    "releaseRecommendation": "NO-GO",
+    "limitations": [
+      "Risk-based static audit; no full test-suite rerun, runtime staging exercise, Git history review or web research.",
+      "Exactly one Standard Security Scan covered apps/api/src; external infrastructure, secrets, backups, provider contracts and production controls remain UNKNOWN.",
+      "Repository started dirty (105 modified, 2 untracked); audit preserved that state and added documentation only."
+    ]
+  },
+  "workItems": [
+    {
+      "packetId": "AG-PACKET-001",
+      "findingId": "SEC-001",
+      "title": "Require signed PayOS webhooks",
+      "classification": "security",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": [],
+      "objective": "Authenticate every PayOS state transition.",
+      "requiredInvariant": "No billing mutation unless the exact raw callback is verified and idempotently bound to the local payment.",
+      "rootControl": {
+        "path": "apps/api/src/modules/billing/providers/payos.provider.ts",
+        "line": 114,
+        "symbol": "PayOS webhook parsing and verification"
+      },
+      "allowedPaths": ["apps/api/src/modules/billing/**", "apps/api/src/**/*.spec.ts"],
+      "forbiddenPaths": ["infra/**", "apps/web/**", "database data"],
+      "requirements": [
+        "Verify raw body before parsing or mutation",
+        "Reject missing/invalid/replayed signatures",
+        "Preserve valid idempotent retries and redact secrets"
+      ],
+      "testsRequired": [
+        "valid signature",
+        "missing/bad signature",
+        "malformed payload",
+        "replay and payment mismatch",
+        "already-processed retry"
+      ],
+      "verificationCommands": [
+        "run discovered focused billing tests",
+        "run API typecheck",
+        "git diff --check"
+      ],
+      "rollback": "Rollback only to the prior fully signed verifier; never restore unsigned fallback.",
+      "evidenceRequired": [
+        "exact diff",
+        "test output and exit codes",
+        "zero-mutation assertions for rejection cases"
+      ],
+      "stopConditions": [
+        "provider signing/raw-body contract cannot be confirmed",
+        "change would accept unsigned traffic or contact production"
+      ],
+      "definitionOfDone": [
+        "all rejection paths fail closed",
+        "valid retry remains idempotent",
+        "baseline dirty state preserved"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-002",
+      "findingId": "SEC-002",
+      "title": "Revalidate voice WebSocket identity",
+      "classification": "security",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["canonical JWT/revocation policy"],
+      "objective": "Authenticate and authorize the entire voice socket lifecycle.",
+      "requiredInvariant": "Handshake and privileged messages require valid current identity bound to the requested session.",
+      "rootControl": {
+        "path": "apps/api/src/modules/voice-gateway/gateways/voice-streaming.gateway.ts",
+        "line": 72,
+        "symbol": "voice WebSocket connection authentication"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/voice-gateway/**",
+        "apps/api/src/modules/auth/**",
+        "apps/web/src/**/*voice*"
+      ],
+      "forbiddenPaths": ["unrelated gateways", "token lifetime policy without approval"],
+      "requirements": [
+        "Use canonical signature/claims/expiry verifier",
+        "Enforce user-session relationship",
+        "Disconnect on invalid/revoked/expired identity without token logging"
+      ],
+      "testsRequired": [
+        "valid/tampered/expired token",
+        "revoked token",
+        "cross-user session",
+        "midstream failure"
+      ],
+      "verificationCommands": [
+        "run focused voice tests",
+        "run API and web typechecks",
+        "git diff --check"
+      ],
+      "rollback": "Return only to a protocol that performs equivalent full verification.",
+      "evidenceRequired": [
+        "protocol diff",
+        "authorization matrix",
+        "test output and redacted logs"
+      ],
+      "stopConditions": [
+        "revocation or session authority is unknown",
+        "compatibility requires unverified credentials"
+      ],
+      "definitionOfDone": [
+        "canonical validation reused",
+        "session binding proven",
+        "disconnect behavior covered"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-003",
+      "findingId": "SEC-003",
+      "title": "Enforce admin MFA enrollment and challenge",
+      "classification": "security",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["admin enrollment/recovery policy"],
+      "objective": "Deny privileged admin access until enrollment and challenge complete.",
+      "requiredInvariant": "Admin capability requires server-enforced enrollment and recent successful MFA challenge.",
+      "rootControl": {
+        "path": "apps/api/src/modules/auth/auth.service.ts",
+        "line": 168,
+        "symbol": "admin login token issuance before MFA enrollment"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/auth/**",
+        "apps/api/src/modules/admin/**",
+        "apps/api/src/modules/skill-graph/**",
+        "apps/api/src/modules/readiness/**"
+      ],
+      "forbiddenPaths": ["general user authorization beyond shared guard", "seed data"],
+      "requirements": [
+        "Model explicit enrollment/challenge states",
+        "Restrict enrollment session privileges",
+        "Audit and rate-limit recovery"
+      ],
+      "testsRequired": [
+        "unenrolled login",
+        "enrollment-only session",
+        "enrolled without challenge",
+        "valid/replayed/expired challenge"
+      ],
+      "verificationCommands": [
+        "run focused admin-auth tests",
+        "run API typecheck",
+        "validate additive migration if any",
+        "git diff --check"
+      ],
+      "rollback": "Retain enforcement; use only an separately approved auditable emergency-access design.",
+      "evidenceRequired": ["state machine", "route/guard matrix", "test and migration output"],
+      "stopConditions": [
+        "admin ownership/state cannot be established",
+        "destructive credential migration required"
+      ],
+      "definitionOfDone": [
+        "all privileged routes gated",
+        "recovery audited",
+        "no MFA secret logged"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-004",
+      "findingId": "SEC-012",
+      "title": "Revoke server session on logout",
+      "classification": "security",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["server revocation/session model", "PRIV-001"],
+      "objective": "Make logout revoke server authority and clear user-scoped client state.",
+      "requiredInvariant": "Logout invalidates the server refresh/session credential before durable success is claimed.",
+      "rootControl": {
+        "path": "apps/web/src/stores/auth.store.ts",
+        "line": 81,
+        "symbol": "auth store logout"
+      },
+      "allowedPaths": [
+        "apps/web/src/stores/auth.store.ts",
+        "apps/web/src/components/layout/Navbar.tsx",
+        "apps/web/src/lib/**/*auth*",
+        "apps/api/src/modules/auth/**"
+      ],
+      "forbiddenPaths": ["unrelated navigation", "global token lifetime policy"],
+      "requirements": [
+        "Invoke authenticated idempotent logout endpoint",
+        "Handle failure without false durable-success claim",
+        "Clear private caches on confirmed identity transition"
+      ],
+      "testsRequired": [
+        "success and already revoked",
+        "network/401 failure",
+        "double click",
+        "old refresh credential reuse"
+      ],
+      "verificationCommands": [
+        "run focused auth store/UI/API tests",
+        "run API/web typechecks",
+        "git diff --check"
+      ],
+      "rollback": "Rollback UI orchestration only while retaining server revocation semantics.",
+      "evidenceRequired": [
+        "client/server trace",
+        "credential-reuse rejection test",
+        "exact diff and skipped checks"
+      ],
+      "stopConditions": ["logout endpoint semantics are unknown", "fix would expose a credential"],
+      "definitionOfDone": [
+        "server logout called idempotently",
+        "reuse rejected",
+        "private client state cleared safely"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-005",
+      "findingId": "PRIV-001",
+      "title": "Isolate PWA and query caches by account",
+      "classification": "privacy",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["SEC-012"],
+      "objective": "Prevent authenticated browser data crossing account boundaries.",
+      "requiredInvariant": "Private cached state is account-scoped and purged on logout/account change; shared service-worker caches exclude authenticated bodies.",
+      "rootControl": {
+        "path": "apps/web/vite.config.ts",
+        "line": 50,
+        "symbol": "Workbox runtimeCaching"
+      },
+      "allowedPaths": [
+        "apps/web/vite.config.ts",
+        "apps/web/src/App.tsx",
+        "apps/web/src/hooks/**",
+        "apps/web/src/features/profile/ProfilePage.tsx",
+        "apps/web/src/stores/auth.store.ts",
+        "apps/web/src/**/*.test.*"
+      ],
+      "forbiddenPaths": [
+        "public static asset behavior except exact cache versioning",
+        "browser data outside this app"
+      ],
+      "requirements": [
+        "Exclude or safely partition private API caches",
+        "Scope/cancel/clear QueryClient data on identity change",
+        "Version and exactly enumerate legacy app caches"
+      ],
+      "testsRequired": [
+        "user A logout user B",
+        "service-worker cache inspection",
+        "stale in-flight response",
+        "reload/offline",
+        "legacy app-cache upgrade"
+      ],
+      "verificationCommands": [
+        "run focused query/auth tests",
+        "build and inspect PWA config",
+        "run browser A/B isolation test",
+        "git diff --check"
+      ],
+      "rollback": "Retain account isolation; restore only public-cache optimizations.",
+      "evidenceRequired": [
+        "enumerated cache names and query keys",
+        "browser trace",
+        "A/B test output"
+      ],
+      "stopConditions": [
+        "cache cleanup target is wildcard or ambiguous",
+        "operation risks unrelated browser/user data"
+      ],
+      "definitionOfDone": [
+        "private routes classified",
+        "identity transition purges safely",
+        "public assets still work"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-006",
+      "findingId": "FUNC-001",
+      "title": "Block authoritative non-text mock outputs",
+      "classification": "functional-correctness",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["approved production versus local/test mode matrix"],
+      "objective": "Prevent storage/vision mocks from creating authoritative records or scores.",
+      "requiredInvariant": "Production provider uncertainty fails closed; explicit local mocks are non-authoritative and non-persistent for scoring/asset authority.",
+      "rootControl": {
+        "path": "apps/api/src/modules/system-design/services/design-evaluation.service.ts",
+        "line": 64,
+        "symbol": "vision result persistence"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/storage/**",
+        "apps/api/src/modules/system-design/**",
+        "apps/api/src/config/**",
+        "apps/api/src/**/*.spec.ts"
+      ],
+      "forbiddenPaths": ["text AI router verified fix", "historical production records"],
+      "requirements": [
+        "Explicit mode allowlist and production config validation",
+        "Remove fixed-score authoritative fallback",
+        "Persist verified provenance or do not persist"
+      ],
+      "testsRequired": [
+        "production missing provider",
+        "timeout/error/malformed response",
+        "explicit local mock",
+        "persistence denial",
+        "UI unavailable state if changed"
+      ],
+      "verificationCommands": [
+        "run focused storage/vision/config tests",
+        "run API/web typechecks",
+        "git diff --check"
+      ],
+      "rollback": "Keep the fail-closed production guard; mocks may only be restored to explicit test/local mode.",
+      "evidenceRequired": [
+        "mode matrix",
+        "persistence assertions",
+        "test output and compatibility note"
+      ],
+      "stopConditions": [
+        "historical-data mutation required",
+        "provider contract cannot be confirmed"
+      ],
+      "definitionOfDone": [
+        "no implicit mock default",
+        "no fixed authoritative score",
+        "production guard tested"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-007",
+      "findingId": "REL-001",
+      "title": "Make async handoffs durable",
+      "classification": "reliability",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["outbox/reconciler/idempotent state-machine decision"],
+      "objective": "Guarantee eventual downstream work after committed answer/evaluation state.",
+      "requiredInvariant": "Every committed handoff intent remains discoverable and executes exactly once in effect across crashes and retries.",
+      "rootControl": {
+        "path": "apps/api/src/modules/interview/interview.service.ts",
+        "line": 365,
+        "symbol": "answer transaction and evaluation enqueue"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/interview/**",
+        "apps/api/src/modules/evaluation/**",
+        "apps/api/src/queues/**",
+        "apps/api/prisma/**"
+      ],
+      "forbiddenPaths": [
+        "scoring algorithm",
+        "provider prompts",
+        "unrelated queues",
+        "real database data"
+      ],
+      "requirements": [
+        "Persist handoff intent atomically",
+        "Use deterministic idempotency and reconciliation",
+        "Make terminal state accurately reflect downstream completion and expose backlog metrics"
+      ],
+      "testsRequired": [
+        "success",
+        "enqueue failure",
+        "crash at each boundary",
+        "duplicate/replay",
+        "reconciler recovery",
+        "terminal retry"
+      ],
+      "verificationCommands": [
+        "run focused interview/evaluation queue integration tests",
+        "validate additive migration",
+        "run API typecheck",
+        "git diff --check"
+      ],
+      "rollback": "Use additive schema and leave durable intents readable by old/new consumers.",
+      "evidenceRequired": [
+        "failure-injection trace",
+        "state diagram",
+        "idempotency proof",
+        "migration/rollback output"
+      ],
+      "stopConditions": [
+        "destructive migration or data reset",
+        "queue semantics cannot be reproduced safely"
+      ],
+      "definitionOfDone": [
+        "all crash points recover",
+        "no swallowed enqueue failure",
+        "backlog is alertable"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-008",
+      "findingId": "OPS-001",
+      "title": "Unify deployable runtime contract",
+      "classification": "operations",
+      "priority": "P1",
+      "severity": "critical",
+      "confidence": "high",
+      "dependencies": ["canonical API/worker entrypoints", "secret-source ownership"],
+      "objective": "Build one bootable artifact with consistent API/worker entrypoints and configuration.",
+      "requiredInvariant": "Image paths, commands, required secrets, DB and Redis contracts are identical and verified before release.",
+      "rootControl": {
+        "path": "apps/api/Dockerfile",
+        "line": 35,
+        "symbol": "runner artifact copy and CMD"
+      },
+      "allowedPaths": [
+        "apps/api/Dockerfile",
+        "docker-compose.yml",
+        "infra/terraform/modules/compute/**",
+        "apps/api/src/config/**",
+        ".github/workflows/**"
+      ],
+      "forbiddenPaths": [
+        "Terraform state",
+        "live infrastructure",
+        "production secret values",
+        "database contents"
+      ],
+      "requirements": [
+        "Choose canonical dist layout/entrypoints",
+        "Wire all validated secrets and credentialed DB URL",
+        "Align Redis TLS/auth and remove production/mock contradiction"
+      ],
+      "testsRequired": [
+        "image build",
+        "API boot",
+        "worker boot",
+        "missing-config failures",
+        "Terraform validate and review-only plan"
+      ],
+      "verificationCommands": [
+        "run repository build",
+        "docker build and bounded local boot smoke",
+        "terraform fmt -check and validate",
+        "git diff --check"
+      ],
+      "rollback": "Canary immutable image/task definition and retain prior known-good tag; never apply from this packet.",
+      "evidenceRequired": [
+        "artifact path matrix",
+        "redacted boot logs",
+        "redacted plan",
+        "rollback tag"
+      ],
+      "stopConditions": [
+        "production mutation or secret read required",
+        "canonical runtime contract unresolved"
+      ],
+      "definitionOfDone": [
+        "API and worker boot same digest",
+        "invalid config fails clearly",
+        "no apply/deploy executed"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-009",
+      "findingId": "CI-001",
+      "title": "Gate the deployable system in CI",
+      "classification": "ci-release",
+      "priority": "P1",
+      "severity": "high",
+      "confidence": "high",
+      "dependencies": ["OPS-001"],
+      "objective": "Make CI explicitly run API integration and boot the deployable API/worker images.",
+      "requiredInvariant": "A release cannot pass when required suites, configuration or artifact entrypoints are absent/broken.",
+      "rootControl": {
+        "path": ".github/workflows/ci.yml",
+        "line": 80,
+        "symbol": "test/E2E/release jobs"
+      },
+      "allowedPaths": [
+        ".github/workflows/ci.yml",
+        "package.json",
+        "apps/*/package.json",
+        "apps/**/test*",
+        "scripts/**"
+      ],
+      "forbiddenPaths": [
+        "production environments/secrets",
+        "branch protection mutation",
+        "application behavior unrelated to testability"
+      ],
+      "requirements": [
+        "Invoke integration suite explicitly",
+        "Use safe ephemeral JWT/services",
+        "Build and boot-smoke both image entrypoints with bounded timeouts"
+      ],
+      "testsRequired": [
+        "workflow validation",
+        "missing-config failure",
+        "integration discovery/count",
+        "API and worker image smoke",
+        "E2E readiness"
+      ],
+      "verificationCommands": [
+        "run focused package CI scripts",
+        "run local workflow dry-run if available",
+        "run Docker smoke",
+        "git diff --check"
+      ],
+      "rollback": "Retain the last effective gates; do not remove working checks to make CI green.",
+      "evidenceRequired": [
+        "discovered test counts",
+        "job and image boot logs",
+        "exit codes and skipped checks"
+      ],
+      "stopConditions": [
+        "test database/environment is not explicitly disposable",
+        "external production secrets are required"
+      ],
+      "definitionOfDone": [
+        "integration suite named",
+        "both entrypoints boot",
+        "failure modes fail the job"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-010",
+      "findingId": "SEC-004",
+      "title": "Scope behavioral reports by ownership",
+      "classification": "security",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["mentor/admin access policy"],
+      "objective": "Prevent cross-user behavioral answer/report reads.",
+      "requiredInvariant": "Every report read proves current object ownership or an explicit active role relationship.",
+      "rootControl": {
+        "path": "apps/api/src/modules/interview/behavioral/behavioral.service.ts",
+        "line": 72,
+        "symbol": "behavioral report retrieval"
+      },
+      "allowedPaths": ["apps/api/src/modules/interview/behavioral/**", "apps/api/src/**/*.spec.ts"],
+      "forbiddenPaths": ["scoring content", "public-share behavior", "unrelated roles"],
+      "requirements": [
+        "Authorize before response",
+        "Prefer scoped repository predicates",
+        "Avoid object-existence leakage"
+      ],
+      "testsRequired": [
+        "owner",
+        "other user",
+        "authorized/unrelated mentor",
+        "explicit admin policy",
+        "missing object"
+      ],
+      "verificationCommands": [
+        "run focused behavioral authorization tests",
+        "run API typecheck",
+        "git diff --check"
+      ],
+      "rollback": "Rollback only to an equivalent ownership-scoped predicate.",
+      "evidenceRequired": ["access matrix", "query predicate diff", "test output"],
+      "stopConditions": ["role policy is ambiguous enough to broaden access"],
+      "definitionOfDone": [
+        "all report routes scoped",
+        "enumeration resisted",
+        "authorized users unaffected"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-011",
+      "findingId": "SEC-005",
+      "title": "Require registered storage ownership",
+      "classification": "security",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["legacy object ownership policy"],
+      "objective": "Authorize object actions through registered ownership metadata.",
+      "requiredInvariant": "Every key resolves to an active registered asset whose owner/purpose authorizes the request.",
+      "rootControl": {
+        "path": "apps/api/src/modules/storage/storage.service.ts",
+        "line": 53,
+        "symbol": "confirm unregistered object"
+      },
+      "allowedPaths": ["apps/api/src/modules/storage/**", "apps/api/src/**/*.spec.ts"],
+      "forbiddenPaths": ["bucket contents", "live lifecycle policy", "unapproved schema changes"],
+      "requirements": [
+        "Normalize key and require registry record",
+        "Enforce owner/purpose/state",
+        "Issue short-lived access and redact signed URLs"
+      ],
+      "testsRequired": [
+        "owner/other user",
+        "unregistered and encoded key",
+        "expired/deleted asset",
+        "authorized delegate"
+      ],
+      "verificationCommands": [
+        "run focused storage authorization tests",
+        "run API typecheck",
+        "git diff --check"
+      ],
+      "rollback": "Retain registry-based authorization; legacy data needs an approved additive migration.",
+      "evidenceRequired": [
+        "legacy inventory method",
+        "authorization matrix",
+        "signed-URL assertions"
+      ],
+      "stopConditions": ["requires deleting/moving objects", "legacy ownership would be guessed"],
+      "definitionOfDone": [
+        "all object actions scoped",
+        "unregistered keys fail closed",
+        "URLs absent from logs"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-012",
+      "findingId": "SEC-006",
+      "title": "Scope mentor score overrides",
+      "classification": "security",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["mentor assignment policy"],
+      "objective": "Permit overrides only for assigned mentor-session relationships.",
+      "requiredInvariant": "An active specific assignment, bounded value and auditable reason are required atomically.",
+      "rootControl": {
+        "path": "apps/api/src/modules/mentor/services/live-session.service.ts",
+        "line": 156,
+        "symbol": "mentor score override authorization"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/mentor/**",
+        "apps/api/src/**/*.spec.ts",
+        "apps/api/prisma/**"
+      ],
+      "forbiddenPaths": ["base scoring algorithm", "unrelated mentor features", "real data"],
+      "requirements": [
+        "Use relationship-scoped mutation",
+        "Validate range/reason",
+        "Audit actor/target/old/new/time and handle concurrency"
+      ],
+      "testsRequired": [
+        "assigned/unassigned/expired mentor",
+        "other session",
+        "invalid range",
+        "concurrent override",
+        "audit completeness"
+      ],
+      "verificationCommands": [
+        "run focused mentor tests",
+        "validate additive migration if any",
+        "run API typecheck",
+        "git diff --check"
+      ],
+      "rollback": "Never restore role-only authority; retain scoped checks during audit-schema rollback.",
+      "evidenceRequired": ["policy matrix", "transactional test output", "redacted audit example"],
+      "stopConditions": [
+        "assignment source or admin policy unresolved",
+        "destructive migration required"
+      ],
+      "definitionOfDone": [
+        "scoped mutation",
+        "reason/bounds enforced",
+        "audit and concurrency covered"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-013",
+      "findingId": "SEC-007",
+      "title": "Bound Judge0 amplification",
+      "classification": "security",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["approved request/user/session limits"],
+      "objective": "Bound external execution fan-out and cost.",
+      "requiredInvariant": "Hard payload/test/concurrency/quota limits are enforced before any external submission.",
+      "rootControl": {
+        "path": "apps/api/src/modules/code-execution/providers/judge0.provider.ts",
+        "line": 80,
+        "symbol": "per-test-case Judge0 dispatch loop"
+      },
+      "allowedPaths": ["apps/api/src/modules/code-execution/**", "apps/api/src/**/*.spec.ts"],
+      "forbiddenPaths": ["Judge0 infrastructure", "grading semantics beyond approved limits"],
+      "requirements": [
+        "Validate caps pre-dispatch",
+        "Enforce concurrency/time/memory/quota",
+        "Emit safe denial/cost metrics"
+      ],
+      "testsRequired": [
+        "at/over boundary",
+        "huge case",
+        "concurrent requests",
+        "timeout",
+        "partial provider failure",
+        "quota reset"
+      ],
+      "verificationCommands": [
+        "run focused coding tests",
+        "run API typecheck",
+        "run bounded local-mock load test",
+        "git diff --check"
+      ],
+      "rollback": "Adjust only within approved ceiling; never remove the hard cap.",
+      "evidenceRequired": [
+        "limits table",
+        "mock external-call counts",
+        "bounded resource/latency results"
+      ],
+      "stopConditions": ["verification would contact a paid/production provider"],
+      "definitionOfDone": [
+        "over-limit submits zero jobs",
+        "normal fixture accepted",
+        "limits documented"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-014",
+      "findingId": "SEC-008",
+      "title": "Redact secret-bearing share URLs",
+      "classification": "security",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["observability sink inventory"],
+      "objective": "Keep share credentials and secret URLs out of logs.",
+      "requiredInvariant": "Only allowlisted non-secret identifiers/outcomes are logged; secret fields are removed at source and serializer.",
+      "rootControl": {
+        "path": "apps/api/src/modules/platform/interceptors/logging.interceptor.ts",
+        "line": 48,
+        "symbol": "originalUrl logging"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/share/**",
+        "apps/api/src/modules/platform/interceptors/**",
+        "apps/api/src/**/*.spec.ts"
+      ],
+      "forbiddenPaths": ["log deletion", "production token rotation", "external log ACL"],
+      "requirements": [
+        "Remove raw URL/token/passcode logging",
+        "Add structured allowlist/redaction",
+        "Retain safe share-ID correlation"
+      ],
+      "testsRequired": [
+        "create/access/error logger capture",
+        "query/nested/encoded credentials",
+        "repository regression search"
+      ],
+      "verificationCommands": [
+        "run focused share/log tests",
+        "search for secret URL logging",
+        "run API typecheck",
+        "git diff --check"
+      ],
+      "rollback": "Retain redaction; token rotation/log handling is a separately authorized operation.",
+      "evidenceRequired": [
+        "before/after log field schema",
+        "captured redacted logs",
+        "search results"
+      ],
+      "stopConditions": [
+        "asks to delete logs or rotate production credentials without authorization"
+      ],
+      "definitionOfDone": [
+        "source and sink defenses present",
+        "errors covered",
+        "safe correlation retained"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-015",
+      "findingId": "REL-002",
+      "title": "Deliver authenticated cross-process SSE",
+      "classification": "reliability",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["browser-compatible auth transport", "shared event backbone"],
+      "objective": "Deliver authorized progress events across API/worker replicas with polling fallback.",
+      "requiredInvariant": "Only the owning user receives resumable events regardless of emitting process; loss converges through bounded polling.",
+      "rootControl": {
+        "path": "apps/web/src/hooks/use-interview-sse.ts",
+        "line": 47,
+        "symbol": "interview EventSource connection"
+      },
+      "allowedPaths": [
+        "apps/web/src/hooks/use-interview-sse.ts",
+        "apps/api/src/modules/platform/sse/**",
+        "apps/api/src/modules/evaluation/evaluation.processor.ts",
+        "apps/api/src/modules/interview/interview.controller.ts",
+        "apps/api/src/**/*.spec.ts"
+      ],
+      "forbiddenPaths": ["evaluation scoring", "unrelated realtime features"],
+      "requirements": [
+        "Use supported auth without URL-token leakage",
+        "Authorize user/session channels",
+        "Use shared pub/sub or durable events with IDs/reconnect and polling fallback"
+      ],
+      "testsRequired": [
+        "auth success/failure and cross-user",
+        "emitter in another process",
+        "reconnect/duplicate/order",
+        "bus outage",
+        "polling convergence"
+      ],
+      "verificationCommands": [
+        "run focused API/web SSE tests",
+        "run local multi-process integration",
+        "run typechecks",
+        "git diff --check"
+      ],
+      "rollback": "Disable streaming to the safe polling fallback; never disable authorization.",
+      "evidenceRequired": [
+        "topology trace",
+        "reconnect output",
+        "authorization matrix",
+        "fallback proof"
+      ],
+      "stopConditions": [
+        "transport requires URL credential leakage",
+        "production broker mutation required"
+      ],
+      "definitionOfDone": [
+        "cross-process delivery proven",
+        "cross-user denial proven",
+        "polling converges"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-016",
+      "findingId": "REL-003",
+      "title": "Separate API worker and scheduler roles",
+      "classification": "reliability",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["OPS-001 deployment-role contract"],
+      "objective": "Register processors and schedulers only in intended runtime roles.",
+      "requiredInvariant": "HTTP, worker and singleton scheduler capability is explicit; scheduled work is locked/idempotent and bounded.",
+      "rootControl": {
+        "path": "apps/api/src/modules/notifications/streak-reminder.cron.ts",
+        "line": 18,
+        "symbol": "streak reminder cron"
+      },
+      "allowedPaths": [
+        "apps/api/src/app.module.ts",
+        "apps/api/src/main.ts",
+        "apps/api/src/worker.ts",
+        "apps/api/src/modules/notifications/**",
+        "apps/api/src/**/*.spec.ts",
+        "apps/api/prisma/**"
+      ],
+      "forbiddenPaths": [
+        "live replica changes",
+        "notification content/preferences",
+        "queue deletion/drain"
+      ],
+      "requirements": [
+        "Build role-specific module graphs",
+        "Use distributed lock/idempotent claim",
+        "Batch/paginate recipients and make sends retry-safe"
+      ],
+      "testsRequired": [
+        "API without processors/cron",
+        "worker with intended processors",
+        "two scheduler replicas",
+        "crash/retry",
+        "large paginated population"
+      ],
+      "verificationCommands": [
+        "run focused module/cron tests",
+        "boot-smoke API and worker",
+        "validate additive migration if any",
+        "git diff --check"
+      ],
+      "rollback": "Deploy role-aware consumers compatibly and drain safely; never destructively drain queues.",
+      "evidenceRequired": ["module graph", "two-replica test", "query/send counts", "boot logs"],
+      "stopConditions": [
+        "live deployment mutation required",
+        "destructive queue operation required"
+      ],
+      "definitionOfDone": [
+        "roles explicit",
+        "singleton semantics proven",
+        "work bounded and retry-safe"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-017",
+      "findingId": "PRIV-002",
+      "title": "Enforce privacy lifecycle",
+      "classification": "privacy",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "medium-high",
+      "dependencies": ["legal/product/data retention approval", "complete personal-data map"],
+      "objective": "Enforce retention, export and deletion for every personal-data domain.",
+      "requiredInvariant": "Each data class has an approved clock/hold/export/delete rule that code enforces and audits.",
+      "rootControl": {
+        "path": "apps/api/prisma/schema.prisma",
+        "line": 1,
+        "symbol": "User relations and lifecycle fields"
+      },
+      "allowedPaths": [
+        "docs/features/F001-VOICE-REALTIME-INTERVIEW.md",
+        "apps/api/src/modules/voice-gateway/**",
+        "apps/api/src/modules/document-parser/**",
+        "apps/api/src/modules/profile/**",
+        "apps/api/prisma/**",
+        "apps/web/src/**/*privacy*"
+      ],
+      "forbiddenPaths": [
+        "production data/buckets/backups",
+        "destructive migration",
+        "unapproved retention policy"
+      ],
+      "requirements": [
+        "Create approved data map and legal-hold semantics",
+        "Deny expired reads and produce complete export manifest",
+        "Implement staged idempotent deletion/anonymization without touching real data"
+      ],
+      "testsRequired": [
+        "time/timezone boundaries",
+        "legal hold",
+        "retry/crash",
+        "all User relations in export manifest",
+        "expired CV denial",
+        "deletion state machine and unauthorized request"
+      ],
+      "verificationCommands": [
+        "run focused lifecycle/export tests on disposable fixtures",
+        "validate migration without apply",
+        "run API/web typechecks",
+        "git diff --check"
+      ],
+      "rollback": "Inventory/dry-run first and use additive states; production execution is separately approved.",
+      "evidenceRequired": [
+        "approved data map",
+        "fixture export manifest diff",
+        "lifecycle output",
+        "migration/rollback plan"
+      ],
+      "stopConditions": ["retention policy unresolved", "any step would mutate/delete real data"],
+      "definitionOfDone": [
+        "all relations classified",
+        "expiry/export/delete tests pass",
+        "audit/metrics and owner approvals recorded"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-018",
+      "findingId": "OPS-002",
+      "title": "Use readiness and expose worker telemetry",
+      "classification": "operations",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "medium-high",
+      "dependencies": ["deployment topology", "monitoring owner and scrape path"],
+      "objective": "Route only to ready APIs and collect actionable worker health/metrics.",
+      "requiredInvariant": "Readiness reflects critical dependencies; missing/stalled worker telemetry is observable and alertable without PII.",
+      "rootControl": {
+        "path": "apps/api/Dockerfile",
+        "line": 46,
+        "symbol": "container command and health contract"
+      },
+      "allowedPaths": [
+        "apps/api/src/modules/platform/health/**",
+        "apps/api/src/modules/platform/metrics/**",
+        "apps/api/src/worker.ts",
+        "apps/api/Dockerfile",
+        "infra/terraform/modules/compute/**",
+        "infra/prometheus/**"
+      ],
+      "forbiddenPaths": [
+        "live infrastructure/apply",
+        "capacity policy",
+        "production observability data"
+      ],
+      "requirements": [
+        "Separate liveness/readiness with bounded dependency checks",
+        "Expose/export worker metrics through an authenticated discovered path",
+        "Define queue failure/backlog/age alerts with owner/runbook"
+      ],
+      "testsRequired": [
+        "healthy/down/timeout dependencies",
+        "target probe selection",
+        "worker scrape",
+        "stalled queue alert expression",
+        "multi-replica labels"
+      ],
+      "verificationCommands": [
+        "run focused health/metrics tests",
+        "boot-smoke API and worker",
+        "terraform validate and plan without apply",
+        "git diff --check"
+      ],
+      "rollback": "Canary probe thresholds and retain liveness; restore only a verified safe target path.",
+      "evidenceRequired": [
+        "probe truth table",
+        "scrape sample",
+        "redacted plan",
+        "alert evaluation"
+      ],
+      "stopConditions": [
+        "requires infrastructure apply",
+        "would weaken operational endpoint security"
+      ],
+      "definitionOfDone": [
+        "live/ready distinct",
+        "worker telemetry collected",
+        "alerts owned and runbook-linked"
+      ]
+    },
+    {
+      "packetId": "AG-PACKET-019",
+      "findingId": "A11Y-001",
+      "title": "Make critical UI keyboard and dialog accessible",
+      "classification": "accessibility",
+      "priority": "P2",
+      "severity": "medium",
+      "confidence": "high",
+      "dependencies": ["design-approved focus behavior"],
+      "objective": "Provide semantic keyboard interactions and complete modal focus lifecycle.",
+      "requiredInvariant": "Interactive controls are keyboard operable; labelled dialogs trap and restore focus with safe close behavior.",
+      "rootControl": {
+        "path": "apps/web/src/components/ui/Modal.tsx",
+        "line": 24,
+        "symbol": "shared Modal"
+      },
+      "allowedPaths": [
+        "apps/web/src/components/ui/Modal.tsx",
+        "apps/web/src/features/system-design/WhiteboardRoom.tsx",
+        "apps/web/src/components/share/ShareSessionModal.tsx",
+        "apps/web/src/components/billing/VietQrCheckoutModal.tsx",
+        "apps/web/src/features/mentor/components/ScoreOverrideModal.tsx",
+        "apps/web/src/**/*.test.*"
+      ],
+      "forbiddenPaths": ["business/API logic", "unrelated components", "broad visual redesign"],
+      "requirements": [
+        "Use semantic controls and visible keyboard focus",
+        "Implement labelled initial/trapped/restored dialog focus",
+        "Preserve pointer/touch and prevent accidental destructive submit"
+      ],
+      "testsRequired": [
+        "RTL keyboard/user-event",
+        "axe",
+        "Tab/Shift-Tab/Escape/restore",
+        "accessible names",
+        "whiteboard keyboard selection"
+      ],
+      "verificationCommands": [
+        "run focused component tests",
+        "run web typecheck and lint",
+        "run browser keyboard smoke",
+        "git diff --check"
+      ],
+      "rollback": "Migrate consumers incrementally; revert a consumer only while shared accessibility guarantees remain.",
+      "evidenceRequired": [
+        "axe output",
+        "keyboard trace",
+        "accessibility-tree assertions",
+        "exact diff"
+      ],
+      "stopConditions": [
+        "change would alter payment/score business semantics",
+        "requires broad visual redesign"
+      ],
+      "definitionOfDone": [
+        "all listed consumers migrated",
+        "focus assertions pass",
+        "pointer behavior preserved"
+      ]
+    }
+  ]
+}

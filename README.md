@@ -76,6 +76,7 @@ pnpm db:seed
 ```
 
 > **Demo Accounts**: Set environment variables before seeding:
+>
 > ```bash
 > export DEMO_ADMIN_EMAIL=admin@yourorg.com
 > export DEMO_ADMIN_PASSWORD=$(openssl rand -base64 24)
