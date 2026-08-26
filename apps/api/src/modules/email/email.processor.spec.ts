@@ -11,10 +11,7 @@ describe('EmailProcessor (Module B2)', () => {
     mockProvider = new MockEmailProvider();
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        EmailProcessor,
-        { provide: 'EMAIL_PROVIDER', useValue: mockProvider },
-      ],
+      providers: [EmailProcessor, { provide: 'EMAIL_PROVIDER', useValue: mockProvider }],
     }).compile();
 
     processor = module.get<EmailProcessor>(EmailProcessor);

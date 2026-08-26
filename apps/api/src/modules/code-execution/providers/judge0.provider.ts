@@ -77,6 +77,37 @@ export class Judge0Provider implements SandboxProvider {
       };
     }
 
+    const MAX_TEST_CASES = 20;
+    if (testCases && testCases.length > MAX_TEST_CASES) {
+      this.logger.error(
+        `Test case batch size (${testCases.length}) exceeds maximum limit of ${MAX_TEST_CASES}`,
+      );
+      return {
+        status: SubmissionStatus.FAILED,
+        stdout: '',
+        stderr: `Exceeded maximum allowed test cases (${MAX_TEST_CASES}) per execution`,
+        executionTimeMs: 0,
+        memoryUsageKb: 0,
+        compileError: null,
+        testResults: [],
+        allPassed: false,
+      };
+    }
+
+    if (sourceCode && sourceCode.length > 50000) {
+      this.logger.error(`Source code size (${sourceCode.length}) exceeds limit of 50000 chars`);
+      return {
+        status: SubmissionStatus.FAILED,
+        stdout: '',
+        stderr: 'Source code exceeds maximum allowed size (50,000 characters)',
+        executionTimeMs: 0,
+        memoryUsageKb: 0,
+        compileError: null,
+        testResults: [],
+        allPassed: false,
+      };
+    }
+
     if (testCases && testCases.length > 0) {
       const results: any[] = [];
       let totalTime = 0;

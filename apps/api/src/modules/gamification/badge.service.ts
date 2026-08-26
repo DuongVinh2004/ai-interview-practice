@@ -184,11 +184,7 @@ export class BadgeService implements OnModuleInit {
     });
   }
 
-  async checkAndUnlockBadges(
-    userId: string,
-    metric: string,
-    value: any,
-  ): Promise<BadgeDto[]> {
+  async checkAndUnlockBadges(userId: string, metric: string, value: any): Promise<BadgeDto[]> {
     const badges = await this.prisma.badgeDefinition.findMany({
       include: {
         unlocks: {

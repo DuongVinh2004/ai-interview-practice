@@ -58,6 +58,7 @@ export class MockAudioProvider implements AudioProviderInterface {
       model: 'mock-whisper-v1',
       latencyMs,
       costEstimate: 0.0,
+      isFallback: true,
     };
   }
 

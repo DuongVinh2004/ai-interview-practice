@@ -180,7 +180,9 @@ export class QuestionProcessor extends WorkerHost {
             reason: 'Failed to generate interview question after retries.',
           });
         } else {
-          this.logger.warn(`Session ${sessionId} already in terminal state. Skipping SESSION_FAILED event.`);
+          this.logger.warn(
+            `Session ${sessionId} already in terminal state. Skipping SESSION_FAILED event.`,
+          );
         }
       }
       throw error;

@@ -157,6 +157,55 @@ describe('InterviewService (Unit)', () => {
       expect(result.overallScore).toBe(9.0);
       expect(sseService.emitSessionEvent).toHaveBeenCalled();
     });
+
+    it('falls back to NEEDS_REVIEW evaluations when no authoritative evaluation exists', async () => {
+      prisma.interviewSession.findUnique.mockResolvedValue({
+        id: 'session-123',
+        userId: 'owner-1',
+        jobRole: { name: 'Backend Engineer' },
+        seniorityLevel: { name: 'Senior' },
+        turns: [
+          {
+            id: 'turn-1',
+            turnNumber: 1,
+            question: { content: 'Explain idempotency', expectedPoints: ['idempotency key'] },
+            answer: {
+              id: 'ans-1',
+              content: 'Use an idempotency key',
+              evaluation: { id: 'eval-1', score: 7.0 },
+            },
+          },
+        ],
+      });
+      prisma.evaluation.update.mockResolvedValue({
+        id: 'eval-1',
+        answerId: 'ans-1',
+        score: 9.0,
+        rubricScores: { technicalAccuracy: 9.0, depth: 9.0, clarity: 9.0 },
+        strengths: ['Clear'],
+        improvements: [],
+        conciseFeedback: 'Excellent',
+        evidence: [],
+        createdAt: new Date(),
+      });
+      prisma.evaluation.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        { id: 'eval-1', score: 9.0, authorityState: 'NEEDS_REVIEW' },
+        { id: 'eval-2', score: 7.0, authorityState: 'NEEDS_REVIEW' },
+      ]);
+
+      const result = await service.reEvaluateTurn(
+        'owner-1',
+        UserRole.CANDIDATE,
+        'session-123',
+        1,
+        {},
+      );
+
+      expect(result.overallScore).toBe(8.0);
+      expect(prisma.evaluation.findMany).toHaveBeenNthCalledWith(2, {
+        where: { answer: { turn: { sessionId: 'session-123' } } },
+      });
+    });
   });
 
   describe('createSession modes (Epic 6)', () => {

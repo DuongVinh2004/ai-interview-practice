@@ -90,4 +90,3 @@ export const visionConfig = registerAs('vision', () => ({
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
 }));
-

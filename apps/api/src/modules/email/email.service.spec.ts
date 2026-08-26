@@ -12,10 +12,7 @@ describe('EmailService (Module B2)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        EmailService,
-        { provide: getQueueToken(QueueName.EMAIL), useValue: mockQueue },
-      ],
+      providers: [EmailService, { provide: getQueueToken(QueueName.EMAIL), useValue: mockQueue }],
     }).compile();
 
     service = module.get<EmailService>(EmailService);

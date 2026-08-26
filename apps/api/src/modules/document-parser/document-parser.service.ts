@@ -195,8 +195,12 @@ export class DocumentParserService {
   }
 
   async getUserDocuments(userId: string) {
+    const now = new Date();
     return this.prisma.userDocument.findMany({
-      where: { userId },
+      where: {
+        userId,
+        expiresAt: { gt: now },
+      },
       select: {
         id: true,
         userId: true,
@@ -212,9 +216,13 @@ export class DocumentParserService {
   }
 
   async getUserProfiles(userId: string) {
+    const now = new Date();
     return this.prisma.parsedProfile.findMany({
       where: {
-        document: { userId },
+        document: {
+          userId,
+          expiresAt: { gt: now },
+        },
       },
       include: { document: true },
       orderBy: { createdAt: 'desc' },
@@ -222,10 +230,14 @@ export class DocumentParserService {
   }
 
   async getUserBlueprints(userId: string) {
+    const now = new Date();
     return this.prisma.interviewBlueprint.findMany({
       where: {
         parsedProfile: {
-          document: { userId },
+          document: {
+            userId,
+            expiresAt: { gt: now },
+          },
         },
       },
       include: {
@@ -255,6 +267,15 @@ export class DocumentParserService {
 
     if (docOwnerId && docOwnerId !== userId && jdOwnerId && jdOwnerId !== userId) {
       throw new ForbiddenException('You do not have access to this interview blueprint.');
+    }
+
+    if (
+      blueprint.parsedProfile?.document?.expiresAt &&
+      blueprint.parsedProfile.document.expiresAt <= new Date()
+    ) {
+      throw new NotFoundException(
+        'This document and its blueprint have expired per retention policy',
+      );
     }
 
     return blueprint;

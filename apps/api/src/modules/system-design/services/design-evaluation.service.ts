@@ -1,7 +1,11 @@
 import { Injectable, Logger, NotFoundException, ForbiddenException, Inject } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { VisionProvider } from '../interfaces/vision-provider.interface';
-import { DesignEvaluationDto, EvaluateDiagramDto, DesignEvaluationResultDto } from '@ai-interview/contracts';
+import {
+  DesignEvaluationDto,
+  EvaluateDiagramDto,
+  DesignEvaluationResultDto,
+} from '@ai-interview/contracts';
 
 @Injectable()
 export class DesignEvaluationService {
@@ -60,6 +64,10 @@ export class DesignEvaluationService {
     const overallScore = visionResult.overallScore;
     const feedback = `${visionResult.summary}\n\nKey Strengths:\n- ${visionResult.strengths.join('\n- ')}\n\nBottlenecks to Address:\n- ${visionResult.bottlenecks.join('\n- ')}`;
 
+    const currentProvider = this.visionProvider.name || 'mock';
+    const isMock = currentProvider.toLowerCase().includes('mock');
+    const authorityState = isMock ? 'NON_AUTHORITATIVE' : 'AUTHORITATIVE';
+
     const evalRecord = await this.prisma.designEvaluation.upsert({
       where: { sessionId: session.id },
       update: {
@@ -71,6 +79,8 @@ export class DesignEvaluationService {
         overallScore,
         feedback,
         annotations: visionResult.annotations as any,
+        authorityState,
+        provider: currentProvider,
       },
       create: {
         sessionId: session.id,
@@ -82,6 +92,8 @@ export class DesignEvaluationService {
         overallScore,
         feedback,
         annotations: visionResult.annotations as any,
+        authorityState,
+        provider: currentProvider,
       },
     });
 
@@ -158,6 +170,10 @@ export class DesignEvaluationService {
       language: dto.language || 'vi',
     });
 
+    const providerName = this.visionProvider.name || 'mock';
+    const isMockProvider = providerName.toLowerCase().includes('mock');
+    const diagAuthorityState = isMockProvider ? 'NON_AUTHORITATIVE' : 'AUTHORITATIVE';
+
     // Update DesignEvaluation record
     const evalRecord = await this.prisma.designEvaluation.upsert({
       where: { sessionId: session.id },
@@ -170,6 +186,8 @@ export class DesignEvaluationService {
         overallScore: visionResult.overallScore,
         feedback: visionResult.feedback,
         annotations: visionResult.annotations as any,
+        authorityState: diagAuthorityState,
+        provider: providerName,
       },
       create: {
         sessionId: session.id,
@@ -181,6 +199,8 @@ export class DesignEvaluationService {
         overallScore: visionResult.overallScore,
         feedback: visionResult.feedback,
         annotations: visionResult.annotations as any,
+        authorityState: diagAuthorityState,
+        provider: providerName,
       },
     });
 

@@ -27,9 +27,7 @@ import { GeminiVisionProvider } from './providers/gemini-vision.provider';
         mockProvider: MockVisionProvider,
       ) => {
         const providerName =
-          configService.get<string>('vision.provider') ||
-          process.env.VISION_PROVIDER ||
-          'mock';
+          configService.get<string>('vision.provider') || process.env.VISION_PROVIDER || 'mock';
 
         if (providerName === 'gemini') {
           const geminiKey =

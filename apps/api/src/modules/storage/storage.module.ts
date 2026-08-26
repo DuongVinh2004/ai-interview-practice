@@ -24,9 +24,7 @@ import { AuthModule } from '../auth/auth.module';
         mockProvider: MockStorageProvider,
       ) => {
         const providerName =
-          configService.get<string>('storage.provider') ||
-          process.env.STORAGE_PROVIDER ||
-          'mock';
+          configService.get<string>('storage.provider') || process.env.STORAGE_PROVIDER || 'mock';
 
         if (providerName.toLowerCase() === 's3') {
           return s3Provider;

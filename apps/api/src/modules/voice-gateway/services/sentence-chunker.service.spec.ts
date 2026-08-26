@@ -32,7 +32,18 @@ describe('SentenceChunkerService (Module B3)', () => {
 
   describe('processTokenStream', () => {
     it('emits sentences as soon as sentence delimiters arrive in stream', async () => {
-      const tokens = ['Welcome', ' to', ' your', ' interview', '.', ' Today', ' we', ' discuss', ' Kafka', '!'];
+      const tokens = [
+        'Welcome',
+        ' to',
+        ' your',
+        ' interview',
+        '.',
+        ' Today',
+        ' we',
+        ' discuss',
+        ' Kafka',
+        '!',
+      ];
 
       async function* tokenGenerator() {
         for (const token of tokens) {
@@ -52,7 +63,17 @@ describe('SentenceChunkerService (Module B3)', () => {
     });
 
     it('respects cancellation flag immediately', async () => {
-      const tokens = ['First', ' sentence', '.', ' Second', ' sentence', '.', ' Third', ' sentence', '.'];
+      const tokens = [
+        'First',
+        ' sentence',
+        '.',
+        ' Second',
+        ' sentence',
+        '.',
+        ' Third',
+        ' sentence',
+        '.',
+      ];
       let cancelled = false;
 
       async function* tokenGenerator() {

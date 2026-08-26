@@ -259,7 +259,9 @@ export class AiOrchestratorService {
       this.logger.error('CRITICAL: Failed to persist AI audit run', e.message);
       // In production, audit failure should block the result for compliance (F-017)
       if (process.env.NODE_ENV === 'production') {
-        throw new Error(`AI audit persistence failed: ${e.message}. Evaluation aborted for compliance.`);
+        throw new Error(
+          `AI audit persistence failed: ${e.message}. Evaluation aborted for compliance.`,
+        );
       }
     }
   }

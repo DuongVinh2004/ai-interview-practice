@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DeepgramClient } from '@deepgram/sdk';
 import { Subject } from 'rxjs';
 import { TranscriptEvent, SttStreamSession } from '../interfaces/voice-provider.interface';
-import { SpeakerRole } from '@ai-interview/contracts';
+import { SpeakerRole, ErrorCode } from '@ai-interview/contracts';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
 @Injectable()
 export class DeepgramSttProvider {
@@ -14,10 +15,10 @@ export class DeepgramSttProvider {
 
   constructor(private readonly configService: ConfigService) {
     this.apiKey =
-      this.configService.get<string>('voice.deepgramApiKey') ||
-      process.env.DEEPGRAM_API_KEY ||
-      '';
-    this.isConfigured = Boolean(this.apiKey && !this.apiKey.includes('mock') && this.apiKey.length > 5);
+      this.configService.get<string>('voice.deepgramApiKey') || process.env.DEEPGRAM_API_KEY || '';
+    this.isConfigured = Boolean(
+      this.apiKey && !this.apiKey.includes('mock') && this.apiKey.length > 5,
+    );
 
     if (this.isConfigured) {
       try {
@@ -67,7 +68,10 @@ export class DeepgramSttProvider {
 
         return {
           sendAudioChunk: (pcmChunk: Buffer) => {
-            if (typeof liveConnection.getReadyState === 'function' && liveConnection.getReadyState() === 1) {
+            if (
+              typeof liveConnection.getReadyState === 'function' &&
+              liveConnection.getReadyState() === 1
+            ) {
               liveConnection.send(pcmChunk);
             }
           },
@@ -87,7 +91,26 @@ export class DeepgramSttProvider {
       }
     }
 
-    // Mock STT Stream Fallback
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      this.configService.get<string>('app.env') === 'production' ||
+      this.configService.get<string>('NODE_ENV') === 'production';
+    const allowMock =
+      process.env.ALLOW_MOCK_PROVIDERS === 'true' ||
+      this.configService.get<boolean>('ALLOW_MOCK_PROVIDERS') === true;
+
+    if (isProduction && !allowMock && (!this.isConfigured || !this.deepgram?.listen?.live)) {
+      this.logger.error(
+        'Deepgram STT is not configured in production and ALLOW_MOCK_PROVIDERS is not set',
+      );
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Voice Speech-to-Text service is currently unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    // Mock STT Stream Fallback for non-production environments
     let accumulatedBytes = 0;
     let turnCount = 0;
 

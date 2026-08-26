@@ -20,9 +20,7 @@ export class OpenAiVisionProvider implements VisionProvider {
       this.configService.get<string>('ai.openaiApiKey') ||
       process.env.OPENAI_API_KEY ||
       '';
-    this.model =
-      this.configService.get<string>('vision.openaiVisionModel') ||
-      'gpt-4o';
+    this.model = this.configService.get<string>('vision.openaiVisionModel') || 'gpt-4o';
 
     if (apiKey && !apiKey.includes('mock')) {
       this.client = new OpenAI({ apiKey, timeout: 35000 });

@@ -11,7 +11,14 @@ import { QuotaGuard } from './guards/quota.guard';
 @Global()
 @Module({
   controllers: [BillingController, BillingWebhookController],
-  providers: [BillingService, UsageMeterService, MockBillingProvider, StripeProvider, PayosProvider, QuotaGuard],
+  providers: [
+    BillingService,
+    UsageMeterService,
+    MockBillingProvider,
+    StripeProvider,
+    PayosProvider,
+    QuotaGuard,
+  ],
   exports: [BillingService, UsageMeterService, PayosProvider, QuotaGuard],
 })
 export class BillingModule {}

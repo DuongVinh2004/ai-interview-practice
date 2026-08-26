@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import WebSocket from 'ws';
 import { Subject } from 'rxjs';
 import { TtsStreamSession } from '../interfaces/voice-provider.interface';
+import { ErrorCode } from '@ai-interview/contracts';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
 @Injectable()
 export class ElevenLabsTtsProvider {
@@ -100,7 +102,26 @@ export class ElevenLabsTtsProvider {
       }
     }
 
-    // Mock TTS Stream Fallback
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      this.configService.get<string>('app.env') === 'production' ||
+      this.configService.get<string>('NODE_ENV') === 'production';
+    const allowMock =
+      process.env.ALLOW_MOCK_PROVIDERS === 'true' ||
+      this.configService.get<boolean>('ALLOW_MOCK_PROVIDERS') === true;
+
+    if (isProduction && !allowMock && !this.isConfigured) {
+      this.logger.error(
+        'ElevenLabs TTS is not configured in production and ALLOW_MOCK_PROVIDERS is not set',
+      );
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Voice Text-to-Speech service is currently unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    // Mock TTS Stream Fallback for non-production environments
     let isClosed = false;
 
     return {

@@ -26,11 +26,7 @@ export class MfaStepUpGuard implements CanActivate {
     });
 
     if (!dbUser) {
-      throw new DomainException(
-        ErrorCode.UNAUTHORIZED,
-        'User not found',
-        HttpStatus.UNAUTHORIZED,
-      );
+      throw new DomainException(ErrorCode.UNAUTHORIZED, 'User not found', HttpStatus.UNAUTHORIZED);
     }
 
     // Administrators MUST enable MFA before performing sensitive operations

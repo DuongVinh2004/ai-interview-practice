@@ -14,10 +14,7 @@ describe('ElevenLabsTtsProvider (Module B3)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ElevenLabsTtsProvider,
-        { provide: ConfigService, useValue: mockConfig },
-      ],
+      providers: [ElevenLabsTtsProvider, { provide: ConfigService, useValue: mockConfig }],
     }).compile();
 
     provider = module.get<ElevenLabsTtsProvider>(ElevenLabsTtsProvider);

@@ -9,6 +9,24 @@ ALTER TABLE "evaluations" ADD COLUMN IF NOT EXISTS "provider" VARCHAR(50);
 ALTER TABLE "evaluations" ADD COLUMN IF NOT EXISTS "fallback_reason" VARCHAR(255);
 ALTER TABLE "evaluations" ADD COLUMN IF NOT EXISTS "confidence" DOUBLE PRECISION;
 
+-- Create the semantic cache for clean databases. The model existed in the Prisma
+-- schema but was missing from the initial migration chain, which broke shadow DBs.
+CREATE TABLE IF NOT EXISTS "semantic_cache" (
+    "id" UUID NOT NULL,
+    "prompt_hash" VARCHAR(64) NOT NULL,
+    "prompt_text" TEXT NOT NULL,
+    "embedding" DOUBLE PRECISION[],
+    "response_payload" JSONB NOT NULL,
+    "metadata" JSONB,
+    "hit_count" INTEGER NOT NULL DEFAULT 0,
+    "ttl_seconds" INTEGER NOT NULL DEFAULT 86400,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "last_used_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "semantic_cache_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "semantic_cache_prompt_hash_key" ON "semantic_cache"("prompt_hash");
+
 -- AlterTable: add namespace and user_id to semantic_cache
 ALTER TABLE "semantic_cache" ADD COLUMN IF NOT EXISTS "namespace" VARCHAR(100);
 ALTER TABLE "semantic_cache" ADD COLUMN IF NOT EXISTS "user_id" UUID;

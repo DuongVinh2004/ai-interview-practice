@@ -17,7 +17,9 @@ export class EmailProcessor extends WorkerHost {
   }
 
   async process(job: Job<any, any, string>): Promise<any> {
-    this.logger.log(`Processing email job ID: ${job.id}, Type: ${job.name}, Target: ${job.data?.to}`);
+    this.logger.log(
+      `Processing email job ID: ${job.id}, Type: ${job.name}, Target: ${job.data?.to}`,
+    );
 
     let html = '';
     let subject = job.data?.subject || 'AI Interview Practice Notification';
@@ -34,7 +36,10 @@ export class EmailProcessor extends WorkerHost {
           }),
         );
         if (!job.data?.subject) {
-          subject = lang === 'vi' ? '🎉 Chào mừng đến với AI Interview Practice!' : '🎉 Welcome to AI Interview Practice!';
+          subject =
+            lang === 'vi'
+              ? '🎉 Chào mừng đến với AI Interview Practice!'
+              : '🎉 Welcome to AI Interview Practice!';
         }
         break;
 

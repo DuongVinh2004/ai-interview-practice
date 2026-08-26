@@ -15,10 +15,13 @@ async function main() {
     console.warn('⚠️  DEMO_ADMIN_EMAIL and DEMO_ADMIN_PASSWORD not set. Skipping admin seed.');
   }
   if (!candidateEmail || !candidatePassword) {
-    console.warn('⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.');
+    console.warn(
+      '⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.',
+    );
   }
 
   const passwordSalt = 10;
+  let adminUser: any = null;
 
   // 1. Seed Demo Admin (only in non-production or if explicit env vars are provided)
   if (adminEmail && adminPassword) {
@@ -41,6 +44,7 @@ async function main() {
         },
       },
     });
+    adminUser = admin;
     console.log(`✅ Admin user seeded: ${admin.email}`);
   }
 
@@ -428,39 +432,41 @@ async function main() {
     });
   }
   // 9. Seed Mentor Profile for Admin
-  const mentorProfile = await prisma.mentorProfile.upsert({
-    where: { userId: admin.id },
-    update: {
-      expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
-      bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
-      isActive: true,
-      rating: 4.9,
-      totalSessions: 24,
-    },
-    create: {
-      userId: admin.id,
-      expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
-      bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
-      isActive: true,
-      rating: 4.9,
-      totalSessions: 24,
-    },
-  });
-
-  for (let day = 1; day <= 5; day++) {
-    const existing = await prisma.mentorAvailability.findFirst({
-      where: { mentorId: mentorProfile.id, dayOfWeek: day },
+  if (adminUser) {
+    const mentorProfile = await prisma.mentorProfile.upsert({
+      where: { userId: adminUser.id },
+      update: {
+        expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
+        bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
+        isActive: true,
+        rating: 4.9,
+        totalSessions: 24,
+      },
+      create: {
+        userId: adminUser.id,
+        expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
+        bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
+        isActive: true,
+        rating: 4.9,
+        totalSessions: 24,
+      },
     });
-    if (!existing) {
-      await prisma.mentorAvailability.create({
-        data: {
-          mentorId: mentorProfile.id,
-          dayOfWeek: day,
-          startTime: '09:00',
-          endTime: '17:00',
-          isActive: true,
-        },
+
+    for (let day = 1; day <= 5; day++) {
+      const existing = await prisma.mentorAvailability.findFirst({
+        where: { mentorId: mentorProfile.id, dayOfWeek: day },
       });
+      if (!existing) {
+        await prisma.mentorAvailability.create({
+          data: {
+            mentorId: mentorProfile.id,
+            dayOfWeek: day,
+            startTime: '09:00',
+            endTime: '17:00',
+            isActive: true,
+          },
+        });
+      }
     }
   }
   console.log('✅ Seeded demo mentor profile and availability slots');

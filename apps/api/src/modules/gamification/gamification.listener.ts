@@ -39,12 +39,7 @@ export class GamificationEventListener {
           ? `Hoàn thành phỏng vấn (Điểm cao ${payload.overallScore}/10 + Thưởng)`
           : `Hoàn thành buổi phỏng vấn (Điểm ${payload.overallScore}/10)`;
 
-      await this.xpService.awardXp(
-        payload.userId,
-        totalAmount,
-        XpSource.INTERVIEW_COMPLETE,
-        desc,
-      );
+      await this.xpService.awardXp(payload.userId, totalAmount, XpSource.INTERVIEW_COMPLETE, desc);
 
       // 2. Update Streak
       await this.streakService.recordActivity(payload.userId);
@@ -94,11 +89,7 @@ export class GamificationEventListener {
   }
 
   @OnEvent('flashcard.reviewed')
-  async handleFlashcardReviewed(payload: {
-    userId: string;
-    cardId: string;
-    rating: number;
-  }) {
+  async handleFlashcardReviewed(payload: { userId: string; cardId: string; rating: number }) {
     try {
       // Award 2 XP per review (max 200 XP per day handled via daily logic)
       await this.xpService.awardXp(
@@ -146,11 +137,7 @@ export class GamificationEventListener {
           `Hoàn thành giải thuật kiểm thử thành công (${payload.language || 'Sandbox'})`,
         );
 
-        await this.badgeService.checkAndUnlockBadges(
-          payload.userId,
-          'code_all_tests_passed',
-          true,
-        );
+        await this.badgeService.checkAndUnlockBadges(payload.userId, 'code_all_tests_passed', true);
 
         await this.streakService.recordActivity(payload.userId);
       }

@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nest
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { MfaStepUpGuard } from '../auth/guards/mfa-step-up.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@ai-interview/contracts';
@@ -50,7 +51,7 @@ export class ReadinessController {
   }
 
   @Get('admin/readiness/weight-profiles')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: List role readiness weight profiles' })
   async getWeightProfiles() {
@@ -58,7 +59,7 @@ export class ReadinessController {
   }
 
   @Post('admin/readiness/weight-profiles')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create or update weight profile' })
   async upsertWeightProfile(@Body() dto: CreateWeightProfileDto) {
@@ -70,7 +71,7 @@ export class ReadinessController {
   }
 
   @Get('admin/readiness/tiers')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: List readiness tier definitions' })
   async getTiers() {

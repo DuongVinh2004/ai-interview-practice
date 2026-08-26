@@ -21,24 +21,25 @@ describe('CircuitBreaker Resilience Spec', () => {
   });
 
   it('transitions from CLOSED to OPEN after consecutive failures meet threshold', async () => {
+    const cb = new CircuitBreaker({
+      failureThreshold: 3,
+      windowMs: 5000,
+      resetTimeoutMs: 10000,
+    });
     const failingFn = jest.fn().mockRejectedValue(new Error('API 500'));
 
     for (let i = 0; i < 2; i++) {
-      await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
-        'API 500',
-      );
-      expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.CLOSED);
+      await expect(cb.execute('test-provider', 'eval', failingFn)).rejects.toThrow('API 500');
+      expect(cb.getState('test-provider', 'eval')).toBe(CircuitState.CLOSED);
     }
 
     // 3rd failure trips threshold
-    await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
-      'API 500',
-    );
-    expect(circuitBreaker.getState('test-provider', 'eval')).toBe(CircuitState.OPEN);
-    expect(circuitBreaker.canExecute('test-provider', 'eval')).toBe(false);
+    await expect(cb.execute('test-provider', 'eval', failingFn)).rejects.toThrow('API 500');
+    expect(cb.getState('test-provider', 'eval')).toBe(CircuitState.OPEN);
+    expect(cb.canExecute('test-provider', 'eval')).toBe(false);
 
     // Subsequent call should fast-fail with CircuitBreakerOpenException
-    await expect(circuitBreaker.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
+    await expect(cb.execute('test-provider', 'eval', failingFn)).rejects.toThrow(
       CircuitBreakerOpenException,
     );
   });

@@ -65,4 +65,28 @@ export class AddMentorFeedbackDto {
   @MinLength(5)
   @MaxLength(2000)
   comment!: string;
+
+  @ApiPropertyOptional({
+    description: 'Passcode required if the share link is password-protected',
+    minLength: 4,
+    maxLength: 30,
+  })
+  @IsString()
+  @MinLength(4)
+  @MaxLength(30)
+  @IsOptional()
+  passcode?: string;
+}
+
+export class AccessShareTokenDto {
+  @ApiPropertyOptional({
+    description: 'Optional passcode required to view report',
+    minLength: 4,
+    maxLength: 30,
+  })
+  @IsString()
+  @MinLength(4)
+  @MaxLength(30)
+  @IsOptional()
+  passcode?: string;
 }

@@ -1222,6 +1222,8 @@ model DesignEvaluation {
   overallScore         Float               @map("overall_score")
   feedback             String?             @db.Text
   annotations          Json?               @map("annotations")
+  authorityState       String              @default("AUTHORITATIVE") @map("authority_state")
+  provider             String?             @map("provider")
   createdAt            DateTime            @default(now()) @map("created_at")
 
   session              SystemDesignSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)

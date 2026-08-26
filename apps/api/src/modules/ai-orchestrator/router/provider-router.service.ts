@@ -110,13 +110,18 @@ export class ProviderRouterService {
       'gemini,openai,anthropic,mock',
     );
 
+    const allowMock = !isProduction || process.env.AI_ALLOW_MOCK === 'true';
     const parsed = rawPriority
       .split(',')
       .map(p => p.trim().toLowerCase())
-      .filter(p => this.providersMap.has(p));
+      .filter(p => this.providersMap.has(p) && (p !== 'mock' || allowMock));
 
     if (!isProduction && !parsed.includes('mock')) {
       parsed.push('mock');
+    }
+
+    if (parsed.length === 0 && isProduction) {
+      throw new Error('No production AI provider configured');
     }
 
     return parsed.length > 0 ? parsed : ['mock'];
@@ -381,43 +386,10 @@ export class ProviderRouterService {
     systemPrompt: string,
     userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedLearningPathAi>> {
-    const cacheKey = `learning-path:${context.role}:${context.level}:${context.turns?.map(t => `${t.turnNumber}:${t.score}`).join(',')}`;
-
-    if (this.semanticCacheService?.isCacheEnabled()) {
-      const cached = await this.semanticCacheService.get<GeneratedLearningPathAi>(
-        cacheKey,
-        undefined,
-        {
-          namespace: 'learning_paths',
-        },
-      );
-      if (cached.hit && cached.data) {
-        return {
-          data: cached.data,
-          provider: 'semantic_cache',
-          model: 'semantic-cache',
-          latencyMs: 15,
-          promptTokens: 0,
-          completionTokens: 0,
-          costEstimate: 0,
-        };
-      }
-    }
-
-    const result = await this.executeWithFallback('generateLearningPath', provider =>
+    // Personalized learning paths include candidate answers and feedback, so a shared semantic
+    // cache can leak one candidate's generated output to another candidate.
+    return this.executeWithFallback('generateLearningPath', provider =>
       provider.generateLearningPath(context, systemPrompt, userPrompt),
     );
-
-    if (this.semanticCacheService?.isCacheEnabled() && result.data && result.provider !== 'mock') {
-      await this.semanticCacheService.set(
-        cacheKey,
-        result.data,
-        { operation: 'generateLearningPath' },
-        86400,
-        { namespace: 'learning_paths' },
-      );
-    }
-
-    return result;
   }
 }

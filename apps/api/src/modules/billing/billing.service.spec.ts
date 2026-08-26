@@ -12,6 +12,9 @@ import { SubscriptionStatus } from '@ai-interview/contracts';
 describe('BillingService (F014)', () => {
   let service: BillingService;
   let prismaMock: any;
+  let configGet: jest.Mock;
+  let mockBillingProvider: MockBillingProvider;
+  let stripeProvider: StripeProvider;
 
   const mockPlan = {
     id: '00000000-0000-0000-0000-000000000001',
@@ -34,6 +37,7 @@ describe('BillingService (F014)', () => {
   };
 
   beforeEach(async () => {
+    configGet = jest.fn((_key, defaultValue) => defaultValue);
     prismaMock = {
       subscriptionPlan: {
         findMany: jest.fn().mockResolvedValue([mockPlan]),
@@ -121,12 +125,14 @@ describe('BillingService (F014)', () => {
         { provide: PrismaService, useValue: prismaMock },
         {
           provide: ConfigService,
-          useValue: { get: jest.fn((k, def) => def) },
+          useValue: { get: configGet },
         },
       ],
     }).compile();
 
     service = module.get<BillingService>(BillingService);
+    mockBillingProvider = module.get<MockBillingProvider>(MockBillingProvider);
+    stripeProvider = module.get<StripeProvider>(StripeProvider);
   });
 
   it('should list all active subscription plans', async () => {
@@ -148,6 +154,64 @@ describe('BillingService (F014)', () => {
     expect(checkout.checkoutUrl).toContain('https://ai-interview.dev/billing/success');
     expect(prismaMock.subscription.update).toHaveBeenCalled();
     expect(prismaMock.invoice.create).toHaveBeenCalled();
+  });
+
+  it('fails closed when Stripe is not configured in production', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const mockCheckout = jest.spyOn(mockBillingProvider, 'createCheckoutSession');
+
+    try {
+      process.env.NODE_ENV = 'production';
+
+      await expect(
+        service.createCheckout('00000000-0000-0000-0000-000000000002', {
+          planSlug: 'pro',
+          billingCycle: 'monthly',
+          successUrl: 'https://ai-interview.dev/billing/success',
+          cancelUrl: 'https://ai-interview.dev/billing',
+        }),
+      ).rejects.toMatchObject({
+        message: 'Payment processing is currently unavailable',
+        status: 503,
+      });
+
+      expect(mockCheckout).not.toHaveBeenCalled();
+      expect(prismaMock.subscription.update).not.toHaveBeenCalled();
+      expect(prismaMock.invoice.create).not.toHaveBeenCalled();
+    } finally {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
+  it('uses Stripe instead of mock checkout when configured in production', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const stripeCheckout = jest.spyOn(stripeProvider, 'createCheckoutSession').mockResolvedValue({
+      sessionId: 'cs_test_123',
+      checkoutUrl: 'https://stripe.test/checkout',
+    });
+    const mockCheckout = jest.spyOn(mockBillingProvider, 'createCheckoutSession');
+    configGet.mockImplementation((key, defaultValue) =>
+      key === 'STRIPE_SECRET_KEY' ? 'sk_test_configured' : defaultValue,
+    );
+
+    try {
+      process.env.NODE_ENV = 'production';
+
+      const checkout = await service.createCheckout('00000000-0000-0000-0000-000000000002', {
+        planSlug: 'pro',
+        billingCycle: 'monthly',
+        successUrl: 'https://ai-interview.dev/billing/success',
+        cancelUrl: 'https://ai-interview.dev/billing',
+      });
+
+      expect(checkout.sessionId).toBe('cs_test_123');
+      expect(stripeCheckout).toHaveBeenCalledTimes(1);
+      expect(mockCheckout).not.toHaveBeenCalled();
+    } finally {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+    }
   });
 
   it('should cancel subscription at period end', async () => {
@@ -190,5 +254,23 @@ describe('BillingService (F014)', () => {
     await expect(
       stripeProvider.handleWebhook(JSON.parse(payload), forgedHeader, payload),
     ).rejects.toThrow('Invalid Stripe webhook signature');
+  });
+
+  it('should reject PayOS payment creation when returnUrl or cancelUrl has an untrusted host (SEC-010)', async () => {
+    await expect(
+      service.createPayosPayment('00000000-0000-0000-0000-000000000002', {
+        planSlug: 'pro',
+        billingCycle: 'monthly',
+        returnUrl: 'https://attacker-phishing-site.com/steal-creds',
+      }),
+    ).rejects.toThrow('Invalid redirect URL host');
+
+    await expect(
+      service.createPayosPayment('00000000-0000-0000-0000-000000000002', {
+        planSlug: 'pro',
+        billingCycle: 'monthly',
+        cancelUrl: 'javascript:alert(1)',
+      }),
+    ).rejects.toThrow('Malformed redirect URL');
   });
 });

@@ -24,9 +24,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: JwtPayload): Promise<JwtPayload> {
     // Reject temporary MFA challenge tokens attempting to access protected routes (B-001)
-    if (payload.mfaPending || payload.tokenType === 'mfa_challenge') {
+    if (payload.tokenType === 'mfa_challenge') {
       throw new UnauthorizedException(
         'MFA verification required. Challenge token cannot access protected endpoints.',
+      );
+    }
+
+    // Reject MFA enrollment tokens — admin must complete TOTP setup first (SEC-003)
+    if (payload.tokenType === 'mfa_enrollment') {
+      throw new UnauthorizedException(
+        'MFA enrollment required. Please complete MFA setup before accessing this resource.',
       );
     }
 
@@ -60,11 +67,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     return {
       sub: user.id,
+      id: user.id,
       email: user.email,
       role: user.role as any,
       status: user.status as any,
       tokenVersion: user.tokenVersion,
-      tokenType: 'access',
+      tokenType: payload.tokenType || 'access',
       mfaVerified: payload.mfaVerified ?? false,
     };
   }

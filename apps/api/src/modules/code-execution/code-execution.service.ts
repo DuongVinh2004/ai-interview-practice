@@ -72,11 +72,36 @@ export class CodeExecutionService {
       );
     }
 
+    const MAX_TEST_CASES = 20;
+    if (dto.testCases && dto.testCases.length > MAX_TEST_CASES) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        `Exceeded maximum allowed test cases (${MAX_TEST_CASES}) per execution`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (dto.sourceCode && dto.sourceCode.length > 50000) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Source code exceeds maximum allowed size (50,000 characters)',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const provider = this.getSandboxProvider();
+    const testCases = dto.testCases?.map((tc, idx) => ({
+      id: tc.id,
+      input: tc.input,
+      expectedOutput: tc.expectedOutput,
+      isHidden: tc.isHidden ?? false,
+      order: tc.order ?? idx,
+    }));
+
     const result = await provider.executeCode(
       dto.language,
       dto.sourceCode,
-      dto.testCases,
+      testCases,
       dto.customInput,
     );
 

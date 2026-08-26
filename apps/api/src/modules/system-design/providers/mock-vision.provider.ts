@@ -1,18 +1,37 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { MultimodalProvider, MultimodalAnalysisOptions } from './multimodal-provider.interface';
 import {
   VisionProvider,
   VisionEvaluationOptions,
   VisionEvaluationResult,
 } from '../interfaces/vision-provider.interface';
-import { VisionAnalysisResultDto } from '@ai-interview/contracts';
+import { VisionAnalysisResultDto, ErrorCode } from '@ai-interview/contracts';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
 @Injectable()
 export class MockVisionProvider implements MultimodalProvider, VisionProvider {
   readonly name = 'mock';
   private readonly logger = new Logger(MockVisionProvider.name);
 
+  private checkProductionGuard() {
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production';
+    const allowMock = process.env.ALLOW_MOCK_PROVIDERS === 'true';
+
+    if (isProduction && !allowMock) {
+      this.logger.error(
+        'MockVisionProvider invoked in production without ALLOW_MOCK_PROVIDERS=true',
+      );
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Multimodal diagram evaluation service is currently unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+  }
+
   async analyzeCanvasDiagram(options: MultimodalAnalysisOptions): Promise<VisionAnalysisResultDto> {
+    this.checkProductionGuard();
     this.logger.log(
       `MockVisionProvider analyzing canvas snapshot (Length: ${options.imageUrl?.length || 0})`,
     );
@@ -66,7 +85,10 @@ export class MockVisionProvider implements MultimodalProvider, VisionProvider {
   }
 
   async evaluateDiagram(options: VisionEvaluationOptions): Promise<VisionEvaluationResult> {
-    this.logger.log(`MockVisionProvider evaluating diagram for problem: ${options.problemTitle || 'System Design'}`);
+    this.checkProductionGuard();
+    this.logger.log(
+      `MockVisionProvider evaluating diagram for problem: ${options.problemTitle || 'System Design'}`,
+    );
 
     const isVi = options.language === 'vi';
 
@@ -128,7 +150,9 @@ export class MockVisionProvider implements MultimodalProvider, VisionProvider {
           height: 18,
           label: 'API Gateway & Ingress',
           severity: 'good',
-          suggestion: isVi ? 'Cấu hình cân bằng tải và xác thực token JWT tốt.' : 'Well-designed ingress load balancing and JWT auth.',
+          suggestion: isVi
+            ? 'Cấu hình cân bằng tải và xác thực token JWT tốt.'
+            : 'Well-designed ingress load balancing and JWT auth.',
         },
         {
           x: 45,
@@ -137,7 +161,9 @@ export class MockVisionProvider implements MultimodalProvider, VisionProvider {
           height: 25,
           label: 'Microservices Cluster',
           severity: 'suggestion',
-          suggestion: isVi ? 'Nên bổ sung Circuit Breaker (Resilience4j / Envoy) chống đổ vỡ dây chuyền.' : 'Add Circuit Breaker pattern to prevent cascading failures.',
+          suggestion: isVi
+            ? 'Nên bổ sung Circuit Breaker (Resilience4j / Envoy) chống đổ vỡ dây chuyền.'
+            : 'Add Circuit Breaker pattern to prevent cascading failures.',
         },
         {
           x: 50,
@@ -146,7 +172,9 @@ export class MockVisionProvider implements MultimodalProvider, VisionProvider {
           height: 25,
           label: 'Database Primary / Replica',
           severity: 'warning',
-          suggestion: isVi ? 'Cân nhắc xử lý replication lag khi đọc sau ghi bằng Sticky Session.' : 'Consider read-after-write consistency window using session pinning.',
+          suggestion: isVi
+            ? 'Cân nhắc xử lý replication lag khi đọc sau ghi bằng Sticky Session.'
+            : 'Consider read-after-write consistency window using session pinning.',
         },
       ],
     };

@@ -17,15 +17,16 @@ describe('QuotaGuard (F-007 Enforcement)', () => {
     guard = new QuotaGuard(reflector, mockUsageMeter);
   });
 
-  const createMockContext = (user?: any): ExecutionContext => ({
-    switchToHttp: () => ({
-      getRequest: () => ({ user }),
-      getResponse: () => ({}),
-      getNext: () => ({}),
-    }),
-    getHandler: () => ({}),
-    getClass: () => ({}),
-  } as any);
+  const createMockContext = (user?: any): ExecutionContext =>
+    ({
+      switchToHttp: () => ({
+        getRequest: () => ({ user }),
+        getResponse: () => ({}),
+        getNext: () => ({}),
+      }),
+      getHandler: () => ({}),
+      getClass: () => ({}),
+    }) as any;
 
   it('MUST pass if no quota metric is required on handler/class', async () => {
     jest.spyOn(reflector, 'getAllAndOverride').mockReturnValue(undefined);

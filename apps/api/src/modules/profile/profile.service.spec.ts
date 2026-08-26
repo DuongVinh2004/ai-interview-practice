@@ -245,14 +245,71 @@ describe('ProfileService', () => {
       };
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
+      prisma.userDocument = {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'doc-1',
+            fileName: 'resume.pdf',
+            fileType: 'application/pdf',
+            status: 'PARSED',
+            createdAt: new Date('2026-08-01T00:00:00Z'),
+            expiresAt: new Date('2026-08-31T00:00:00Z'),
+          },
+        ]),
+      };
 
       const result = await service.exportUserData('user-1');
       expect(result.gdprComplianceVersion).toBe('GDPR-AIP-2026.08');
+      expect(result.manifestVersion).toBe('1.0.0');
+      expect(result.retentionPolicySummary).toBeDefined();
       expect(result.user.email).toBe('alex@example.com');
       expect(result.profile.fullName).toBe('Alex Candidate');
+      expect(result.documents?.length).toBe(1);
       expect(result.sessions.length).toBe(1);
       expect(result.summary.completedSessionsCount).toBe(1);
       expect(result.summary.averageScore).toBe(8.4);
+    });
+  });
+
+  describe('deleteAccount (GDPR Right to Erasure PRIV-002)', () => {
+    it('successfully anonymizes profile, updates user status, purges documents and logs audit', async () => {
+      const mockUser = {
+        id: 'user-to-delete',
+        email: 'user@example.com',
+        profile: { id: 'prof-del', fullName: 'John Doe', bio: 'Some bio' },
+      };
+
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+      prisma.user.update = jest.fn().mockResolvedValue({});
+      prisma.userProfile = { update: jest.fn().mockResolvedValue({}) };
+      prisma.userDocument = { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) };
+      prisma.auditLog = { create: jest.fn().mockResolvedValue({}) };
+      prisma.$transaction = jest.fn(async (cb: any) => cb(prisma));
+
+      const result = await service.deleteAccount('user-to-delete');
+      expect(result.success).toBe(true);
+      expect(prisma.userProfile.update).toHaveBeenCalledWith({
+        where: { userId: 'user-to-delete' },
+        data: expect.objectContaining({ fullName: 'Deleted User', bio: null }),
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-to-delete' },
+        data: expect.objectContaining({
+          status: UserStatus.LOCKED,
+          email: 'deleted_user-to-delete@anonymized.local',
+        }),
+      });
+
+      expect(prisma.userDocument.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-to-delete' },
+      });
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-to-delete',
+          action: 'USER_ACCOUNT_DELETED',
+        }),
+      });
     });
   });
 });

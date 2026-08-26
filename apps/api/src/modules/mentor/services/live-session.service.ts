@@ -159,6 +159,17 @@ export class LiveSessionService {
     newScore: number,
     justification: string,
   ) {
+    // 1. Validate score bounds and justification
+    if (typeof newScore !== 'number' || isNaN(newScore) || newScore < 0 || newScore > 10) {
+      throw new BadRequestException('Score must be a number between 0.0 and 10.0');
+    }
+
+    if (!justification || typeof justification !== 'string' || justification.trim().length < 5) {
+      throw new BadRequestException(
+        'A valid justification of at least 5 characters is required for score override',
+      );
+    }
+
     const evaluation = await this.prisma.evaluation.findUnique({
       where: { id: evaluationId },
       include: {
@@ -178,7 +189,7 @@ export class LiveSessionService {
       throw new NotFoundException('Evaluation record not found');
     }
 
-    // Verify mentor identity
+    // 2. Verify mentor identity
     const mentorProfile = await this.prisma.mentorProfile.findUnique({
       where: { userId: mentorUserId },
     });
@@ -189,19 +200,50 @@ export class LiveSessionService {
 
     const candidateUserId = evaluation.answer.turn.session.userId;
     const sessionId = evaluation.answer.turn.sessionId;
+    const interviewCreatedAt = evaluation.answer.turn.session.createdAt;
+
+    // 3. Find matching LiveSession engagement
     const assignment = await this.prisma.liveSession.findFirst({
       where: {
         mentorId: mentorProfile.id,
         candidateId: candidateUserId,
-        // Only allow override from active/in-progress live sessions, not historical ones (F-005)
         status: { in: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'] },
       },
+      orderBy: { scheduledAt: 'desc' },
     });
 
     if (!assignment) {
       throw new ForbiddenException(
         "You are not the designated mentor for this candidate's session",
       );
+    }
+
+    // 4. SEC-006: Enforce bounded time window & target interview engagement binding
+    const OVERRIDE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+    const now = Date.now();
+
+    if (assignment.status === 'COMPLETED') {
+      const sessionEndTime = assignment.endedAt
+        ? new Date(assignment.endedAt).getTime()
+        : assignment.scheduledAt
+          ? new Date(assignment.scheduledAt).getTime()
+          : new Date(assignment.updatedAt).getTime();
+
+      if (now - sessionEndTime > OVERRIDE_WINDOW_MS) {
+        throw new ForbiddenException(
+          'Mentor score override window has expired for this live session (48-hour limit)',
+        );
+      }
+
+      // Ensure the target interview session was not created after the live session ended (unrelated future interview)
+      if (
+        interviewCreatedAt &&
+        new Date(interviewCreatedAt).getTime() > sessionEndTime + OVERRIDE_WINDOW_MS
+      ) {
+        throw new ForbiddenException(
+          'Cannot override score for an interview session created outside the mentor engagement window',
+        );
+      }
     }
 
     const originalScore = evaluation.score;

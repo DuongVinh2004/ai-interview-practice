@@ -6,8 +6,10 @@ import { AiOrchestratorModule } from '../ai-orchestrator/ai-orchestrator.module'
 import { BehavioralService } from './behavioral/behavioral.service';
 import { BehavioralController } from './behavioral/behavioral.controller';
 
+import { AuthModule } from '../auth/auth.module';
+
 @Module({
-  imports: [AiOrchestratorModule],
+  imports: [AiOrchestratorModule, AuthModule],
   controllers: [InterviewController, BehavioralController],
   providers: [InterviewService, QuestionProcessor, BehavioralService],
   exports: [InterviewService, BehavioralService],

@@ -9,6 +9,7 @@ export interface AudioSttResult {
   model: string;
   latencyMs: number;
   costEstimate?: number;
+  isFallback?: boolean;
 }
 
 export interface AudioTtsResult {

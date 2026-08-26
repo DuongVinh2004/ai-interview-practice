@@ -1,21 +1,12 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  UseGuards,
-  Req,
-  HttpCode,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { MfaStepUpGuard } from '../auth/guards/mfa-step-up.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { PushNotificationService } from './push-notification.service';
 import { StreakReminderCron } from './streak-reminder.cron';
-import {
-  PushSubscriptionDto,
-  NotificationPreferenceDto,
-} from '@ai-interview/contracts';
+import { PushSubscriptionDto, NotificationPreferenceDto, UserRole } from '@ai-interview/contracts';
 
 @Controller('notifications')
 @UseGuards(JwtAuthGuard)
@@ -26,21 +17,21 @@ export class NotificationController {
   ) {}
 
   @Get('preferences')
-  async getPreferences(@Req() req: any) {
-    const userId = req.user.id || req.user.userId;
+  async getPreferences(@CurrentUser('sub') userId: string) {
     return this.pushService.getPreferences(userId);
   }
 
   @Put('preferences')
-  async updatePreferences(@Req() req: any, @Body() dto: NotificationPreferenceDto) {
-    const userId = req.user.id || req.user.userId;
+  async updatePreferences(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: NotificationPreferenceDto,
+  ) {
     return this.pushService.updatePreferences(userId, dto);
   }
 
   @Post('push/subscribe')
   @HttpCode(HttpStatus.OK)
-  async subscribe(@Req() req: any, @Body() dto: PushSubscriptionDto) {
-    const userId = req.user.id || req.user.userId;
+  async subscribe(@CurrentUser('sub') userId: string, @Body() dto: PushSubscriptionDto) {
     return this.pushService.subscribe(userId, dto);
   }
 
@@ -52,8 +43,7 @@ export class NotificationController {
 
   @Post('push/test')
   @HttpCode(HttpStatus.OK)
-  async sendTestPush(@Req() req: any) {
-    const userId = req.user.id || req.user.userId;
+  async sendTestPush(@CurrentUser('sub') userId: string) {
     return this.pushService.sendToUser(userId, {
       title: '🎉 Thông báo thử nghiệm thành công!',
       body: 'Bạn đã kích hoạt thành công thông báo đẩy từ hệ thống Luyện Phỏng Vấn AI.',
@@ -62,6 +52,8 @@ export class NotificationController {
   }
 
   @Post('cron/trigger-streak-check')
+  @UseGuards(RolesGuard, MfaStepUpGuard)
+  @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.OK)
   async triggerStreakCheck() {
     const count = await this.streakCron.triggerManualRun();

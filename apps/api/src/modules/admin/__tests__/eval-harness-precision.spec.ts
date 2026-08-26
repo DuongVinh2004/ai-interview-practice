@@ -2,10 +2,12 @@ describe('EvalHarness Precision & Safety (F-016)', () => {
   it('MUST NOT pass evidence check if model output lacks required evidence, even if answer contains it', () => {
     const evidenceList: string[] = ['generic point'];
     const requiredEvidenceTerms = ['atomic'];
-    
+
     // Model returned evidence only
     const modelEvidenceStr = evidenceList.join(' ').toLowerCase();
-    const missingEvidence = requiredEvidenceTerms.filter(term => !modelEvidenceStr.includes(term.toLowerCase()));
+    const missingEvidence = requiredEvidenceTerms.filter(
+      term => !modelEvidenceStr.includes(term.toLowerCase()),
+    );
 
     expect(missingEvidence).toContain('atomic');
   });

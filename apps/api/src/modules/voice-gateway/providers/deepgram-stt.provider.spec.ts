@@ -14,10 +14,7 @@ describe('DeepgramSttProvider (Module B3)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        DeepgramSttProvider,
-        { provide: ConfigService, useValue: mockConfig },
-      ],
+      providers: [DeepgramSttProvider, { provide: ConfigService, useValue: mockConfig }],
     }).compile();
 
     provider = module.get<DeepgramSttProvider>(DeepgramSttProvider);

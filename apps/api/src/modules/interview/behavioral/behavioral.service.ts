@@ -1,7 +1,13 @@
 import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
-import { ErrorCode, AnalyzeStarResponse, StarEvaluationReport } from '@ai-interview/contracts';
+import {
+  ErrorCode,
+  UserRole,
+  LiveSessionStatus,
+  AnalyzeStarResponse,
+  StarEvaluationReport,
+} from '@ai-interview/contracts';
 import { StarRubric } from '../../evaluation/rubrics/star-rubric';
 
 export interface AnalyzeStarInput {
@@ -18,7 +24,60 @@ export class BehavioralService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async analyzeStar(input: AnalyzeStarInput): Promise<AnalyzeStarResponse> {
+  async analyzeStar(
+    input: AnalyzeStarInput,
+    userId?: string,
+    userRole?: UserRole,
+  ): Promise<AnalyzeStarResponse> {
+    if (userId && input.sessionId) {
+      const session = await this.prisma.interviewSession.findUnique({
+        where: { id: input.sessionId },
+        select: { id: true, userId: true },
+      });
+
+      if (session) {
+        const isOwner = session.userId === userId;
+        const isAdmin = userRole === UserRole.ADMIN;
+        let isAuthorized = isOwner || isAdmin;
+
+        if (!isAuthorized) {
+          const mentorProfile = await this.prisma.mentorProfile.findUnique({
+            where: { userId },
+            select: { id: true },
+          });
+
+          if (mentorProfile) {
+            const liveSession = await this.prisma.liveSession.findFirst({
+              where: {
+                mentorId: mentorProfile.id,
+                candidateId: session.userId,
+                status: {
+                  in: [
+                    LiveSessionStatus.SCHEDULED,
+                    LiveSessionStatus.IN_PROGRESS,
+                    LiveSessionStatus.COMPLETED,
+                  ],
+                },
+              },
+              select: { id: true },
+            });
+
+            if (liveSession) {
+              isAuthorized = true;
+            }
+          }
+        }
+
+        if (!isAuthorized) {
+          throw new DomainException(
+            ErrorCode.FORBIDDEN,
+            'You do not have permission to analyze this interview session',
+            HttpStatus.FORBIDDEN,
+          );
+        }
+      }
+    }
+
     const { candidateAnswer } = input;
     const { extracted } = StarRubric.evaluate(candidateAnswer);
 
@@ -69,25 +128,82 @@ export class BehavioralService {
     };
   }
 
-  async getStarEvaluationReport(answerId: string): Promise<StarEvaluationReport> {
-    const starEval = await this.prisma.starEvaluation.findUnique({
-      where: { answerId },
+  async getStarEvaluationReport(
+    userId: string,
+    userRole: UserRole,
+    answerId: string,
+  ): Promise<StarEvaluationReport> {
+    const answer = await this.prisma.answer.findUnique({
+      where: { id: answerId },
+      include: {
+        turn: {
+          include: {
+            session: {
+              select: {
+                id: true,
+                userId: true,
+              },
+            },
+          },
+        },
+        starEvaluation: true,
+      },
     });
+
+    if (!answer) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'Answer not found for STAR report',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    const sessionUserId = answer.turn?.session?.userId;
+    const isOwner = sessionUserId === userId;
+    const isAdmin = userRole === UserRole.ADMIN;
+
+    let isAuthorized = isOwner || isAdmin;
+
+    if (!isAuthorized && sessionUserId) {
+      const mentorProfile = await this.prisma.mentorProfile.findUnique({
+        where: { userId },
+        select: { id: true },
+      });
+
+      if (mentorProfile) {
+        const liveSession = await this.prisma.liveSession.findFirst({
+          where: {
+            mentorId: mentorProfile.id,
+            candidateId: sessionUserId,
+            status: {
+              in: [
+                LiveSessionStatus.SCHEDULED,
+                LiveSessionStatus.IN_PROGRESS,
+                LiveSessionStatus.COMPLETED,
+              ],
+            },
+          },
+          select: { id: true },
+        });
+
+        if (liveSession) {
+          isAuthorized = true;
+        }
+      }
+    }
+
+    if (!isAuthorized) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not have permission to access this STAR report',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    const starEval = answer.starEvaluation;
 
     if (!starEval) {
       // Fallback: compute on-the-fly from Answer content if evaluation is pending
-      const answer = await this.prisma.answer.findUnique({
-        where: { id: answerId },
-      });
-
-      if (!answer) {
-        throw new DomainException(
-          ErrorCode.RESOURCE_NOT_FOUND,
-          'Answer not found for STAR report',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
       const evaluated = StarRubric.evaluate(answer.content);
       return {
         id: 'temp-star-report',

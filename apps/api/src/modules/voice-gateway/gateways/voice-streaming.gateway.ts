@@ -17,6 +17,7 @@ import { SentenceChunkerService } from '../services/sentence-chunker.service';
 import { SttStreamSession, TtsStreamSession } from '../interfaces/voice-provider.interface';
 import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/contracts';
 import { Subscription } from 'rxjs';
+import { AuthService } from '../../auth/auth.service';
 
 interface ClientSessionState {
   ws: WebSocket;
@@ -67,15 +68,16 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     private readonly chunker: SentenceChunkerService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly authService: AuthService,
   ) {}
 
-  handleConnection(client: WebSocket, req?: any) {
+  async handleConnection(client: WebSocket, req?: any) {
     this.logger.log('Client connected to Voice Gateway WebSocket.');
 
     let authenticatedUser: any = null;
     let userId: string | undefined = undefined;
 
-    // Extract & verify JWT
+    // Extract & verify JWT through canonical AuthService
     try {
       let token: string | undefined;
       if (req?.url) {
@@ -89,15 +91,11 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
         }
       }
       if (token) {
-        const secret =
-          this.configService.get<string>('jwt.accessSecret') ||
-          this.configService.get<string>('JWT_ACCESS_SECRET');
-        authenticatedUser = this.jwtService.verify(token, { secret });
+        authenticatedUser = await this.authService.validateAccessToken(token);
         userId = authenticatedUser?.sub;
-        this.logger.log(`Authenticated WebSocket client: ${userId}`);
       }
     } catch (err: any) {
-      this.logger.warn(`Handshake JWT verification failed: ${err.message}`);
+      this.logger.warn(`WebSocket handshake authentication rejected: ${err.message}`);
     }
 
     this.activeClients.set(client, {
@@ -191,17 +189,14 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
     if (!state.userId && payload.token) {
       try {
-        const secret =
-          this.configService.get<string>('jwt.accessSecret') ||
-          this.configService.get<string>('JWT_ACCESS_SECRET');
-        state.authenticatedUser = this.jwtService.verify(payload.token, { secret });
+        state.authenticatedUser = await this.authService.validateAccessToken(payload.token);
         state.userId = state.authenticatedUser?.sub;
       } catch (err: any) {
         this.logger.warn(`Event JWT verification failed: ${err.message}`);
       }
     }
 
-    if (!state.userId) {
+    if (!state.userId || !state.authenticatedUser) {
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
         message: 'Authentication required. Missing or invalid JWT token.',
@@ -227,7 +222,8 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       return;
     }
 
-    if (interview.userId !== state.userId && state.authenticatedUser?.role !== 'ADMIN') {
+    // Role check uses verified current database role from authenticatedUser.role
+    if (interview.userId !== state.userId && state.authenticatedUser.role !== 'ADMIN') {
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
         message: 'Forbidden. You are not authorized to access this interview session.',

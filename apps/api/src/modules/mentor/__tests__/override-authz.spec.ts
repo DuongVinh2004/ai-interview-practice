@@ -1,9 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LiveSessionService } from '../services/live-session.service';
 import { PrismaService } from '../../platform/prisma/prisma.service';
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { LiveSessionStatus } from '@ai-interview/contracts';
 
-describe('Mentor Score Override Authorization (P1-004)', () => {
+describe('Mentor Score Override Authorization (SEC-006)', () => {
   let liveSessionService: LiveSessionService;
 
   const mockPrisma: any = {
@@ -62,6 +63,7 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
           sessionId,
           session: {
             userId: candidateUserId,
+            createdAt: new Date(),
           },
         },
       },
@@ -72,7 +74,6 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
       userId: unassignedMentorUserId,
     });
 
-    // No live session assignment exists between unassigned mentor and candidate
     mockPrisma.liveSession.findFirst.mockResolvedValue(null);
 
     await expect(
@@ -80,7 +81,7 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
         evaluationId,
         unassignedMentorUserId,
         9.0,
-        'Override reason',
+        'Override reason is valid',
       ),
     ).rejects.toThrow(
       new ForbiddenException("You are not the designated mentor for this candidate's session"),
@@ -89,7 +90,7 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
     expect(mockPrisma.evaluation.update).not.toHaveBeenCalled();
   });
 
-  it('allows assigned mentor to override score with transaction and audit log', async () => {
+  it('allows assigned mentor in active session to override score with transaction and audit log', async () => {
     mockPrisma.evaluation.findUnique.mockResolvedValue({
       id: evaluationId,
       score: 6.0,
@@ -99,6 +100,7 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
           sessionId,
           session: {
             userId: candidateUserId,
+            createdAt: new Date(),
           },
         },
       },
@@ -109,11 +111,13 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
       userId: assignedMentorUserId,
     });
 
-    // Valid assignment exists
+    // Active in-progress live session
     mockPrisma.liveSession.findFirst.mockResolvedValue({
       id: 'live-session-1',
       mentorId: 'mentor-profile-1',
       candidateId: candidateUserId,
+      status: LiveSessionStatus.IN_PROGRESS,
+      scheduledAt: new Date(),
     });
 
     mockPrisma.evaluation.update.mockResolvedValue({
@@ -123,7 +127,6 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
     });
 
     mockPrisma.evaluation.findMany.mockResolvedValue([{ id: evaluationId, score: 9.0 }]);
-
     mockPrisma.interviewSession.update.mockResolvedValue({});
     mockPrisma.auditLog.create.mockResolvedValue({});
 
@@ -142,5 +145,185 @@ describe('Mentor Score Override Authorization (P1-004)', () => {
         userId: assignedMentorUserId,
       }),
     });
+  });
+
+  it('allows override within bounded 48-hour window after COMPLETED session', async () => {
+    const sessionEndTime = new Date(Date.now() - 2 * 3600 * 1000); // 2 hours ago
+
+    mockPrisma.evaluation.findUnique.mockResolvedValue({
+      id: evaluationId,
+      score: 5.0,
+      conciseFeedback: 'Initial feedback',
+      answer: {
+        turn: {
+          sessionId,
+          session: {
+            userId: candidateUserId,
+            createdAt: new Date(Date.now() - 3 * 3600 * 1000), // 3 hours ago
+          },
+        },
+      },
+    });
+
+    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
+      id: 'mentor-profile-1',
+      userId: assignedMentorUserId,
+    });
+
+    mockPrisma.liveSession.findFirst.mockResolvedValue({
+      id: 'live-session-1',
+      mentorId: 'mentor-profile-1',
+      candidateId: candidateUserId,
+      status: LiveSessionStatus.COMPLETED,
+      endedAt: sessionEndTime,
+    });
+
+    mockPrisma.evaluation.update.mockResolvedValue({ id: evaluationId, score: 8.0 });
+    mockPrisma.evaluation.findMany.mockResolvedValue([{ id: evaluationId, score: 8.0 }]);
+    mockPrisma.interviewSession.update.mockResolvedValue({});
+    mockPrisma.auditLog.create.mockResolvedValue({});
+
+    const result = await liveSessionService.overrideScore(
+      evaluationId,
+      assignedMentorUserId,
+      8.0,
+      'Clarified system design during debrief',
+    );
+
+    expect(result.newScore).toBe(8.0);
+  });
+
+  it('rejects override when 48-hour window after COMPLETED session has expired', async () => {
+    const sessionEndTime = new Date(Date.now() - 50 * 3600 * 1000); // 50 hours ago (> 48h)
+
+    mockPrisma.evaluation.findUnique.mockResolvedValue({
+      id: evaluationId,
+      score: 5.0,
+      conciseFeedback: 'Initial feedback',
+      answer: {
+        turn: {
+          sessionId,
+          session: {
+            userId: candidateUserId,
+            createdAt: new Date(Date.now() - 52 * 3600 * 1000),
+          },
+        },
+      },
+    });
+
+    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
+      id: 'mentor-profile-1',
+      userId: assignedMentorUserId,
+    });
+
+    mockPrisma.liveSession.findFirst.mockResolvedValue({
+      id: 'live-session-1',
+      mentorId: 'mentor-profile-1',
+      candidateId: candidateUserId,
+      status: LiveSessionStatus.COMPLETED,
+      endedAt: sessionEndTime,
+    });
+
+    await expect(
+      liveSessionService.overrideScore(
+        evaluationId,
+        assignedMentorUserId,
+        8.0,
+        'Late override attempt',
+      ),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Mentor score override window has expired for this live session (48-hour limit)',
+      ),
+    );
+  });
+
+  it('rejects override for an unrelated future interview created outside engagement window', async () => {
+    const sessionEndTime = new Date(Date.now() - 10 * 3600 * 1000); // 10 hours ago
+    const futureInterviewTime = new Date(Date.now() + 60 * 3600 * 1000); // Interview in future
+
+    mockPrisma.evaluation.findUnique.mockResolvedValue({
+      id: evaluationId,
+      score: 5.0,
+      conciseFeedback: 'Initial feedback',
+      answer: {
+        turn: {
+          sessionId,
+          session: {
+            userId: candidateUserId,
+            createdAt: futureInterviewTime,
+          },
+        },
+      },
+    });
+
+    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
+      id: 'mentor-profile-1',
+      userId: assignedMentorUserId,
+    });
+
+    mockPrisma.liveSession.findFirst.mockResolvedValue({
+      id: 'live-session-1',
+      mentorId: 'mentor-profile-1',
+      candidateId: candidateUserId,
+      status: LiveSessionStatus.COMPLETED,
+      endedAt: sessionEndTime,
+    });
+
+    await expect(
+      liveSessionService.overrideScore(
+        evaluationId,
+        assignedMentorUserId,
+        8.0,
+        'Attempting to alter future interview',
+      ),
+    ).rejects.toThrow(
+      new ForbiddenException(
+        'Cannot override score for an interview session created outside the mentor engagement window',
+      ),
+    );
+  });
+
+  it('rejects invalid score range (<0 or >10)', async () => {
+    await expect(
+      liveSessionService.overrideScore(
+        evaluationId,
+        assignedMentorUserId,
+        11.5,
+        'Valid justification text',
+      ),
+    ).rejects.toThrow(new BadRequestException('Score must be a number between 0.0 and 10.0'));
+
+    await expect(
+      liveSessionService.overrideScore(
+        evaluationId,
+        assignedMentorUserId,
+        -1.0,
+        'Valid justification text',
+      ),
+    ).rejects.toThrow(new BadRequestException('Score must be a number between 0.0 and 10.0'));
+  });
+
+  it('rejects invalid or insufficient justification (<5 chars)', async () => {
+    await expect(
+      liveSessionService.overrideScore(evaluationId, assignedMentorUserId, 8.0, 'ok'),
+    ).rejects.toThrow(
+      new BadRequestException(
+        'A valid justification of at least 5 characters is required for score override',
+      ),
+    );
+  });
+
+  it('rejects override when evaluation is not found', async () => {
+    mockPrisma.evaluation.findUnique.mockResolvedValue(null);
+
+    await expect(
+      liveSessionService.overrideScore(
+        'non-existent-eval',
+        assignedMentorUserId,
+        8.0,
+        'Valid justification text',
+      ),
+    ).rejects.toThrow(new NotFoundException('Evaluation record not found'));
   });
 });

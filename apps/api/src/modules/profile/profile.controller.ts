@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Delete, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiResponse } from '@nestjs/swagger';
 import { ProfileService } from './profile.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -37,5 +37,12 @@ export class ProfileController {
   @ApiResponse({ status: 200, description: 'Complete GDPR-compliant JSON data export' })
   async exportUserData(@CurrentUser('sub') userId: string) {
     return this.profileService.exportUserData(userId);
+  }
+
+  @Delete('account')
+  @ApiOperation({ summary: 'Delete user account and anonymize PII (GDPR Right to Erasure)' })
+  @ApiResponse({ status: 200, description: 'Account and personal data successfully deleted' })
+  async deleteAccount(@CurrentUser('sub') userId: string) {
+    return this.profileService.deleteAccount(userId);
   }
 }

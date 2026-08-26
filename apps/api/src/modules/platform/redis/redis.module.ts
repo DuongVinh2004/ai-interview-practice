@@ -4,6 +4,19 @@ import { BullModule } from '@nestjs/bullmq';
 import { RedisService } from './redis.service';
 import { QueueName } from '@ai-interview/contracts';
 
+export const DEFAULT_DURABLE_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: {
+    type: 'exponential',
+    delay: 2000,
+  },
+  removeOnComplete: {
+    age: 3600, // keep for 1 hour
+    count: 500,
+  },
+  removeOnFail: false, // Retain failed jobs for dead-letter (DLQ) inspection (REL-001)
+};
+
 @Global()
 @Module({
   imports: [
@@ -15,29 +28,15 @@ import { QueueName } from '@ai-interview/contracts';
           port: configService.get<number>('redis.port', 6379),
           password: configService.get<string>('redis.password') || undefined,
         },
-        defaultJobOptions: {
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 1000,
-          },
-          removeOnComplete: {
-            age: 3600, // keep for 1 hour
-            count: 500,
-          },
-          removeOnFail: {
-            age: 86400, // keep for 24 hours
-            count: 1000,
-          },
-        },
+        defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS,
       }),
       inject: [ConfigService],
     }),
     BullModule.registerQueue(
-      { name: QueueName.QUESTION_GENERATION },
-      { name: QueueName.ANSWER_EVALUATION },
-      { name: QueueName.LEARNING_PATH },
-      { name: QueueName.EMAIL },
+      { name: QueueName.QUESTION_GENERATION, defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS },
+      { name: QueueName.ANSWER_EVALUATION, defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS },
+      { name: QueueName.LEARNING_PATH, defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS },
+      { name: QueueName.EMAIL, defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS },
     ),
   ],
   providers: [RedisService],

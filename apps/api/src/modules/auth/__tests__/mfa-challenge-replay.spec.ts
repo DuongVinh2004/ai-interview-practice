@@ -24,7 +24,8 @@ describe('MFA Challenge Single-Use & Token Type Verification (F-013)', () => {
       mfaPending: false,
     };
 
-    const isChallengeToken = invalidPayload.mfaPending && invalidPayload.tokenType === 'mfa_challenge';
+    const isChallengeToken =
+      invalidPayload.mfaPending && invalidPayload.tokenType === 'mfa_challenge';
     expect(isChallengeToken).toBe(false);
   });
 });

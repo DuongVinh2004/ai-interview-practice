@@ -8,13 +8,18 @@ import { DeepgramSttProvider } from './providers/deepgram-stt.provider';
 import { ElevenLabsTtsProvider } from './providers/elevenlabs-tts.provider';
 import { SentenceChunkerService } from './services/sentence-chunker.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
-import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/contracts';
+import { AuthService } from '../auth/auth.service';
+import {
+  VoiceEventType,
+  VoiceSessionStatus,
+  SpeakerRole,
+  UserRole,
+  UserStatus,
+} from '@ai-interview/contracts';
 
-describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
+describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKET-002)', () => {
   let gateway: VoiceStreamingGateway;
-  let vad: VadEngineService;
-  let voiceProvider: MockVoiceProvider;
-  let jwtService: JwtService;
+  let authService: AuthService;
 
   const mockPrisma = {
     interviewSession: {
@@ -29,8 +34,8 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
     },
   };
 
-  const mockJwtService = {
-    verify: jest.fn(),
+  const mockAuthService = {
+    validateAccessToken: jest.fn(),
   };
 
   const mockConfigService = {
@@ -50,15 +55,14 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
         ElevenLabsTtsProvider,
         SentenceChunkerService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: JwtService, useValue: mockJwtService },
+        { provide: JwtService, useValue: { verify: jest.fn() } },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: AuthService, useValue: mockAuthService },
       ],
     }).compile();
 
     gateway = module.get<VoiceStreamingGateway>(VoiceStreamingGateway);
-    vad = module.get<VadEngineService>(VadEngineService);
-    voiceProvider = module.get<MockVoiceProvider>(MockVoiceProvider);
-    jwtService = module.get<JwtService>(JwtService);
+    authService = module.get<AuthService>(AuthService);
     jest.clearAllMocks();
   });
 
@@ -91,7 +95,11 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
   });
 
   it('rejects connection if user attempts to hijack an interview session owned by another user', async () => {
-    mockJwtService.verify.mockReturnValueOnce({ sub: 'attacker-user', role: 'CANDIDATE' });
+    mockAuthService.validateAccessToken.mockResolvedValueOnce({
+      sub: 'attacker-user',
+      role: UserRole.CANDIDATE,
+      status: UserStatus.ACTIVE,
+    });
 
     mockPrisma.interviewSession.findUnique.mockResolvedValueOnce({
       id: 'int-victim',
@@ -110,7 +118,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
       on: jest.fn(),
     };
 
-    gateway.handleConnection(mockWs, { url: '/voice?token=attacker-jwt' });
+    await gateway.handleConnection(mockWs, { url: '/voice?token=attacker-jwt' });
     const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
 
     await messageHandler(
@@ -129,7 +137,11 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
   });
 
   it('handles client connection and initializes voice session on authenticated CONNECT event', async () => {
-    mockJwtService.verify.mockReturnValueOnce({ sub: 'user-1', role: 'CANDIDATE' });
+    mockAuthService.validateAccessToken.mockResolvedValueOnce({
+      sub: 'user-1',
+      role: UserRole.CANDIDATE,
+      status: UserStatus.ACTIVE,
+    });
 
     mockPrisma.interviewSession.findUnique.mockResolvedValueOnce({
       id: 'int-123',
@@ -156,7 +168,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
       on: jest.fn(),
     };
 
-    gateway.handleConnection(mockWs, { url: '/voice?token=valid-jwt-token' });
+    await gateway.handleConnection(mockWs, { url: '/voice?token=valid-jwt-token' });
 
     const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
 
@@ -181,6 +193,154 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security)', () => {
     const transcriptEvent = sentMessages.find(m => m.type === VoiceEventType.AI_SPEAKING_START);
     expect(transcriptEvent).toBeDefined();
     expect(transcriptEvent.speaker).toBe(SpeakerRole.AI);
+  });
+
+  it('rejects connection if token is a temporary MFA challenge token (fails closed)', async () => {
+    mockAuthService.validateAccessToken.mockRejectedValueOnce(
+      new Error('MFA verification required. Challenge token cannot access protected endpoints.'),
+    );
+
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation((data: any) => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    await gateway.handleConnection(mockWs, { url: '/voice?token=mfa-challenge-token' });
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+
+    await messageHandler(
+      JSON.stringify({
+        type: VoiceEventType.CONNECT,
+        interviewId: 'int-123',
+      }),
+      false,
+    );
+
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Unauthorized');
+  });
+
+  it('rejects connection if user account is locked (fails closed)', async () => {
+    mockAuthService.validateAccessToken.mockRejectedValueOnce(
+      new Error('Your account has been locked. Please contact support.'),
+    );
+
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation((data: any) => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    await gateway.handleConnection(mockWs, { url: '/voice?token=locked-user-token' });
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+
+    await messageHandler(
+      JSON.stringify({
+        type: VoiceEventType.CONNECT,
+        interviewId: 'int-123',
+      }),
+      false,
+    );
+
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Unauthorized');
+  });
+
+  it('rejects connection if token has been revoked / tokenVersion mismatch (fails closed)', async () => {
+    mockAuthService.validateAccessToken.mockRejectedValueOnce(
+      new Error('Session invalidated due to password change or security update'),
+    );
+
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation((data: any) => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    await gateway.handleConnection(mockWs, { url: '/voice?token=revoked-stale-token' });
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+
+    await messageHandler(
+      JSON.stringify({
+        type: VoiceEventType.CONNECT,
+        interviewId: 'int-123',
+      }),
+      false,
+    );
+
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Unauthorized');
+  });
+
+  it('rejects cross-owner access when current database role is downgraded to CANDIDATE despite stale ADMIN claim in token', async () => {
+    mockAuthService.validateAccessToken.mockResolvedValueOnce({
+      sub: 'downgraded-admin-user',
+      role: UserRole.CANDIDATE, // Database returns CANDIDATE role
+      status: UserStatus.ACTIVE,
+    });
+
+    mockPrisma.interviewSession.findUnique.mockResolvedValueOnce({
+      id: 'int-other-user',
+      userId: 'other-user',
+      jobRole: { name: 'Staff Backend Engineer' },
+      turns: [],
+    });
+
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation((data: any) => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    await gateway.handleConnection(mockWs, { url: '/voice?token=stale-admin-token' });
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+
+    await messageHandler(
+      JSON.stringify({
+        type: VoiceEventType.CONNECT,
+        interviewId: 'int-other-user',
+      }),
+      false,
+    );
+
+    const errorEvent = sentMessages.find(m => m.type === VoiceEventType.ERROR);
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent.message).toContain('Forbidden');
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Forbidden');
+  });
+
+  it('rejects binary audio streaming before authentication and connection', async () => {
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation((data: any) => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    gateway.handleConnection(mockWs);
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+
+    const pcmChunk = Buffer.alloc(320); // 20ms of 16kHz audio
+    await messageHandler(pcmChunk, true);
+
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Unauthorized audio frame stream');
   });
 
   it('processes binary audio chunk and detects barge-in to interrupt AI speaking', async () => {

@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PayOS } from '@payos/node';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
+import { ErrorCode } from '@ai-interview/contracts';
 
 export interface PayosCreatePaymentParams {
   orderCode: number;
@@ -32,25 +34,27 @@ export class PayosProvider {
 
   constructor(private readonly configService: ConfigService) {
     const clientId =
-      this.configService.get<string>('billing.payosClientId') ||
-      process.env.PAYOS_CLIENT_ID ||
-      '';
+      this.configService.get<string>('billing.payosClientId') || process.env.PAYOS_CLIENT_ID || '';
     const apiKey =
-      this.configService.get<string>('billing.payosApiKey') ||
-      process.env.PAYOS_API_KEY ||
-      '';
+      this.configService.get<string>('billing.payosApiKey') || process.env.PAYOS_API_KEY || '';
     const checksumKey =
       this.configService.get<string>('billing.payosChecksumKey') ||
       process.env.PAYOS_CHECKSUM_KEY ||
       '';
 
-    this.isConfigured = Boolean(
-      clientId &&
-      apiKey &&
-      checksumKey &&
-      !clientId.includes('mock') &&
-      !apiKey.includes('mock'),
-    );
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      this.configService.get<string>('app.env') === 'production' ||
+      this.configService.get<string>('NODE_ENV') === 'production';
+
+    const hasKeys = Boolean(clientId && apiKey && checksumKey);
+    const hasMockKeys = clientId.includes('mock') || apiKey.includes('mock');
+
+    if (isProduction && hasMockKeys) {
+      this.isConfigured = false;
+    } else {
+      this.isConfigured = hasKeys;
+    }
 
     if (this.isConfigured) {
       try {
@@ -61,7 +65,7 @@ export class PayosProvider {
         });
         this.logger.log('PayOS VietQR SDK initialized successfully.');
       } catch (err: any) {
-        this.logger.warn(`Failed to initialize PayOS SDK, falling back to mock: ${err.message}`);
+        this.logger.warn(`Failed to initialize PayOS SDK: ${err.message}`);
         this.isConfigured = false;
       }
     } else {
@@ -69,8 +73,21 @@ export class PayosProvider {
     }
   }
 
+  isConfiguredProvider(): boolean {
+    return Boolean(this.isConfigured && this.payos);
+  }
+
   async createPaymentLink(params: PayosCreatePaymentParams): Promise<PayosPaymentResponse> {
-    if (this.isConfigured && this.payos) {
+    const isProduction =
+      process.env.NODE_ENV === 'production' ||
+      this.configService.get<string>('app.env') === 'production' ||
+      this.configService.get<string>('NODE_ENV') === 'production';
+
+    const clientId =
+      this.configService.get<string>('billing.payosClientId') || process.env.PAYOS_CLIENT_ID || '';
+    const isMockMode = clientId.includes('mock') || !this.isConfigured || !this.payos;
+
+    if (this.isConfigured && this.payos && !isMockMode) {
       try {
         const response: any = await this.payos.paymentRequests.create({
           orderCode: params.orderCode,
@@ -99,7 +116,16 @@ export class PayosProvider {
       }
     }
 
-    // Mock PayOS VietQR Response
+    if (isProduction) {
+      this.logger.error('PayOS is not configured for production payment link creation');
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'VietQR payment processing is currently unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    // Mock PayOS VietQR Response for non-production environments
     const mockBin = '970422'; // MBBank BIN
     const mockAccountNumber = '0987654321';
     const mockAccountName = 'AI INTERVIEW PRACTICE';
@@ -119,14 +145,25 @@ export class PayosProvider {
     };
   }
 
-  verifyWebhookData(webhookBody: any): any {
+  async verifyWebhookData(webhookBody: any): Promise<any> {
+    if (!webhookBody || !webhookBody.data || !webhookBody.signature) {
+      this.logger.warn('PayOS webhook missing data or signature payload');
+      return null;
+    }
+
     if (this.isConfigured && this.payos) {
-      return this.payos.webhooks.verify(webhookBody);
+      try {
+        const verifiedData = await this.payos.webhooks.verify(webhookBody);
+        return verifiedData;
+      } catch (err: any) {
+        this.logger.warn(`PayOS webhook signature verification failed: ${err.message}`);
+        return null;
+      }
     }
-    // Mock verification: accept valid structured webhook
-    if (webhookBody && webhookBody.data) {
-      return webhookBody.data;
-    }
-    return webhookBody;
+
+    this.logger.warn(
+      'PayOS provider is not configured; rejecting webhook verification fail-closed',
+    );
+    return null;
   }
 }

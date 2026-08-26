@@ -12,7 +12,7 @@ import { LockUserRequestDto } from './dto/admin.dto';
 
 @ApiTags('Admin')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, MfaStepUpGuard)
 @Roles(UserRole.ADMIN)
 @Controller('admin')
 export class AdminController {

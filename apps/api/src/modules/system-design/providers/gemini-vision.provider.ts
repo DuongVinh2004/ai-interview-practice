@@ -21,8 +21,7 @@ export class GeminiVisionProvider implements VisionProvider {
       process.env.GEMINI_API_KEY ||
       '';
     this.modelName =
-      this.configService.get<string>('vision.geminiVisionModel') ||
-      'gemini-2.0-flash';
+      this.configService.get<string>('vision.geminiVisionModel') || 'gemini-2.0-flash';
 
     if (apiKey && !apiKey.includes('mock')) {
       this.client = new GoogleGenerativeAI(apiKey);

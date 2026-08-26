@@ -91,7 +91,13 @@ describe('AudioOrchestratorService', () => {
       mockOpenAiProvider.transcribe.mockRejectedValue(new Error('OpenAI Rate Limited'));
 
       const dummyBuffer = Buffer.alloc(16000, 2);
-      const result = await service.transcribeAudio('user-1', dummyBuffer, 'audio/wav', 'test.wav', 'vi');
+      const result = await service.transcribeAudio(
+        'user-1',
+        dummyBuffer,
+        'audio/wav',
+        'test.wav',
+        'vi',
+      );
 
       expect(result).toBeDefined();
       expect(result.provider).toBe('mock');

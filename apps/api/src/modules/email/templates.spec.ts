@@ -7,7 +7,11 @@ import { PaymentReceiptEmail } from './templates/PaymentReceiptEmail';
 describe('React Email Templates Rendering (Module B2)', () => {
   it('renders WelcomeEmail in Vietnamese and English', async () => {
     const htmlVi = renderEmail(
-      WelcomeEmail({ userName: 'Nam Nguyen', loginUrl: 'https://ai-interview.dev', language: 'vi' }),
+      WelcomeEmail({
+        userName: 'Nam Nguyen',
+        loginUrl: 'https://ai-interview.dev',
+        language: 'vi',
+      }),
     );
     expect(htmlVi).toContain('Nam Nguyen');
     expect(htmlVi).toContain('Chào mừng');

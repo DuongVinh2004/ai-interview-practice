@@ -29,10 +29,30 @@ export const StreakWarningEmail = ({
   return (
     <Html>
       <Head />
-      <Body style={{ fontFamily: 'Helvetica, Arial, sans-serif', backgroundColor: '#f3f4f6', margin: 0, padding: 0 }}>
-        <Container style={{ margin: '30px auto', padding: '32px', backgroundColor: '#ffffff', borderRadius: '8px', maxWidth: '600px', border: '1px solid #e5e7eb' }}>
-          <Heading style={{ color: '#dc2626', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
-            {isVi ? '🔥 Nguy cơ mất chuỗi Streak học tập hôm nay!' : '🔥 Danger! Your Practice Streak is at Risk!'}
+      <Body
+        style={{
+          fontFamily: 'Helvetica, Arial, sans-serif',
+          backgroundColor: '#f3f4f6',
+          margin: 0,
+          padding: 0,
+        }}
+      >
+        <Container
+          style={{
+            margin: '30px auto',
+            padding: '32px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            maxWidth: '600px',
+            border: '1px solid #e5e7eb',
+          }}
+        >
+          <Heading
+            style={{ color: '#dc2626', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}
+          >
+            {isVi
+              ? '🔥 Nguy cơ mất chuỗi Streak học tập hôm nay!'
+              : '🔥 Danger! Your Practice Streak is at Risk!'}
           </Heading>
           <Text style={{ color: '#374151', fontSize: '16px', lineHeight: '24px' }}>
             {isVi ? `Chào ${userName},` : `Hi ${userName},`}
@@ -43,11 +63,35 @@ export const StreakWarningEmail = ({
               : `You are on an impressive ${currentStreak}-day practice streak. Don't let it reset at midnight!`}
           </Text>
 
-          <Section style={{ backgroundColor: '#fef2f2', padding: '20px', borderRadius: '8px', margin: '20px 0', border: '1px solid #fecaca', textAlign: 'center' }}>
-            <Text style={{ margin: 0, fontSize: '14px', color: '#991b1b', fontWeight: 'bold', textTransform: 'uppercase' }}>
+          <Section
+            style={{
+              backgroundColor: '#fef2f2',
+              padding: '20px',
+              borderRadius: '8px',
+              margin: '20px 0',
+              border: '1px solid #fecaca',
+              textAlign: 'center',
+            }}
+          >
+            <Text
+              style={{
+                margin: 0,
+                fontSize: '14px',
+                color: '#991b1b',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+              }}
+            >
               {isVi ? 'Chuỗi Ngày Hiện Tại' : 'Current Active Streak'}
             </Text>
-            <Text style={{ margin: '8px 0 0 0', fontSize: '36px', color: '#dc2626', fontWeight: 'bold' }}>
+            <Text
+              style={{
+                margin: '8px 0 0 0',
+                fontSize: '36px',
+                color: '#dc2626',
+                fontWeight: 'bold',
+              }}
+            >
               🔥 {currentStreak} {isVi ? 'NGÀY' : 'DAYS'}
             </Text>
           </Section>

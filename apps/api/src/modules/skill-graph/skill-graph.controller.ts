@@ -2,6 +2,7 @@ import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nest
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { MfaStepUpGuard } from '../auth/guards/mfa-step-up.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole, CompetencyArea } from '@ai-interview/contracts';
@@ -99,7 +100,7 @@ export class SkillGraphController {
   }
 
   @Get('admin/skills/nodes')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get full skill taxonomy tree' })
   async getAdminSkillNodes() {
@@ -110,7 +111,7 @@ export class SkillGraphController {
   }
 
   @Post('admin/skills/nodes')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create skill node' })
   async createSkillNode(@Body() dto: CreateSkillNodeDto) {
@@ -131,7 +132,7 @@ export class SkillGraphController {
   }
 
   @Put('admin/skills/nodes/:id')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Update skill node' })
   async updateSkillNode(@Param('id') id: string, @Body() dto: UpdateSkillNodeDto) {
@@ -142,7 +143,7 @@ export class SkillGraphController {
   }
 
   @Get('admin/benchmarks/overview')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Get aggregated cohort benchmark overview' })
   async getAdminBenchmarksOverview() {

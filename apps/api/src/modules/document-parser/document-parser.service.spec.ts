@@ -258,5 +258,23 @@ describe('DocumentParser Module (F004)', () => {
         textExtractor.extractText(corruptDocxBuffer, 'docx', 'malicious.docx'),
       ).rejects.toThrow('Invalid DOCX file header. Missing ZIP/DOCX signature.');
     });
+
+    it('rejects retrieval of blueprint when associated document has expired', async () => {
+      const expiredDate = new Date(Date.now() - 24 * 3600 * 1000); // 1 day ago
+      mockPrisma.interviewBlueprint.findUnique.mockResolvedValueOnce({
+        id: 'bp-expired',
+        parsedProfile: {
+          document: {
+            userId: 'user-1',
+            expiresAt: expiredDate,
+          },
+        },
+        jdAnalysis: { userId: 'user-1' },
+      });
+
+      await expect(parserService.getBlueprint('user-1', 'bp-expired')).rejects.toThrow(
+        'This document and its blueprint have expired per retention policy',
+      );
+    });
   });
 });

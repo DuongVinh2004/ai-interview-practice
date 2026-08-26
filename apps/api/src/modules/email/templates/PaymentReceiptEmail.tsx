@@ -43,9 +43,27 @@ export const PaymentReceiptEmail = ({
   return (
     <Html>
       <Head />
-      <Body style={{ fontFamily: 'Helvetica, Arial, sans-serif', backgroundColor: '#f3f4f6', margin: 0, padding: 0 }}>
-        <Container style={{ margin: '30px auto', padding: '32px', backgroundColor: '#ffffff', borderRadius: '8px', maxWidth: '600px', border: '1px solid #e5e7eb' }}>
-          <Heading style={{ color: '#111827', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
+      <Body
+        style={{
+          fontFamily: 'Helvetica, Arial, sans-serif',
+          backgroundColor: '#f3f4f6',
+          margin: 0,
+          padding: 0,
+        }}
+      >
+        <Container
+          style={{
+            margin: '30px auto',
+            padding: '32px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            maxWidth: '600px',
+            border: '1px solid #e5e7eb',
+          }}
+        >
+          <Heading
+            style={{ color: '#111827', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}
+          >
             {isVi ? '🧾 Hóa Đơn Xác Nhận Thanh Toán Dịch Vụ' : '🧾 Payment Receipt & Confirmation'}
           </Heading>
           <Text style={{ color: '#374151', fontSize: '16px', lineHeight: '24px' }}>
@@ -57,14 +75,30 @@ export const PaymentReceiptEmail = ({
               : `Thank you for subscribing to ${planName}. Your payment has been processed successfully.`}
           </Text>
 
-          <Section style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', margin: '20px 0', border: '1px solid #e2e8f0' }}>
+          <Section
+            style={{
+              backgroundColor: '#f8fafc',
+              padding: '20px',
+              borderRadius: '8px',
+              margin: '20px 0',
+              border: '1px solid #e2e8f0',
+            }}
+          >
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <tbody>
                 <tr>
                   <td style={{ padding: '6px 0', color: '#64748b', fontSize: '14px' }}>
                     {isVi ? 'Mã Hóa Đơn:' : 'Invoice ID:'}
                   </td>
-                  <td style={{ padding: '6px 0', color: '#0f172a', fontSize: '14px', fontWeight: 'bold', textAlign: 'right' }}>
+                  <td
+                    style={{
+                      padding: '6px 0',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      textAlign: 'right',
+                    }}
+                  >
                     {invoiceId}
                   </td>
                 </tr>
@@ -72,7 +106,15 @@ export const PaymentReceiptEmail = ({
                   <td style={{ padding: '6px 0', color: '#64748b', fontSize: '14px' }}>
                     {isVi ? 'Gói Dịch Vụ:' : 'Plan:'}
                   </td>
-                  <td style={{ padding: '6px 0', color: '#0f172a', fontSize: '14px', fontWeight: 'bold', textAlign: 'right' }}>
+                  <td
+                    style={{
+                      padding: '6px 0',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      textAlign: 'right',
+                    }}
+                  >
                     {planName}
                   </td>
                 </tr>
@@ -80,7 +122,15 @@ export const PaymentReceiptEmail = ({
                   <td style={{ padding: '6px 0', color: '#64748b', fontSize: '14px' }}>
                     {isVi ? 'Phương Thức:' : 'Payment Method:'}
                   </td>
-                  <td style={{ padding: '6px 0', color: '#0f172a', fontSize: '14px', fontWeight: 'bold', textAlign: 'right' }}>
+                  <td
+                    style={{
+                      padding: '6px 0',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      textAlign: 'right',
+                    }}
+                  >
                     {paymentMethod}
                   </td>
                 </tr>
@@ -88,19 +138,41 @@ export const PaymentReceiptEmail = ({
                   <td style={{ padding: '6px 0', color: '#64748b', fontSize: '14px' }}>
                     {isVi ? 'Ngày Thanh Toán:' : 'Payment Date:'}
                   </td>
-                  <td style={{ padding: '6px 0', color: '#0f172a', fontSize: '14px', fontWeight: 'bold', textAlign: 'right' }}>
+                  <td
+                    style={{
+                      padding: '6px 0',
+                      color: '#0f172a',
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      textAlign: 'right',
+                    }}
+                  >
                     {paidAt}
                   </td>
                 </tr>
                 <tr>
-                  <td colSpan={2} style={{ borderTop: '1px solid #cbd5e1', paddingTop: '10px', marginTop: '10px' }}>
+                  <td
+                    colSpan={2}
+                    style={{
+                      borderTop: '1px solid #cbd5e1',
+                      paddingTop: '10px',
+                      marginTop: '10px',
+                    }}
+                  >
                     <table style={{ width: '100%' }}>
                       <tbody>
                         <tr>
                           <td style={{ color: '#0f172a', fontSize: '16px', fontWeight: 'bold' }}>
                             {isVi ? 'Tổng Tiền Đã Trả:' : 'Amount Paid:'}
                           </td>
-                          <td style={{ color: '#16a34a', fontSize: '18px', fontWeight: 'bold', textAlign: 'right' }}>
+                          <td
+                            style={{
+                              color: '#16a34a',
+                              fontSize: '18px',
+                              fontWeight: 'bold',
+                              textAlign: 'right',
+                            }}
+                          >
                             {formattedAmount}
                           </td>
                         </tr>

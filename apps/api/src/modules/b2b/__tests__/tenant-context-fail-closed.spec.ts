@@ -1,4 +1,7 @@
-import { TenantContextMiddleware, RequestWithTenant } from '../middleware/tenant-context.middleware';
+import {
+  TenantContextMiddleware,
+  RequestWithTenant,
+} from '../middleware/tenant-context.middleware';
 
 describe('TenantContextMiddleware Fail-Closed Policy (F-014)', () => {
   let middleware: TenantContextMiddleware;

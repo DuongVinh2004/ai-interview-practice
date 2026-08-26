@@ -119,7 +119,9 @@ async function main() {
     });
     console.log(`✅ Candidate user seeded: ${candidate.email}`);
   } else {
-    console.warn('⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.');
+    console.warn(
+      '⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.',
+    );
   }
   const jobRoles = [
     {

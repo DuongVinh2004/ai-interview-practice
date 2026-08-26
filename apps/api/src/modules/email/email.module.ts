@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { QueueName } from '@ai-interview/contracts';
 import { PlatformModule } from '../platform/platform.module';
+import { DEFAULT_DURABLE_JOB_OPTIONS } from '../platform/redis/redis.module';
 import { ResendEmailProvider } from './providers/resend-email.provider';
 import { MockEmailProvider } from './providers/mock-email.provider';
 import { EmailService } from './email.service';
@@ -15,6 +16,7 @@ import { EmailEventsListener } from './listeners/email-events.listener';
     ConfigModule,
     BullModule.registerQueue({
       name: QueueName.EMAIL,
+      defaultJobOptions: DEFAULT_DURABLE_JOB_OPTIONS,
     }),
   ],
   providers: [
@@ -28,12 +30,9 @@ import { EmailEventsListener } from './listeners/email-events.listener';
         mockProvider: MockEmailProvider,
       ) => {
         const providerName =
-          configService.get<string>('email.provider') ||
-          process.env.EMAIL_PROVIDER ||
-          'mock';
+          configService.get<string>('email.provider') || process.env.EMAIL_PROVIDER || 'mock';
         const resendKey =
-          configService.get<string>('email.resendApiKey') ||
-          process.env.RESEND_API_KEY;
+          configService.get<string>('email.resendApiKey') || process.env.RESEND_API_KEY;
 
         if (providerName.toLowerCase() === 'resend' && resendKey && !resendKey.includes('mock')) {
           return resendProvider;

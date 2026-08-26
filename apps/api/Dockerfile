@@ -1,5 +1,5 @@
 # Stage 1: Base
-FROM node:20-alpine AS base
+FROM node:20.18.0-alpine3.20 AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
@@ -28,7 +28,7 @@ RUN cd apps/api && npx prisma generate
 RUN pnpm --filter api build
 
 # Stage 4: Production Runner
-FROM node:20-alpine AS runner
+FROM node:20.18.0-alpine3.20 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nestjs
@@ -41,7 +41,7 @@ USER nestjs
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/v1/health/live || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/api/v1/health/ready || exit 1
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "apps/api/dist/main.js"]
 

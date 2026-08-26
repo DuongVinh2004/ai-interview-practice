@@ -27,10 +27,30 @@ export const WelcomeEmail = ({
   return (
     <Html>
       <Head />
-      <Body style={{ fontFamily: 'Helvetica, Arial, sans-serif', backgroundColor: '#f3f4f6', margin: 0, padding: 0 }}>
-        <Container style={{ margin: '30px auto', padding: '32px', backgroundColor: '#ffffff', borderRadius: '8px', maxWidth: '600px', border: '1px solid #e5e7eb' }}>
-          <Heading style={{ color: '#111827', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}>
-            {isVi ? '🎉 Chào mừng đến với AI Interview Practice!' : '🎉 Welcome to AI Interview Practice!'}
+      <Body
+        style={{
+          fontFamily: 'Helvetica, Arial, sans-serif',
+          backgroundColor: '#f3f4f6',
+          margin: 0,
+          padding: 0,
+        }}
+      >
+        <Container
+          style={{
+            margin: '30px auto',
+            padding: '32px',
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            maxWidth: '600px',
+            border: '1px solid #e5e7eb',
+          }}
+        >
+          <Heading
+            style={{ color: '#111827', fontSize: '24px', fontWeight: 'bold', marginBottom: '16px' }}
+          >
+            {isVi
+              ? '🎉 Chào mừng đến với AI Interview Practice!'
+              : '🎉 Welcome to AI Interview Practice!'}
           </Heading>
           <Text style={{ color: '#374151', fontSize: '16px', lineHeight: '24px' }}>
             {isVi ? `Xin chào ${userName},` : `Hi ${userName},`}

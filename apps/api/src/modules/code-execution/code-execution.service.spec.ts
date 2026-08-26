@@ -150,4 +150,74 @@ describe('CodeExecutionService (F002)', () => {
     expect(result.stderr).toContain('Judge0 API URL is not configured');
     expect(result.testResults[0].passed).toBe(false);
   });
+
+  describe('SEC-007 Unbounded Test-Case Fanout Protection', () => {
+    it('rejects executeCode when test cases count exceeds maximum limit of 20', async () => {
+      const excessiveTestCases = Array.from({ length: 25 }, (_, i) => ({
+        id: `tc-${i}`,
+        input: `input-${i}`,
+        expectedOutput: `output-${i}`,
+        isHidden: false,
+        order: i,
+      }));
+
+      await expect(
+        service.executeCode('user-cand-123', 'session-code-123', {
+          language: 'javascript',
+          sourceCode: 'function solve() {}',
+          testCases: excessiveTestCases,
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('Judge0Provider rejects test cases array exceeding limit with zero remote calls', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch');
+
+      const judge0 = new Judge0Provider({
+        get: jest.fn((key: string) => {
+          if (key === 'JUDGE0_API_URL') return 'https://judge0.example.com';
+          return null;
+        }),
+      } as any);
+
+      const excessiveTestCases = Array.from({ length: 25 }, (_, i) => ({
+        id: `tc-${i}`,
+        input: `input-${i}`,
+        expectedOutput: `output-${i}`,
+        isHidden: false,
+        order: i,
+      }));
+
+      const result = await judge0.executeCode('javascript', 'console.log(1)', excessiveTestCases);
+
+      expect(result.status).toBe(SubmissionStatus.FAILED);
+      expect(result.stderr).toContain('Exceeded maximum allowed test cases');
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      fetchSpy.mockRestore();
+    });
+
+    it('Judge0Provider rejects source code exceeding 50,000 chars with zero remote calls', async () => {
+      const fetchSpy = jest.spyOn(global, 'fetch');
+
+      const judge0 = new Judge0Provider({
+        get: jest.fn((key: string) => {
+          if (key === 'JUDGE0_API_URL') return 'https://judge0.example.com';
+          return null;
+        }),
+      } as any);
+
+      const hugeSourceCode = 'a'.repeat(50001);
+
+      const result = await judge0.executeCode('javascript', hugeSourceCode, [
+        { id: 'tc-1', input: '1', expectedOutput: '1', isHidden: false, order: 1 },
+      ]);
+
+      expect(result.status).toBe(SubmissionStatus.FAILED);
+      expect(result.stderr).toContain('Source code exceeds maximum allowed size');
+      expect(fetchSpy).not.toHaveBeenCalled();
+
+      fetchSpy.mockRestore();
+    });
+  });
 });

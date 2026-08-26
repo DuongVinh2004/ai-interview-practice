@@ -82,16 +82,21 @@ export class EvaluationProcessor extends WorkerHost {
       return;
     }
 
-    // Pre-execution guard: Skip processing if session is already in a terminal state
-    const terminalStates = [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED];
-    if (terminalStates.includes(session.state as SessionState)) {
+    // Pre-execution guard: Skip processing if session is cancelled/failed, or if this turn is already evaluated
+    if (session.state === SessionState.CANCELLED || session.state === SessionState.FAILED) {
       this.logger.warn(
-        `Session ${sessionId} is in terminal state ${session.state}. Skipping answer evaluation.`,
+        `Session ${sessionId} is in cancelled/failed state ${session.state}. Skipping answer evaluation.`,
       );
       return;
     }
 
     const turn = session.turns[0];
+    if (turn.status === 'EVALUATED') {
+      this.logger.warn(
+        `Turn ${turn.turnNumber} for session ${sessionId} is already evaluated. Skipping duplicate execution.`,
+      );
+      return;
+    }
     const question = turn.question!;
     const answer = turn.answer!;
 
@@ -225,14 +230,24 @@ export class EvaluationProcessor extends WorkerHost {
         let didTransition = false;
         if (isFinalTurn) {
           // Calculate overall score from all turns
-          const allEvaluations = await tx.evaluation.findMany({
+          // Prefer AUTHORITATIVE evaluations; fall back to all evaluations if none exist (e.g., mock provider in dev)
+          let allEvaluations = await tx.evaluation.findMany({
             where: {
               answer: {
                 turn: { sessionId },
               },
-              authorityState: 'AUTHORITATIVE',  // Only count authoritative evaluations in score (F-011)
+              authorityState: 'AUTHORITATIVE', // Only count authoritative evaluations in score (F-011)
             },
           });
+
+          // Fallback: include NEEDS_REVIEW evaluations when no AUTHORITATIVE ones exist (mock provider scenario)
+          if (allEvaluations.length === 0) {
+            allEvaluations = await tx.evaluation.findMany({
+              where: {
+                answer: { turn: { sessionId } },
+              },
+            });
+          }
 
           const totalScore = allEvaluations.reduce((sum, e) => sum + e.score, 0);
           const overallScore = Number((totalScore / Math.max(allEvaluations.length, 1)).toFixed(1));
@@ -369,18 +384,24 @@ export class EvaluationProcessor extends WorkerHost {
           );
         }
       } else {
-        if (didTransition) {
+        if (isFinalTurn) {
           // Enqueue learning path generation after 5th turn completed
           const lpJobId = `lp-${sessionId}`;
-          await this.learningPathQueue.add(
-            JobName.GENERATE_LEARNING_PATH,
-            { sessionId, traceparent },
-            {
-              jobId: lpJobId,
-              attempts: 3,
-              backoff: { type: 'exponential', delay: 1000 },
-            },
-          );
+          try {
+            await this.learningPathQueue.add(
+              JobName.GENERATE_LEARNING_PATH,
+              { sessionId, traceparent },
+              {
+                jobId: lpJobId,
+                attempts: 3,
+                backoff: { type: 'exponential', delay: 1000 },
+              },
+            );
+          } catch (lpErr: any) {
+            this.logger.warn(
+              `Failed to enqueue learning path generation immediately: ${lpErr.message}`,
+            );
+          }
 
           this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_UPDATED, {
             sessionId,
@@ -394,10 +415,6 @@ export class EvaluationProcessor extends WorkerHost {
             overallScore: evaluationResult.score,
             sessionMode: session.sessionMode,
           });
-        } else {
-          this.logger.warn(
-            `Session ${sessionId} already terminal. Skipping learning path queue & completion SSE.`,
-          );
         }
       }
 

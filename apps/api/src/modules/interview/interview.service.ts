@@ -414,8 +414,31 @@ export class InterviewService {
         },
       );
     } catch (queueErr: any) {
-      this.logger.warn(
-        `Failed to enqueue evaluation job immediately: ${queueErr.message}. Session ${sessionId} remains in EVALUATING state for background recovery.`,
+      this.logger.error(
+        `Failed to enqueue evaluation job: ${queueErr.message}. Reverting session state to ACTIVE to allow user retry.`,
+      );
+      // Full rollback: delete the committed answer, revert turn and session state (REL-001)
+      try {
+        await this.prisma.$transaction([
+          this.prisma.answer.delete({ where: { id: answer.id } }),
+          this.prisma.interviewTurn.update({
+            where: { id: turn.id },
+            data: { status: 'AWAITING_ANSWER' },
+          }),
+          this.prisma.interviewSession.updateMany({
+            where: { id: sessionId, state: SessionState.EVALUATING },
+            data: { state: SessionState.ACTIVE },
+          }),
+        ]);
+      } catch (rollbackErr: any) {
+        this.logger.error(
+          `Failed to rollback answer/turn/session state: ${rollbackErr.message}. Manual intervention may be required.`,
+        );
+      }
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Evaluation queue is temporarily unavailable. Please try submitting your answer again.',
+        HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
 
@@ -492,31 +515,34 @@ export class InterviewService {
       ? await this.prisma.evaluation.findUnique({
           where: { answerId: turn.answer.id },
         })
-      : (this.prisma.evaluation?.findFirst
-          ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
-          : null);
+      : this.prisma.evaluation?.findFirst
+        ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
+        : null;
 
-    const lastRun = existingEval && this.prisma.evaluationRun?.findFirst
-      ? await this.prisma.evaluationRun.findFirst({
-          where: { evaluationId: existingEval.id },
-          orderBy: { runNumber: 'desc' },
-        })
-      : null;
+    const lastRun =
+      existingEval && this.prisma.evaluationRun?.findFirst
+        ? await this.prisma.evaluationRun.findFirst({
+            where: { evaluationId: existingEval.id },
+            orderBy: { runNumber: 'desc' },
+          })
+        : null;
     const runNumberVal = (lastRun?.runNumber || 0) + 1;
 
-    const evalRecord = existingEval || (this.prisma.evaluation?.create
-      ? await this.prisma.evaluation.create({
-          data: {
-            answerId: turn.answer.id,
-            score: evalResult.score,
-            rubricScores: evalResult.rubricScores as any,
-            strengths: evalResult.strengths,
-            improvements: evalResult.improvements,
-            conciseFeedback: evalResult.conciseFeedback,
-            evidence: evalResult.evidence,
-          },
-        })
-      : { id: turn.answer.id });
+    const evalRecord =
+      existingEval ||
+      (this.prisma.evaluation?.create
+        ? await this.prisma.evaluation.create({
+            data: {
+              answerId: turn.answer.id,
+              score: evalResult.score,
+              rubricScores: evalResult.rubricScores as any,
+              strengths: evalResult.strengths,
+              improvements: evalResult.improvements,
+              conciseFeedback: evalResult.conciseFeedback,
+              evidence: evalResult.evidence,
+            },
+          })
+        : { id: turn.answer.id });
 
     const run = this.prisma.evaluationRun?.create
       ? await this.prisma.evaluationRun.create({
@@ -558,12 +584,18 @@ export class InterviewService {
     });
 
     // Recalculate overall score across all completed turn evaluations
-    const allEvaluations = await this.prisma.evaluation.findMany({
+    let allEvaluations = await this.prisma.evaluation.findMany({
       where: {
         answer: { turn: { sessionId } },
-        authorityState: 'AUTHORITATIVE',  // Only count authoritative evaluations (F-011)
+        authorityState: 'AUTHORITATIVE', // Only count authoritative evaluations (F-011)
       },
     });
+
+    if (allEvaluations.length === 0) {
+      allEvaluations = await this.prisma.evaluation.findMany({
+        where: { answer: { turn: { sessionId } } },
+      });
+    }
 
     const overallScore =
       allEvaluations.length > 0

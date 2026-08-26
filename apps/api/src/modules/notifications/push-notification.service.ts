@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as webpush from 'web-push';
 import { PrismaService } from '../platform/prisma/prisma.service';
-import {
-  PushSubscriptionDto,
-  NotificationPreferenceDto,
-} from '@ai-interview/contracts';
+import { PushSubscriptionDto, NotificationPreferenceDto } from '@ai-interview/contracts';
 
 @Injectable()
 export class PushNotificationService {
@@ -15,24 +12,44 @@ export class PushNotificationService {
     this.initVapid();
   }
 
-  private initVapid() {
-    const publicKey =
-      process.env.VAPID_PUBLIC_KEY ||
-      'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBKr3qBUYI-B5xeE5N5vnJYw';
-    const privateKey =
-      process.env.VAPID_PRIVATE_KEY || 'UUxN29_0q_Y42dM4rWwPzPcvR9YQ8ZJ8h4wP6n1kK8';
+  getIsConfigured(): boolean {
+    return this.isConfigured;
+  }
+
+  initVapid(): void {
+    const isProd = process.env.NODE_ENV === 'production';
+    const publicKey = process.env.VAPID_PUBLIC_KEY;
+    const privateKey = process.env.VAPID_PRIVATE_KEY;
     const subject = process.env.VAPID_SUBJECT || 'mailto:support@ai-interview.com';
+
+    if (!publicKey || !privateKey) {
+      this.isConfigured = false;
+      const message =
+        'Web Push notifications are disabled because VAPID_PUBLIC_KEY or VAPID_PRIVATE_KEY is missing.';
+      if (isProd) {
+        this.logger.error(`CRITICAL: ${message}`);
+      } else {
+        this.logger.warn(message);
+      }
+      return;
+    }
 
     try {
       webpush.setVapidDetails(subject, publicKey, privateKey);
       this.isConfigured = true;
       this.logger.log('Web Push VAPID configuration initialized.');
     } catch (err: any) {
-      this.logger.warn(`Failed to initialize VAPID details: ${err.message}. Web push will run in simulated mode.`);
+      this.isConfigured = false;
+      this.logger.warn(
+        `Failed to initialize VAPID details: ${err.message}. Web push will run in simulated mode.`,
+      );
     }
   }
 
-  async subscribe(userId: string, dto: PushSubscriptionDto): Promise<{ success: boolean; id: string }> {
+  async subscribe(
+    userId: string,
+    dto: PushSubscriptionDto,
+  ): Promise<{ success: boolean; id: string }> {
     const sub = await this.prisma.pushSubscription.upsert({
       where: { endpoint: dto.endpoint },
       create: {

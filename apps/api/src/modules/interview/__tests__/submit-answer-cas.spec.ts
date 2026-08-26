@@ -19,6 +19,7 @@ describe('Interview Submission State Machine & CAS (P1-009)', () => {
     },
     answer: {
       create: jest.fn(),
+      delete: jest.fn(),
     },
     interviewTurn: {
       update: jest.fn(),
@@ -139,17 +140,24 @@ describe('Interview Submission State Machine & CAS (P1-009)', () => {
     // BullMQ throws error on add
     mockEvaluationQueue.add.mockRejectedValue(new Error('Redis connection error'));
 
-    const result = await interviewService.submitAnswer(userId, sessionId, {
-      turnId,
-      answerText: 'Atomicity, Consistency, Isolation, Durability',
+    await expect(
+      interviewService.submitAnswer(userId, sessionId, {
+        turnId,
+        answerText: 'Atomicity, Consistency, Isolation, Durability',
+      }),
+    ).rejects.toThrow(DomainException);
+
+    // Ensure full rollback: answer deleted, turn reverted to AWAITING_ANSWER, session reverted to ACTIVE (REL-001)
+    expect(mockPrisma.answer.delete).toHaveBeenCalledWith({
+      where: { id: 'ans-1' },
     });
-
-    expect(result.answerId).toBe('ans-1');
-    expect(result.status).toBe('EVALUATING');
-
-    // Ensure session was NOT marked as FAILED
-    expect(mockPrisma.interviewSession.update).not.toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ state: SessionState.FAILED }) }),
-    );
+    expect(mockPrisma.interviewTurn.update).toHaveBeenCalledWith({
+      where: { id: turnId },
+      data: { status: 'AWAITING_ANSWER' },
+    });
+    expect(mockPrisma.interviewSession.updateMany).toHaveBeenCalledWith({
+      where: { id: sessionId, state: SessionState.EVALUATING },
+      data: { state: SessionState.ACTIVE },
+    });
   });
 });

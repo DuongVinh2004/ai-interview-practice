@@ -454,6 +454,24 @@ export class ShareService {
       );
     }
 
+    if (shareToken.passcodeHash) {
+      if (!dto.passcode) {
+        throw new DomainException(
+          ErrorCode.UNAUTHORIZED,
+          'Passcode required to submit feedback on this protected share link',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const isMatch = await bcrypt.compare(dto.passcode, shareToken.passcodeHash);
+      if (!isMatch) {
+        throw new DomainException(
+          ErrorCode.INVALID_CREDENTIALS,
+          'Invalid passcode provided for protected share link',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
+
     const feedback = await this.prisma.mentorFeedback.create({
       data: {
         shareTokenId: shareToken.id,

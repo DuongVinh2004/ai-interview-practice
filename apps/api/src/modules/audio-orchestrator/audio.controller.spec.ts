@@ -88,7 +88,9 @@ describe('AudioController', () => {
     });
 
     it('rejects missing file with 400 DomainException', async () => {
-      await expect(controller.transcribeAudio('user-1', undefined)).rejects.toThrow(/No audio file uploaded/);
+      await expect(controller.transcribeAudio('user-1', undefined)).rejects.toThrow(
+        /No audio file uploaded/,
+      );
     });
   });
 
