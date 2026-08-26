@@ -41,12 +41,17 @@ export function CompetencyBreakdownTable({ items }: CompetencyBreakdownTableProp
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden" data-testid="competency-breakdown-table">
+    <div
+      className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden"
+      data-testid="competency-breakdown-table"
+    >
       <div className="p-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
         <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
           Role-Weighted Competency Fulfillment
         </span>
-        <span className="text-[11px] text-slate-500">Formula: R = Σ (w_i × min(S_i / T_i, 1.0))</span>
+        <span className="text-[11px] text-slate-500">
+          Formula: R = Σ (w_i × min(S_i / T_i, 1.0))
+        </span>
       </div>
 
       <div className="divide-y divide-slate-100 overflow-x-auto">
@@ -76,7 +81,9 @@ export function CompetencyBreakdownTable({ items }: CompetencyBreakdownTableProp
                 </td>
                 <td className="py-3 px-3 font-semibold text-slate-800">
                   {item.currentScore.toFixed(1)}{' '}
-                  <span className="text-[10px] text-slate-400 font-normal">/ {item.targetScore.toFixed(1)}</span>
+                  <span className="text-[10px] text-slate-400 font-normal">
+                    / {item.targetScore.toFixed(1)}
+                  </span>
                 </td>
                 <td className="py-3 px-3 w-48">
                   <div className="space-y-1">
@@ -89,8 +96,8 @@ export function CompetencyBreakdownTable({ items }: CompetencyBreakdownTableProp
                           item.fulfillmentPercentage >= 95
                             ? 'bg-emerald-500'
                             : item.fulfillmentPercentage >= 80
-                            ? 'bg-indigo-500'
-                            : 'bg-amber-500'
+                              ? 'bg-indigo-500'
+                              : 'bg-amber-500'
                         }`}
                         style={{ width: `${item.fulfillmentPercentage}%` }}
                       />

@@ -9,13 +9,18 @@ export const EnvSchema = z.object({
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.coerce.number().default(6379),
   REDIS_PASSWORD: z.string().optional().default(''),
+  REDIS_TLS: z.enum(['true', 'false']).default('false'),
   JWT_ACCESS_SECRET: z.string().min(16),
   JWT_ACCESS_EXPIRATION: z.string().default('15m'),
   JWT_REFRESH_SECRET: z.string().min(16),
   JWT_REFRESH_EXPIRATION: z.string().default('7d'),
+  MFA_ENCRYPTION_KEY: z.string().min(32).optional(),
+  CERTIFICATE_SECRET: z.string().min(32).optional(),
   THROTTLE_TTL: z.coerce.number().default(60),
   THROTTLE_LIMIT: z.coerce.number().default(100),
-  AI_PROVIDER: z.enum(['mock', 'gemini', 'openai', 'anthropic', 'router', 'external']).default('mock'),
+  AI_PROVIDER: z
+    .enum(['mock', 'gemini', 'openai', 'anthropic', 'router', 'external'])
+    .default('mock'),
   OPENAI_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY: z.string().optional().default(''),
@@ -41,6 +46,26 @@ export const EnvSchema = z.object({
   JUDGE0_API_KEY: z.string().optional().default(''),
   VOICE_STT_PROVIDER: z.string().optional().default('mock'),
   VOICE_TTS_PROVIDER: z.string().optional().default('mock'),
+  STORAGE_PROVIDER: z.string().optional().default('mock'),
+  AWS_ACCESS_KEY_ID: z.string().optional().default(''),
+  AWS_SECRET_ACCESS_KEY: z.string().optional().default(''),
+  AWS_REGION: z.string().optional().default('ap-southeast-1'),
+  AWS_S3_BUCKET: z.string().optional().default('ai-interview-bucket'),
+  R2_ENDPOINT: z.string().optional().default(''),
+  R2_ACCESS_KEY_ID: z.string().optional().default(''),
+  R2_SECRET_ACCESS_KEY: z.string().optional().default(''),
+  R2_BUCKET: z.string().optional().default('ai-interview-r2'),
+  STORAGE_PUBLIC_CDN_URL: z.string().optional().default(''),
+  RESEND_API_KEY: z.string().optional().default(''),
+  EMAIL_PROVIDER: z.string().optional().default('mock'),
+  EMAIL_DEFAULT_FROM: z.string().optional().default('AI Interview <noreply@ai-interview.com>'),
+  DEEPGRAM_API_KEY: z.string().optional().default(''),
+  ELEVENLABS_API_KEY: z.string().optional().default(''),
+  ELEVENLABS_VOICE_ID: z.string().optional().default('21m00Tcm4TlvDq8ikWAM'),
+  PAYOS_CLIENT_ID: z.string().optional().default(''),
+  PAYOS_API_KEY: z.string().optional().default(''),
+  PAYOS_CHECKSUM_KEY: z.string().optional().default(''),
+  VISION_PROVIDER: z.string().optional().default('mock'),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;
@@ -52,6 +77,16 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
       .map(err => `${err.path.join('.')}: ${err.message}`)
       .join('\n');
     throw new Error(`❌ Configuration validation error:\n${errorDetails}`);
+  }
+  if (result.data.NODE_ENV === 'production') {
+    const missingSecrets = ['MFA_ENCRYPTION_KEY', 'CERTIFICATE_SECRET'].filter(
+      key => !result.data[key as keyof EnvConfig],
+    );
+    if (missingSecrets.length > 0) {
+      throw new Error(
+        `❌ Configuration validation error:\n${missingSecrets.join(', ')} must be configured in production`,
+      );
+    }
   }
   return result.data;
 }

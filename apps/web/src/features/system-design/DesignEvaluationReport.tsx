@@ -51,9 +51,7 @@ export function DesignEvaluationReport({ evaluation }: DesignEvaluationReportPro
             <CardTitle className="text-emerald-950 text-base">
               System Design Rubric Evaluation
             </CardTitle>
-            <span className="text-xs text-slate-500">
-              5-Dimension Multimodal Vision Assessment
-            </span>
+            <span className="text-xs text-slate-500">5-Dimension Multimodal Vision Assessment</span>
           </div>
         </div>
 

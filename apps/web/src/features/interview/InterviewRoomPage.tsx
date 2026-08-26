@@ -1,7 +1,13 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { InterviewSessionDto, SessionState, InterviewMode, SessionMode } from '@ai-interview/contracts';
+import {
+  InterviewSessionDto,
+  SessionState,
+  InterviewMode,
+  SessionMode,
+  SupportedCodeLanguage,
+} from '@ai-interview/contracts';
 import { apiClient, ApiError } from '../../lib/api-client';
 import { useInterviewSse } from '../../hooks/use-interview-sse';
 import { useAudioSettingsStore } from '../../stores/audio-settings.store';
@@ -10,10 +16,19 @@ import { formatDifficulty, formatScore } from '../../lib/utils';
 import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Alert } from '../../components/ui/Alert';
 import { Spinner } from '../../components/ui/Spinner';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { ProgressBar } from '../../components/ui/ProgressBar';
 import { PacingTimer } from '../../components/interview/PacingTimer';
 import { RubricBreakdown } from '../../components/interview/RubricBreakdown';
 import { TurnHistoryAccordion } from '../../components/interview/TurnHistoryAccordion';
@@ -28,7 +43,9 @@ import { StarGuidePanel } from '../../components/interview/StarGuidePanel';
 import { VoiceInterviewRoom } from '../../components/interview/VoiceInterviewRoom';
 import { WhiteboardRoom } from '../system-design/WhiteboardRoom';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
-import { SupportedCodeLanguage } from '@ai-interview/contracts';
+import { useFocusModeStore } from '../../stores/focus-mode.store';
+import { useGamificationStore } from '../../stores/gamification.store';
+import { playSFX } from '../../lib/sfx-engine';
 import {
   Send,
   Award,
@@ -40,13 +57,21 @@ import {
   Sparkles,
   Volume2,
   Code2,
+  Wifi,
+  WifiOff,
+  RefreshCw,
+  Maximize2,
+  Minimize2,
 } from 'lucide-react';
 
 export function InterviewRoomPage() {
   const { id: sessionId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { t } = useI18nStore();
+  const { t, language } = useI18nStore();
+  const { isFocusMode, toggleFocusMode } = useFocusModeStore();
+  const { addXpLocally } = useGamificationStore();
+  const hasCelebratedRef = useRef(false);
 
   const [answerText, setAnswerText] = useState('');
   const [codeLanguage, setCodeLanguage] = useState<SupportedCodeLanguage>('javascript');
@@ -58,18 +83,15 @@ export function InterviewRoomPage() {
   const [reEvalModalTurn, setReEvalModalTurn] = useState<number | null>(null);
   const [reEvalReason, setReEvalReason] = useState('');
 
-  const {
-    executeCode,
-    isExecuting,
-    executionResult,
-    submitCode,
-    submissionResult,
-  } = useCodeExecution(sessionId || '');
+  const { executeCode, isExecuting, executionResult, submitCode, submissionResult } =
+    useCodeExecution(sessionId || '');
 
   // Fetch session details
   const {
     data: session,
     isLoading,
+    isError,
+    error: queryError,
     refetch,
   } = useQuery<InterviewSessionDto>({
     queryKey: ['interview', sessionId],
@@ -92,6 +114,76 @@ export function InterviewRoomPage() {
   const question = currentTurn?.question;
   const answer = currentTurn?.answer;
   const evaluation = answer?.evaluation;
+
+  // Safe localStorage helper
+  const getDraft = (key: string): string | null => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage
+        ? window.localStorage.getItem(key)
+        : null;
+    } catch {
+      return null;
+    }
+  };
+
+  const setDraft = (key: string, value: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+      }
+    } catch {
+      // Ignore storage write errors in test or private browsing
+    }
+  };
+
+  const removeDraft = (key: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem(key);
+      }
+    } catch {
+      // Ignore storage remove errors in test or private browsing
+    }
+  };
+
+  // Restore cached draft from localStorage if available
+  useEffect(() => {
+    if (sessionId && currentTurn && !answer) {
+      const draftKey = `draft-answer-${sessionId}-turn-${currentTurn.turnNumber}`;
+      const savedDraft = getDraft(draftKey);
+      if (savedDraft && !answerText) {
+        setAnswerText(savedDraft);
+      }
+    }
+  }, [sessionId, currentTurn, answer]);
+
+  // Persist draft to localStorage on change
+  const handleDraftChange = useCallback(
+    (text: string) => {
+      setAnswerText(text);
+      if (sessionId && currentTurn) {
+        const draftKey = `draft-answer-${sessionId}-turn-${currentTurn.turnNumber}`;
+        if (text.trim()) {
+          setDraft(draftKey, text);
+        } else {
+          removeDraft(draftKey);
+        }
+      }
+    },
+    [sessionId, currentTurn],
+  );
+
+  // Warn before unload if user has unsaved draft text
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (answerText.trim() && !answer && !isSubmitting) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [answerText, answer, isSubmitting]);
 
   const { mode, autoPlayTts } = useAudioSettingsStore();
 
@@ -141,13 +233,21 @@ export function InterviewRoomPage() {
         }),
       });
 
+      // Clear draft from storage on successful submission
+      const draftKey = `draft-answer-${sessionId}-turn-${currentTurn.turnNumber}`;
+      removeDraft(draftKey);
       setAnswerText('');
       await refetch();
+      queryClient.invalidateQueries({ queryKey: ['interview', sessionId] });
     } catch (err: any) {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage('Failed to submit answer. Please try again.');
+        setErrorMessage(
+          language === 'vi'
+            ? 'Không thể gửi câu trả lời. Vui lòng kiểm tra kết nối và thử lại.'
+            : 'Failed to submit answer. Please check your network and try again.',
+        );
       }
     } finally {
       setIsSubmitting(false);
@@ -181,13 +281,13 @@ export function InterviewRoomPage() {
         language,
         sourceCode: code,
       });
-      // Also submit text explanation containing the source code for evaluation pipeline
-      await handleSubmitAnswerText(`[${language.toUpperCase()} Solution]\n\`\`\`${language}\n${code}\n\`\`\``);
+      await handleSubmitAnswerText(
+        `[${language.toUpperCase()} Solution]\n\`\`\`${language}\n${code}\n\`\`\``,
+      );
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to submit code solution.');
     }
   };
-
 
   const handleReEvaluateConfirm = async () => {
     if (!sessionId || reEvalModalTurn === null || isReEvaluating) return;
@@ -214,16 +314,103 @@ export function InterviewRoomPage() {
     }
   };
 
-  if (isLoading || !session) {
+  // Keyboard shortcuts and Focus Mode
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Focus mode toggle: F11 or Ctrl+Shift+F / Cmd+Shift+F
+      if (
+        e.key === 'F11' ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f'))
+      ) {
+        e.preventDefault();
+        toggleFocusMode();
+        return;
+      }
+
+      // Quick Submit: Ctrl+Enter or Cmd+Enter
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        if (session?.state === SessionState.ACTIVE && !answer && !isSubmitting) {
+          if (session.sessionMode === SessionMode.CODING) {
+            if (sourceCode.trim()) {
+              e.preventDefault();
+              handleSubmitCodingSolution(sourceCode, codeLanguage);
+            }
+          } else {
+            if (answerText.trim()) {
+              e.preventDefault();
+              handleSubmitAnswerText(answerText);
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    session?.state,
+    session?.sessionMode,
+    answer,
+    isSubmitting,
+    answerText,
+    sourceCode,
+    codeLanguage,
+    toggleFocusMode,
+    handleSubmitCodingSolution,
+    handleSubmitAnswerText,
+  ]);
+
+  // Completion celebration
+  useEffect(() => {
+    if (session?.state === SessionState.COMPLETED && !hasCelebratedRef.current) {
+      hasCelebratedRef.current = true;
+      playSFX('success');
+      addXpLocally(150, language === 'vi' ? 'Hoàn thành buổi phỏng vấn' : 'Interview Completed');
+    }
+  }, [session?.state, language, addXpLocally]);
+
+  // 1. Loading Skeleton View
+  if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4">
-        <Spinner size="lg" />
-        <p className="text-sm text-slate-500">Loading interview room...</p>
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+        <Skeleton variant="card" height={90} />
+        <Skeleton variant="card" height={180} />
+        <Skeleton variant="card" height={240} />
       </div>
     );
   }
 
-  if (session.sessionMode === SessionMode.VOICE_LIVE || (session.sessionMode as any) === 'VOICE_LIVE') {
+  // 2. Error / Session Unavailable View
+  if (isError || !session) {
+    return (
+      <div className="max-w-xl mx-auto py-12">
+        <ErrorState
+          title={
+            language === 'vi' ? 'Không Thể Tải Phiên Phỏng Vấn' : 'Unable to Load Interview Session'
+          }
+          message={
+            (queryError as any)?.message ||
+            (language === 'vi'
+              ? 'Phiên phỏng vấn không tồn tại hoặc đã bị hủy. Vui lòng quay lại danh sách hoặc thử lại.'
+              : 'The requested interview session could not be found or was cancelled.')
+          }
+          onRetry={() => refetch()}
+          retryLabel={language === 'vi' ? 'Tải lại' : 'Reload Session'}
+        />
+        <div className="text-center mt-4">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/history')}>
+            {language === 'vi' ? 'Quay lại Lịch sử' : 'Back to History'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Voice Live Room
+  if (
+    session.sessionMode === SessionMode.VOICE_LIVE ||
+    (session.sessionMode as any) === 'VOICE_LIVE'
+  ) {
     return (
       <VoiceInterviewRoom
         interviewId={session.id}
@@ -235,74 +422,115 @@ export function InterviewRoomPage() {
   }
 
   const diffInfo = formatDifficulty(currentTurn?.difficulty || session.targetDifficulty);
+  const totalTurnsCount = session.totalTurns || 5;
+  const currentTurnNumber = session.currentTurn || 1;
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Live Region for Screen Readers */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {session.state === SessionState.EVALUATING
+          ? 'AI is evaluating your answer against the rubric.'
+          : evaluation
+            ? `Turn ${currentTurnNumber} evaluation complete. Score: ${formatScore(evaluation.score)} out of 10.`
+            : `Question ${currentTurnNumber} of ${totalTurnsCount} ready.`}
+      </div>
+
       {/* Session Progress Header */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded">
-              {session.jobRole.name} • {session.seniorityLevel.name}
-            </span>
-            {session.isSandbox && (
-              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded border border-amber-200">
-                {t.practice.sandboxBadge}
+      <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 mb-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                {session.jobRole.name} • {session.seniorityLevel.name}
               </span>
-            )}
-            {session.sessionMode === 'FOCUSED_REMEDIATION' && (
-              <span className="text-xs font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded border border-indigo-200">
-                {t.practice.remediation}
+
+              {session.isSandbox && (
+                <Badge variant="warning" className="text-[10px]">
+                  {t.practice.sandboxBadge}
+                </Badge>
+              )}
+
+              {session.sessionMode === 'FOCUSED_REMEDIATION' && (
+                <Badge variant="indigo" className="text-[10px]">
+                  {t.practice.remediation}
+                </Badge>
+              )}
+
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded border ${diffInfo.color}`}
+              >
+                {diffInfo.label} {t.interview.difficulty}
               </span>
-            )}
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${diffInfo.color}`}>
-              {diffInfo.label} {t.interview.difficulty}
-            </span>
-            {usingFallbackPolling && (
-              <span className="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded border border-amber-200">
-                {t.interview.pollingMode}
-              </span>
-            )}
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">
-            {t.interview.question} {session.currentTurn} {t.interview.of} {session.totalTurns}
-          </h1>
-        </div>
 
-        {/* 5-Turn Step Indicator & Pacing Timer */}
-        <div className="flex items-center gap-3">
-          <PacingTimer
-            isActive={session.state === SessionState.ACTIVE && !answer}
-            turnNumber={session.currentTurn}
-          />
-
-          <div className="flex items-center gap-1.5">
-            {session.turns.map(turn => {
-              const isCurrent = turn.turnNumber === session.currentTurn;
-              const isCompleted = !!turn.answer?.evaluation;
-              const isEvaluating =
-                turn.turnNumber === session.currentTurn && session.state === SessionState.EVALUATING;
-
-              return (
-                <div
-                  key={turn.id}
-                  className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-xs transition-all ${
-                    isCompleted
-                      ? 'bg-emerald-600 text-white'
-                      : isEvaluating
-                        ? 'bg-amber-500 text-white animate-pulse'
-                        : isCurrent
-                          ? 'bg-slate-900 text-white ring-2 ring-emerald-500 ring-offset-1'
-                          : 'bg-slate-100 text-slate-400'
-                  }`}
-                  title={`Turn ${turn.turnNumber}: ${turn.status}`}
+              {usingFallbackPolling ? (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] bg-amber-50 text-amber-800 px-2 py-0.5 rounded border border-amber-200"
+                  title="Live SSE stream disconnected; automatically syncing via backup polling"
                 >
-                  {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : turn.turnNumber}
-                </div>
-              );
-            })}
+                  <WifiOff className="h-3 w-3 text-amber-600" />
+                  <span>{t.interview.pollingMode}</span>
+                </span>
+              ) : (
+                <span
+                  className="inline-flex items-center gap-1 text-[10px] bg-emerald-50 text-emerald-800 px-2 py-0.5 rounded border border-emerald-200"
+                  title="Real-time SSE event stream connected"
+                >
+                  <Wifi className="h-3 w-3 text-emerald-600" />
+                  <span>Live Stream</span>
+                </span>
+              )}
+            </div>
+
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900">
+              {t.interview.question} {currentTurnNumber} {t.interview.of} {totalTurnsCount}
+            </h1>
+          </div>
+
+          {/* Turn Timer & Quick Actions */}
+          <div className="flex items-center gap-3 self-end sm:self-center">
+            <PacingTimer
+              isActive={session.state === SessionState.ACTIVE && !answer}
+              turnNumber={currentTurnNumber}
+            />
+
+            {/* Focus / Zen Mode Toggle */}
+            <Button
+              variant={isFocusMode ? 'primary' : 'ghost'}
+              size="sm"
+              onClick={toggleFocusMode}
+              title={
+                language === 'vi'
+                  ? 'Bật/Tắt Chế độ tập trung Zen Mode (F11 / Ctrl+Shift+F)'
+                  : 'Toggle Zen Focus Mode (F11 / Ctrl+Shift+F)'
+              }
+              className={`p-2 transition-colors ${
+                isFocusMode ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-700'
+              }`}
+            >
+              {isFocusMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => refetch()}
+              title="Manual sync / Làm mới trạng thái"
+              className="p-2 text-slate-400 hover:text-slate-700"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </div>
         </div>
+
+        {/* Accessible Progress Bar */}
+        <ProgressBar
+          value={currentTurnNumber}
+          max={totalTurnsCount}
+          label={`Interview Progress: Question ${currentTurnNumber} of ${totalTurnsCount}`}
+          variant="emerald"
+          size="sm"
+        />
       </div>
 
       {/* Voice Mode Controls Toolbar */}
@@ -314,36 +542,42 @@ export function InterviewRoomPage() {
         onReplayAiSpeech={replayAiSpeech}
       />
 
-      {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
-      {successMessage && <Alert variant="success">{successMessage}</Alert>}
+      {errorMessage && (
+        <Alert variant="error" className="animate-fade-in">
+          {errorMessage}
+        </Alert>
+      )}
+      {successMessage && (
+        <Alert variant="success" className="animate-fade-in">
+          {successMessage}
+        </Alert>
+      )}
 
-      {/* State 1: CREATED - Waiting for Question Generation */}
+      {/* STATE 1: Question Generating / Waiting for Turn */}
       {session.state === SessionState.CREATED && !question && (
-        <Card className="text-center py-16">
+        <Card className="text-center py-16 border-slate-200">
           <CardContent className="flex flex-col items-center gap-4">
             <Spinner size="lg" />
-            <h3 className="text-lg font-bold text-slate-900">
-              {t.interview.generatingQuestion}
-            </h3>
-            <p className="text-sm text-slate-500 max-w-md">
+            <h3 className="text-lg font-bold text-slate-900">{t.interview.generatingQuestion}</h3>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-md leading-relaxed">
               {t.interview.generatingHint} ({session.technologies.map(t => t.name).join(', ')}).
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* State 2: ACTIVE - Question Ready, Answer Pending */}
-      {question && (
+      {/* STATE 2: Question Ready & Answer Drafting / Evaluating */}
+      {session.state !== SessionState.COMPLETED && question && (
         <div className="space-y-6">
           {session.sessionMode === 'BEHAVIORAL' && <StarGuidePanel />}
 
           {/* Question Card */}
           <Card className="border-l-4 border-l-emerald-600 shadow-sm">
-            <CardHeader className="bg-slate-50/50 pb-3">
+            <CardHeader className="bg-slate-50/70 pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <HelpCircle className="h-4 w-4 text-emerald-600" />
-                  <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
                     {question.keyFocus || t.interview.coreConcept}
                   </span>
                 </div>
@@ -359,18 +593,18 @@ export function InterviewRoomPage() {
                       <span>{t.audio?.aiSpeaking || 'Speaking...'}</span>
                     </span>
                   )}
-                  <Badge variant="default">
-                    {t.interview.question} {session.currentTurn}
+                  <Badge variant="default" className="text-xs">
+                    {t.interview.question} {currentTurnNumber}
                   </Badge>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="pt-4 space-y-4">
-              <p className="text-base text-slate-900 font-medium leading-relaxed whitespace-pre-wrap">
+              <p className="text-sm sm:text-base text-slate-900 font-medium leading-relaxed whitespace-pre-wrap">
                 {question.content}
               </p>
 
-              {/* Real-time AI Speech Waveform when AI is speaking */}
+              {/* Waveform visualizer when AI is reading out question */}
               {isAiSpeaking && (
                 <div className="pt-2 border-t border-slate-100">
                   <AudioVisualizer
@@ -378,30 +612,36 @@ export function InterviewRoomPage() {
                     getAnalyserData={getAiAnalyserData}
                     mode="bars"
                     theme="ai"
-                    height={40}
+                    height={36}
                   />
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Candidate Response Section */}
+          {/* Candidate Response Editor Area */}
           {!answer && session.state === SessionState.ACTIVE && (
             <div>
-              {session.sessionMode === 'SYSTEM_DESIGN' || (session.sessionMode as any) === SessionMode.SYSTEM_DESIGN ? (
+              {session.sessionMode === 'SYSTEM_DESIGN' ||
+              (session.sessionMode as any) === SessionMode.SYSTEM_DESIGN ? (
                 <div className="space-y-4" data-testid="system-design-workspace">
                   <WhiteboardRoom
                     interviewId={session.id}
-                    onCompleteSession={() => handleSubmitAnswerText('[Whiteboard System Design Diagram Submitted]')}
+                    onCompleteSession={() =>
+                      handleSubmitAnswerText('[Whiteboard System Design Diagram Submitted]')
+                    }
                   />
                 </div>
               ) : session.sessionMode === 'CODING' ? (
-                /* Live Coding Mode: Split-Pane Monaco Code Editor & Sandbox Console */
+                /* Live Coding Sandbox */
                 <div className="space-y-4" data-testid="live-coding-workspace">
-                  <div className="flex items-center space-x-2 text-xs text-slate-500 bg-slate-100 p-2 rounded-lg border border-slate-200">
-                    <Code2 className="w-4 h-4 text-primary-600" />
-                    <span className="font-semibold text-slate-700">Live Coding Sandbox:</span>
-                    <span>Write code, run test cases against the execution engine, and submit for AI complexity review.</span>
+                  <div className="flex items-center space-x-2 text-xs text-slate-600 bg-slate-100 p-2.5 rounded-xl border border-slate-200">
+                    <Code2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-semibold text-slate-800">Live Coding Sandbox:</span>
+                    <span>
+                      Write code, run test cases against the engine, and submit for AI complexity
+                      review.
+                    </span>
                   </div>
 
                   <div className="h-[420px]">
@@ -427,17 +667,24 @@ export function InterviewRoomPage() {
                   )}
                 </div>
               ) : mode === InterviewMode.VOICE ? (
-                /* Voice Mode: Microphone Recorder & Audio Visualizer */
+                /* Voice Mode Recording */
                 <AudioAnswerRecorder
                   onAnswerReady={handleSubmitAnswerText}
                   isSubmitting={isSubmitting}
                   sessionId={sessionId}
                 />
               ) : (
-                /* Text Mode: Standard Textarea Response Form */
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-base">{t.interview.yourResponse}</CardTitle>
+                /* Standard Textarea Form */
+                <Card className="border-slate-200 shadow-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm sm:text-base">
+                      {t.interview.yourResponse}
+                    </CardTitle>
+                    <CardDescription>
+                      {language === 'vi'
+                        ? 'Trình bày câu trả lời kỹ thuật chi tiết kèm các đánh đổi (trade-offs) thực tế'
+                        : 'Structure your explanation with technical trade-offs, architecture context, and practical rationale'}
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form onSubmit={handleSubmitAnswer} className="space-y-4">
@@ -446,25 +693,28 @@ export function InterviewRoomPage() {
                         label={t.interview.typeExplanation}
                         placeholder={t.interview.placeholder}
                         value={answerText}
-                        onChange={e => setAnswerText(e.target.value)}
+                        onChange={e => handleDraftChange(e.target.value)}
                         maxChars={5000}
                         currentChars={answerText.length}
                         rows={7}
+                        disabled={isSubmitting}
                         required
                       />
 
-                      <div className="flex items-center justify-between pt-2">
-                        <p className="text-xs text-slate-500">
+                      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-100">
+                        <p className="text-[11px] text-slate-500 text-center sm:text-left">
                           {t.interview.submitNotice}
                         </p>
                         <Button
                           type="submit"
                           disabled={!answerText.trim() || answerText.length > 5000 || isSubmitting}
                           isLoading={isSubmitting}
-                          className="gap-2 px-6"
+                          leftIcon={<Send className="h-4 w-4" />}
+                          className="w-full sm:w-auto px-6 font-bold shadow-sm"
                         >
-                          <Send className="h-4 w-4" />
-                          <span>{isSubmitting ? t.interview.submitting : t.interview.submitAnswer}</span>
+                          <span>
+                            {isSubmitting ? t.interview.submitting : t.interview.submitAnswer}
+                          </span>
                         </Button>
                       </div>
                     </form>
@@ -474,94 +724,109 @@ export function InterviewRoomPage() {
             </div>
           )}
 
-          {/* Answer Submitted & Evaluating State */}
+          {/* STATE 3: Evaluating in Progress */}
           {answer && session.state === SessionState.EVALUATING && !evaluation && (
-            <Card className="border-amber-200 bg-amber-50/30">
-              <CardHeader>
+            <Card className="border-amber-200 bg-amber-50/40 shadow-sm animate-pulse-subtle">
+              <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">{t.interview.submittedAnswer}</CardTitle>
+                  <CardTitle className="text-sm font-bold text-slate-900">
+                    {t.interview.submittedAnswer}
+                  </CardTitle>
                   <Badge variant="warning">{t.interview.evaluatingTitle}</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-sm text-slate-800 bg-white p-4 rounded-lg border border-slate-200 whitespace-pre-wrap">
+                <p className="text-xs sm:text-sm text-slate-800 bg-white p-4 rounded-xl border border-slate-200 whitespace-pre-wrap">
                   {answer.content}
                 </p>
-                <div className="flex items-center gap-3 p-4 bg-white rounded-lg border border-amber-200">
+                <div className="flex items-center gap-3 p-4 bg-white rounded-xl border border-amber-200 shadow-xs">
                   <Spinner size="sm" />
-                  <div className="text-xs text-amber-900">
-                    <span className="font-semibold">
-                      {t.interview.evaluatingDesc}
-                    </span>
-                    <p className="text-slate-500 mt-0.5">
-                      {t.interview.evaluatingDetail}
-                    </p>
+                  <div className="text-xs text-amber-950">
+                    <span className="font-bold">{t.interview.evaluatingDesc}</span>
+                    <p className="text-slate-500 mt-0.5">{t.interview.evaluatingDetail}</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Answer Evaluated & Feedback Ready */}
+          {/* STATE 4: Turn Evaluation Feedback Ready */}
           {answer && evaluation && (
-            <div className="space-y-6">
-              <Card>
-                <CardHeader className="bg-slate-50/50">
-                  <CardTitle className="text-base">{t.interview.submittedAnswer}</CardTitle>
+            <div className="space-y-6 animate-slide-up">
+              <Card className="border-slate-200">
+                <CardHeader className="bg-slate-50/60 pb-2">
+                  <CardTitle className="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                    {t.interview.submittedAnswer}
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-slate-800 whitespace-pre-wrap bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <CardContent className="pt-3">
+                  <p className="text-xs sm:text-sm text-slate-800 whitespace-pre-wrap bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                     {answer.content}
                   </p>
                 </CardContent>
               </Card>
 
-              {/* Evaluation Card */}
-              <Card className="border-emerald-200 shadow-md">
-                <CardHeader className="bg-emerald-50/60 border-b border-emerald-100 flex flex-row items-center justify-between">
-                  <div className="flex items-center gap-2">
+              {/* Evaluation Report Card */}
+              <Card className="border-emerald-200 shadow-md overflow-hidden">
+                <CardHeader className="bg-emerald-50/70 border-b border-emerald-100 flex flex-row items-center justify-between p-5 sm:p-6">
+                  <div className="flex items-center gap-2.5">
                     <Award className="h-5 w-5 text-emerald-700" />
-                    <CardTitle className="text-emerald-950">{t.interview.feedbackTitle}</CardTitle>
+                    <div>
+                      <CardTitle className="text-sm sm:text-base text-emerald-950 font-bold">
+                        {t.interview.feedbackTitle}
+                      </CardTitle>
+                      <span className="text-[11px] text-emerald-800">
+                        {language === 'vi'
+                          ? 'Đánh giá chi tiết theo chuẩn Rubric 3 chiều'
+                          : 'Deterministic 3-dimensional rubric scoring'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1 rounded-full font-bold text-sm shadow-sm">
+                  <div className="flex items-center gap-1.5 bg-emerald-600 text-white px-3 py-1 rounded-full font-bold text-sm shadow-xs font-mono">
                     <span>{formatScore(evaluation.score)}</span>
                     <span className="text-emerald-200 text-xs">/ 10</span>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-6">
-                  {/* Visual Rubric Breakdown Bars */}
+                  {/* Rubric Breakdown Bars */}
                   <RubricBreakdown scores={evaluation.rubricScores as any} />
 
-                  {/* Concise Feedback */}
-                  <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  {/* Concise Feedback Summary */}
+                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <h4 className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1">
                       {t.interview.interviewerSummary}
                     </h4>
-                    <p className="text-sm text-slate-800">{evaluation.conciseFeedback}</p>
+                    <p className="text-xs sm:text-sm text-slate-800 leading-relaxed">
+                      {evaluation.conciseFeedback}
+                    </p>
                   </div>
 
                   {/* Strengths & Improvements */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-4 rounded-lg bg-emerald-50/50 border border-emerald-200">
-                      <h4 className="text-xs font-bold text-emerald-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200">
+                      <h4 className="text-xs font-bold text-emerald-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                         {t.interview.keyStrengths}
                       </h4>
                       <ul className="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
                         {(evaluation.strengths as string[]).map((str, idx) => (
-                          <li key={idx}>{str}</li>
+                          <li key={idx} className="leading-relaxed">
+                            {str}
+                          </li>
                         ))}
                       </ul>
                     </div>
 
-                    <div className="p-4 rounded-lg bg-amber-50/50 border border-amber-200">
-                      <h4 className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                    <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200">
+                      <h4 className="text-xs font-bold text-amber-900 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                         <TrendingUp className="h-4 w-4 text-amber-600" />
                         {t.interview.areasForImprovement}
                       </h4>
                       <ul className="text-xs text-slate-700 space-y-1.5 list-disc list-inside">
                         {(evaluation.improvements as string[]).map((imp, idx) => (
-                          <li key={idx}>{imp}</li>
+                          <li key={idx} className="leading-relaxed">
+                            {imp}
+                          </li>
                         ))}
                       </ul>
                     </div>
@@ -570,9 +835,11 @@ export function InterviewRoomPage() {
                   {/* Evidence Quotes & Missing Concepts */}
                   <div className="space-y-3 pt-2">
                     {/* Confidence & Review Indicator */}
-                    <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                    <div className="flex items-center justify-between text-xs text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-200">
                       <div className="flex items-center gap-1.5">
-                        <span className="font-medium text-slate-700">{t.interview.confidence}:</span>
+                        <span className="font-medium text-slate-700">
+                          {t.interview.confidence}:
+                        </span>
                         <span className="font-semibold text-emerald-700">
                           {Math.round(((evaluation as any).confidence || 0.85) * 100)}%
                         </span>
@@ -584,9 +851,9 @@ export function InterviewRoomPage() {
                       )}
                     </div>
 
-                    {/* Missing Concepts (if any) */}
+                    {/* Missing Concepts */}
                     {(evaluation as any).missingConcepts?.length > 0 && (
-                      <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
                           {t.interview.studyConcepts}
                         </span>
@@ -605,11 +872,11 @@ export function InterviewRoomPage() {
 
                     {/* Referenced Evidence Spans */}
                     {(evaluation.evidence as string[])?.length > 0 && (
-                      <div className="p-3 bg-emerald-50/40 rounded-lg border border-emerald-100">
+                      <div className="p-3.5 bg-emerald-50/40 rounded-xl border border-emerald-100">
                         <span className="text-xs font-bold text-emerald-900 uppercase tracking-wider block mb-1.5">
                           {t.interview.quotedEvidence}
                         </span>
-                        <ul className="text-xs text-emerald-800 space-y-1 italic">
+                        <ul className="text-xs text-emerald-800 space-y-1.5 italic">
                           {(evaluation.evidence as string[]).map((ev, idx) => (
                             <li key={idx} className="flex items-start gap-1.5">
                               <span className="text-emerald-500 font-bold not-italic">“</span>
@@ -621,16 +888,16 @@ export function InterviewRoomPage() {
                       </div>
                     )}
 
-                    {/* Re-evaluation Request Button */}
+                    {/* Re-evaluation Request */}
                     <div className="flex justify-end pt-2">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setReEvalModalTurn(currentTurn.turnNumber)}
                         isLoading={isReEvaluating}
-                        className="gap-1.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
+                        leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                        className="text-xs text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50"
                       >
-                        <RotateCcw className="h-3.5 w-3.5" />
                         <span>{t.interview.requestReEvaluation}</span>
                       </Button>
                     </div>
@@ -640,41 +907,44 @@ export function InterviewRoomPage() {
             </div>
           )}
 
-          {/* Collapsible Past Turns Accordion */}
+          {/* Past Turns History Accordion */}
           <TurnHistoryAccordion
             turns={session.turns}
-            currentTurnNumber={session.currentTurn}
+            currentTurnNumber={currentTurnNumber}
             onReEvaluate={turnNum => setReEvalModalTurn(turnNum)}
             isReEvaluating={isReEvaluating}
           />
         </div>
       )}
 
-      {/* Completed Session State */}
+      {/* STATE 5: Session Completed View */}
       {session.state === SessionState.COMPLETED && (
-        <Card className="bg-gradient-to-br from-emerald-50 to-white border-emerald-200 text-center py-10 shadow-sm">
+        <Card className="bg-gradient-to-br from-emerald-50 via-white to-emerald-50/30 border-emerald-200 text-center py-10 shadow-sm animate-fade-in">
           <CardContent className="flex flex-col items-center gap-4">
-            <div className="bg-emerald-600 text-white p-3 rounded-full shadow-lg">
+            <div className="bg-emerald-600 text-white p-3.5 rounded-2xl shadow-md">
               <Award className="h-10 w-10" />
             </div>
-            <h2 className="text-2xl font-bold text-slate-900">{t.interview.completedTitle}</h2>
-            <p className="text-slate-600 text-sm max-w-md">
+            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+              {t.interview.completedTitle}
+            </h2>
+            <p className="text-slate-600 text-xs sm:text-sm max-w-md leading-relaxed">
               {t.interview.completedDesc}{' '}
-              <span className="font-bold text-emerald-700 text-base">
+              <span className="font-bold text-emerald-700 text-base font-mono">
                 {formatScore(session.overallScore)} / 10
               </span>
               .
             </p>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
               <Button
                 variant="primary"
+                size="lg"
                 onClick={() => navigate(`/interviews/${session.id}/result`)}
-                className="gap-2"
+                className="gap-2 shadow-sm font-bold"
               >
                 <BarChart2 className="h-4 w-4" />
                 <span>{t.interview.viewFullResult}</span>
               </Button>
-              <Button variant="outline" onClick={() => navigate('/interviews/new')}>
+              <Button variant="outline" size="lg" onClick={() => navigate('/interviews/new')}>
                 {t.interview.startAnother}
               </Button>
             </div>
@@ -682,10 +952,10 @@ export function InterviewRoomPage() {
         </Card>
       )}
 
-      {/* Re-evaluation Modal / Confirmation Dialog */}
+      {/* Re-evaluation Modal Dialog */}
       {reEvalModalTurn !== null && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-slide-up">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-800">
                 <Sparkles className="h-5 w-5" />
@@ -739,3 +1009,5 @@ export function InterviewRoomPage() {
     </div>
   );
 }
+
+export default InterviewRoomPage;

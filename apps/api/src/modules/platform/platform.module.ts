@@ -8,7 +8,19 @@ import { MetricsModule } from './metrics/metrics.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { IdempotencyService } from './guards/idempotency.service';
 import { validateEnv } from './config/env.validation';
-import { appConfig, dbConfig, redisConfig, jwtConfig, aiConfig, featuresConfig } from './config/configuration';
+import {
+  appConfig,
+  dbConfig,
+  redisConfig,
+  jwtConfig,
+  aiConfig,
+  featuresConfig,
+  storageConfig,
+  emailConfig,
+  billingConfig,
+  voiceConfig,
+  visionConfig,
+} from './config/configuration';
 
 @Global()
 @Module({
@@ -16,7 +28,19 @@ import { appConfig, dbConfig, redisConfig, jwtConfig, aiConfig, featuresConfig }
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
-      load: [appConfig, dbConfig, redisConfig, jwtConfig, aiConfig, featuresConfig],
+      load: [
+        appConfig,
+        dbConfig,
+        redisConfig,
+        jwtConfig,
+        aiConfig,
+        featuresConfig,
+        storageConfig,
+        emailConfig,
+        billingConfig,
+        voiceConfig,
+        visionConfig,
+      ],
     }),
     PrismaModule,
     RedisModule,

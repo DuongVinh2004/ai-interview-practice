@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { LiveSessionStatus } from '@ai-interview/contracts';
 
@@ -46,7 +52,9 @@ export class BookingService {
     });
 
     if (existingMentorBooking) {
-      throw new ConflictException('Mentor is not available at this time slot (existing booking conflict).');
+      throw new ConflictException(
+        'Mentor is not available at this time slot (existing booking conflict).',
+      );
     }
 
     // Check candidate collision
@@ -62,7 +70,9 @@ export class BookingService {
     });
 
     if (existingCandidateBooking) {
-      throw new ConflictException('You already have another live session scheduled around this time.');
+      throw new ConflictException(
+        'You already have another live session scheduled around this time.',
+      );
     }
 
     // 3. Create LiveSession
@@ -94,10 +104,7 @@ export class BookingService {
   async getMySessions(userId: string) {
     const sessions = await this.prisma.liveSession.findMany({
       where: {
-        OR: [
-          { candidateId: userId },
-          { mentor: { userId } },
-        ],
+        OR: [{ candidateId: userId }, { mentor: { userId } }],
       },
       include: {
         mentor: { include: { user: { include: { profile: true } } } },
@@ -106,7 +113,7 @@ export class BookingService {
       orderBy: { scheduledAt: 'desc' },
     });
 
-    return sessions.map((s) => ({
+    return sessions.map(s => ({
       id: s.id,
       mentorId: s.mentorId,
       mentorName: s.mentor.user.profile?.fullName || s.mentor.user.email.split('@')[0],
@@ -138,7 +145,10 @@ export class BookingService {
       throw new ForbiddenException('Access denied to cancel this session');
     }
 
-    if (session.status === LiveSessionStatus.COMPLETED || session.status === LiveSessionStatus.CANCELED) {
+    if (
+      session.status === LiveSessionStatus.COMPLETED ||
+      session.status === LiveSessionStatus.CANCELED
+    ) {
       throw new BadRequestException(`Cannot cancel session with status ${session.status}`);
     }
 

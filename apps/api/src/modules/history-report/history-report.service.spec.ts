@@ -77,9 +77,16 @@ describe('HistoryReportService', () => {
       const mockSession = {
         id: 'sess-1',
         userId: 'user-1',
+        state: SessionState.COMPLETED,
+        overallScore: 0,
+        completedAt: new Date('2026-08-20T00:30:00Z'),
         jobRole: { name: 'Backend Engineer' },
         seniorityLevel: { name: 'Senior' },
-        technologies: [{ technology: { name: 'PostgreSQL' } }],
+        technologies: [
+          { technology: { id: 'node', name: 'Node.js' } },
+          { technology: { id: 'postgres', name: 'PostgreSQL' } },
+          { technology: { id: 'typescript', name: 'TypeScript' } },
+        ],
         turns: [
           {
             turnNumber: 1,
@@ -87,12 +94,35 @@ describe('HistoryReportService', () => {
             answer: {
               content: 'B-tree indexes...',
               submittedAt: new Date('2026-08-20T00:05:00Z'),
-              evaluation: { score: 8.5, feedback: 'Good' },
+              evaluation: {
+                score: 8.5,
+                authorityState: 'NEEDS_REVIEW',
+                rubricScores: { technicalAccuracy: 9, depth: 8, clarity: 8.5 },
+                strengths: [],
+                improvements: [],
+                conciseFeedback: 'Good',
+                evidence: [],
+              },
             },
           },
         ],
         learningPath: {
-          items: [{ topic: 'Indexes', priority: 'HIGH' }],
+          id: 'lp-1',
+          status: 'READY',
+          summary: 'Roadmap with an overall performance score of 0.0/10',
+          items: [
+            {
+              id: 'item-1',
+              gap: 'Index selection',
+              topic: 'Indexes',
+              priority: 'HIGH',
+              recommendedAction: 'Practice query plans',
+              searchKeywords: ['postgres indexes'],
+              order: 1,
+              isCompleted: true,
+              completedAt: new Date('2026-08-21T00:00:00Z'),
+            },
+          ],
         },
       };
 
@@ -101,6 +131,22 @@ describe('HistoryReportService', () => {
       const result = await service.getSessionResult('user-1', UserRole.CANDIDATE, 'sess-1');
       expect(result).toBeDefined();
       expect(result.turns.length).toBe(1);
+      expect(result.overallScore).toBe(8.5);
+      expect(result.rubricAverages).toEqual({
+        technicalAccuracy: 9,
+        depth: 8,
+        clarity: 8.5,
+      });
+      expect(result.technologies.map(technology => technology.name)).toEqual([
+        'Node.js',
+        'PostgreSQL',
+        'TypeScript',
+      ]);
+      expect(result.learningPath?.items[0]).toMatchObject({
+        isCompleted: true,
+        completedAt: '2026-08-21T00:00:00.000Z',
+      });
+      expect(result.learningPath?.summary).toContain('overall performance score of 8.5/10');
     });
   });
 });

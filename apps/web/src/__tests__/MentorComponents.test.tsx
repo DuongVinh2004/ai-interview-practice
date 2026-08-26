@@ -19,10 +19,9 @@ const createWrapper = () => {
 
 describe('Track F012: Mentor Co-Pilot Frontend Components', () => {
   it('renders AiCoPilotHintPanel with live probing feed banner', () => {
-    render(
-      <AiCoPilotHintPanel sessionId="session-test-123" onSelectHint={vi.fn()} />,
-      { wrapper: createWrapper() },
-    );
+    render(<AiCoPilotHintPanel sessionId="session-test-123" onSelectHint={vi.fn()} />, {
+      wrapper: createWrapper(),
+    });
 
     expect(screen.getByTestId('copilot-hint-panel')).toBeInTheDocument();
     expect(screen.getByText('AI Mentor Co-Pilot')).toBeInTheDocument();

@@ -27,7 +27,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
 
       const width = canvas.width;
       const height = canvas.height;
-      const barWidth = (width / barCount) - 2;
+      const barWidth = width / barCount - 2;
 
       for (let i = 0; i < barCount; i++) {
         let barHeight = 4;

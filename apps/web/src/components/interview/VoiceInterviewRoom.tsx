@@ -86,7 +86,10 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
               </Badge>
             </h2>
             <div className="flex items-center space-x-3 text-xs text-slate-500 mt-0.5">
-              <span>Thời lượng: <strong className="text-slate-800 font-mono">{formatTime(elapsedSec)}</strong></span>
+              <span>
+                Thời lượng:{' '}
+                <strong className="text-slate-800 font-mono">{formatTime(elapsedSec)}</strong>
+              </span>
               <span>•</span>
               <span className="flex items-center space-x-1">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
@@ -116,7 +119,9 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
         >
           <div
             className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-              isAiSpeaking ? 'bg-emerald-600 text-white scale-105 shadow-lg shadow-emerald-500/20' : 'bg-slate-100 text-slate-500'
+              isAiSpeaking
+                ? 'bg-emerald-600 text-white scale-105 shadow-lg shadow-emerald-500/20'
+                : 'bg-slate-100 text-slate-500'
             }`}
           >
             <Bot className="w-10 h-10" />
@@ -135,7 +140,9 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
         {/* Candidate Audio Card */}
         <div
           className={`p-6 rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center space-y-3 bg-white shadow-sm ${
-            isCandidateSpeaking && !isMuted ? 'border-sky-500 ring-4 ring-sky-500/10' : 'border-slate-200'
+            isCandidateSpeaking && !isMuted
+              ? 'border-sky-500 ring-4 ring-sky-500/10'
+              : 'border-slate-200'
           }`}
         >
           <div
@@ -143,8 +150,8 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
               isMuted
                 ? 'bg-rose-100 text-rose-600'
                 : isCandidateSpeaking
-                ? 'bg-sky-600 text-white scale-105 shadow-lg shadow-sky-500/20'
-                : 'bg-slate-100 text-slate-500'
+                  ? 'bg-sky-600 text-white scale-105 shadow-lg shadow-sky-500/20'
+                  : 'bg-slate-100 text-slate-500'
             }`}
           >
             {isMuted ? <MicOff className="w-10 h-10" /> : <User className="w-10 h-10" />}
@@ -153,7 +160,11 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
           <div className="text-center">
             <h4 className="font-bold text-sm text-slate-900">Ứng viên (Bạn)</h4>
             <p className="text-xs text-slate-500 mt-0.5">
-              {isMuted ? 'Microphone đang tắt' : isCandidateSpeaking ? 'Microphone đang thu âm...' : 'Sẵn sàng phát biểu'}
+              {isMuted
+                ? 'Microphone đang tắt'
+                : isCandidateSpeaking
+                  ? 'Microphone đang thu âm...'
+                  : 'Sẵn sàng phát biểu'}
             </p>
           </div>
 
@@ -168,7 +179,9 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
             <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
             <span>Biên bản ghi âm thời gian thực (Live Transcript)</span>
           </span>
-          <span className="text-[11px] text-slate-400 font-mono">{transcripts.length} đoạn hội thoại</span>
+          <span className="text-[11px] text-slate-400 font-mono">
+            {transcripts.length} đoạn hội thoại
+          </span>
         </div>
 
         <div className="max-h-60 overflow-y-auto space-y-3 p-2">

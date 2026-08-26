@@ -6,6 +6,7 @@ import { SseService } from '../platform/sse/sse.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { QueueName, UserRole } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
+import { UsageMeterService } from '../billing/usage-meter.service';
 
 describe('InterviewService (Unit)', () => {
   let service: InterviewService;
@@ -13,9 +14,11 @@ describe('InterviewService (Unit)', () => {
   let sseService: any;
   let questionQueue: any;
   let evaluationQueue: any;
+  let usageMeter: any;
 
   beforeEach(async () => {
     prisma = {
+      $transaction: jest.fn(async (callback: any) => callback(prisma)),
       interviewSession: {
         findUnique: jest.fn(),
         create: jest.fn(),
@@ -40,6 +43,7 @@ describe('InterviewService (Unit)', () => {
 
     questionQueue = { add: jest.fn() };
     evaluationQueue = { add: jest.fn() };
+    usageMeter = { checkAndConsumeQuotaInTransaction: jest.fn().mockResolvedValue({}) };
 
     const mockAiOrchestrator = {
       evaluateAnswer: jest.fn().mockResolvedValue({
@@ -61,6 +65,7 @@ describe('InterviewService (Unit)', () => {
         { provide: PrismaService, useValue: prisma },
         { provide: SseService, useValue: sseService },
         { provide: AiOrchestratorService, useValue: mockAiOrchestrator },
+        { provide: UsageMeterService, useValue: usageMeter },
         { provide: getQueueToken(QueueName.QUESTION_GENERATION), useValue: questionQueue },
         { provide: getQueueToken(QueueName.ANSWER_EVALUATION), useValue: evaluationQueue },
       ],
@@ -145,9 +150,7 @@ describe('InterviewService (Unit)', () => {
         createdAt: new Date(),
       });
 
-      prisma.evaluation.findMany = jest.fn().mockResolvedValue([
-        { id: 'eval-1', score: 9.0 },
-      ]);
+      prisma.evaluation.findMany = jest.fn().mockResolvedValue([{ id: 'eval-1', score: 9.0 }]);
 
       prisma.auditLog = { create: jest.fn().mockResolvedValue({}) };
 
@@ -159,13 +162,72 @@ describe('InterviewService (Unit)', () => {
       expect(result.overallScore).toBe(9.0);
       expect(sseService.emitSessionEvent).toHaveBeenCalled();
     });
+
+    it('falls back to NEEDS_REVIEW evaluations when no authoritative evaluation exists', async () => {
+      prisma.interviewSession.findUnique.mockResolvedValue({
+        id: 'session-123',
+        userId: 'owner-1',
+        jobRole: { name: 'Backend Engineer' },
+        seniorityLevel: { name: 'Senior' },
+        turns: [
+          {
+            id: 'turn-1',
+            turnNumber: 1,
+            question: { content: 'Explain idempotency', expectedPoints: ['idempotency key'] },
+            answer: {
+              id: 'ans-1',
+              content: 'Use an idempotency key',
+              evaluation: { id: 'eval-1', score: 7.0 },
+            },
+          },
+        ],
+      });
+      prisma.evaluation.update.mockResolvedValue({
+        id: 'eval-1',
+        answerId: 'ans-1',
+        score: 9.0,
+        rubricScores: { technicalAccuracy: 9.0, depth: 9.0, clarity: 9.0 },
+        strengths: ['Clear'],
+        improvements: [],
+        conciseFeedback: 'Excellent',
+        evidence: [],
+        createdAt: new Date(),
+      });
+      prisma.evaluation.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+        { id: 'eval-1', score: 9.0, authorityState: 'NEEDS_REVIEW' },
+        { id: 'eval-2', score: 7.0, authorityState: 'NEEDS_REVIEW' },
+      ]);
+
+      const result = await service.reEvaluateTurn(
+        'owner-1',
+        UserRole.CANDIDATE,
+        'session-123',
+        1,
+        {},
+      );
+
+      expect(result.overallScore).toBe(8.0);
+      expect(prisma.evaluation.findMany).toHaveBeenNthCalledWith(2, {
+        where: { answer: { turn: { sessionId: 'session-123' } } },
+      });
+    });
   });
 
   describe('createSession modes (Epic 6)', () => {
     it('creates a focused remediation session with custom turns', async () => {
-      prisma.jobRole.findUnique.mockResolvedValue({ id: 'role-1', isActive: true, name: 'Backend' });
-      prisma.seniorityLevel.findUnique.mockResolvedValue({ id: 'lvl-1', isActive: true, name: 'Senior' });
-      prisma.technology.findMany.mockResolvedValue([{ id: 'tech-1', isActive: true, name: 'Node.js' }]);
+      prisma.jobRole.findUnique.mockResolvedValue({
+        id: 'role-1',
+        isActive: true,
+        name: 'Backend',
+      });
+      prisma.seniorityLevel.findUnique.mockResolvedValue({
+        id: 'lvl-1',
+        isActive: true,
+        name: 'Senior',
+      });
+      prisma.technology.findMany.mockResolvedValue([
+        { id: 'tech-1', isActive: true, name: 'Node.js' },
+      ]);
 
       prisma.interviewSession.create.mockResolvedValue({
         id: 'session-rem-1',
@@ -179,13 +241,58 @@ describe('InterviewService (Unit)', () => {
         currentTurn: 1,
         totalTurns: 3,
         targetDifficulty: 1,
-        jobRole: { id: 'role-1', name: 'Backend', slug: 'backend', description: '', isActive: true },
-        seniorityLevel: { id: 'lvl-1', name: 'Senior', slug: 'senior', order: 1, description: '', isActive: true },
-        technologies: [{ id: 'tech-1', name: 'Node.js', slug: 'nodejs', category: 'Backend', isActive: true }],
+        jobRole: {
+          id: 'role-1',
+          name: 'Backend',
+          slug: 'backend',
+          description: '',
+          isActive: true,
+        },
+        seniorityLevel: {
+          id: 'lvl-1',
+          name: 'Senior',
+          slug: 'senior',
+          order: 1,
+          description: '',
+          isActive: true,
+        },
+        technologies: [
+          { id: 'tech-1', name: 'Node.js', slug: 'nodejs', category: 'Backend', isActive: true },
+        ],
         turns: [
-          { id: 'turn-1', sessionId: 'session-rem-1', turnNumber: 1, difficulty: 1, status: 'PENDING', isFollowUp: false, parentTurnNumber: null, createdAt: new Date(), updatedAt: new Date() },
-          { id: 'turn-2', sessionId: 'session-rem-1', turnNumber: 2, difficulty: 1, status: 'PENDING', isFollowUp: false, parentTurnNumber: null, createdAt: new Date(), updatedAt: new Date() },
-          { id: 'turn-3', sessionId: 'session-rem-1', turnNumber: 3, difficulty: 1, status: 'PENDING', isFollowUp: false, parentTurnNumber: null, createdAt: new Date(), updatedAt: new Date() },
+          {
+            id: 'turn-1',
+            sessionId: 'session-rem-1',
+            turnNumber: 1,
+            difficulty: 1,
+            status: 'PENDING',
+            isFollowUp: false,
+            parentTurnNumber: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: 'turn-2',
+            sessionId: 'session-rem-1',
+            turnNumber: 2,
+            difficulty: 1,
+            status: 'PENDING',
+            isFollowUp: false,
+            parentTurnNumber: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+          {
+            id: 'turn-3',
+            sessionId: 'session-rem-1',
+            turnNumber: 3,
+            difficulty: 1,
+            status: 'PENDING',
+            isFollowUp: false,
+            parentTurnNumber: null,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
         ],
         learningPath: null,
         createdAt: new Date(),
@@ -205,8 +312,12 @@ describe('InterviewService (Unit)', () => {
       expect(result.competencyArea).toBe('DATABASE_CONCURRENCY');
       expect(result.totalTurns).toBe(3);
       expect(result.turns).toHaveLength(3);
+      expect(usageMeter.checkAndConsumeQuotaInTransaction).toHaveBeenCalledWith(
+        prisma,
+        'user-1',
+        'SESSION_COUNT',
+      );
       expect(prisma.auditLog.create).toHaveBeenCalled();
     });
   });
 });
-

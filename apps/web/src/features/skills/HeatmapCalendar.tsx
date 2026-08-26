@@ -11,7 +11,7 @@ export function HeatmapCalendar({ daysCount = 60 }: HeatmapCalendarProps) {
     const arr = [];
     for (let i = daysCount - 1; i >= 0; i--) {
       const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-      const intensity = (i % 3 === 0 || i % 7 === 0) ? ((i * 13) % 4) + 1 : 0;
+      const intensity = i % 3 === 0 || i % 7 === 0 ? ((i * 13) % 4) + 1 : 0;
       arr.push({
         date: date.toISOString().split('T')[0],
         intensity,
@@ -29,7 +29,10 @@ export function HeatmapCalendar({ daysCount = 60 }: HeatmapCalendarProps) {
   };
 
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 space-y-3" data-testid="heatmap-calendar">
+    <div
+      className="bg-white p-4 rounded-xl border border-slate-200 space-y-3"
+      data-testid="heatmap-calendar"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-xs font-semibold text-slate-800">
           <Calendar className="w-4 h-4 text-emerald-600" />
@@ -51,7 +54,7 @@ export function HeatmapCalendar({ daysCount = 60 }: HeatmapCalendarProps) {
             key={d.date}
             title={`${d.date}: ${d.intensity > 0 ? d.intensity + ' sessions' : 'No activity'}`}
             className={`w-3.5 h-3.5 rounded-sm border transition-transform hover:scale-125 ${getColor(
-              d.intensity
+              d.intensity,
             )}`}
           />
         ))}

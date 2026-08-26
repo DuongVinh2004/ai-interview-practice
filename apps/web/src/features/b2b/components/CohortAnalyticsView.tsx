@@ -2,13 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../../lib/api-client';
 import { CohortAnalyticsDto } from '@ai-interview/contracts';
-import {
-  BarChart3,
-  Users,
-  AlertTriangle,
-  Award,
-  Layers,
-} from 'lucide-react';
+import { BarChart3, Users, AlertTriangle, Award, Layers } from 'lucide-react';
 
 interface CohortAnalyticsViewProps {
   cohortId: string;
@@ -28,7 +22,7 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
     return (
       <div className="space-y-6 animate-pulse" data-testid="analytics-loading">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className="h-24 bg-slate-100 rounded-2xl" />
           ))}
         </div>
@@ -103,7 +97,9 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
             <BarChart3 className="h-5 w-5 text-emerald-600" />
             <div>
               <h3 className="font-bold text-base text-slate-900">Score Distribution</h3>
-              <p className="text-xs text-slate-500">Student performance brackets across completed turns</p>
+              <p className="text-xs text-slate-500">
+                Student performance brackets across completed turns
+              </p>
             </div>
           </div>
 
@@ -112,8 +108,12 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
               { label: '8.0 – 10.0 (Mastery)', count: dist.bracket8to10, color: 'bg-emerald-500' },
               { label: '6.0 – 7.9 (Competitive)', count: dist.bracket6to8, color: 'bg-teal-500' },
               { label: '4.0 – 5.9 (Growing)', count: dist.bracket4to6, color: 'bg-amber-500' },
-              { label: '0.0 – 3.9 (Needs Remediation)', count: dist.bracket0to4, color: 'bg-rose-500' },
-            ].map((bracket) => (
+              {
+                label: '0.0 – 3.9 (Needs Remediation)',
+                count: dist.bracket0to4,
+                color: 'bg-rose-500',
+              },
+            ].map(bracket => (
               <div key={bracket.label} className="space-y-1">
                 <div className="flex justify-between text-xs font-semibold text-slate-700">
                   <span>{bracket.label}</span>
@@ -131,18 +131,26 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
         </div>
 
         {/* 5-Axis Competency Skill Heatmap */}
-        <div className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm" data-testid="skill-heatmap">
+        <div
+          className="p-6 bg-white rounded-2xl border border-slate-200 shadow-sm"
+          data-testid="skill-heatmap"
+        >
           <div className="flex items-center gap-2 mb-6">
             <Layers className="h-5 w-5 text-emerald-600" />
             <div>
               <h3 className="font-bold text-base text-slate-900">Competency Skill Heatmap</h3>
-              <p className="text-xs text-slate-500">Cohort-wide strengths & learning gap indicators</p>
+              <p className="text-xs text-slate-500">
+                Cohort-wide strengths & learning gap indicators
+              </p>
             </div>
           </div>
 
           <div className="space-y-4">
-            {analytics.skillHeatmap.map((item) => (
-              <div key={item.competencyArea} className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+            {analytics.skillHeatmap.map(item => (
+              <div
+                key={item.competencyArea}
+                className="p-3 bg-slate-50 rounded-xl border border-slate-100"
+              >
                 <div className="flex justify-between items-center mb-1.5">
                   <span className="text-xs font-bold text-slate-800">{item.areaName}</span>
                   <span className="text-xs font-extrabold text-emerald-700">
@@ -156,8 +164,12 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
                   />
                 </div>
                 <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                  <span>Weakness: <strong className="text-slate-700">{item.weakestTopic}</strong></span>
-                  <span>Strength: <strong className="text-slate-700">{item.strongestTopic}</strong></span>
+                  <span>
+                    Weakness: <strong className="text-slate-700">{item.weakestTopic}</strong>
+                  </span>
+                  <span>
+                    Strength: <strong className="text-slate-700">{item.strongestTopic}</strong>
+                  </span>
                 </div>
               </div>
             ))}
@@ -175,7 +187,7 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
 
           <div className="divide-y divide-slate-100">
             {analytics.studentsNeedingHelp.length > 0 ? (
-              analytics.studentsNeedingHelp.map((student) => (
+              analytics.studentsNeedingHelp.map(student => (
                 <div key={student.userId} className="py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold text-slate-900">{student.fullName}</p>
@@ -192,7 +204,9 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-400 py-4 text-center">All students meet target score thresholds!</p>
+              <p className="text-xs text-slate-400 py-4 text-center">
+                All students meet target score thresholds!
+              </p>
             )}
           </div>
         </div>
@@ -205,7 +219,7 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
 
           <div className="divide-y divide-slate-100">
             {analytics.topPerformers.length > 0 ? (
-              analytics.topPerformers.map((student) => (
+              analytics.topPerformers.map(student => (
                 <div key={student.userId} className="py-3 flex items-center justify-between">
                   <div>
                     <p className="text-sm font-bold text-slate-900">{student.fullName}</p>
@@ -224,7 +238,9 @@ export const CohortAnalyticsView: React.FC<CohortAnalyticsViewProps> = ({ cohort
                 </div>
               ))
             ) : (
-              <p className="text-xs text-slate-400 py-4 text-center">No students with score ≥ 8.0 yet.</p>
+              <p className="text-xs text-slate-400 py-4 text-center">
+                No students with score ≥ 8.0 yet.
+              </p>
             )}
           </div>
         </div>

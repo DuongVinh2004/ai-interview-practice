@@ -32,10 +32,7 @@ describe('UsageMeterService (F014)', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        UsageMeterService,
-        { provide: PrismaService, useValue: prismaMock },
-      ],
+      providers: [UsageMeterService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
 
     service = module.get<UsageMeterService>(UsageMeterService);

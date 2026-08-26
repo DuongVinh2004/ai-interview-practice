@@ -32,10 +32,7 @@ export class FlashcardController {
   }
 
   @Post('decks')
-  async createDeck(
-    @CurrentUser('sub') userId: string,
-    @Body() body: any,
-  ) {
+  async createDeck(@CurrentUser('sub') userId: string, @Body() body: any) {
     const parsed = CreateDeckRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid deck payload');
@@ -57,10 +54,7 @@ export class FlashcardController {
   }
 
   @Delete('decks/:id')
-  async deleteDeck(
-    @CurrentUser('sub') userId: string,
-    @Param('id') deckId: string,
-  ) {
+  async deleteDeck(@CurrentUser('sub') userId: string, @Param('id') deckId: string) {
     return this.flashcardService.deleteDeck(userId, deckId);
   }
 
@@ -71,7 +65,12 @@ export class FlashcardController {
     @Query('page') page = '1',
     @Query('limit') limit = '50',
   ) {
-    return this.flashcardService.getDeckCards(userId, deckId, parseInt(page, 10), parseInt(limit, 10));
+    return this.flashcardService.getDeckCards(
+      userId,
+      deckId,
+      parseInt(page, 10),
+      parseInt(limit, 10),
+    );
   }
 
   @Post('decks/:id/cards')
@@ -88,10 +87,7 @@ export class FlashcardController {
   }
 
   @Get('due')
-  async getDueCards(
-    @CurrentUser('sub') userId: string,
-    @Query('limit') limit = '50',
-  ) {
+  async getDueCards(@CurrentUser('sub') userId: string, @Query('limit') limit = '50') {
     return this.flashcardService.getDueCards(userId, parseInt(limit, 10));
   }
 
@@ -109,13 +105,12 @@ export class FlashcardController {
   }
 
   @Post('auto-generate')
-  async autoGenerate(
-    @CurrentUser('sub') userId: string,
-    @Body() body: any,
-  ) {
+  async autoGenerate(@CurrentUser('sub') userId: string, @Body() body: any) {
     const parsed = AutoGenerateFlashcardsRequestSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid auto-generate payload');
+      throw new BadRequestException(
+        parsed.error.errors[0]?.message || 'Invalid auto-generate payload',
+      );
     }
     return this.flashcardService.autoGenerateFlashcards(userId, parsed.data);
   }

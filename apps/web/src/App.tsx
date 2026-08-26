@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { queryClient } from './lib/query-client';
 import { AppLayout } from './components/layout/AppLayout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { LoginPage } from './features/auth/LoginPage';
@@ -31,17 +32,11 @@ import { MentorLiveRoom } from './features/mentor/MentorLiveRoom';
 import { TenantDashboardPage } from './features/b2b/TenantDashboardPage';
 import { CohortListPage } from './features/b2b/CohortListPage';
 import { CohortDetailPage } from './features/b2b/CohortDetailPage';
+import { BadgesShowcasePage } from './features/gamification/BadgesShowcasePage';
+import { LeaderboardPage } from './features/gamification/LeaderboardPage';
+import { NotFoundPage } from './features/error/NotFoundPage';
+import { ForbiddenPage } from './features/error/ForbiddenPage';
 import { UserRole } from '@ai-interview/contracts';
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
-      staleTime: 5000,
-    },
-  },
-});
 
 export function App() {
   return (
@@ -58,6 +53,7 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/403" element={<ForbiddenPage />} />
 
             {/* Protected Candidate Routes */}
             <Route element={<ProtectedRoute />}>
@@ -69,6 +65,8 @@ export function App() {
               <Route path="/skills/benchmark" element={<SkillGraphPage />} />
               <Route path="/skills/progress" element={<SkillGraphPage />} />
               <Route path="/readiness" element={<ReadinessPage />} />
+              <Route path="/gamification/badges" element={<BadgesShowcasePage />} />
+              <Route path="/gamification/leaderboard" element={<LeaderboardPage />} />
               <Route path="/flashcards" element={<FlashcardDecksPage />} />
               <Route path="/flashcards/review" element={<FlashcardReviewPage />} />
               <Route path="/history" element={<HistoryPage />} />
@@ -93,8 +91,8 @@ export function App() {
               <Route path="/admin/ai-eval" element={<AdminAiEvalPage />} />
             </Route>
 
-            {/* Fallback */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* 404 Not Found Catch-All */}
+            <Route path="*" element={<NotFoundPage />} />
           </Route>
         </Routes>
       </BrowserRouter>

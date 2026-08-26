@@ -18,10 +18,7 @@ import {
   ErrorCode,
 } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
-import {
-  toOpenAiResponseFormat,
-  AI_SCHEMAS,
-} from '../utils/zod-to-json-schema.util';
+import { toOpenAiResponseFormat, AI_SCHEMAS } from '../utils/zod-to-json-schema.util';
 
 @Injectable()
 export class OpenAiProvider implements AiProvider {
@@ -197,7 +194,10 @@ export class OpenAiProvider implements AiProvider {
           { role: 'system', content: systemPrompt },
           { role: 'user', content: promptText },
         ],
-        response_format: toOpenAiResponseFormat(AI_SCHEMAS.learningPath.zod, 'GeneratedLearningPath'),
+        response_format: toOpenAiResponseFormat(
+          AI_SCHEMAS.learningPath.zod,
+          'GeneratedLearningPath',
+        ),
         temperature: 0.5,
       });
 

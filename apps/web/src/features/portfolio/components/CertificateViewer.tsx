@@ -15,8 +15,7 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
   onShare,
 }) => {
   const verifyUrl =
-    certificate.verificationUrl ||
-    `${window.location.origin}/verify/${certificate.id}`;
+    certificate.verificationUrl || `${window.location.origin}/verify/${certificate.id}`;
 
   return (
     <div className="flex flex-col items-center">
@@ -41,9 +40,7 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
           <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
             CERTIFICATE OF EXCELLENCE
           </h1>
-          <p className="text-sm text-slate-500 mt-1 italic">
-            This is to officially certify that
-          </p>
+          <p className="text-sm text-slate-500 mt-1 italic">This is to officially certify that</p>
         </div>
 
         {/* Recipient Name */}
@@ -58,12 +55,15 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
           <p>
             has demonstrated exceptional technical competence and interview proficiency in{' '}
             <strong className="text-slate-900 font-bold">
-              {certificate.competencyArea ? certificate.competencyArea.replace(/_/g, ' ') : 'Full-Stack Architecture'}
+              {certificate.competencyArea
+                ? certificate.competencyArea.replace(/_/g, ' ')
+                : 'Full-Stack Architecture'}
             </strong>{' '}
             with an evaluated mastery score of{' '}
             <strong className="text-emerald-700 font-bold text-base">
               {certificate.score.toFixed(1)} / 10.0
-            </strong>.
+            </strong>
+            .
           </p>
         </div>
 
@@ -107,9 +107,7 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
               Issuing Authority
             </p>
-            <p className="text-xs font-bold text-slate-800 mt-0.5">
-              AI Interview Practice CA
-            </p>
+            <p className="text-xs font-bold text-slate-800 mt-0.5">AI Interview Practice CA</p>
             <p className="text-[10px] text-emerald-600 font-mono mt-1 break-all">
               HMAC-SHA256: {certificate.signatureHash.slice(0, 10)}...
             </p>

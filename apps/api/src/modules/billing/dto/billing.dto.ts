@@ -1,5 +1,40 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsIn, IsUrl, IsOptional } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsIn,
+  IsOptional,
+  Validate,
+  ValidatorConstraint,
+  ValidatorConstraintInterface,
+} from 'class-validator';
+
+@ValidatorConstraint({ name: 'isAllowedRedirectUrl', async: false })
+export class IsAllowedRedirectUrlConstraint implements ValidatorConstraintInterface {
+  validate(url: string) {
+    if (!url) return true;
+    try {
+      const parsed = new URL(url);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return false;
+      }
+      const allowedOrigins = (
+        process.env.ALLOWED_REDIRECT_ORIGINS ||
+        'https://ai-interview.dev,http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173'
+      )
+        .split(',')
+        .map(o => o.trim());
+
+      return allowedOrigins.includes(parsed.origin);
+    } catch {
+      return false;
+    }
+  }
+
+  defaultMessage() {
+    return 'Redirect URL origin must be in the allowed origins allowlist';
+  }
+}
 
 export class CreateCheckoutDto {
   @ApiProperty({ example: 'pro' })
@@ -13,12 +48,12 @@ export class CreateCheckoutDto {
   billingCycle?: 'monthly' | 'yearly';
 
   @ApiPropertyOptional({ example: 'https://ai-interview.dev/billing/success' })
-  @IsUrl({ require_tld: false })
+  @Validate(IsAllowedRedirectUrlConstraint)
   @IsOptional()
   successUrl?: string;
 
   @ApiPropertyOptional({ example: 'https://ai-interview.dev/billing' })
-  @IsUrl({ require_tld: false })
+  @Validate(IsAllowedRedirectUrlConstraint)
   @IsOptional()
   cancelUrl?: string;
 }

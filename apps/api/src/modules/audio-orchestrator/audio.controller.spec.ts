@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AudioController } from './audio.controller';
 import { AudioOrchestratorService } from './audio-orchestrator.service';
+import { UsageMeterService } from '../billing/usage-meter.service';
 import { AudioVoice } from '@ai-interview/contracts';
 
 describe('AudioController', () => {
@@ -28,6 +29,10 @@ describe('AudioController', () => {
       controllers: [AudioController],
       providers: [
         { provide: AudioOrchestratorService, useValue: mockAudioService },
+        {
+          provide: UsageMeterService,
+          useValue: { checkQuota: jest.fn().mockResolvedValue({ allowed: true }) },
+        },
       ],
     }).compile();
 
@@ -49,11 +54,12 @@ describe('AudioController', () => {
         path: '',
       };
 
-      const result = await controller.transcribeAudio(mockFile, 'en', 'session-1');
+      const result = await controller.transcribeAudio('user-1', mockFile, 'en', 'session-1');
 
       expect(result).toBeDefined();
       expect(result.text).toBe('This is a test answer about Node.js event loops.');
       expect(mockAudioService.transcribeAudio).toHaveBeenCalledWith(
+        'user-1',
         mockFile.buffer,
         'audio/webm',
         'answer.webm',
@@ -76,13 +82,13 @@ describe('AudioController', () => {
         path: '',
       };
 
-      await expect(controller.transcribeAudio(invalidFile)).rejects.toThrow(
+      await expect(controller.transcribeAudio('user-1', invalidFile)).rejects.toThrow(
         /Unsupported audio format/,
       );
     });
 
     it('rejects missing file with 400 DomainException', async () => {
-      await expect(controller.transcribeAudio(undefined)).rejects.toThrow(
+      await expect(controller.transcribeAudio('user-1', undefined)).rejects.toThrow(
         /No audio file uploaded/,
       );
     });
@@ -90,7 +96,7 @@ describe('AudioController', () => {
 
   describe('synthesizeSpeech', () => {
     it('synthesizes text to base64 audio response', async () => {
-      const result = await controller.synthesizeSpeech({
+      const result = await controller.synthesizeSpeech('user-1', {
         text: 'What is database sharding?',
         voice: AudioVoice.ALLOY,
         speed: 1.0,
@@ -100,6 +106,7 @@ describe('AudioController', () => {
       expect(result.audioBase64).toBeDefined();
       expect(result.mimeType).toBe('audio/wav');
       expect(mockAudioService.synthesizeSpeech).toHaveBeenCalledWith(
+        'user-1',
         'What is database sharding?',
         AudioVoice.ALLOY,
         1.0,

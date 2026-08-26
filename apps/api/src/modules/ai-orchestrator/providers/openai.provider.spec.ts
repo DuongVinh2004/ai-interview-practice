@@ -29,7 +29,13 @@ describe('OpenAiProvider Spec', () => {
 
     await expect(
       unconfiguredProvider.generateQuestion(
-        { role: 'Backend', level: 'Senior', technologies: ['Node.js'], turnNumber: 1, difficulty: 1 },
+        {
+          role: 'Backend',
+          level: 'Senior',
+          technologies: ['Node.js'],
+          turnNumber: 1,
+          difficulty: 1,
+        },
         'System prompt',
       ),
     ).rejects.toThrow('OpenAI API key is not configured.');

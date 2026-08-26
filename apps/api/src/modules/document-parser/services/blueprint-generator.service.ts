@@ -52,15 +52,19 @@ export class BlueprintGeneratorService {
     const topics: BlueprintTopic[] = [];
 
     // 1. First topic: Gap Skills & Advanced Core
-    const gapFocusList = gapSkills.length > 0 ? gapSkills.slice(0, 3) : ['High-throughput design', 'Resilience'];
+    const gapFocusList =
+      gapSkills.length > 0 ? gapSkills.slice(0, 3) : ['High-throughput design', 'Resilience'];
     topics.push({
       topic: `Remediation & Deep Dive: ${gapFocusList.join(', ')}`,
       weight: 40,
       reason: `Address required competencies from JD not explicitly evidenced in candidate resume.`,
       sampleQuestions: gapFocusList.map(
-        gap => `The JD requires extensive hands-on experience with ${gap}. Can you walk us through how you would architect a production subsystem using ${gap}?`
+        gap =>
+          `The JD requires extensive hands-on experience with ${gap}. Can you walk us through how you would architect a production subsystem using ${gap}?`,
       ),
-      cvReference: profile.experience?.[0]?.company ? `Comparison against ${profile.experience[0].company} tech stack` : 'General JD requirement',
+      cvReference: profile.experience?.[0]?.company
+        ? `Comparison against ${profile.experience[0].company} tech stack`
+        : 'General JD requirement',
     });
 
     // 2. Second topic: CV Project Verification & Scaling
@@ -97,11 +101,13 @@ export class BlueprintGeneratorService {
     // Generate actionable recommendations
     const recommendations: string[] = [];
     if (gapSkills.length > 0) {
-      recommendations.push(`Review core principles and practical deployment scenarios for: ${gapSkills.join(', ')}.`);
+      recommendations.push(
+        `Review core principles and practical deployment scenarios for: ${gapSkills.join(', ')}.`,
+      );
     }
     recommendations.push(
       `Prepare concrete metrics and architecture diagrams for project "${topProject.name}".`,
-      `Be ready to discuss distributed caching, database indexing, and fault isolation in depth.`
+      `Be ready to discuss distributed caching, database indexing, and fault isolation in depth.`,
     );
 
     return {

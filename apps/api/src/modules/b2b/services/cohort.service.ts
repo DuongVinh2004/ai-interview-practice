@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { TenantRole, UserRole, UserStatus } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CohortService {
@@ -30,7 +31,7 @@ export class CohortService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return cohorts.map((c) => ({
+    return cohorts.map(c => ({
       id: c.id,
       tenantId: c.tenantId,
       name: c.name,
@@ -74,7 +75,7 @@ export class CohortService {
       name: cohort.name,
       description: cohort.description,
       isActive: cohort.isActive,
-      members: cohort.members.map((m) => ({
+      members: cohort.members.map(m => ({
         cohortMemberId: m.id,
         tenantMemberId: m.tenantMemberId,
         userId: m.tenantMember.userId,
@@ -100,8 +101,8 @@ export class CohortService {
 
     const lines = csvContent
       .split(/\r?\n/)
-      .map((l) => l.trim())
-      .filter((l) => l.length > 0);
+      .map(l => l.trim())
+      .filter(l => l.length > 0);
 
     if (lines.length === 0) {
       throw new BadRequestException('CSV file is empty');
@@ -116,7 +117,7 @@ export class CohortService {
 
     for (let i = startIndex; i < lines.length; i++) {
       const line = lines[i];
-      const parts = line.split(',').map((p) => p.trim().replace(/^["']|["']$/g, ''));
+      const parts = line.split(',').map(p => p.trim().replace(/^["']|["']$/g, ''));
       const email = parts[0]?.toLowerCase();
       const fullName = parts[1] || '';
       const roleStr = parts[2]?.toUpperCase();
@@ -137,10 +138,9 @@ export class CohortService {
         });
 
         if (!user) {
-          const tempPasswordHash = crypto
-            .createHash('sha256')
-            .update(`temp_${Date.now()}_${email}`)
-            .digest('hex');
+          // Generate cryptographically secure random password with bcrypt (F-015)
+          const tempPassword = crypto.randomBytes(32).toString('base64url');
+          const tempPasswordHash = await bcrypt.hash(tempPassword, 10);
 
           user = await this.prisma.user.create({
             data: {

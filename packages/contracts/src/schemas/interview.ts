@@ -18,7 +18,6 @@ export const CreateInterviewDtoSchema = z.object({
   blueprintId: z.string().uuid().optional(),
 });
 
-
 export type CreateInterviewDto = z.infer<typeof CreateInterviewDtoSchema>;
 
 export const SubmitAnswerDtoSchema = z.object({
@@ -123,4 +122,3 @@ export const ReEvaluateTurnDtoSchema = z.object({
 });
 
 export type ReEvaluateTurnDto = z.infer<typeof ReEvaluateTurnDtoSchema>;
-

@@ -28,8 +28,10 @@ async function runGameDaySimulation() {
   console.log('🧪 Running Scenario 1: OpenAI & Gemini Outage Simulation...');
   const scenario1: SimulationResult = {
     scenario: 'Simultaneous Outage of Primary and Secondary AI Providers (OpenAI & Gemini)',
-    expectedBehavior: 'Circuit breaker trips, request gracefully falls back to Anthropic/Mock, answer persisted with zero loss, evaluation marked needsReview: true',
-    observedResult: 'Fallback cascade succeeded in 480ms. Answer saved durably. Human review flag attached.',
+    expectedBehavior:
+      'Circuit breaker trips, request gracefully falls back to Anthropic/Mock, answer persisted with zero loss, evaluation marked needsReview: true',
+    observedResult:
+      'Fallback cascade succeeded in 480ms. Answer saved durably. Human review flag attached.',
     verdict: 'PASS',
     details: {
       triedProviders: ['gemini (503)', 'openai (500)', 'mock (200 OK)'],
@@ -45,8 +47,10 @@ async function runGameDaySimulation() {
   console.log('🧪 Running Scenario 2: Circuit Breaker Flapping & Half-Open Recovery...');
   const scenario2: SimulationResult = {
     scenario: 'Consecutive Error Threshold Exceeded (5 failures in 60s window)',
-    expectedBehavior: 'Circuit breaker transitions to OPEN, subsequent calls fast-fail to next provider without network latency, recovers to HALF_OPEN after cooldown',
-    observedResult: 'Circuit tripped to OPEN at attempt 5. Cooldown probe succeeded after 30s, transitioning state OPEN -> HALF_OPEN -> CLOSED.',
+    expectedBehavior:
+      'Circuit breaker transitions to OPEN, subsequent calls fast-fail to next provider without network latency, recovers to HALF_OPEN after cooldown',
+    observedResult:
+      'Circuit tripped to OPEN at attempt 5. Cooldown probe succeeded after 30s, transitioning state OPEN -> HALF_OPEN -> CLOSED.',
     verdict: 'PASS',
     details: {
       failureThreshold: 5,
@@ -62,8 +66,10 @@ async function runGameDaySimulation() {
   console.log('🧪 Running Scenario 3: Daily Spend Limit Guard ($50 Budget Exhaustion)...');
   const scenario3: SimulationResult = {
     scenario: 'AI Token Spend exceeds daily $50 USD safety limit',
-    expectedBehavior: 'Router halts calls to paid APIs and routes all traffic to zero-cost deterministic mock, preventing cloud budget overrun',
-    observedResult: 'Current daily cost $51.20 detected. Paid providers bypassed immediately. Budget alert dispatched.',
+    expectedBehavior:
+      'Router halts calls to paid APIs and routes all traffic to zero-cost deterministic mock, preventing cloud budget overrun',
+    observedResult:
+      'Current daily cost $51.20 detected. Paid providers bypassed immediately. Budget alert dispatched.',
     verdict: 'PASS',
     details: {
       budgetCapUsd: 50.0,
@@ -78,7 +84,9 @@ async function runGameDaySimulation() {
   console.log('==============================================================================');
   console.log('📊 [Game Day Simulation Summary]');
   console.log(`Total Scenarios Executed: ${results.length}`);
-  console.log(`Passed: ${results.filter(r => r.verdict === 'PASS').length} | Failed: ${results.filter(r => r.verdict === 'FAIL').length}`);
+  console.log(
+    `Passed: ${results.filter(r => r.verdict === 'PASS').length} | Failed: ${results.filter(r => r.verdict === 'FAIL').length}`,
+  );
   console.log('Zero Data Loss Verified: YES ✅');
   console.log('Graceful Degradation Verified: YES ✅');
   console.log('==============================================================================');

@@ -1,5 +1,17 @@
 import { AssignmentStatus, SessionMode } from '@ai-interview/contracts';
-import { IsEnum, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, Length, Matches, Max, Min, ValidateNested } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+  Length,
+  Matches,
+  Max,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -34,7 +46,9 @@ export class CreateTenantDto {
   @ApiProperty({ example: 'acme-corp' })
   @IsString()
   @Length(2, 50)
-  @Matches(/^[a-z0-9-]+$/, { message: 'Slug can only contain lowercase letters, numbers, and hyphens' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'Slug can only contain lowercase letters, numbers, and hyphens',
+  })
   slug!: string;
 
   @ApiPropertyOptional({ example: 'acme.com' })
@@ -147,4 +161,3 @@ export class CreateApiKeyDto {
   @IsNotEmpty()
   name!: string;
 }
-

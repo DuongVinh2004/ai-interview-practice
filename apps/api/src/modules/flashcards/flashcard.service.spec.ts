@@ -8,21 +8,29 @@ describe('FlashcardService (F005)', () => {
 
   const mockPrisma = {
     flashcardDeck: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'deck-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'deck-1', ...data })),
       findUnique: jest.fn(),
       findMany: jest.fn(),
       update: jest.fn(),
       delete: jest.fn().mockResolvedValue({ id: 'deck-1' }),
     },
     flashcard: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'card-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'card-1', ...data })),
       findUnique: jest.fn(),
       findMany: jest.fn(),
-      update: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'card-1', ...data })),
+      update: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'card-1', ...data })),
       count: jest.fn().mockResolvedValue(10),
     },
     reviewLog: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'log-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'log-1', ...data })),
       findMany: jest.fn().mockResolvedValue([]),
     },
     userStreak: {
@@ -37,10 +45,7 @@ describe('FlashcardService (F005)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FlashcardService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [FlashcardService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     service = module.get<FlashcardService>(FlashcardService);

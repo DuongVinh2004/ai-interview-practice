@@ -4,10 +4,10 @@
   "questionId": "q_idempotency_001",
   "answerVersion": 1,
   "status": "completed",
-  "rubric": {"id": "rubric_idempotency", "version": "1.0.0"},
+  "rubric": { "id": "rubric_idempotency", "version": "1.0.0" },
   "promptVersion": "answer-eval@1.0.0",
   "schemaVersion": "evaluation@1.0.0",
-  "provider": {"name": "deterministic-mock", "model": "mock-v1"},
+  "provider": { "name": "deterministic-mock", "model": "mock-v1" },
   "criteria": [
     {
       "criterionId": "idempotency_key",

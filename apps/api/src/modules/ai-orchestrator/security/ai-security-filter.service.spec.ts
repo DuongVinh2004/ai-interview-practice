@@ -53,7 +53,8 @@ describe('AiSecurityFilterService Spec', () => {
         role: 'Backend Engineer',
         level: 'Senior',
         question: 'Explain transactions.',
-        answer: 'ACID guarantees atomicity and isolation in PostgreSQL using multi-version concurrency control.',
+        answer:
+          'ACID guarantees atomicity and isolation in PostgreSQL using multi-version concurrency control.',
       });
 
       expect(result.isSafe).toBe(true);
@@ -86,7 +87,9 @@ describe('AiSecurityFilterService Spec', () => {
       );
 
       expect(filtered.evidence).toContain('idempotency key');
-      expect(filtered.evidence).not.toContain('The candidate mentioned using Kafka topic compaction');
+      expect(filtered.evidence).not.toContain(
+        'The candidate mentioned using Kafka topic compaction',
+      );
     });
 
     it('enforces deterministic score formula: technicalAccuracy * 0.4 + depth * 0.3 + clarity * 0.3', () => {

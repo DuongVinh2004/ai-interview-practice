@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { buildSocraticSystemPrompt } from './prompts/socratic-system-prompt';
@@ -8,10 +14,7 @@ import {
   QuestionRetryDto,
   TutorRatingDto,
 } from './dto/tutor.dto';
-import {
-  TutorRole,
-  QuestionRetryResponse,
-} from '@ai-interview/contracts';
+import { TutorRole, QuestionRetryResponse } from '@ai-interview/contracts';
 
 @Injectable()
 export class TutorService {
@@ -83,7 +86,8 @@ export class TutorService {
       const evalData = targetTurn.answer?.evaluation;
       const improvements = (evalData?.improvements as string[]) || [];
 
-      const initialGreeting = `Hi! I am your AI Socratic Tutor for Question #${dto.turnNumber}: "${questionText}". ` +
+      const initialGreeting =
+        `Hi! I am your AI Socratic Tutor for Question #${dto.turnNumber}: "${questionText}". ` +
         (improvements.length > 0
           ? `In your original response, we identified an opportunity to deepen: "${improvements[0]}". How would you approach addressing this aspect?`
           : `What key architectural trade-offs did you consider in your response?`);
@@ -94,7 +98,10 @@ export class TutorService {
           role: TutorRole.AI_TUTOR,
           content: initialGreeting,
           references: [
-            { title: 'Official Documentation & Best Practices', url: 'https://developer.mozilla.org' },
+            {
+              title: 'Official Documentation & Best Practices',
+              url: 'https://developer.mozilla.org',
+            },
           ],
         },
       });
@@ -135,12 +142,7 @@ export class TutorService {
   /**
    * Streams Socratic AI response chunk by chunk over SSE connection.
    */
-  async sendChatMessageStream(
-    userId: string,
-    sessionId: string,
-    dto: AskTutorDto,
-    res: Response,
-  ) {
+  async sendChatMessageStream(userId: string, sessionId: string, dto: AskTutorDto, res: Response) {
     const tutorSession = await this.prisma.tutorSession.findUnique({
       where: { id: sessionId },
       include: {
@@ -176,7 +178,10 @@ export class TutorService {
     res.flushHeaders?.();
 
     // Formulate Socratic tutor response
-    const socraticGuidance = this.generateSocraticResponse(dto.message, tutorSession.messages.length);
+    const socraticGuidance = this.generateSocraticResponse(
+      dto.message,
+      tutorSession.messages.length,
+    );
 
     const tokens = socraticGuidance.split(' ');
     let fullResponse = '';
@@ -190,8 +195,14 @@ export class TutorService {
     }
 
     const docReferences = [
-      { title: 'System Architecture & Best Practices Guide', url: 'https://docs.microsoft.com/azure/architecture/' },
-      { title: 'High Performance & Resilience Patterns', url: 'https://martinfowler.com/architecture/' },
+      {
+        title: 'System Architecture & Best Practices Guide',
+        url: 'https://docs.microsoft.com/azure/architecture/',
+      },
+      {
+        title: 'High Performance & Resilience Patterns',
+        url: 'https://martinfowler.com/architecture/',
+      },
     ];
 
     // Persist AI message in database
@@ -217,7 +228,12 @@ export class TutorService {
   private generateSocraticResponse(userMessage: string, messageIndex: number): string {
     const msg = userMessage.toLowerCase();
 
-    if (msg.includes('đáp án') || msg.includes('answer') || msg.includes('code') || msg.includes('solution')) {
+    if (
+      msg.includes('đáp án') ||
+      msg.includes('answer') ||
+      msg.includes('code') ||
+      msg.includes('solution')
+    ) {
       return `That is an interesting question! Before looking at direct code, let's break down the mechanics: What data structure or pattern would best isolate this responsibility while keeping memory complexity within O(1)?`;
     }
 
@@ -225,7 +241,12 @@ export class TutorService {
       return `Good intuition about caching! However, consider the edge cases: What happens if two concurrent requests attempt to update the same cache key simultaneously (Cache Stampede / Race Condition)? How would you guard against that?`;
     }
 
-    if (msg.includes('database') || msg.includes('sql') || msg.includes('index') || msg.includes('query')) {
+    if (
+      msg.includes('database') ||
+      msg.includes('sql') ||
+      msg.includes('index') ||
+      msg.includes('query')
+    ) {
       return `Spot on. When indexing these columns, what trade-off occurs between read acceleration vs write/insert throughput? How would you verify the execution plan using EXPLAIN ANALYZE?`;
     }
 
@@ -262,15 +283,23 @@ export class TutorService {
 
     const turn = session.turns[0];
     if (!turn || !turn.answer || !turn.answer.evaluation) {
-      throw new BadRequestException('Cannot retry a question that has not been originally evaluated.');
+      throw new BadRequestException(
+        'Cannot retry a question that has not been originally evaluated.',
+      );
     }
 
     const originalAnswer = turn.answer.content;
     const originalScore = turn.answer.evaluation.score;
 
     // Fast AI retry scoring evaluation (lightweight rubric)
-    const retryLengthBonus = Math.min(1.5, (dto.retryAnswer.length - originalAnswer.length) > 50 ? 1.5 : 0.5);
-    const retryScore = Math.min(10.0, Number((Math.max(originalScore + 1.0, 7.5 + retryLengthBonus)).toFixed(1)));
+    const retryLengthBonus = Math.min(
+      1.5,
+      dto.retryAnswer.length - originalAnswer.length > 50 ? 1.5 : 0.5,
+    );
+    const retryScore = Math.min(
+      10.0,
+      Number(Math.max(originalScore + 1.0, 7.5 + retryLengthBonus).toFixed(1)),
+    );
     const improvement = Number((retryScore - originalScore).toFixed(1));
 
     const feedback = {
@@ -341,7 +370,9 @@ export class TutorService {
       throw new ForbiddenException('Access denied.');
     }
 
-    this.logger.log(`Tutor session ${sessionId} rated [${dto.rating}] by user ${userId}. Feedback: ${dto.feedback || 'None'}`);
+    this.logger.log(
+      `Tutor session ${sessionId} rated [${dto.rating}] by user ${userId}. Feedback: ${dto.feedback || 'None'}`,
+    );
     return { success: true, rating: dto.rating };
   }
 }

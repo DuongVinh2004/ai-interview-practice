@@ -75,10 +75,15 @@ pnpm db:migrate
 pnpm db:seed
 ```
 
-> **Demo Accounts Seeded**:
+> **Demo Accounts**: Set environment variables before seeding:
 >
-> - **Candidate**: `candidate@example.com` / `Candidate@123456`
-> - **Admin**: `admin@example.com` / `Admin@123456`
+> ```bash
+> export DEMO_ADMIN_EMAIL=admin@yourorg.com
+> export DEMO_ADMIN_PASSWORD=$(openssl rand -base64 24)
+> export DEMO_CANDIDATE_EMAIL=candidate@yourorg.com
+> export DEMO_CANDIDATE_PASSWORD=$(openssl rand -base64 24)
+> pnpm db:seed
+> ```
 
 ### 5. Start Development Servers
 

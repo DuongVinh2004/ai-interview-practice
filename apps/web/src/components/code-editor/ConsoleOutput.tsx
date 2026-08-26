@@ -29,7 +29,10 @@ export const ConsoleOutput: React.FC<ConsoleOutputProps> = ({ result, isLoading 
   const isSuccess = result.status === SubmissionStatus.COMPLETED && result.allPassed;
 
   return (
-    <div className="flex flex-col bg-slate-900 border border-slate-700 rounded-lg overflow-hidden font-mono text-xs" data-testid="console-output">
+    <div
+      className="flex flex-col bg-slate-900 border border-slate-700 rounded-lg overflow-hidden font-mono text-xs"
+      data-testid="console-output"
+    >
       {/* Status Bar */}
       <div className="flex items-center justify-between px-3 py-1.5 bg-slate-800 border-b border-slate-700">
         <div className="flex items-center space-x-2">

@@ -53,7 +53,9 @@ export function TimeEstimateCard({
             {estimatedTargetDate && (
               <div className="flex items-center gap-1.5 text-xs text-slate-500">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                <span>Estimated Target Date: {new Date(estimatedTargetDate).toLocaleDateString()}</span>
+                <span>
+                  Estimated Target Date: {new Date(estimatedTargetDate).toLocaleDateString()}
+                </span>
               </div>
             )}
           </div>

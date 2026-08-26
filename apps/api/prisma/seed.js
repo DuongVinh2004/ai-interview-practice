@@ -57,59 +57,72 @@ const bcrypt = __importStar(require('bcrypt'));
 const prisma = new client_1.PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
-  const adminEmail = process.env.DEMO_ADMIN_EMAIL || 'admin@example.com';
-  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || 'Admin@123456';
-  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL || 'candidate@example.com';
-  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD || 'Candidate@123456';
+  const adminEmail = process.env.DEMO_ADMIN_EMAIL;
+  const adminPassword = process.env.DEMO_ADMIN_PASSWORD;
+  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL;
+  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD;
   const passwordSalt = 10;
-  const adminPasswordHash = await bcrypt.hash(adminPassword, passwordSalt);
-  const candidatePasswordHash = await bcrypt.hash(candidatePassword, passwordSalt);
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash: adminPasswordHash,
-      role: client_1.UserRole.ADMIN,
-      status: client_1.UserStatus.ACTIVE,
-    },
-    create: {
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      role: client_1.UserRole.ADMIN,
-      status: client_1.UserStatus.ACTIVE,
-      profile: {
-        create: {
-          fullName: 'System Administrator',
-          targetRole: 'Administrator',
-          targetLevel: 'Staff',
-          bio: 'Demo administrator account',
+
+  let admin = null;
+  if (adminEmail && adminPassword) {
+    const adminPasswordHash = await bcrypt.hash(adminPassword, passwordSalt);
+    admin = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {
+        passwordHash: adminPasswordHash,
+        role: client_1.UserRole.ADMIN,
+        status: client_1.UserStatus.ACTIVE,
+      },
+      create: {
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        role: client_1.UserRole.ADMIN,
+        status: client_1.UserStatus.ACTIVE,
+        profile: {
+          create: {
+            fullName: 'System Administrator',
+            targetRole: 'Administrator',
+            targetLevel: 'Staff',
+            bio: 'Demo administrator account',
+          },
         },
       },
-    },
-  });
-  console.log(`✅ Admin user seeded: ${admin.email}`);
-  const candidate = await prisma.user.upsert({
-    where: { email: candidateEmail },
-    update: {
-      passwordHash: candidatePasswordHash,
-      role: client_1.UserRole.CANDIDATE,
-      status: client_1.UserStatus.ACTIVE,
-    },
-    create: {
-      email: candidateEmail,
-      passwordHash: candidatePasswordHash,
-      role: client_1.UserRole.CANDIDATE,
-      status: client_1.UserStatus.ACTIVE,
-      profile: {
-        create: {
-          fullName: 'Demo Candidate',
-          targetRole: 'Frontend Engineer',
-          targetLevel: 'Mid-Level',
-          bio: 'Passionate developer practicing for technical interviews.',
+    });
+    console.log(`✅ Admin user seeded: ${admin.email}`);
+  } else {
+    console.warn('⚠️  DEMO_ADMIN_EMAIL and DEMO_ADMIN_PASSWORD not set. Skipping admin seed.');
+  }
+
+  if (candidateEmail && candidatePassword) {
+    const candidatePasswordHash = await bcrypt.hash(candidatePassword, passwordSalt);
+    const candidate = await prisma.user.upsert({
+      where: { email: candidateEmail },
+      update: {
+        passwordHash: candidatePasswordHash,
+        role: client_1.UserRole.CANDIDATE,
+        status: client_1.UserStatus.ACTIVE,
+      },
+      create: {
+        email: candidateEmail,
+        passwordHash: candidatePasswordHash,
+        role: client_1.UserRole.CANDIDATE,
+        status: client_1.UserStatus.ACTIVE,
+        profile: {
+          create: {
+            fullName: 'Demo Candidate',
+            targetRole: 'Frontend Engineer',
+            targetLevel: 'Mid-Level',
+            bio: 'Passionate developer practicing for technical interviews.',
+          },
         },
       },
-    },
-  });
-  console.log(`✅ Candidate user seeded: ${candidate.email}`);
+    });
+    console.log(`✅ Candidate user seeded: ${candidate.email}`);
+  } else {
+    console.warn(
+      '⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.',
+    );
+  }
   const jobRoles = [
     {
       slug: 'frontend-engineer',

@@ -98,7 +98,10 @@ interface ComponentPaletteProps {
 
 export function ComponentPalette({ onAddComponent }: ComponentPaletteProps) {
   return (
-    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2" data-testid="component-palette">
+    <div
+      className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2"
+      data-testid="component-palette"
+    >
       <div className="flex items-center justify-between px-1">
         <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
           System Components

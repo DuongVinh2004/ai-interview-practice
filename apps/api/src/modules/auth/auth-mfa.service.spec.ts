@@ -35,7 +35,9 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
       auditLog: {
         create: jest.fn(),
       },
-      $transaction: jest.fn(actions => Promise.all(actions)),
+      $transaction: jest.fn(actions =>
+        typeof actions === 'function' ? actions(prisma) : Promise.all(actions),
+      ),
     };
 
     jwtService = {
@@ -86,6 +88,19 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         expect(c).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{2}$/);
       });
     });
+
+    it('round-trips encrypted secrets and rejects a tampered authentication tag', () => {
+      const secret = TotpUtil.generateSecret(20);
+      const encrypted = TotpUtil.encryptSecret(secret, 'unit-test-encryption-key');
+
+      expect(TotpUtil.decryptSecret(encrypted, 'unit-test-encryption-key')).toBe(secret);
+
+      const [iv, tag, ciphertext] = encrypted.split(':');
+      const tamperedTag = `${tag.slice(0, -2)}${tag.slice(-2) === '00' ? '01' : '00'}`;
+      expect(
+        TotpUtil.decryptSecret(`${iv}:${tamperedTag}:${ciphertext}`, 'unit-test-encryption-key'),
+      ).not.toBe(secret);
+    });
   });
 
   describe('setupMfa', () => {
@@ -120,17 +135,37 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
       const secret = TotpUtil.generateSecret(20);
       const validToken = TotpUtil.generateToken(secret);
 
-      prisma.user.findUnique.mockResolvedValue({
+      const user = {
         id: 'user-1',
         email: 'candidate@example.com',
         mfaSecret: secret,
         mfaEnabled: false,
+        tokenVersion: 0,
+        role: UserRole.CANDIDATE,
+        status: UserStatus.ACTIVE,
+        createdAt: new Date('2026-08-01T00:00:00Z'),
+        profile: { id: 'profile-1', fullName: 'Candidate' },
+      };
+      prisma.user.findUnique.mockResolvedValue(user);
+      prisma.user.update.mockResolvedValue({
+        ...user,
+        mfaEnabled: true,
+        tokenVersion: 1,
       });
+      prisma.refreshToken.create.mockResolvedValue({ id: 'replacement-refresh-token' });
 
       const res = await service.enableMfa('user-1', validToken);
       expect(res.success).toBe(true);
       expect(res.mfaEnabled).toBe(true);
       expect(res.recoveryCodes.length).toBe(8);
+      expect(res.accessToken).toBe('mock-jwt-token');
+      expect(res.refreshToken).toBeDefined();
+      expect(res.user?.mfaEnabled).toBe(true);
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ tokenVersion: 1, mfaVerified: true }),
+        expect.anything(),
+      );
+      expect(prisma.refreshToken.create).toHaveBeenCalled();
       expect(prisma.$transaction).toHaveBeenCalled();
     });
 
@@ -218,9 +253,7 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         mfaEnabled: true,
         createdAt: new Date('2026-08-01T00:00:00Z'),
         profile: { fullName: 'Admin' },
-        recoveryCodes: [
-          { id: 'rc-1', codeHash, isUsed: false },
-        ],
+        recoveryCodes: [{ id: 'rc-1', codeHash, isUsed: false }],
       });
 
       const res = await service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode);
@@ -250,16 +283,14 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         mfaEnabled: true,
         createdAt: new Date('2026-08-01T00:00:00Z'),
         profile: { fullName: 'Admin' },
-        recoveryCodes: [
-          { id: 'rc-1', codeHash, isUsed: false },
-        ],
+        recoveryCodes: [{ id: 'rc-1', codeHash, isUsed: false }],
       });
 
       prisma.recoveryCode.updateMany.mockResolvedValueOnce({ count: 0 });
 
-      await expect(service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode)).rejects.toThrow(
-        'Invalid or already used recovery code',
-      );
+      await expect(
+        service.verifyRecoveryCodeLogin('mock-session-token', recoveryCode),
+      ).rejects.toThrow('Invalid or already used recovery code');
     });
   });
 

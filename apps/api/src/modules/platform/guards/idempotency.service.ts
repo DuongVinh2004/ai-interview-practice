@@ -105,29 +105,29 @@ export class IdempotencyService {
     return { isCached: false };
   }
 
-  async completeKey(
-    key: string,
-    responseStatus: number,
-    responseBody: any,
-  ) {
+  async completeKey(key: string, responseStatus: number, responseBody: any) {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    return this.prisma.idempotencyRecord.update({
-      where: { key },
-      data: {
-        status: 'COMPLETED',
-        responseStatus,
-        responseBody,
-        expiresAt,
-      },
-    }).catch(err => {
-      this.logger.warn(`Could not mark idempotency key ${key} completed: ${err.message}`);
-    });
+    return this.prisma.idempotencyRecord
+      .update({
+        where: { key },
+        data: {
+          status: 'COMPLETED',
+          responseStatus,
+          responseBody,
+          expiresAt,
+        },
+      })
+      .catch(err => {
+        this.logger.warn(`Could not mark idempotency key ${key} completed: ${err.message}`);
+      });
   }
 
   async releaseKey(key: string) {
-    return this.prisma.idempotencyRecord.deleteMany({
-      where: { key, status: 'IN_PROGRESS' },
-    }).catch(() => null);
+    return this.prisma.idempotencyRecord
+      .deleteMany({
+        where: { key, status: 'IN_PROGRESS' },
+      })
+      .catch(() => null);
   }
 
   // Backwards compatibility wrappers

@@ -18,23 +18,29 @@ flowchart LR
 ```
 
 ### Bước 1: Đọc Feature Spec
+
 ```
 docs/features/F0XX-FEATURE-NAME.md
 ```
+
 Đọc toàn bộ 12 sections. Chú ý đặc biệt:
+
 - **Section 2** (Functional Requirements): Danh sách yêu cầu với ID codes
 - **Section 4** (Architecture): Mermaid diagrams cho flow chính
 - **Section 5** (Database Schema): Prisma models cần thêm
 - **Section 6** (API Specification): Endpoints và payloads chính xác
 
 ### Bước 2: Kiểm tra Prerequisites
+
 Xem **Section 12 → Dependencies** của feature spec. Ví dụ:
+
 - F009 (Readiness Score) **yêu cầu** F008 (Skill Graph) phải hoàn thành trước.
 - F010 (Portfolio) yêu cầu F008 + F009.
 
 Xem dependency graph trong [FEATURE-ROADMAP-INDEX.md](FEATURE-ROADMAP-INDEX.md).
 
 ### Bước 3: Database Migration
+
 ```bash
 # 1. Thêm models vào Prisma schema (từ Section 5 của feature spec)
 # File: apps/api/prisma/schema.prisma
@@ -48,6 +54,7 @@ pnpm db:seed
 ```
 
 ### Bước 4: Backend Module
+
 ```
 apps/api/src/modules/{feature-name}/
 ├── {feature-name}.module.ts        # NestJS module
@@ -59,6 +66,7 @@ apps/api/src/modules/{feature-name}/
 ```
 
 **Conventions hiện có cần tuân theo:**
+
 - Import Prisma qua `PrismaService` (từ `platform` module)
 - Sử dụng `AiOrchestratorService` cho mọi AI calls (không import SDK trực tiếp)
 - Queue jobs qua BullMQ `@InjectQueue` pattern
@@ -66,6 +74,7 @@ apps/api/src/modules/{feature-name}/
 - Error responses theo `docs/api-conventions.md` (envelope format)
 
 ### Bước 5: API Endpoints
+
 ```typescript
 // Thêm contracts vào packages/contracts/src/
 // File: packages/contracts/src/{feature}/schemas.ts
@@ -75,6 +84,7 @@ apps/api/src/modules/{feature-name}/
 ```
 
 ### Bước 6: Frontend Components
+
 ```
 apps/web/src/
 ├── features/{feature-name}/
@@ -86,6 +96,7 @@ apps/web/src/
 ```
 
 **Frontend conventions:**
+
 - API calls qua TanStack Query (`useQuery`, `useMutation`)
 - Forms qua React Hook Form + Zod validation
 - State management: Zustand (minimal) cho client-only state
@@ -93,6 +104,7 @@ apps/web/src/
 - Styling: Tailwind CSS utility classes
 
 ### Bước 7: Tests
+
 ```bash
 # Unit tests
 pnpm test
@@ -108,6 +120,7 @@ pnpm --filter web test:e2e
 ```
 
 ### Bước 8: Feature Flag & Verify
+
 ```typescript
 // Thêm feature flag trong config
 // apps/api/src/config/features.ts
@@ -120,47 +133,47 @@ FEATURE_{FEATURE_NAME}: process.env.FEATURE_{FEATURE_NAME} === 'true'
 
 ### Backend Modules (có thể inject vào feature mới)
 
-| Module | Service chính | Chức năng |
-|---|---|---|
-| `auth` | `AuthService` | Login, register, JWT, MFA |
-| `profile` | `ProfileService` | User profile CRUD, GDPR export |
-| `taxonomy` | `TaxonomyService` | Job roles, levels, technologies |
-| `interview` | `InterviewService` | Session lifecycle, turns, answers |
-| `ai-orchestrator` | `AiOrchestratorService` | AI calls (question, evaluation, learning path) |
-| `evaluation` | `EvaluationProcessor` | BullMQ worker for scoring |
-| `learning-path` | `LearningPathService` | Learning path CRUD |
-| `history-report` | `HistoryService` | Session history, results |
-| `admin` | `AdminService` | User mgmt, AI runs, prompts |
-| `platform` | `PrismaService`, `MetricsService` | DB client, telemetry, logging |
+| Module            | Service chính                     | Chức năng                                      |
+| ----------------- | --------------------------------- | ---------------------------------------------- |
+| `auth`            | `AuthService`                     | Login, register, JWT, MFA                      |
+| `profile`         | `ProfileService`                  | User profile CRUD, GDPR export                 |
+| `taxonomy`        | `TaxonomyService`                 | Job roles, levels, technologies                |
+| `interview`       | `InterviewService`                | Session lifecycle, turns, answers              |
+| `ai-orchestrator` | `AiOrchestratorService`           | AI calls (question, evaluation, learning path) |
+| `evaluation`      | `EvaluationProcessor`             | BullMQ worker for scoring                      |
+| `learning-path`   | `LearningPathService`             | Learning path CRUD                             |
+| `history-report`  | `HistoryService`                  | Session history, results                       |
+| `admin`           | `AdminService`                    | User mgmt, AI runs, prompts                    |
+| `platform`        | `PrismaService`, `MetricsService` | DB client, telemetry, logging                  |
 
 ### Shared Contracts (`packages/contracts/src/`)
 
-| Contract | Nội dung |
-|---|---|
-| `auth/` | Auth DTOs, login/register schemas |
-| `taxonomy/` | Role, level, technology schemas |
-| `interview/` | Session, turn, answer schemas, enums (`SessionState`, `SessionMode`) |
-| `ai/` | AI request/response schemas |
-| `evaluation/` | Evaluation schema, rubric types |
-| `learning-path/` | Learning path item schema |
-| `admin/` | Admin action DTOs |
+| Contract         | Nội dung                                                             |
+| ---------------- | -------------------------------------------------------------------- |
+| `auth/`          | Auth DTOs, login/register schemas                                    |
+| `taxonomy/`      | Role, level, technology schemas                                      |
+| `interview/`     | Session, turn, answer schemas, enums (`SessionState`, `SessionMode`) |
+| `ai/`            | AI request/response schemas                                          |
+| `evaluation/`    | Evaluation schema, rubric types                                      |
+| `learning-path/` | Learning path item schema                                            |
+| `admin/`         | Admin action DTOs                                                    |
 
 ### Key Enums (Prisma)
 
-| Enum | Values |
-|---|---|
-| `UserRole` | `CANDIDATE`, `ADMIN` |
-| `SessionState` | `CREATED`, `ACTIVE`, `EVALUATING`, `COMPLETED`, `CANCELLED`, `FAILED` |
-| `SessionMode` | `STANDARD`, `FOCUSED_REMEDIATION`, `QUICK_PRACTICE` |
+| Enum             | Values                                                                                                   |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `UserRole`       | `CANDIDATE`, `ADMIN`                                                                                     |
+| `SessionState`   | `CREATED`, `ACTIVE`, `EVALUATING`, `COMPLETED`, `CANCELLED`, `FAILED`                                    |
+| `SessionMode`    | `STANDARD`, `FOCUSED_REMEDIATION`, `QUICK_PRACTICE`                                                      |
 | `CompetencyArea` | `SYSTEM_DESIGN`, `LANGUAGE_CORE`, `DATABASE_CONCURRENCY`, `ARCHITECTURE_PATTERNS`, `RESILIENCE_SECURITY` |
 
 ### BullMQ Queues
 
-| Queue | Job | Job ID Pattern |
-|---|---|---|
-| `question-generation` | `generate-question` | `question-{sessionId}-turn-{n}` |
-| `answer-evaluation` | `evaluate-answer` | `eval-{sessionId}-turn-{n}` |
-| `learning-path` | `generate-learning-path` | `lp-{sessionId}` |
+| Queue                 | Job                      | Job ID Pattern                  |
+| --------------------- | ------------------------ | ------------------------------- |
+| `question-generation` | `generate-question`      | `question-{sessionId}-turn-{n}` |
+| `answer-evaluation`   | `evaluate-answer`        | `eval-{sessionId}-turn-{n}`     |
+| `learning-path`       | `generate-learning-path` | `lp-{sessionId}`                |
 
 ---
 
@@ -169,6 +182,7 @@ FEATURE_{FEATURE_NAME}: process.env.FEATURE_{FEATURE_NAME} === 'true'
 ### 🟢 P1 — Bắt đầu ngay
 
 #### F013: Semantic Cache & LLM Router (1–2 ngày)
+
 ```
 Đọc:    docs/features/F013-SEMANTIC-CACHE-LLM-ROUTER.md
 Sửa:    apps/api/src/modules/ai-orchestrator/
@@ -180,6 +194,7 @@ Test:   Cache hit/miss rates, failover timing
 ```
 
 #### F004: JD & CV Tailored Interview (2–3 ngày)
+
 ```
 Đọc:    docs/features/F004-JD-RESUME-TAILORED-INTERVIEW.md
 Tạo:    apps/api/src/modules/document-parser/       [NEW MODULE]
@@ -190,6 +205,7 @@ DB:     Migration: user_documents, parsed_profiles
 ```
 
 #### F002: Live Coding Sandbox (3–4 ngày)
+
 ```
 Đọc:    docs/features/F002-LIVE-CODING-SANDBOX.md
 Tạo:    apps/api/src/modules/code-execution/        [NEW MODULE]
@@ -201,6 +217,7 @@ DB:     Migration: code_submissions, test_cases, execution_results
 ### 🟡 P2 — Sau khi P1 xong
 
 #### F006: Socratic AI Tutor (2–3 ngày)
+
 ```
 Đọc:    docs/features/F006-SOCRATIC-AI-TUTOR.md
 Tạo:    apps/api/src/modules/tutor/                 [NEW MODULE]
@@ -210,6 +227,7 @@ DB:     Migration: tutor_conversations, tutor_messages
 ```
 
 #### F007: Behavioral STAR Interview (3–4 ngày)
+
 ```
 Đọc:    docs/features/F007-BEHAVIORAL-STAR-INTERVIEW.md
 Sửa:    apps/api/prisma/schema.prisma               [ADD SessionMode.BEHAVIORAL]
@@ -219,6 +237,7 @@ DB:     Migration: enum addition, behavioral_competencies
 ```
 
 #### F014: Subscription & Billing (3–4 ngày)
+
 ```
 Đọc:    docs/features/F014-SUBSCRIPTION-BILLING.md
 Tạo:    apps/api/src/modules/billing/               [NEW MODULE]
@@ -229,6 +248,7 @@ Gate:   Stripe API key required — decision gate
 ```
 
 #### F005: Spaced Repetition (4–5 ngày)
+
 ```
 Đọc:    docs/features/F005-SPACED-REPETITION-FLASHCARDS.md
 Tạo:    apps/api/src/modules/flashcards/            [NEW MODULE]
@@ -237,6 +257,7 @@ DB:     Migration: flashcard_decks, flashcards, review_logs
 ```
 
 #### F001: Full-Duplex Voice (5–7 ngày)
+
 ```
 Đọc:    docs/features/F001-VOICE-REALTIME-INTERVIEW.md
 Tạo:    apps/api/src/modules/voice-gateway/         [NEW MODULE - WebSocket Gateway]
@@ -248,6 +269,7 @@ Gate:   STT/TTS provider API keys — decision gate
 ### 🔵 P3 — Sau khi P1 + P2 xong
 
 > Xem feature spec riêng. Tóm tắt:
+>
 > - **F008 → F009 → F010**: Chain phụ thuộc — phải làm tuần tự
 > - **F003**: Cần `@excalidraw/excalidraw` + Multimodal AI provider
 > - **F011**: Cần F008 + F014 trước — largest scope (7–10 ngày)
@@ -257,14 +279,14 @@ Gate:   STT/TTS provider API keys — decision gate
 
 ## ⚠️ Decision Gates — Cần Resolve Trước khi Implement
 
-| Gate | Feature | Quyết định cần |
-|---|---|---|
+| Gate                       | Feature                | Quyết định cần                                            |
+| -------------------------- | ---------------------- | --------------------------------------------------------- |
 | **AI Provider Production** | F001, F003, F004, F006 | Chọn STT/TTS provider (Deepgram vs Whisper vs Google STT) |
-| **Payment Gateway** | F014 | Chọn Stripe vs PayOS vs VNPay (hoặc nhiều gateway) |
-| **Code Execution Sandbox** | F002 | Chọn Judge0 API vs WebContainers vs Docker sandbox |
-| **Vector Store** | F013 | Chọn pgvector (PostgreSQL) vs Redis Vector Search |
-| **File Storage** | F004, F010 | Chọn S3 vs local volume vs Cloudflare R2 |
-| **Whiteboard Library** | F003 | Chọn Excalidraw vs Tldraw |
+| **Payment Gateway**        | F014                   | Chọn Stripe vs PayOS vs VNPay (hoặc nhiều gateway)        |
+| **Code Execution Sandbox** | F002                   | Chọn Judge0 API vs WebContainers vs Docker sandbox        |
+| **Vector Store**           | F013                   | Chọn pgvector (PostgreSQL) vs Redis Vector Search         |
+| **File Storage**           | F004, F010             | Chọn S3 vs local volume vs Cloudflare R2                  |
+| **Whiteboard Library**     | F003                   | Chọn Excalidraw vs Tldraw                                 |
 
 ---
 

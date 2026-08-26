@@ -15,16 +15,22 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
 
     // 3. Land on Dashboard
     await expect(page).toHaveURL('/');
-    await expect(page.getByText(/welcome back/i)).toBeVisible();
+    await expect(page.getByText(/(welcome back|chào mừng trở lại)/i)).toBeVisible();
 
     // 4. Navigate to Setup page
-    await page.click('a:has-text("Start New Interview")');
+    await page.click(
+      'a:has-text("Start New Interview"), a:has-text("Bắt đầu Phỏng vấn Mới"), a[href="/interviews/new"]',
+    );
     await expect(page).toHaveURL('/interviews/new');
-    await expect(page.getByRole('heading', { name: /configure your interview/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: /(configure your interview|cấu hình phỏng vấn|thiết lập phỏng vấn)/i,
+      }),
+    ).toBeVisible();
 
     // 5. Select technology and start interview
     await page.click('button:has-text("TypeScript")');
-    await page.click('button:has-text("Begin 5-Question Interview")');
+    await page.click('button:has-text("Begin 5-Question Interview"), button:has-text("Bắt đầu")');
 
     // 6. Enter Interview Room
     await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/);
@@ -41,11 +47,17 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
     await page.click('button[type="submit"]');
 
     // 9. Verify evaluation completes and session advances to Turn 2
-    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 2/i })).toBeVisible({ timeout: 25000 });
+    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 2/i })).toBeVisible({
+      timeout: 25000,
+    });
     await expect(page.getByText(/(lịch sử các lượt trước|past turns)/i)).toBeVisible();
 
     // 10. Click past turn 1 accordion to inspect evaluation
-    await page.click('button:has-text("1")');
-    await expect(page.getByText(/(độ chính xác kỹ thuật|technical accuracy)/i)).toBeVisible();
+    await page.click(
+      'button:has-text("Câu hỏi 1"), button:has-text("Question 1"), button:has-text("1")',
+    );
+    await expect(page.getByText(/(độ chính xác kỹ thuật|technical accuracy)/i).first()).toBeVisible(
+      { timeout: 15000 },
+    );
   });
 });

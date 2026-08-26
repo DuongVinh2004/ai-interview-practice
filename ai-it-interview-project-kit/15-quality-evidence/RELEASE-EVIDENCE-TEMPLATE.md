@@ -9,19 +9,19 @@
 
 ## Verification
 
-| Gate | Artifact/link | Commit/environment | Result | Limitations/expiry |
-|---|---|---|---|---|
-| Build/types/lint | | | | |
-| Unit/integration/contract/E2E | | | | |
-| Auth/ownership/admin MFA | | | | |
-| Migration compatibility | | | | |
-| Security/SBOM/scans | | | | |
-| AI golden/adversarial | | | | |
-| Accessibility VI/EN | | | | |
-| Load/soak/failure | | | | |
-| Observability/SLO/alerts | | | | |
-| Backup/restore/DR | | | | |
-| Privacy/compliance | | | | |
+| Gate                          | Artifact/link | Commit/environment | Result | Limitations/expiry |
+| ----------------------------- | ------------- | ------------------ | ------ | ------------------ |
+| Build/types/lint              |               |                    |        |                    |
+| Unit/integration/contract/E2E |               |                    |        |                    |
+| Auth/ownership/admin MFA      |               |                    |        |                    |
+| Migration compatibility       |               |                    |        |                    |
+| Security/SBOM/scans           |               |                    |        |                    |
+| AI golden/adversarial         |               |                    |        |                    |
+| Accessibility VI/EN           |               |                    |        |                    |
+| Load/soak/failure             |               |                    |        |                    |
+| Observability/SLO/alerts      |               |                    |        |                    |
+| Backup/restore/DR             |               |                    |        |                    |
+| Privacy/compliance            |               |                    |        |                    |
 
 ## Rollout
 

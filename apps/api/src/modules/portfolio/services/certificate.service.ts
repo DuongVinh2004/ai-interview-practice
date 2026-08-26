@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { SignatureService } from './signature.service';
 import { QrCodeService } from './qr-code.service';
@@ -15,7 +20,11 @@ export class CertificateService {
     private readonly badgeService: BadgeService,
   ) {}
 
-  async generateCertificate(userId: string, competencyArea?: CompetencyArea, type: string = 'COMPETENCY') {
+  async generateCertificate(
+    userId: string,
+    competencyArea?: CompetencyArea,
+    type: string = 'COMPETENCY',
+  ) {
     // 1. Sync badges to get latest progress
     await this.badgeService.syncUserBadges(userId);
 
@@ -165,10 +174,10 @@ export class CertificateService {
       message: isAuthentic
         ? 'Verified Authentic: Digitally signed by AI Interview Practice Certificate Authority.'
         : cert.status === CertificateStatus.REVOKED
-        ? 'Invalid: This certificate has been revoked.'
-        : cert.status === CertificateStatus.EXPIRED
-        ? 'Expired: This certificate validity period has ended.'
-        : 'Integrity Check Failed: Digital signature does not match certificate data.',
+          ? 'Invalid: This certificate has been revoked.'
+          : cert.status === CertificateStatus.EXPIRED
+            ? 'Expired: This certificate validity period has ended.'
+            : 'Integrity Check Failed: Digital signature does not match certificate data.',
     };
   }
 
@@ -181,7 +190,7 @@ export class CertificateService {
       },
     });
 
-    return certs.map((c) => ({
+    return certs.map(c => ({
       ...c,
       recipientName: c.user.profile?.fullName || c.user.email.split('@')[0],
       verificationUrl: this.qrCodeService.getVerificationUrl(c.id),

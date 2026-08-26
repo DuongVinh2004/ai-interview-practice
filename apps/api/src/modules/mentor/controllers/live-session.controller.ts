@@ -18,28 +18,19 @@ export class LiveSessionController {
 
   @Post('sessions/:id/join')
   @ApiOperation({ summary: 'Join live interview room and obtain ephemeral media token' })
-  async joinSession(
-    @Param('id') sessionId: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  async joinSession(@Param('id') sessionId: string, @CurrentUser('sub') userId: string) {
     return this.liveSessionService.joinSession(sessionId, userId);
   }
 
   @Post('sessions/:id/start')
   @ApiOperation({ summary: 'Mentor starts the live interview session' })
-  async startSession(
-    @Param('id') sessionId: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  async startSession(@Param('id') sessionId: string, @CurrentUser('sub') userId: string) {
     return this.liveSessionService.startSession(sessionId, userId);
   }
 
   @Post('sessions/:id/end')
   @ApiOperation({ summary: 'Mentor completes the live interview session' })
-  async endSession(
-    @Param('id') sessionId: string,
-    @CurrentUser('sub') userId: string,
-  ) {
+  async endSession(@Param('id') sessionId: string, @CurrentUser('sub') userId: string) {
     return this.liveSessionService.endSession(sessionId, userId);
   }
 
@@ -54,7 +45,9 @@ export class LiveSessionController {
   }
 
   @Post('evaluations/:id/override')
-  @ApiOperation({ summary: 'Mentor overrides automated AI score with mandatory justification note' })
+  @ApiOperation({
+    summary: 'Mentor overrides automated AI score with mandatory justification note',
+  })
   async overrideScore(
     @Param('id') evaluationId: string,
     @CurrentUser('sub') userId: string,
@@ -80,7 +73,7 @@ export class LiveSessionController {
 
   @Get('sessions/:id/copilot-hints')
   @ApiOperation({ summary: 'Fetch real-time AI probing question suggestions for mentor' })
-  async getCopilotHints(@Param('id') sessionId: string) {
-    return this.copilotHintService.getProbingHints(sessionId);
+  async getCopilotHints(@CurrentUser('sub') userId: string, @Param('id') sessionId: string) {
+    return this.copilotHintService.getProbingHints(sessionId, undefined, userId);
   }
 }

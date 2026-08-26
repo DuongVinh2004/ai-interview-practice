@@ -9,14 +9,31 @@ import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
-import { Bot, ShieldCheck, KeyRound, ArrowLeft } from 'lucide-react';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from '../../components/ui/Card';
+import {
+  Bot,
+  ShieldCheck,
+  KeyRound,
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Lock,
+  Mail,
+  Sparkles,
+} from 'lucide-react';
 
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore(state => state.setAuth);
-  const { t } = useI18nStore();
+  const { language } = useI18nStore();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   // MFA Challenge State
   const [mfaRequired, setMfaRequired] = useState(false);
@@ -28,6 +45,7 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<LoginDto>({
     resolver: zodResolver(LoginDtoSchema),
@@ -46,6 +64,12 @@ export function LoginPage() {
         skipAuth: true,
       });
 
+      if (response.forceMfaSetup) {
+        setAuth(response.user, response.accessToken, response.refreshToken);
+        navigate('/profile?setupMfa=1');
+        return;
+      }
+
       if (response.mfaRequired && response.mfaSessionToken) {
         setMfaRequired(true);
         setMfaSessionToken(response.mfaSessionToken);
@@ -58,7 +82,11 @@ export function LoginPage() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage('Failed to sign in. Please check your credentials.');
+        setErrorMessage(
+          language === 'vi'
+            ? 'Đăng nhập không thành công. Vui lòng kiểm tra lại email hoặc mật khẩu.'
+            : 'Failed to sign in. Please check your credentials.',
+        );
       }
     }
   };
@@ -88,54 +116,42 @@ export function LoginPage() {
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
-        setErrorMessage('Failed to verify MFA code. Please try again.');
+        setErrorMessage(
+          language === 'vi'
+            ? 'Xác thực mã 2FA thất bại. Vui lòng thử lại.'
+            : 'Failed to verify MFA code. Please try again.',
+        );
       }
     } finally {
       setIsVerifyingMfa(false);
     }
   };
 
-  const fillDemoCandidate = () => {
-    const emailInput = document.getElementById('email') as HTMLInputElement;
-    const passInput = document.getElementById('password') as HTMLInputElement;
-    if (emailInput && passInput) {
-      emailInput.value = 'candidate@example.com';
-      passInput.value = 'Candidate@123456';
-      emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-      passInput.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-  };
-
-  const fillDemoAdmin = () => {
-    const emailInput = document.getElementById('email') as HTMLInputElement;
-    const passInput = document.getElementById('password') as HTMLInputElement;
-    if (emailInput && passInput) {
-      emailInput.value = 'admin@example.com';
-      passInput.value = 'Admin@123456';
-      emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-      passInput.dispatchEvent(new Event('input', { bubbles: true }));
-    }
+  const handleQuickLogin = (email: string, pass: string) => {
+    setValue('email', email, { shouldValidate: true });
+    setValue('password', pass, { shouldValidate: true });
+    onSubmit({ email, password: pass });
   };
 
   return (
-    <div className="max-w-md mx-auto my-12">
+    <div className="max-w-md mx-auto my-8 sm:my-14 px-4">
       <div className="text-center mb-8">
-        <div className="inline-flex bg-emerald-600 text-white p-3 rounded-2xl mb-3 shadow-md">
+        <div className="inline-flex bg-emerald-600 text-white p-3.5 rounded-2xl mb-3 shadow-md">
           {mfaRequired ? <ShieldCheck className="h-8 w-8" /> : <Bot className="h-8 w-8" />}
         </div>
-        <h1 className="text-2xl font-bold text-slate-900">
-          {mfaRequired ? t.mfa.mfaPromptTitle : 'Sign in to your account'}
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+          {mfaRequired ? 'Two-Factor Verification Required' : 'Sign in to your account'}
         </h1>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
           {mfaRequired
-            ? t.mfa.mfaPromptSubtitle
+            ? 'Enter your 6-digit authenticator code or emergency backup recovery code'
             : 'Practice IT technical interviews with real-time AI evaluation'}
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
+      <Card className="shadow-md border-slate-200">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base sm:text-lg">
             {mfaRequired ? (
               <span className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-indigo-600" />
@@ -145,10 +161,16 @@ export function LoginPage() {
               'Welcome Back'
             )}
           </CardTitle>
+          <CardDescription>
+            {mfaRequired
+              ? 'Provide verification code to complete sign in'
+              : 'Enter your credentials to access your training dashboard'}
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+
+        <CardContent className="space-y-4">
           {errorMessage && (
-            <Alert variant="error" className="mb-6">
+            <Alert variant="error" className="mb-2">
               {errorMessage}
             </Alert>
           )}
@@ -157,30 +179,37 @@ export function LoginPage() {
             /* --- MFA Challenge Step --- */
             <form onSubmit={handleMfaSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
+                <label
+                  htmlFor="mfa-code-input"
+                  className="block text-xs font-semibold text-slate-700 mb-1.5"
+                >
                   {useRecoveryCode ? 'Backup Recovery Code' : '6-digit Authenticator Code'}
                 </label>
                 <input
+                  id="mfa-code-input"
                   type="text"
                   autoFocus
                   required
                   value={mfaCode}
                   onChange={e => setMfaCode(e.target.value)}
                   placeholder={
-                    useRecoveryCode ? t.mfa.recoveryCodePlaceholder : t.mfa.verifyCodePlaceholder
+                    useRecoveryCode
+                      ? 'Recovery code (e.g. ABCD-1234)'
+                      : '6-digit code (e.g. 123456)'
                   }
-                  className="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-lg text-base font-mono tracking-wider text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none"
+                  className="w-full h-11 px-3 py-2 bg-white border border-slate-300 rounded-lg text-base font-mono tracking-widest text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   maxLength={useRecoveryCode ? 16 : 6}
                 />
               </div>
 
               <Button
                 type="submit"
-                className="w-full py-2.5 gap-2"
+                className="w-full h-11 font-semibold"
                 disabled={isVerifyingMfa || !mfaCode.trim()}
+                isLoading={isVerifyingMfa}
+                leftIcon={<ShieldCheck className="h-4 w-4" />}
               >
-                <ShieldCheck className="h-4 w-4" />
-                <span>{isVerifyingMfa ? t.mfa.verifying : t.mfa.verifyAndLogin}</span>
+                <span>{isVerifyingMfa ? 'Verifying...' : 'Verify & Sign In'}</span>
               </Button>
 
               <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 text-center">
@@ -191,9 +220,11 @@ export function LoginPage() {
                     setMfaCode('');
                     setErrorMessage(null);
                   }}
-                  className="text-xs text-indigo-600 hover:text-indigo-800 font-medium"
+                  className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
                 >
-                  {useRecoveryCode ? t.mfa.useTotpCode : t.mfa.useRecoveryCode}
+                  {useRecoveryCode
+                    ? 'Use 6-digit Authenticator code instead'
+                    : 'Use a backup recovery code instead'}
                 </button>
 
                 <button
@@ -220,54 +251,84 @@ export function LoginPage() {
                   label="Email Address"
                   type="email"
                   placeholder="candidate@example.com"
+                  leftIcon={<Mail className="h-4 w-4" />}
                   error={errors.email?.message}
                   {...register('email')}
                 />
 
-                <Input
-                  id="password"
-                  label="Password"
-                  type="password"
-                  placeholder="••••••••"
-                  error={errors.password?.message}
-                  {...register('password')}
-                />
+                <div>
+                  <Input
+                    id="password"
+                    label="Password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    leftIcon={<Lock className="h-4 w-4" />}
+                    rightIcon={
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="text-slate-400 hover:text-slate-600 focus:outline-none"
+                        aria-label={showPassword ? 'Hide secret' : 'Show secret'}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
+                    }
+                    error={errors.password?.message}
+                    {...register('password')}
+                  />
+                </div>
 
-                <Button type="submit" className="w-full py-2.5" disabled={isSubmitting}>
+                <Button
+                  type="submit"
+                  className="w-full h-11 font-bold shadow-sm"
+                  isLoading={isSubmitting}
+                >
                   {isSubmitting ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
 
-              {/* Demo Fill Helper Buttons */}
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-                <span>Quick demo:</span>
-                <div className="space-x-2">
-                  <button
-                    type="button"
-                    onClick={fillDemoCandidate}
-                    className="text-emerald-600 hover:underline font-medium"
+              {/* Quick 1-Click Demo Candidate Login in DEV only */}
+              {import.meta.env.DEV && import.meta.env.VITE_DEMO_CANDIDATE_EMAIL && (
+                <div className="pt-4 border-t border-slate-100 space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                    <span>
+                      {language === 'vi'
+                        ? 'Chế độ thử nghiệm phát triển'
+                        : 'Development Quick Access'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      handleQuickLogin(
+                        import.meta.env.VITE_DEMO_CANDIDATE_EMAIL || '',
+                        import.meta.env.VITE_DEMO_CANDIDATE_PASSWORD || '',
+                      )
+                    }
+                    className="w-full text-xs font-semibold text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
                   >
-                    Candidate
-                  </button>
-                  <span>•</span>
-                  <button
-                    type="button"
-                    onClick={fillDemoAdmin}
-                    className="text-purple-600 hover:underline font-medium"
-                  >
-                    Admin
-                  </button>
+                    ⚡ {language === 'vi' ? 'Đăng nhập Mẫu Ứng viên' : 'Fill Demo Candidate'}
+                  </Button>
                 </div>
-              </div>
+              )}
             </>
           )}
         </CardContent>
       </Card>
 
       {!mfaRequired && (
-        <p className="text-center text-sm text-slate-500 mt-6">
+        <p className="text-center text-xs sm:text-sm text-slate-500 mt-6">
           Don't have an account?{' '}
-          <Link to="/register" className="text-emerald-600 font-semibold hover:underline">
+          <Link
+            to="/register"
+            className="text-emerald-600 font-bold hover:text-emerald-700 hover:underline"
+          >
             Create account
           </Link>
         </p>
@@ -275,4 +336,5 @@ export function LoginPage() {
     </div>
   );
 }
+
 export default LoginPage;

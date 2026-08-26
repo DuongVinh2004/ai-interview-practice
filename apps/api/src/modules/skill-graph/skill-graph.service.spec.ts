@@ -155,7 +155,11 @@ describe('SkillGraph Services (F008)', () => {
         },
       ]);
 
-      const ranking = await percentileService.getCandidateBenchmarkRanking(userId, 'backend', 'senior');
+      const ranking = await percentileService.getCandidateBenchmarkRanking(
+        userId,
+        'backend',
+        'senior',
+      );
       expect(ranking.cohortSize).toBe(60);
       expect(ranking.userScore).toBe(8.5);
       expect(ranking.percentileRank).toBeGreaterThan(75);

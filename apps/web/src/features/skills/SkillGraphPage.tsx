@@ -21,7 +21,10 @@ export function SkillGraphPage() {
 
   if (isLoadingGraph) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4" data-testid="skills-loading">
+      <div
+        className="flex flex-col items-center justify-center py-24 gap-4"
+        data-testid="skills-loading"
+      >
         <Spinner size="lg" />
         <p className="text-sm text-slate-500">Loading Skill Graph & Benchmarks...</p>
       </div>
@@ -54,8 +57,8 @@ export function SkillGraphPage() {
             Multi-Dimensional Skill Graph
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-            Continuous competency scoring tracking your technical depth across system design, language
-            internals, databases, and architectural patterns.
+            Continuous competency scoring tracking your technical depth across system design,
+            language internals, databases, and architectural patterns.
           </p>
         </div>
 

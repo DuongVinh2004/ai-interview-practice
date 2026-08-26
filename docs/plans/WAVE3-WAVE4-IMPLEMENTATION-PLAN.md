@@ -16,21 +16,21 @@ flowchart LR
         F008["F008 Skill Graph<br/>12 days"] --> F009["F009 Readiness Score<br/>10 days"]
         F003["F003 System Design<br/>7 days"]
     end
-    
+
     subgraph "Wave 4 — Enterprise Ecosystem"
         F010["F010 Portfolio &<br/>Certificates<br/>12 days"]
         F012["F012 Mentor<br/>Co-Pilot<br/>5-7 days"]
         F011["F011 B2B<br/>Multi-Tenant<br/>7-10 days"]
     end
-    
+
     F008 -->|"mandatory"| F010
     F009 -.->|"optional"| F010
     F008 -->|"mandatory"| F011
-    
+
     W2_F001["✅ W2: F001 Voice"] -.->|"prerequisite"| F012
     W2_F002["✅ W1: F002 Coding"] -.->|"prerequisite"| F003
     W1_F014["✅ W1: F014 Billing"] -.->|"prerequisite"| F011
-    
+
     style F008 fill:#e74c3c,color:#fff
     style F009 fill:#f39c12,color:#fff
     style F003 fill:#3498db,color:#fff
@@ -49,6 +49,7 @@ flowchart LR
 
 > [!IMPORTANT]
 > **Key Architectural Decisions**:
+>
 > 1. **F008**: PostgreSQL **Materialized View** for percentile aggregation (`REFRESH MATERIALIZED VIEW CONCURRENTLY`), **exponential decay** scoring ($\lambda = 0.01$), BullMQ nightly batch job
 > 2. **F009**: Composite readiness formula $R = \sum w_i \cdot \min(S_i / T_i, 1.0)$ with 95% confidence interval, tier classification (Big Tech / Competitive / Growing)
 > 3. **F003**: **Excalidraw** embedded whiteboard + **Multimodal AI vision** (GPT-4o / Gemini Pro Vision mock) for diagram analysis — requires ADR-0009
@@ -58,6 +59,7 @@ flowchart LR
 
 > [!WARNING]
 > **Decision Gates** (mock providers used, real integrations deferred):
+>
 > - **F003**: Whiteboard library choice (Excalidraw vs Tldraw), Object storage (S3 vs R2)
 > - **F010**: PDF engine (Puppeteer vs @react-pdf/renderer), file storage
 > - **F012**: Media server (LiveKit vs mediasoup vs simple WebRTC)
@@ -143,6 +145,7 @@ model BenchmarkSnapshot {
 ```
 
 **Materialized View** (raw SQL in migration):
+
 ```sql
 CREATE MATERIALIZED VIEW IF NOT EXISTS mv_skill_percentiles AS
 SELECT
@@ -185,29 +188,29 @@ skill-graph/
 **Exponential Decay Algorithm**:
 $$S_{\text{weighted}} = \frac{\sum_{i=1}^{n} s_i \cdot e^{-\lambda \cdot \Delta t_i}}{\sum_{i=1}^{n} e^{-\lambda \cdot \Delta t_i}}$$
 
-| API Endpoint | Method | Description |
-|---|---|---|
-| `/profile/skills/graph` | `GET` | Full 3-tier skill graph with weighted scores |
-| `/profile/skills/benchmark` | `GET` | Percentile ranking (filtered by role+level) |
-| `/profile/skills/progress` | `GET` | Time-series trend data (7d/30d/90d/180d/365d) |
-| `/profile/skills/gaps` | `GET` | Gap analysis with top-3 improvement suggestions |
-| `/admin/skills/nodes` | `GET/POST/PUT` | Admin CRUD for skill taxonomy tree |
-| `/admin/benchmarks/overview` | `GET` | Aggregated cohort benchmark overview |
+| API Endpoint                 | Method         | Description                                     |
+| ---------------------------- | -------------- | ----------------------------------------------- |
+| `/profile/skills/graph`      | `GET`          | Full 3-tier skill graph with weighted scores    |
+| `/profile/skills/benchmark`  | `GET`          | Percentile ranking (filtered by role+level)     |
+| `/profile/skills/progress`   | `GET`          | Time-series trend data (7d/30d/90d/180d/365d)   |
+| `/profile/skills/gaps`       | `GET`          | Gap analysis with top-3 improvement suggestions |
+| `/admin/skills/nodes`        | `GET/POST/PUT` | Admin CRUD for skill taxonomy tree              |
+| `/admin/benchmarks/overview` | `GET`          | Aggregated cohort benchmark overview            |
 
 **BullMQ Queue**: `skill-aggregation` — nightly cron (00:00 UTC) + `REFRESH MATERIALIZED VIEW CONCURRENTLY`.
 
 ### 1.3 Frontend Components
 
-| Component | Description |
-|---|---|
-| `SkillGraphPage` | Main dashboard: radar overlay, tree view, trend, heatmap, gap cards |
+| Component                | Description                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------- |
+| `SkillGraphPage`         | Main dashboard: radar overlay, tree view, trend, heatmap, gap cards              |
 | `CompetencyRadarOverlay` | Enhanced radar with user vs target role overlay (extends existing SVG component) |
-| `SkillTreeView` | Collapsible 3-tier tree showing score per node |
-| `ProgressTrendChart` | Recharts time-series line chart |
-| `HeatmapCalendar` | GitHub contribution-style practice heatmap |
-| `PercentileBadge` | "Top 15% Senior Backend" badge component |
-| `GapAnalysisCard` | Prioritized gap with action link to Focused Remediation |
-| `useSkillGraph` | TanStack Query hooks for all skill graph endpoints |
+| `SkillTreeView`          | Collapsible 3-tier tree showing score per node                                   |
+| `ProgressTrendChart`     | Recharts time-series line chart                                                  |
+| `HeatmapCalendar`        | GitHub contribution-style practice heatmap                                       |
+| `PercentileBadge`        | "Top 15% Senior Backend" badge component                                         |
+| `GapAnalysisCard`        | Prioritized gap with action link to Focused Remediation                          |
+| `useSkillGraph`          | TanStack Query hooks for all skill graph endpoints                               |
 
 **Routes**: `/skills` (main), `/skills/benchmark`, `/skills/progress`  
 **Feature Flag**: `FEATURE_SKILL_GRAPH` → `features.skillGraph`
@@ -304,36 +307,36 @@ readiness/
 
 **Core Formulas**:
 
-| Formula | Expression | Purpose |
-|---|---|---|
-| Readiness Score | $R = \sum_{i=1}^{k} w_i \cdot \min(S_i / T_i, 1.0) \times 100\%$ | Composite readiness index |
-| Confidence Interval | $CI = R \pm 1.96 \cdot \frac{\sigma}{\sqrt{n}}$ | 95% CI based on evidence count |
-| Velocity | $V_i = (S_i(t) - S_i(t - \Delta t)) / \Delta t$ | Score improvement rate per week |
-| Time to Target | $T_{\text{est}} = (T_i - S_i) / V_i$ | Weeks remaining to target |
-| Action Priority | $\text{Priority}_i = (T_i - S_i) \times w_i$ | Impact-weighted gap ranking |
+| Formula             | Expression                                                       | Purpose                         |
+| ------------------- | ---------------------------------------------------------------- | ------------------------------- |
+| Readiness Score     | $R = \sum_{i=1}^{k} w_i \cdot \min(S_i / T_i, 1.0) \times 100\%$ | Composite readiness index       |
+| Confidence Interval | $CI = R \pm 1.96 \cdot \frac{\sigma}{\sqrt{n}}$                  | 95% CI based on evidence count  |
+| Velocity            | $V_i = (S_i(t) - S_i(t - \Delta t)) / \Delta t$                  | Score improvement rate per week |
+| Time to Target      | $T_{\text{est}} = (T_i - S_i) / V_i$                             | Weeks remaining to target       |
+| Action Priority     | $\text{Priority}_i = (T_i - S_i) \times w_i$                     | Impact-weighted gap ranking     |
 
-| API Endpoint | Method | Description |
-|---|---|---|
-| `/profile/readiness` | `GET` | Score, tier, CI, breakdown, velocity, roadmap |
-| `/profile/readiness/history` | `GET` | Historical snapshots (30d/90d/180d/365d) |
-| `/profile/readiness/compare` | `GET` | Multi-role comparison (e.g. backend vs fullstack) |
-| `/admin/readiness/weight-profiles` | `GET/POST/PUT` | Admin weight profile management |
-| `/admin/readiness/tiers` | `GET/PUT` | Admin tier threshold management |
+| API Endpoint                       | Method         | Description                                       |
+| ---------------------------------- | -------------- | ------------------------------------------------- |
+| `/profile/readiness`               | `GET`          | Score, tier, CI, breakdown, velocity, roadmap     |
+| `/profile/readiness/history`       | `GET`          | Historical snapshots (30d/90d/180d/365d)          |
+| `/profile/readiness/compare`       | `GET`          | Multi-role comparison (e.g. backend vs fullstack) |
+| `/admin/readiness/weight-profiles` | `GET/POST/PUT` | Admin weight profile management                   |
+| `/admin/readiness/tiers`           | `GET/PUT`      | Admin tier threshold management                   |
 
 ### 2.3 Frontend Components
 
-| Component | Description |
-|---|---|
-| `ReadinessPage` | Main dashboard with gauge, breakdown, roadmap, trend |
-| `ReadinessGauge` | Animated circular progress (0-100%) with color zones |
-| `TierBadge` | Color-coded tier classification badge |
-| `CompetencyBreakdownTable` | Per-competency fulfillment bars with target overlay |
-| `VelocityIndicator` | ↑ Improving / → Stable / ↓ Declining badge |
-| `TimeEstimateCard` | "~9 weeks to Big Tech Ready" projection card |
-| `RoadmapActionList` | Top-3 prioritized actions with impact stars |
-| `MilestoneTimeline` | ✅25% ✅50% ⬜75% ⬜85% ⬜100% progress tracker |
-| `RoleComparisonChart` | Bar chart comparing readiness across target roles |
-| `useReadiness` | TanStack Query hooks |
+| Component                  | Description                                          |
+| -------------------------- | ---------------------------------------------------- |
+| `ReadinessPage`            | Main dashboard with gauge, breakdown, roadmap, trend |
+| `ReadinessGauge`           | Animated circular progress (0-100%) with color zones |
+| `TierBadge`                | Color-coded tier classification badge                |
+| `CompetencyBreakdownTable` | Per-competency fulfillment bars with target overlay  |
+| `VelocityIndicator`        | ↑ Improving / → Stable / ↓ Declining badge           |
+| `TimeEstimateCard`         | "~9 weeks to Big Tech Ready" projection card         |
+| `RoadmapActionList`        | Top-3 prioritized actions with impact stars          |
+| `MilestoneTimeline`        | ✅25% ✅50% ⬜75% ⬜85% ⬜100% progress tracker      |
+| `RoleComparisonChart`      | Bar chart comparing readiness across target roles    |
+| `useReadiness`             | TanStack Query hooks                                 |
 
 **Routes**: `/readiness`  
 **Feature Flag**: `FEATURE_READINESS_SCORE` → `features.readinessScore`  
@@ -414,27 +417,27 @@ system-design/
 └── system-design.service.spec.ts
 ```
 
-| API Endpoint | Method | Description |
-|---|---|---|
-| `/interviews/:id/canvas/init` | `POST` | Initialize whiteboard session with design prompt |
+| API Endpoint                      | Method | Description                                        |
+| --------------------------------- | ------ | -------------------------------------------------- |
+| `/interviews/:id/canvas/init`     | `POST` | Initialize whiteboard session with design prompt   |
 | `/interviews/:id/canvas/snapshot` | `POST` | Upload canvas snapshot (base64 image + state JSON) |
-| `/interviews/:id/canvas/analyze` | `POST` | Trigger multimodal AI analysis of latest snapshot |
-| `/interviews/:id/canvas/history` | `GET` | Get all snapshots for time-lapse playback |
-| `/interviews/:id/canvas/evaluate` | `POST` | Final 5-dimension design evaluation |
-| `/interviews/:id/canvas/export` | `GET` | Export diagram as PNG/SVG/JSON |
+| `/interviews/:id/canvas/analyze`  | `POST` | Trigger multimodal AI analysis of latest snapshot  |
+| `/interviews/:id/canvas/history`  | `GET`  | Get all snapshots for time-lapse playback          |
+| `/interviews/:id/canvas/evaluate` | `POST` | Final 5-dimension design evaluation                |
+| `/interviews/:id/canvas/export`   | `GET`  | Export diagram as PNG/SVG/JSON                     |
 
 **SessionMode extension**: Add `SYSTEM_DESIGN` to `SessionMode` enum.
 
 ### 3.3 Frontend Components
 
-| Component | Description |
-|---|---|
-| `WhiteboardRoom` | Full Excalidraw embedded canvas with component palette |
-| `ComponentPalette` | Draggable: Load Balancer, API Gateway, CDN, Queue, Cache, DB, Microservice |
-| `DesignFeedbackPanel` | AI analysis chat panel (SSE streaming) |
-| `CanvasTimelapse` | Replay slider showing design progression over time |
-| `DesignEvaluationReport` | 5-axis spider chart for design rubric |
-| `useSystemDesign` | TanStack Query hooks + snapshot timer |
+| Component                | Description                                                                |
+| ------------------------ | -------------------------------------------------------------------------- |
+| `WhiteboardRoom`         | Full Excalidraw embedded canvas with component palette                     |
+| `ComponentPalette`       | Draggable: Load Balancer, API Gateway, CDN, Queue, Cache, DB, Microservice |
+| `DesignFeedbackPanel`    | AI analysis chat panel (SSE streaming)                                     |
+| `CanvasTimelapse`        | Replay slider showing design progression over time                         |
+| `DesignEvaluationReport` | 5-axis spider chart for design rubric                                      |
+| `useSystemDesign`        | TanStack Query hooks + snapshot timer                                      |
 
 **[MODIFY]** `InterviewRoomPage.tsx` — Add `SYSTEM_DESIGN` mode rendering `WhiteboardRoom` (split-pane: canvas left, chat right)  
 **Feature Flag**: `FEATURE_SYSTEM_DESIGN` → `features.systemDesign`  
@@ -557,20 +560,21 @@ portfolio/
 ```
 
 **HMAC Certificate Signing**:
+
 ```typescript
 const payload = `${certId}:${userId}:${competency}:${score}:${issuedAt}`;
 const signature = crypto.createHmac('sha256', CERTIFICATE_SECRET).update(payload).digest('hex');
 ```
 
-| API Endpoint | Auth | Description |
-|---|---|---|
-| `GET /public/portfolio/:username` | None | Public portfolio page data |
-| `PUT /portfolio/settings` | JWT | Update portfolio settings |
-| `GET /profile/badges` | JWT | User's earned badges with progress |
-| `POST /certificates/generate` | JWT | Generate certificate (requires Gold+) |
-| `GET /certificates/:id/download` | JWT/Signed | Download PDF |
-| `DELETE /certificates/:id` | JWT | Revoke certificate |
-| `GET /public/verify/:certId` | None | Verify certificate integrity |
+| API Endpoint                      | Auth       | Description                           |
+| --------------------------------- | ---------- | ------------------------------------- |
+| `GET /public/portfolio/:username` | None       | Public portfolio page data            |
+| `PUT /portfolio/settings`         | JWT        | Update portfolio settings             |
+| `GET /profile/badges`             | JWT        | User's earned badges with progress    |
+| `POST /certificates/generate`     | JWT        | Generate certificate (requires Gold+) |
+| `GET /certificates/:id/download`  | JWT/Signed | Download PDF                          |
+| `DELETE /certificates/:id`        | JWT        | Revoke certificate                    |
+| `GET /public/verify/:certId`      | None       | Verify certificate integrity          |
 
 **Feature Flag**: `FEATURE_PORTFOLIO_CERTIFICATES` → `features.portfolioCertificates`  
 **ADR-0010**: PDF generation strategy + file storage
@@ -670,16 +674,16 @@ mentor/
 └── mentor.service.spec.ts
 ```
 
-| API Endpoint | Auth | Description |
-|---|---|---|
-| `POST /mentor/profile` | JWT | Create/update mentor profile |
-| `POST /mentor/availability` | JWT (Mentor) | Set recurring availability slots |
-| `GET /mentor/availability/:mentorId` | JWT | Query available slots |
-| `POST /sessions/book` | JWT (Candidate) | Book live session |
-| `POST /sessions/:id/join` | JWT | Get ephemeral room token |
-| `POST /sessions/:id/notes` | JWT (Mentor) | Save mentor notes |
-| `POST /evaluations/:id/override` | JWT (Mentor) | Override AI score with justification |
-| `POST /sessions/:id/rate` | JWT (Candidate) | Rate mentor (1-5) |
+| API Endpoint                         | Auth            | Description                          |
+| ------------------------------------ | --------------- | ------------------------------------ |
+| `POST /mentor/profile`               | JWT             | Create/update mentor profile         |
+| `POST /mentor/availability`          | JWT (Mentor)    | Set recurring availability slots     |
+| `GET /mentor/availability/:mentorId` | JWT             | Query available slots                |
+| `POST /sessions/book`                | JWT (Candidate) | Book live session                    |
+| `POST /sessions/:id/join`            | JWT             | Get ephemeral room token             |
+| `POST /sessions/:id/notes`           | JWT (Mentor)    | Save mentor notes                    |
+| `POST /evaluations/:id/override`     | JWT (Mentor)    | Override AI score with justification |
+| `POST /sessions/:id/rate`            | JWT (Candidate) | Rate mentor (1-5)                    |
 
 **Feature Flag**: `FEATURE_MENTOR_COPILOT` → `features.mentorCopilot`  
 **ADR-0011**: Media server selection (LiveKit vs mediasoup vs mock)
@@ -841,6 +845,7 @@ b2b/
 ```
 
 **Row-Level Security** (Prisma Client Extension):
+
 ```typescript
 // TenantContextMiddleware sets tenantId on request
 // Prisma Extension auto-injects WHERE tenantId filter on all queries
@@ -849,21 +854,21 @@ prisma.$extends({
     $allOperations({ args, query }) {
       if (tenantId) args.where = { ...args.where, tenantId };
       return query(args);
-    }
-  }
+    },
+  },
 });
 ```
 
-| API Endpoint | Auth | Description |
-|---|---|---|
-| `POST /tenants` | SuperAdmin | Create tenant |
-| `GET /b2b/cohorts` | Tenant Admin/Instructor | List cohorts |
-| `POST /b2b/cohorts` | Tenant Admin | Create cohort |
-| `POST /b2b/cohorts/:id/members` | Tenant Admin/Instructor | Add members (CSV bulk) |
-| `POST /b2b/assignments` | Instructor | Create assignment |
-| `GET /b2b/analytics/cohort/:id` | Tenant Admin/Instructor | Cohort performance |
-| `POST /b2b/evaluations/:id/override` | Instructor | Score override |
-| `POST /b2b/api-keys` | Tenant Admin | Issue API key |
+| API Endpoint                         | Auth                    | Description            |
+| ------------------------------------ | ----------------------- | ---------------------- |
+| `POST /tenants`                      | SuperAdmin              | Create tenant          |
+| `GET /b2b/cohorts`                   | Tenant Admin/Instructor | List cohorts           |
+| `POST /b2b/cohorts`                  | Tenant Admin            | Create cohort          |
+| `POST /b2b/cohorts/:id/members`      | Tenant Admin/Instructor | Add members (CSV bulk) |
+| `POST /b2b/assignments`              | Instructor              | Create assignment      |
+| `GET /b2b/analytics/cohort/:id`      | Tenant Admin/Instructor | Cohort performance     |
+| `POST /b2b/evaluations/:id/override` | Instructor              | Score override         |
+| `POST /b2b/api-keys`                 | Tenant Admin            | Issue API key          |
 
 **Feature Flag**: `FEATURE_B2B_MULTI_TENANT` → `features.b2bMultiTenant`  
 **ADR-0012**: Multi-tenancy isolation strategy (shared DB + RLS vs schema-per-tenant)
@@ -880,26 +885,26 @@ flowchart TD
         F007[F007 STAR Interview]
         F014[F014 Billing]
     end
-    
+
     subgraph "Wave 2 🔄"
         F004[F004 JD/CV Parser]
         F006[F006 Socratic Tutor]
         F005[F005 Flashcards FSRS]
         F001[F001 Voice Streaming]
     end
-    
+
     subgraph "Wave 3"
         F008[F008 Skill Graph]
         F009[F009 Readiness Score]
         F003[F003 System Design]
     end
-    
+
     subgraph "Wave 4"
         F010[F010 Portfolio & Certs]
         F012[F012 Mentor Co-Pilot]
         F011[F011 B2B Multi-Tenant]
     end
-    
+
     F013 --> F004
     F013 --> F006
     F013 --> F001
@@ -912,7 +917,7 @@ flowchart TD
     F008 --> F011
     F014 --> F011
     F001 --> F012
-    
+
     style F013 fill:#2ecc71,color:#fff
     style F002 fill:#2ecc71,color:#fff
     style F007 fill:#2ecc71,color:#fff
@@ -925,16 +930,17 @@ flowchart TD
 
 ### Per-Feature Test Highlights
 
-| Feature | Critical Test Assertions |
-|---|---|
-| F008 | Exponential decay produces expected weights for known $\Delta t$ values; percentile hidden when cohort < 30; materialized view refresh < 30s |
-| F009 | Readiness capped at 100%; CI widens with low evidence; velocity=0 shows "unable to forecast"; tier boundaries are exact |
-| F003 | Mock vision provider returns deterministic analysis; canvas snapshot auto-saves; 5-axis design rubric sums correctly |
-| F010 | HMAC signature tamper detection works; Gold badge required for cert gen; QR verification returns correct status; PDF < 2MB |
-| F012 | Booking prevents slot collision; mock media provider returns valid token; mentor score override has audit trail |
-| F011 | RLS prevents cross-tenant data access (E2E with 2 tenants); bulk CSV import handles duplicates; cohort analytics < 2s for 10K students |
+| Feature | Critical Test Assertions                                                                                                                     |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| F008    | Exponential decay produces expected weights for known $\Delta t$ values; percentile hidden when cohort < 30; materialized view refresh < 30s |
+| F009    | Readiness capped at 100%; CI widens with low evidence; velocity=0 shows "unable to forecast"; tier boundaries are exact                      |
+| F003    | Mock vision provider returns deterministic analysis; canvas snapshot auto-saves; 5-axis design rubric sums correctly                         |
+| F010    | HMAC signature tamper detection works; Gold badge required for cert gen; QR verification returns correct status; PDF < 2MB                   |
+| F012    | Booking prevents slot collision; mock media provider returns valid token; mentor score override has audit trail                              |
+| F011    | RLS prevents cross-tenant data access (E2E with 2 tenants); bulk CSV import handles duplicates; cohort analytics < 2s for 10K students       |
 
 ### Test Commands
+
 ```bash
 pnpm --filter contracts test
 pnpm --filter api test
@@ -946,6 +952,7 @@ pnpm --filter web build
 ```
 
 ### Documentation Deliverables
+
 - `PROJECT-STATUS.md` → 14/14 features ✅
 - `FEATURE-ROADMAP-INDEX.md` → All status icons updated
 - ADRs: 0009 (whiteboard), 0010 (PDF/storage), 0011 (media server), 0012 (multi-tenancy)
@@ -953,8 +960,8 @@ pnpm --filter web build
 
 ### Effort Summary
 
-| Wave | Features | Estimated Days | New ADRs |
-|---|---|---|---|
-| Wave 3 | F008, F009, F003 | ~29 days | ADR-0009 |
-| Wave 4 | F010, F012, F011 | ~24-29 days | ADR-0010, 0011, 0012 |
-| **Total** | **6 features** | **~53-58 days** | **4 ADRs** |
+| Wave      | Features         | Estimated Days  | New ADRs             |
+| --------- | ---------------- | --------------- | -------------------- |
+| Wave 3    | F008, F009, F003 | ~29 days        | ADR-0009             |
+| Wave 4    | F010, F012, F011 | ~24-29 days     | ADR-0010, 0011, 0012 |
+| **Total** | **6 features**   | **~53-58 days** | **4 ADRs**           |

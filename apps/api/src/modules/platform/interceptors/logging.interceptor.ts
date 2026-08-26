@@ -49,6 +49,7 @@ export class LoggingInterceptor implements NestInterceptor {
     const userAgent = request.get('user-agent') || '';
     const startTime = Date.now();
     const route = request.route?.path || originalUrl.split('?')[0];
+    const safeUrl = this.sanitizeUrl(originalUrl);
 
     // Active requests metric
     this.metricsService?.httpActiveRequests.inc({ method });
@@ -72,7 +73,7 @@ export class LoggingInterceptor implements NestInterceptor {
           );
 
           this.logger.log(
-            `[${requestId}] [trace:${traceCtx?.traceId || 'none'}] ${method} ${originalUrl} ${statusCode} - ${duration}ms - ${ip} - ${userAgent}`,
+            `[${requestId}] [trace:${traceCtx?.traceId || 'none'}] ${method} ${safeUrl} ${statusCode} - ${duration}ms - ${ip} - ${userAgent}`,
           );
         },
         error: (err: any) => {
@@ -92,7 +93,7 @@ export class LoggingInterceptor implements NestInterceptor {
           );
 
           this.logger.warn(
-            `[${requestId}] [trace:${traceCtx?.traceId || 'none'}] ${method} ${originalUrl} ${statusCode} - ${duration}ms - Error: ${err.message}`,
+            `[${requestId}] [trace:${traceCtx?.traceId || 'none'}] ${method} ${safeUrl} ${statusCode} - ${duration}ms - Error: ${err.message}`,
           );
         },
       }),
@@ -107,5 +108,52 @@ export class LoggingInterceptor implements NestInterceptor {
     }
 
     return handleObservable;
+  }
+
+  private sanitizeUrl(url: string): string {
+    if (!url) return url;
+    try {
+      const [path, queryString] = url.split('?');
+      let sanitizedPath = path;
+
+      // Redact public share token in path: /public/share/:token
+      sanitizedPath = sanitizedPath.replace(
+        /\/public\/share\/([a-zA-Z0-9_-]+)/g,
+        (match, token) => {
+          if (token === 'feedback' || token === 'access') return match;
+          return '/public/share/[REDACTED]';
+        },
+      );
+
+      if (!queryString) return sanitizedPath;
+
+      const searchParams = new URLSearchParams(queryString);
+      const sensitiveKeys = [
+        'passcode',
+        'token',
+        'password',
+        'code',
+        'secret',
+        'key',
+        'signature',
+        'auth',
+        'authorization',
+        'access_token',
+        'refresh_token',
+        'apiKey',
+        'api_key',
+      ];
+
+      for (const key of Array.from(searchParams.keys())) {
+        if (sensitiveKeys.some(s => key.toLowerCase().includes(s.toLowerCase()))) {
+          searchParams.set(key, '[REDACTED]');
+        }
+      }
+
+      const sanitizedQuery = searchParams.toString();
+      return sanitizedQuery ? `${sanitizedPath}?${sanitizedQuery}` : sanitizedPath;
+    } catch {
+      return url.split('?')[0];
+    }
   }
 }

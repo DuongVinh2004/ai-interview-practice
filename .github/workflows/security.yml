@@ -1,6 +1,7 @@
 name: Security Scanning & Compliance Pipeline
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, master, develop]
   pull_request:
@@ -20,39 +21,59 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
-      - name: Run Gitleaks Secret Scanner
-        uses: gitleaks/gitleaks-action@v2
+      - name: Scope secret scan to the current branch
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITLEAKS_LICENSE: '' # Free for open-source / public repos
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            echo "GITLEAKS_LOG_OPTS=${BASE_SHA}..${HEAD_SHA}" >> "$GITHUB_ENV"
+          elif [[ "$REF_NAME" == "$DEFAULT_BRANCH" ]]; then
+            echo "GITLEAKS_LOG_OPTS=HEAD" >> "$GITHUB_ENV"
+          else
+            echo "GITLEAKS_LOG_OPTS=origin/${DEFAULT_BRANCH}..HEAD" >> "$GITHUB_ENV"
+          fi
+
+      - name: Run Gitleaks Secret Scanner
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo:ro" \
+            docker.io/zricethezav/gitleaks@sha256:bf00b5e039f0fad4b32935dc5ec1e358f227ccd097bcb64b971f0331072fe2ae \
+            git /repo --log-opts="$GITLEAKS_LOG_OPTS" --config /repo/.gitleaks.toml \
+            --gitleaks-ignore-path /repo/.gitleaksignore \
+            --redact --no-banner --verbose --exit-code 1
 
   sast-semgrep:
     name: Static Application Security Testing (Semgrep)
     runs-on: ubuntu-latest
     container:
-      image: returntocorp/semgrep
+      image: semgrep/semgrep@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run Semgrep Security Rules
         run: |
-          semgrep scan --config auto --config p/security-audit --config p/owasp-top-ten --error --json --output semgrep-report.json || true
-          semgrep scan --config auto --config p/owasp-top-ten --error
+          semgrep scan --config auto --config p/security-audit --config p/owasp-top-ten --json --output semgrep-report.json
+          semgrep scan --config auto --config p/security-audit --config p/owasp-top-ten --error
 
   vulnerability-and-iac-scan:
     name: Vulnerability, Container & IaC Scan (Trivy)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Run Trivy vulnerability scanner in repository mode (SCA)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'fs'
           ignore-unfixed: true
@@ -61,30 +82,30 @@ jobs:
           exit-code: '1'
 
       - name: Run Trivy IaC / Terraform scanner
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'config'
           scan-ref: 'infra/terraform'
           format: 'table'
           severity: 'CRITICAL,HIGH'
-          exit-code: '0'
+          exit-code: '1'
 
   license-and-dependency-audit:
     name: Dependency Audit & Policy Gate
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 20
+          node-version: 22.13.0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
         with:
           version: 11.0.9
 
       - name: Run pnpm audit (Prod dependencies)
-        run: pnpm audit --prod --audit-level high || true
+        run: pnpm audit --prod --audit-level high

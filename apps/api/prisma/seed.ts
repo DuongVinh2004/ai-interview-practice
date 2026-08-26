@@ -6,64 +6,71 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Starting database seed...');
 
-  const adminEmail = process.env.DEMO_ADMIN_EMAIL || 'admin@example.com';
-  const adminPassword = process.env.DEMO_ADMIN_PASSWORD || 'Admin@123456';
-  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL || 'candidate@example.com';
-  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD || 'Candidate@123456';
+  const adminEmail = process.env.DEMO_ADMIN_EMAIL;
+  const adminPassword = process.env.DEMO_ADMIN_PASSWORD;
+  const candidateEmail = process.env.DEMO_CANDIDATE_EMAIL;
+  const candidatePassword = process.env.DEMO_CANDIDATE_PASSWORD;
+
+  if (!adminEmail || !adminPassword) {
+    console.warn('⚠️  DEMO_ADMIN_EMAIL and DEMO_ADMIN_PASSWORD not set. Skipping admin seed.');
+  }
+  if (!candidateEmail || !candidatePassword) {
+    console.warn(
+      '⚠️  DEMO_CANDIDATE_EMAIL and DEMO_CANDIDATE_PASSWORD not set. Skipping candidate seed.',
+    );
+  }
 
   const passwordSalt = 10;
-  const adminPasswordHash = await bcrypt.hash(adminPassword, passwordSalt);
-  const candidatePasswordHash = await bcrypt.hash(candidatePassword, passwordSalt);
+  let adminUser: any = null;
 
-  // 1. Seed Demo Admin
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: {
-      passwordHash: adminPasswordHash,
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      email: adminEmail,
-      passwordHash: adminPasswordHash,
-      role: UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
-      profile: {
-        create: {
-          fullName: 'System Administrator',
-          targetRole: 'Administrator',
-          targetLevel: 'Staff',
-          bio: 'Demo administrator account',
+  // 1. Seed Demo Admin (only in non-production or if explicit env vars are provided)
+  if (adminEmail && adminPassword) {
+    const adminPasswordHash = await bcrypt.hash(adminPassword, passwordSalt);
+    const admin = await prisma.user.upsert({
+      where: { email: adminEmail },
+      update: {},
+      create: {
+        email: adminEmail,
+        passwordHash: adminPasswordHash,
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        profile: {
+          create: {
+            fullName: 'System Administrator',
+            targetRole: 'Administrator',
+            targetLevel: 'Staff',
+            bio: 'Demo administrator account',
+          },
         },
       },
-    },
-  });
-  console.log(`✅ Admin user seeded: ${admin.email}`);
+    });
+    adminUser = admin;
+    console.log(`✅ Admin user seeded: ${admin.email}`);
+  }
 
-  // 2. Seed Demo Candidate
-  const candidate = await prisma.user.upsert({
-    where: { email: candidateEmail },
-    update: {
-      passwordHash: candidatePasswordHash,
-      role: UserRole.CANDIDATE,
-      status: UserStatus.ACTIVE,
-    },
-    create: {
-      email: candidateEmail,
-      passwordHash: candidatePasswordHash,
-      role: UserRole.CANDIDATE,
-      status: UserStatus.ACTIVE,
-      profile: {
-        create: {
-          fullName: 'Demo Candidate',
-          targetRole: 'Frontend Engineer',
-          targetLevel: 'Mid-Level',
-          bio: 'Passionate developer practicing for technical interviews.',
+  // 2. Seed Demo Candidate (only in non-production or if explicit env vars are provided)
+  if (candidateEmail && candidatePassword) {
+    const candidatePasswordHash = await bcrypt.hash(candidatePassword, passwordSalt);
+    const candidate = await prisma.user.upsert({
+      where: { email: candidateEmail },
+      update: {},
+      create: {
+        email: candidateEmail,
+        passwordHash: candidatePasswordHash,
+        role: UserRole.CANDIDATE,
+        status: UserStatus.ACTIVE,
+        profile: {
+          create: {
+            fullName: 'Demo Candidate',
+            targetRole: 'Frontend Engineer',
+            targetLevel: 'Mid-Level',
+            bio: 'Passionate developer practicing for technical interviews.',
+          },
         },
       },
-    },
-  });
-  console.log(`✅ Candidate user seeded: ${candidate.email}`);
+    });
+    console.log(`✅ Candidate user seeded: ${candidate.email}`);
+  }
 
   // 3. Seed Job Roles
   const jobRoles = [
@@ -214,7 +221,8 @@ async function main() {
       slug: 'leadership',
       name: 'Leadership & Initiative',
       nameVi: 'Lãnh đạo & Tiên phong',
-      description: 'Ability to lead initiatives, take ownership, and guide team members to success.',
+      description:
+        'Ability to lead initiatives, take ownership, and guide team members to success.',
       category: 'LEADERSHIP' as const,
       order: 1,
     },
@@ -222,7 +230,8 @@ async function main() {
       slug: 'teamwork',
       name: 'Teamwork & Collaboration',
       nameVi: 'Làm việc nhóm & Hợp tác',
-      description: 'Effective collaboration across cross-functional teams and managing diverse perspectives.',
+      description:
+        'Effective collaboration across cross-functional teams and managing diverse perspectives.',
       category: 'TEAMWORK' as const,
       order: 2,
     },
@@ -230,7 +239,8 @@ async function main() {
       slug: 'problem-solving',
       name: 'Problem Solving & Conflict Resolution',
       nameVi: 'Giải quyết vấn đề & Xử lý xung đột',
-      description: 'Navigating technical and interpersonal challenges with structured analytical reasoning.',
+      description:
+        'Navigating technical and interpersonal challenges with structured analytical reasoning.',
       category: 'PROBLEM_SOLVING' as const,
       order: 3,
     },
@@ -317,7 +327,12 @@ async function main() {
       priceMonthly: 0,
       priceYearly: 0,
       currency: 'USD',
-      features: ['5 interview sessions / month', 'Standard AI feedback', 'Live coding sandbox', 'Community access'],
+      features: [
+        '5 interview sessions / month',
+        'Standard AI feedback',
+        'Live coding sandbox',
+        'Community access',
+      ],
       limits: {
         sessionsPerMonth: 5,
         voiceMinutesPerMonth: 0,
@@ -417,39 +432,41 @@ async function main() {
     });
   }
   // 9. Seed Mentor Profile for Admin
-  const mentorProfile = await prisma.mentorProfile.upsert({
-    where: { userId: admin.id },
-    update: {
-      expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
-      bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
-      isActive: true,
-      rating: 4.9,
-      totalSessions: 24,
-    },
-    create: {
-      userId: admin.id,
-      expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
-      bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
-      isActive: true,
-      rating: 4.9,
-      totalSessions: 24,
-    },
-  });
-
-  for (let day = 1; day <= 5; day++) {
-    const existing = await prisma.mentorAvailability.findFirst({
-      where: { mentorId: mentorProfile.id, dayOfWeek: day },
+  if (adminUser) {
+    const mentorProfile = await prisma.mentorProfile.upsert({
+      where: { userId: adminUser.id },
+      update: {
+        expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
+        bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
+        isActive: true,
+        rating: 4.9,
+        totalSessions: 24,
+      },
+      create: {
+        userId: adminUser.id,
+        expertiseAreas: ['System Design', 'Backend Architecture', 'Distributed Systems'],
+        bio: 'Principal Architect & Staff Engineer with 10+ years scaling large distributed platforms.',
+        isActive: true,
+        rating: 4.9,
+        totalSessions: 24,
+      },
     });
-    if (!existing) {
-      await prisma.mentorAvailability.create({
-        data: {
-          mentorId: mentorProfile.id,
-          dayOfWeek: day,
-          startTime: '09:00',
-          endTime: '17:00',
-          isActive: true,
-        },
+
+    for (let day = 1; day <= 5; day++) {
+      const existing = await prisma.mentorAvailability.findFirst({
+        where: { mentorId: mentorProfile.id, dayOfWeek: day },
       });
+      if (!existing) {
+        await prisma.mentorAvailability.create({
+          data: {
+            mentorId: mentorProfile.id,
+            dayOfWeek: day,
+            startTime: '09:00',
+            endTime: '17:00',
+            isActive: true,
+          },
+        });
+      }
     }
   }
   console.log('✅ Seeded demo mentor profile and availability slots');

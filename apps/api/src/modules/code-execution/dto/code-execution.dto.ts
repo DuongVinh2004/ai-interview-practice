@@ -1,6 +1,45 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsString, IsOptional, IsInt, IsArray, Min, Max, MaxLength } from 'class-validator';
-import { TestCaseDto } from '@ai-interview/contracts';
+import {
+  IsNotEmpty,
+  IsString,
+  IsOptional,
+  IsInt,
+  IsArray,
+  IsBoolean,
+  Min,
+  Max,
+  MaxLength,
+  ArrayMaxSize,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+export class TestCaseItemDto {
+  @ApiPropertyOptional({ example: '3fa85f64-5717-4562-b3fc-2c963f66afa6' })
+  @IsOptional()
+  @IsString()
+  id?: string;
+
+  @ApiProperty({ example: '2, 3' })
+  @IsString()
+  @MaxLength(10000)
+  input!: string;
+
+  @ApiProperty({ example: '5' })
+  @IsString()
+  @MaxLength(10000)
+  expectedOutput!: string;
+
+  @ApiPropertyOptional({ default: false })
+  @IsOptional()
+  @IsBoolean()
+  isHidden?: boolean;
+
+  @ApiPropertyOptional({ default: 0 })
+  @IsOptional()
+  @IsInt()
+  order?: number;
+}
 
 export class ExecuteCodeDto {
   @ApiProperty({ example: 'javascript' })
@@ -17,12 +56,16 @@ export class ExecuteCodeDto {
   @ApiPropertyOptional({ example: '2, 3' })
   @IsString()
   @IsOptional()
+  @MaxLength(10000)
   customInput?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: [TestCaseItemDto] })
   @IsArray()
+  @ArrayMaxSize(20)
   @IsOptional()
-  testCases?: TestCaseDto[];
+  @ValidateNested({ each: true })
+  @Type(() => TestCaseItemDto)
+  testCases?: TestCaseItemDto[];
 }
 
 export class SubmitCodeDto {

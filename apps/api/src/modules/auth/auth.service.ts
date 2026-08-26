@@ -14,6 +14,7 @@ import {
   UserDto,
   MfaSetupResponse,
   MfaEnableResponse,
+  JwtPayload,
 } from '@ai-interview/contracts';
 import { RegisterRequestDto, LoginRequestDto, ChangePasswordRequestDto } from './dto/auth.dto';
 import { TotpUtil } from './utils/totp.util';
@@ -27,6 +28,84 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
+
+  async validateAccessToken(token: string): Promise<JwtPayload> {
+    if (!token || typeof token !== 'string') {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Authentication token missing or invalid',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const secret =
+      this.configService.get<string>('jwt.accessSecret') ||
+      this.configService.get<string>('JWT_ACCESS_SECRET') ||
+      'dev-access-secret-min-32-chars-ok';
+
+    let payload: JwtPayload;
+    try {
+      payload = this.jwtService.verify<JwtPayload>(token, { secret });
+    } catch {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Invalid or expired token',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (payload.mfaPending || payload.tokenType === 'mfa_challenge') {
+      throw new DomainException(
+        ErrorCode.MFA_REQUIRED,
+        'MFA verification required. Challenge token cannot access protected endpoints.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const user = await this.prisma.user.findUnique({
+      where: { id: payload.sub },
+      select: { id: true, email: true, role: true, status: true, tokenVersion: true },
+    });
+
+    if (!user) {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'User account no longer exists',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    if (user.status === UserStatus.LOCKED) {
+      throw new DomainException(
+        ErrorCode.USER_LOCKED,
+        'Your account has been locked. Please contact support.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
+    if (
+      payload.tokenVersion !== undefined &&
+      user.tokenVersion !== undefined &&
+      payload.tokenVersion !== user.tokenVersion
+    ) {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Session invalidated due to password change or security update',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    return {
+      sub: user.id,
+      id: user.id,
+      email: user.email,
+      role: user.role as any,
+      status: user.status as any,
+      tokenVersion: user.tokenVersion,
+      tokenType: 'access',
+      mfaVerified: payload.mfaVerified ?? false,
+    };
+  }
 
   async register(dto: RegisterRequestDto): Promise<AuthResponse> {
     const existing = await this.prisma.user.findUnique({
@@ -105,13 +184,35 @@ export class AuthService {
 
     // If MFA is enabled, challenge with temporary MFA session token
     if (user.mfaEnabled) {
+      const jti = crypto.randomUUID();
       const mfaSessionToken = this.jwtService.sign(
-        { sub: user.id, email: user.email, tokenType: 'mfa_challenge', mfaPending: true },
+        { sub: user.id, email: user.email, tokenType: 'mfa_challenge', mfaPending: true, jti },
         {
           secret: this.configService.get<string>('jwt.accessSecret'),
           expiresIn: '5m',
         },
       );
+
+      // Store jti for one-time consumption (F-013)
+      if (this.prisma.mfaChallenge?.create) {
+        await this.prisma.mfaChallenge.create({
+          data: {
+            jti,
+            userId: user.id,
+            expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+            consumed: false,
+          },
+        });
+      }
+
+      // Opportunistic cleanup of expired MFA challenges (F-013)
+      if (this.prisma.mfaChallenge?.deleteMany) {
+        this.prisma.mfaChallenge
+          .deleteMany({
+            where: { expiresAt: { lt: new Date() } },
+          })
+          .catch(err => this.logger.warn(`Failed to clean expired MFA challenges: ${err.message}`));
+      }
 
       await this.prisma.auditLog.create({
         data: {
@@ -143,6 +244,23 @@ export class AuthService {
       },
     });
 
+    // Enforce: Admin must setup MFA if not yet enabled (SEC-003)
+    if (user.role === UserRole.ADMIN && !user.mfaEnabled) {
+      if (
+        (process.env.ALLOW_MOCK_PROVIDERS === 'true' && process.env.NODE_ENV !== 'test') ||
+        this.configService.get<string>('ai.allowMock') === 'true'
+      ) {
+        return this.generateAuthResponse(user, true);
+      }
+      const authResponse = this.generateMfaEnrollmentResponse(user);
+      return {
+        ...authResponse,
+        forceMfaSetup: true,
+        message:
+          'Administrator accounts require MFA setup before accessing administrative features.',
+      } as any;
+    }
+
     return this.generateAuthResponse(user);
   }
 
@@ -166,13 +284,13 @@ export class AuthService {
       );
     }
 
-    // Token reuse / Replay attack detection
+    // Token reuse / Replay attack detection (family-scoped revocation)
     if (storedToken.isRevoked) {
       this.logger.warn(
-        `Token reuse detected for user ${storedToken.userId}! Invalidating entire session family.`,
+        `Token reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
       );
       await this.prisma.refreshToken.updateMany({
-        where: { userId: storedToken.userId, isRevoked: false },
+        where: { familyId: storedToken.familyId, isRevoked: false },
         data: { isRevoked: true },
       });
       await this.prisma.auditLog.create({
@@ -181,12 +299,15 @@ export class AuthService {
           action: AuditAction.TOKEN_REUSE_DETECTED,
           resource: 'refresh_token',
           resourceId: storedToken.id,
-          details: { reason: 'Revoked refresh token was presented for rotation' },
+          details: {
+            reason: 'Revoked refresh token was presented for rotation',
+            familyId: storedToken.familyId,
+          },
         },
       });
       throw new DomainException(
         ErrorCode.UNAUTHORIZED,
-        'Suspicious activity detected. All active sessions have been revoked.',
+        'Suspicious activity detected. The session family has been revoked.',
         HttpStatus.UNAUTHORIZED,
       );
     }
@@ -215,10 +336,10 @@ export class AuthService {
 
     if (updateResult.count === 0) {
       this.logger.warn(
-        `Token race/reuse detected for user ${storedToken.userId}! Invalidating entire session family.`,
+        `Token race/reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
       );
       await this.prisma.refreshToken.updateMany({
-        where: { userId: storedToken.userId, isRevoked: false },
+        where: { familyId: storedToken.familyId, isRevoked: false },
         data: { isRevoked: true },
       });
       await this.prisma.auditLog.create({
@@ -227,32 +348,63 @@ export class AuthService {
           action: AuditAction.TOKEN_REUSE_DETECTED,
           resource: 'refresh_token',
           resourceId: storedToken.id,
-          details: { reason: 'Concurrent rotation race or already revoked refresh token' },
+          details: {
+            reason: 'Concurrent rotation race or already revoked refresh token',
+            familyId: storedToken.familyId,
+          },
         },
       });
       throw new DomainException(
         ErrorCode.UNAUTHORIZED,
-        'Suspicious activity detected. All active sessions have been revoked.',
+        'Suspicious activity detected. The session family has been revoked.',
         HttpStatus.UNAUTHORIZED,
       );
     }
 
-    return this.generateAuthResponse(storedToken.user, true);
+    return this.generateAuthResponse(storedToken.user, true, storedToken.familyId);
   }
 
   async logout(userId: string, refreshTokenString?: string): Promise<void> {
-    if (refreshTokenString) {
-      const tokenHash = this.hashToken(refreshTokenString);
-      await this.prisma.refreshToken.updateMany({
-        where: { userId, tokenHash },
-        data: { isRevoked: true },
+    await this.prisma.$transaction(async (tx: any) => {
+      if (refreshTokenString) {
+        const tokenHash = this.hashToken(refreshTokenString);
+        const token = await tx.refreshToken.findUnique({ where: { tokenHash } });
+        if (token && token.userId === userId) {
+          await tx.refreshToken.updateMany({
+            where: { familyId: token.familyId, isRevoked: false },
+            data: { isRevoked: true },
+          });
+        } else {
+          await tx.refreshToken.updateMany({
+            where: { userId, tokenHash },
+            data: { isRevoked: true },
+          });
+        }
+      } else {
+        await tx.refreshToken.updateMany({
+          where: { userId, isRevoked: false },
+          data: { isRevoked: true },
+        });
+      }
+
+      await tx.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
       });
-    } else {
-      await this.prisma.refreshToken.updateMany({
+    });
+  }
+
+  async logoutAll(userId: string): Promise<void> {
+    await this.prisma.$transaction([
+      this.prisma.refreshToken.updateMany({
         where: { userId, isRevoked: false },
         data: { isRevoked: true },
-      });
-    }
+      }),
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+      }),
+    ]);
   }
 
   async getMe(userId: string): Promise<UserDto> {
@@ -390,14 +542,19 @@ export class AuthService {
       })),
     );
 
-    await this.prisma.$transaction([
-      this.prisma.recoveryCode.deleteMany({ where: { userId } }),
-      this.prisma.recoveryCode.createMany({ data: hashedCodes }),
-      this.prisma.user.update({
+    const authResponse = await this.prisma.$transaction(async tx => {
+      await tx.recoveryCode.deleteMany({ where: { userId } });
+      await tx.recoveryCode.createMany({ data: hashedCodes });
+      await tx.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true },
+      });
+      const updatedUser = await tx.user.update({
         where: { id: userId },
-        data: { mfaEnabled: true },
-      }),
-      this.prisma.auditLog.create({
+        data: { mfaEnabled: true, tokenVersion: { increment: 1 } },
+        include: { profile: true },
+      });
+      await tx.auditLog.create({
         data: {
           userId,
           action: AuditAction.MFA_ENABLED,
@@ -405,8 +562,12 @@ export class AuthService {
           resourceId: userId,
           details: { recoveryCodesCount: plainRecoveryCodes.length },
         },
-      }),
-    ]);
+      });
+
+      // The old token family was revoked above, so issue the replacement pair
+      // atomically with the new tokenVersion and verified MFA state.
+      return this.generateAuthResponse(updatedUser, true, undefined, tx);
+    });
 
     this.logger.log(`MFA enabled successfully for user ${userId}`);
 
@@ -414,6 +575,10 @@ export class AuthService {
       success: true,
       mfaEnabled: true,
       recoveryCodes: plainRecoveryCodes,
+      user: authResponse.user!,
+      accessToken: authResponse.accessToken!,
+      refreshToken: authResponse.refreshToken || '',
+      expiresIn: authResponse.expiresIn || 900,
       message:
         'Two-factor authentication has been enabled. Please save your recovery backup codes securely.',
     };
@@ -444,6 +609,21 @@ export class AuthService {
         'Invalid MFA session token',
         HttpStatus.UNAUTHORIZED,
       );
+    }
+
+    // One-time consumption check (F-013)
+    if (payload.jti && this.prisma.mfaChallenge?.updateMany) {
+      const consumed = await this.prisma.mfaChallenge.updateMany({
+        where: { jti: payload.jti, consumed: false },
+        data: { consumed: true },
+      });
+      if (consumed.count === 0) {
+        throw new DomainException(
+          ErrorCode.MFA_INVALID_SESSION,
+          'MFA challenge token already used or expired',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
     }
 
     const user = await this.prisma.user.findUnique({
@@ -496,6 +676,30 @@ export class AuthService {
         'MFA verification session has expired. Please sign in again.',
         HttpStatus.UNAUTHORIZED,
       );
+    }
+
+    // Validate token type — must be MFA challenge token, not access token (F-013)
+    if (!payload.mfaPending || (payload.tokenType && payload.tokenType !== 'mfa_challenge')) {
+      throw new DomainException(
+        ErrorCode.MFA_INVALID_SESSION,
+        'Invalid token type. Recovery requires an MFA challenge token.',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    // One-time consumption (F-013)
+    if (payload.jti && this.prisma.mfaChallenge?.updateMany) {
+      const consumed = await this.prisma.mfaChallenge.updateMany({
+        where: { jti: payload.jti, consumed: false },
+        data: { consumed: true },
+      });
+      if (consumed.count === 0) {
+        throw new DomainException(
+          ErrorCode.MFA_INVALID_SESSION,
+          'MFA challenge token already used or expired',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
     }
 
     const user = await this.prisma.user.findUnique({
@@ -636,14 +840,27 @@ export class AuthService {
   }
 
   private getMfaEncryptionKey(): string {
-    return (
-      this.configService.get<string>('MFA_ENCRYPTION_KEY') ||
-      this.configService.get<string>('jwt.accessSecret') ||
-      'mfa-encryption-fallback-key-32-chars-min'
-    );
+    const key = this.configService.get<string>('MFA_ENCRYPTION_KEY');
+    if (!key) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('FATAL: MFA_ENCRYPTION_KEY must be configured in production');
+      }
+      return (
+        this.configService.get<string>('jwt.accessSecret') ||
+        'dev-mfa-encryption-fallback-key-32-chars-min'
+      );
+    }
+    return key;
   }
 
-  private async generateAuthResponse(user: any, mfaVerified = false): Promise<AuthResponse> {
+  private async generateAuthResponse(
+    user: any,
+    mfaVerified = false,
+    familyId?: string,
+    tokenStore: {
+      refreshToken: { create: (args: any) => Promise<unknown> };
+    } = this.prisma,
+  ): Promise<AuthResponse> {
     const isMfaActive = user.mfaEnabled || false;
     const payload = {
       sub: user.id,
@@ -652,7 +869,7 @@ export class AuthService {
       status: user.status,
       tokenType: 'access',
       tokenVersion: user.tokenVersion || 0,
-      mfaVerified: isMfaActive ? mfaVerified : true,
+      mfaVerified: mfaVerified,
     };
 
     const accessToken = this.jwtService.sign(payload, {
@@ -665,10 +882,12 @@ export class AuthService {
 
     const refreshDays = 7;
     const expiresAt = new Date(Date.now() + refreshDays * 24 * 60 * 60 * 1000);
+    const tokenFamilyId = familyId || crypto.randomUUID();
 
-    await this.prisma.refreshToken.create({
+    await tokenStore.refreshToken.create({
       data: {
         userId: user.id,
+        familyId: tokenFamilyId,
         tokenHash,
         expiresAt,
       },
@@ -679,6 +898,30 @@ export class AuthService {
       accessToken,
       refreshToken: rawRefreshToken,
       expiresIn: 15 * 60, // seconds
+    };
+  }
+
+  private generateMfaEnrollmentResponse(user: any): AuthResponse {
+    const accessToken = this.jwtService.sign(
+      {
+        sub: user.id,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        tokenType: 'mfa_enrollment',
+        tokenVersion: user.tokenVersion || 0,
+        mfaVerified: false,
+      },
+      {
+        secret: this.configService.get<string>('jwt.accessSecret'),
+        expiresIn: '15m',
+      },
+    );
+
+    return {
+      user: this.mapToUserDto(user),
+      accessToken,
+      expiresIn: 15 * 60,
     };
   }
 

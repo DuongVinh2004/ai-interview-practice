@@ -80,21 +80,28 @@ export class ProviderRouterService {
    */
   getPriorityChain(): string[] {
     const configuredProvider = this.configService.get<string>('ai.provider', 'mock').toLowerCase();
+    const isProduction = process.env.NODE_ENV === 'production';
 
     if (configuredProvider === 'mock') {
+      if (isProduction && process.env.AI_ALLOW_MOCK !== 'true') {
+        this.logger.error(
+          'AI_PROVIDER=mock configured in production environment without explicit override!',
+        );
+        throw new Error('Mock AI provider cannot be primary provider in production');
+      }
       return ['mock'];
     }
 
     if (configuredProvider === 'gemini') {
-      return ['gemini', 'mock'];
+      return isProduction ? ['gemini'] : ['gemini', 'mock'];
     }
 
     if (configuredProvider === 'openai') {
-      return ['openai', 'mock'];
+      return isProduction ? ['openai'] : ['openai', 'mock'];
     }
 
     if (configuredProvider === 'anthropic') {
-      return ['anthropic', 'mock'];
+      return isProduction ? ['anthropic'] : ['anthropic', 'mock'];
     }
 
     // Default or 'router' / 'external': Parse AI_PROVIDER_PRIORITY
@@ -103,13 +110,18 @@ export class ProviderRouterService {
       'gemini,openai,anthropic,mock',
     );
 
+    const allowMock = !isProduction || process.env.AI_ALLOW_MOCK === 'true';
     const parsed = rawPriority
       .split(',')
       .map(p => p.trim().toLowerCase())
-      .filter(p => this.providersMap.has(p));
+      .filter(p => this.providersMap.has(p) && (p !== 'mock' || allowMock));
 
-    if (!parsed.includes('mock')) {
+    if (!isProduction && !parsed.includes('mock')) {
       parsed.push('mock');
+    }
+
+    if (parsed.length === 0 && isProduction) {
+      throw new Error('No production AI provider configured');
     }
 
     return parsed.length > 0 ? parsed : ['mock'];
@@ -231,17 +243,13 @@ export class ProviderRouterService {
           );
         }
 
-        // If fallback to mock was necessary due to external failure, mark needsReview
-        if (
-          providerName === 'mock' &&
-          attemptedProviders > 1 &&
-          result.data &&
-          typeof result.data === 'object'
-        ) {
+        // If provider is mock (either primary or fallback), always mark needsReview and record metric
+        if (providerName === 'mock' && result.data && typeof result.data === 'object') {
           const dataObj = result.data as any;
           if ('needsReview' in dataObj) {
             dataObj.needsReview = true;
           }
+          dataObj.isMockProvider = true;
           this.metricsService?.evaluationNeedsReviewTotal.inc({ reason: 'ai_provider_fallback' });
         }
 
@@ -261,7 +269,10 @@ export class ProviderRouterService {
 
         if (!this.circuitBreaker.canExecute(providerName, operation)) {
           this.metricsService?.aiCircuitBreakerState.set({ provider: providerName, operation }, 2);
-          this.metricsService?.aiCircuitBreakerTripsTotal.inc({ provider: providerName, operation });
+          this.metricsService?.aiCircuitBreakerTripsTotal.inc({
+            provider: providerName,
+            operation,
+          });
         }
 
         this.logger.error(
@@ -317,9 +328,11 @@ export class ProviderRouterService {
     userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedQuestionAi>> {
     const cacheKey = `question:${context.role}:${context.level}:${context.technologies?.join(',')}:${context.turnNumber}:${context.difficulty}:${userPrompt || ''}`;
-    
+
     if (this.semanticCacheService?.isCacheEnabled()) {
-      const cached = await this.semanticCacheService.get<GeneratedQuestionAi>(cacheKey);
+      const cached = await this.semanticCacheService.get<GeneratedQuestionAi>(cacheKey, undefined, {
+        namespace: 'questions',
+      });
       if (cached.hit && cached.data) {
         return {
           data: cached.data,
@@ -337,8 +350,14 @@ export class ProviderRouterService {
       provider.generateQuestion(context, systemPrompt, userPrompt),
     );
 
-    if (this.semanticCacheService?.isCacheEnabled() && result.data) {
-      await this.semanticCacheService.set(cacheKey, result.data, { operation: 'generateQuestion' });
+    if (this.semanticCacheService?.isCacheEnabled() && result.data && result.provider !== 'mock') {
+      await this.semanticCacheService.set(
+        cacheKey,
+        result.data,
+        { operation: 'generateQuestion' },
+        86400,
+        { namespace: 'questions' },
+      );
     }
 
     return result;
@@ -349,30 +368,15 @@ export class ProviderRouterService {
     systemPrompt: string,
     userPrompt?: string,
   ): Promise<AiExecutionResult<EvaluatedAnswerAi>> {
-    const cacheKey = `eval:${context.question}:${context.answer}:${context.level}`;
-
-    if (this.semanticCacheService?.isCacheEnabled()) {
-      const cached = await this.semanticCacheService.get<EvaluatedAnswerAi>(cacheKey);
-      if (cached.hit && cached.data) {
-        return {
-          data: cached.data,
-          provider: 'semantic_cache',
-          model: 'semantic-cache',
-          latencyMs: 15,
-          promptTokens: 0,
-          completionTokens: 0,
-          costEstimate: 0,
-        };
-      }
-    }
+    // SECURITY: Semantic cache disabled for evaluations to prevent cross-user leakage
+    // and ensure each evaluation uses current prompt/rubric/model version.
+    // See audit finding F-009.
 
     const result = await this.executeWithFallback('evaluateAnswer', provider =>
       provider.evaluateAnswer(context, systemPrompt, userPrompt),
     );
 
-    if (this.semanticCacheService?.isCacheEnabled() && result.data) {
-      await this.semanticCacheService.set(cacheKey, result.data, { operation: 'evaluateAnswer' });
-    }
+    // Cache set removed for evaluations (F-009)
 
     return result;
   }
@@ -382,32 +386,10 @@ export class ProviderRouterService {
     systemPrompt: string,
     userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedLearningPathAi>> {
-    const cacheKey = `learning-path:${context.role}:${context.level}:${context.turns?.map(t => `${t.turnNumber}:${t.score}`).join(',')}`;
-
-    if (this.semanticCacheService?.isCacheEnabled()) {
-      const cached = await this.semanticCacheService.get<GeneratedLearningPathAi>(cacheKey);
-      if (cached.hit && cached.data) {
-        return {
-          data: cached.data,
-          provider: 'semantic_cache',
-          model: 'semantic-cache',
-          latencyMs: 15,
-          promptTokens: 0,
-          completionTokens: 0,
-          costEstimate: 0,
-        };
-      }
-    }
-
-    const result = await this.executeWithFallback('generateLearningPath', provider =>
+    // Personalized learning paths include candidate answers and feedback, so a shared semantic
+    // cache can leak one candidate's generated output to another candidate.
+    return this.executeWithFallback('generateLearningPath', provider =>
       provider.generateLearningPath(context, systemPrompt, userPrompt),
     );
-
-    if (this.semanticCacheService?.isCacheEnabled() && result.data) {
-      await this.semanticCacheService.set(cacheKey, result.data, { operation: 'generateLearningPath' });
-    }
-
-    return result;
   }
 }
-

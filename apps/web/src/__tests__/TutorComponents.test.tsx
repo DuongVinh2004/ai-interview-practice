@@ -16,7 +16,9 @@ describe('Socratic AI Tutor & Instant Retry Components (F006)', () => {
         id: 'msg-1',
         role: TutorRole.AI_TUTOR,
         content: 'What happens when two concurrent transactions update the same row?',
-        references: [{ title: 'PostgreSQL Concurrency Control', url: 'https://postgresql.org/docs' }],
+        references: [
+          { title: 'PostgreSQL Concurrency Control', url: 'https://postgresql.org/docs' },
+        ],
       },
       {
         id: 'msg-2',
@@ -36,14 +38,16 @@ describe('Socratic AI Tutor & Instant Retry Components (F006)', () => {
         streamedContent=""
         onSendMessage={onSendMessage}
         onRate={onRate}
-      />
+      />,
     );
 
     expect(screen.getByTestId('socratic-tutor-drawer')).toBeInTheDocument();
     expect(screen.getByText(/AI Socratic Tutor/i)).toBeInTheDocument();
     expect(screen.getByText(/What happens when two concurrent transactions/i)).toBeInTheDocument();
     expect(screen.getByText(/PostgreSQL Concurrency Control/i)).toBeInTheDocument();
-    expect(screen.getByText('A lock is acquired and the second transaction waits.')).toBeInTheDocument();
+    expect(
+      screen.getByText('A lock is acquired and the second transaction waits.'),
+    ).toBeInTheDocument();
 
     const input = screen.getByPlaceholderText(/Hỏi AI Tutor thêm về khái niệm/i);
     fireEvent.change(input, { target: { value: 'How does optimistic locking differ?' } });
@@ -84,7 +88,7 @@ describe('Socratic AI Tutor & Instant Retry Components (F006)', () => {
         originalScore={5.0}
         onSubmitRetry={onSubmitRetry}
         isSubmitting={false}
-      />
+      />,
     );
 
     expect(screen.getByTestId('instant-retry-modal')).toBeInTheDocument();
@@ -99,7 +103,9 @@ describe('Socratic AI Tutor & Instant Retry Components (F006)', () => {
     const submitBtn = screen.getByText(/Chấm điểm câu trả lời mới/i);
     fireEvent.click(submitBtn);
 
-    expect(onSubmitRetry).toHaveBeenCalledWith('Use distributed locks with Redlock algorithm and TTL.');
+    expect(onSubmitRetry).toHaveBeenCalledWith(
+      'Use distributed locks with Redlock algorithm and TTL.',
+    );
   });
 
   it('renders TutorRatingButtons and registers thumbs up feedback', async () => {

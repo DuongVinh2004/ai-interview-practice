@@ -27,11 +27,19 @@ export class ShareService {
     });
 
     if (!session) {
-      throw new DomainException(ErrorCode.SESSION_NOT_FOUND, 'Interview session not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (session.userId !== userId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'You do not own this interview session', HttpStatus.FORBIDDEN);
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not own this interview session',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     if (session.state !== SessionState.COMPLETED) {
@@ -119,11 +127,19 @@ export class ShareService {
     });
 
     if (!session) {
-      throw new DomainException(ErrorCode.SESSION_NOT_FOUND, 'Interview session not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (session.userId !== userId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'You do not own this interview session', HttpStatus.FORBIDDEN);
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not own this interview session',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     const tokens = await this.prisma.shareToken.findMany({
@@ -167,11 +183,19 @@ export class ShareService {
     });
 
     if (!shareToken || shareToken.sessionId !== sessionId) {
-      throw new DomainException(ErrorCode.SHARE_LINK_NOT_FOUND, 'Share link not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_NOT_FOUND,
+        'Share link not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (shareToken.session.userId !== userId) {
-      throw new DomainException(ErrorCode.FORBIDDEN, 'You do not own this share link', HttpStatus.FORBIDDEN);
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not own this share link',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     const updated = await this.prisma.shareToken.update({
@@ -235,25 +259,45 @@ export class ShareService {
     });
 
     if (!shareToken) {
-      throw new DomainException(ErrorCode.SHARE_LINK_NOT_FOUND, 'Shared interview link not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_NOT_FOUND,
+        'Shared interview link not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (shareToken.isRevoked) {
-      throw new DomainException(ErrorCode.SHARE_LINK_REVOKED, 'This shared interview link has been revoked by the candidate', HttpStatus.GONE);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_REVOKED,
+        'This shared interview link has been revoked by the candidate',
+        HttpStatus.GONE,
+      );
     }
 
     if (shareToken.expiresAt && shareToken.expiresAt < new Date()) {
-      throw new DomainException(ErrorCode.SHARE_LINK_EXPIRED, 'This shared interview link has expired', HttpStatus.GONE);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_EXPIRED,
+        'This shared interview link has expired',
+        HttpStatus.GONE,
+      );
     }
 
     // Verify passcode if protected
     if (shareToken.passcodeHash) {
       if (!passcode) {
-        throw new DomainException(ErrorCode.UNAUTHORIZED, 'Passcode required to view this interview report', HttpStatus.UNAUTHORIZED);
+        throw new DomainException(
+          ErrorCode.UNAUTHORIZED,
+          'Passcode required to view this interview report',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const isMatch = await bcrypt.compare(passcode, shareToken.passcodeHash);
       if (!isMatch) {
-        throw new DomainException(ErrorCode.INVALID_CREDENTIALS, 'Invalid passcode for this interview report', HttpStatus.FORBIDDEN);
+        throw new DomainException(
+          ErrorCode.INVALID_CREDENTIALS,
+          'Invalid passcode for this interview report',
+          HttpStatus.FORBIDDEN,
+        );
       }
     }
 
@@ -270,16 +314,20 @@ export class ShareService {
 
     // Calculate rubric averages
     const turnsWithEval = session.turns.filter(t => t.answer?.evaluation);
+    const authoritativeTurns = turnsWithEval.filter(
+      t => t.answer!.evaluation!.authorityState === 'AUTHORITATIVE',
+    );
+    const scoreableTurns = authoritativeTurns.length > 0 ? authoritativeTurns : turnsWithEval;
     let avgAccuracy = 0;
     let avgDepth = 0;
     let avgClarity = 0;
 
-    if (turnsWithEval.length > 0) {
+    if (scoreableTurns.length > 0) {
       let totalAcc = 0;
       let totalDepth = 0;
       let totalClarity = 0;
 
-      for (const t of turnsWithEval) {
+      for (const t of scoreableTurns) {
         const rubric = t.answer!.evaluation!.rubricScores as any;
         if (rubric) {
           totalAcc += rubric.technicalAccuracy || 0;
@@ -288,10 +336,20 @@ export class ShareService {
         }
       }
 
-      avgAccuracy = Number((totalAcc / turnsWithEval.length).toFixed(1));
-      avgDepth = Number((totalDepth / turnsWithEval.length).toFixed(1));
-      avgClarity = Number((totalClarity / turnsWithEval.length).toFixed(1));
+      avgAccuracy = Number((totalAcc / scoreableTurns.length).toFixed(1));
+      avgDepth = Number((totalDepth / scoreableTurns.length).toFixed(1));
+      avgClarity = Number((totalClarity / scoreableTurns.length).toFixed(1));
     }
+
+    const effectiveOverallScore =
+      scoreableTurns.length > 0
+        ? Number(
+            (
+              scoreableTurns.reduce((sum, t) => sum + t.answer!.evaluation!.score, 0) /
+              scoreableTurns.length
+            ).toFixed(1),
+          )
+        : session.overallScore;
 
     return {
       shareTokenId: shareToken.id,
@@ -314,7 +372,7 @@ export class ShareService {
       session: {
         id: session.id,
         state: session.state,
-        overallScore: session.overallScore,
+        overallScore: effectiveOverallScore,
         completedAt: session.completedAt?.toISOString() || null,
         jobRole: session.jobRole,
         seniorityLevel: session.seniorityLevel,
@@ -387,15 +445,45 @@ export class ShareService {
     });
 
     if (!shareToken) {
-      throw new DomainException(ErrorCode.SHARE_LINK_NOT_FOUND, 'Shared interview link not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_NOT_FOUND,
+        'Shared interview link not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (shareToken.isRevoked) {
-      throw new DomainException(ErrorCode.SHARE_LINK_REVOKED, 'This share link has been revoked', HttpStatus.GONE);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_REVOKED,
+        'This share link has been revoked',
+        HttpStatus.GONE,
+      );
     }
 
     if (shareToken.expiresAt && shareToken.expiresAt < new Date()) {
-      throw new DomainException(ErrorCode.SHARE_LINK_EXPIRED, 'This share link has expired', HttpStatus.GONE);
+      throw new DomainException(
+        ErrorCode.SHARE_LINK_EXPIRED,
+        'This share link has expired',
+        HttpStatus.GONE,
+      );
+    }
+
+    if (shareToken.passcodeHash) {
+      if (!dto.passcode) {
+        throw new DomainException(
+          ErrorCode.UNAUTHORIZED,
+          'Passcode required to submit feedback on this protected share link',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+      const isMatch = await bcrypt.compare(dto.passcode, shareToken.passcodeHash);
+      if (!isMatch) {
+        throw new DomainException(
+          ErrorCode.INVALID_CREDENTIALS,
+          'Invalid passcode provided for protected share link',
+          HttpStatus.FORBIDDEN,
+        );
+      }
     }
 
     const feedback = await this.prisma.mentorFeedback.create({
@@ -455,7 +543,11 @@ export class ShareService {
     });
 
     if (!session) {
-      throw new DomainException(ErrorCode.SESSION_NOT_FOUND, 'Interview session not found', HttpStatus.NOT_FOUND);
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     if (session.userId !== userId && userRole !== UserRole.ADMIN) {

@@ -75,3 +75,14 @@ variable "domain_name" {
   type        = string
   default     = "interview.ai.example.com"
 }
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN used by the public ALB HTTPS listener"
+  type        = string
+}
+
+variable "frontend_origins" {
+  description = "Exact HTTPS origins permitted by the storage CORS policy"
+  type        = list(string)
+  default     = ["https://interview.ai.example.com"]
+}

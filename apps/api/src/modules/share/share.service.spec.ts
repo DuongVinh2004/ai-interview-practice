@@ -3,6 +3,7 @@ import { ShareService } from './share.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { SessionState, ShareExpiryDuration, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
+import * as bcrypt from 'bcrypt';
 
 describe('ShareService', () => {
   let service: ShareService;
@@ -31,10 +32,7 @@ describe('ShareService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        ShareService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [ShareService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<ShareService>(ShareService);
@@ -151,6 +149,61 @@ describe('ShareService', () => {
     await expect(service.getPublicSharedResult('expired-token')).rejects.toThrow(DomainException);
   });
 
+  it('uses authoritative evaluations for the public overall score', async () => {
+    const makeTurn = (turnNumber: number, score: number, authorityState: string) => ({
+      turnNumber,
+      difficulty: 2,
+      status: 'EVALUATED',
+      question: { content: `Question ${turnNumber}`, keyFocus: 'Focus' },
+      answer: {
+        content: `Answer ${turnNumber}`,
+        submittedAt: new Date(),
+        evaluation: {
+          score,
+          authorityState,
+          rubricScores: { technicalAccuracy: score, depth: score, clarity: score },
+          strengths: [],
+          improvements: [],
+          conciseFeedback: 'Feedback',
+          evidence: [],
+        },
+      },
+    });
+
+    prisma.shareToken.findUnique.mockResolvedValue({
+      id: 'token-id-authoritative',
+      token: 'authoritative-token',
+      isRevoked: false,
+      isAnonymized: true,
+      expiresAt: new Date(Date.now() + 86400000),
+      viewCount: 0,
+      createdAt: new Date(),
+      mentorFeedback: [],
+      session: {
+        id: mockSessionId,
+        state: SessionState.COMPLETED,
+        overallScore: 9.9,
+        completedAt: new Date(),
+        jobRole: { name: 'Backend Engineer' },
+        seniorityLevel: { name: 'Senior' },
+        technologies: [],
+        user: { email: 'candidate@example.com', profile: { fullName: 'Candidate' } },
+        turns: [
+          makeTurn(1, 4, 'AUTHORITATIVE'),
+          makeTurn(2, 6, 'AUTHORITATIVE'),
+          makeTurn(3, 10, 'NEEDS_REVIEW'),
+        ],
+        learningPath: null,
+      },
+    });
+    prisma.shareToken.update.mockResolvedValue({});
+
+    const result = await service.getPublicSharedResult('authoritative-token');
+
+    expect(result.session.overallScore).toBe(5);
+    expect(result.session.rubricAverages.technicalAccuracy).toBe(5);
+  });
+
   it('should allow adding mentor feedback to a shared session', async () => {
     prisma.shareToken.findUnique.mockResolvedValue({
       id: 'token-id-1',
@@ -176,5 +229,71 @@ describe('ShareService', () => {
 
     expect(result.mentorName).toBe('Staff Tech Lead');
     expect(prisma.auditLog.create).toHaveBeenCalled();
+  });
+
+  it('should reject feedback on passcode-protected share link if passcode is missing', async () => {
+    prisma.shareToken.findUnique.mockResolvedValue({
+      id: 'token-id-1',
+      token: 'protected-token',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 86400000),
+      passcodeHash: '$2b$10$xyz...', // protected
+    });
+
+    await expect(
+      service.addMentorFeedback('protected-token', {
+        mentorName: 'Mentor',
+        comment: 'Great answer',
+      }),
+    ).rejects.toThrow(DomainException);
+  });
+
+  it('should reject feedback on passcode-protected share link if passcode is invalid', async () => {
+    const validHash = await bcrypt.hash('secret123', 10);
+
+    prisma.shareToken.findUnique.mockResolvedValue({
+      id: 'token-id-1',
+      token: 'protected-token',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 86400000),
+      passcodeHash: validHash,
+    });
+
+    await expect(
+      service.addMentorFeedback('protected-token', {
+        mentorName: 'Mentor',
+        comment: 'Great answer',
+        passcode: 'wrong-passcode',
+      }),
+    ).rejects.toThrow(DomainException);
+  });
+
+  it('should accept feedback on passcode-protected share link when correct passcode is provided', async () => {
+    const validHash = await bcrypt.hash('secret123', 10);
+
+    prisma.shareToken.findUnique.mockResolvedValue({
+      id: 'token-id-1',
+      token: 'protected-token',
+      isRevoked: false,
+      expiresAt: new Date(Date.now() + 86400000),
+      passcodeHash: validHash,
+    });
+
+    prisma.mentorFeedback.create.mockResolvedValue({
+      id: 'feedback-1',
+      shareTokenId: 'token-id-1',
+      turnNumber: null,
+      mentorName: 'Mentor Authorized',
+      comment: 'Great answer',
+      createdAt: new Date(),
+    });
+
+    const result = await service.addMentorFeedback('protected-token', {
+      mentorName: 'Mentor Authorized',
+      comment: 'Great answer',
+      passcode: 'secret123',
+    });
+
+    expect(result.mentorName).toBe('Mentor Authorized');
   });
 });

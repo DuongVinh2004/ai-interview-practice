@@ -30,14 +30,16 @@ export function ProgressTrendChart({
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
           <p className="text-[11px] text-slate-500 font-medium">Average Score</p>
           <p className="text-lg font-bold text-slate-900 font-mono mt-0.5">
-            {formatScore(averageScore)} <span className="text-xs text-slate-400 font-normal">/ 10</span>
+            {formatScore(averageScore)}{' '}
+            <span className="text-xs text-slate-400 font-normal">/ 10</span>
           </p>
         </div>
 
         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
           <p className="text-[11px] text-slate-500 font-medium">Peak Score</p>
           <p className="text-lg font-bold text-emerald-600 font-mono mt-0.5">
-            {formatScore(highestScore)} <span className="text-xs text-slate-400 font-normal">/ 10</span>
+            {formatScore(highestScore)}{' '}
+            <span className="text-xs text-slate-400 font-normal">/ 10</span>
           </p>
         </div>
 
@@ -70,23 +72,26 @@ export function ProgressTrendChart({
       <div className="pt-2">
         <div className="flex items-end gap-2 h-36 border-b border-slate-200 pb-2 px-1">
           {sessions.map((s, idx) => {
-            const heightPercent = Math.max(15, (s.overallScore / 10) * 100);
+            const score = Number((s as any).overallScore ?? (s as any).score ?? 0);
+            const heightPercent = Math.max(15, (score / 10) * 100);
             const isLatest = idx === sessions.length - 1;
 
             return (
               <div
-                key={s.sessionId}
+                key={s.sessionId || idx}
                 className="flex-1 flex flex-col items-center gap-1 group relative h-full justify-end"
               >
                 {/* Tooltip */}
                 <div className="absolute -top-12 bg-slate-900 text-white text-[10px] px-2 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap shadow-md z-10">
-                  <p className="font-semibold">{s.jobRoleName} ({s.seniorityLevelName})</p>
-                  <p className="text-emerald-400">Score: {s.overallScore.toFixed(1)}/10</p>
+                  <p className="font-semibold">
+                    {s.jobRoleName || 'Technical'} ({s.seniorityLevelName || 'Practice'})
+                  </p>
+                  <p className="text-emerald-400">Score: {score.toFixed(1)}/10</p>
                 </div>
 
                 {/* Score label above bar */}
                 <span className="text-[10px] font-bold font-mono text-slate-600 group-hover:text-emerald-600 transition-colors">
-                  {s.overallScore.toFixed(1)}
+                  {score.toFixed(1)}
                 </span>
 
                 {/* Bar */}
@@ -100,9 +105,7 @@ export function ProgressTrendChart({
                 />
 
                 {/* Session index / turn */}
-                <span className="text-[9px] text-slate-400 font-mono mt-1">
-                  #{idx + 1}
-                </span>
+                <span className="text-[9px] text-slate-400 font-mono mt-1">#{idx + 1}</span>
               </div>
             );
           })}

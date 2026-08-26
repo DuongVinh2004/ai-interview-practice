@@ -9,14 +9,7 @@ import { MilestoneTimeline } from '../features/readiness/MilestoneTimeline';
 
 describe('Readiness Score Components (F009)', () => {
   it('renders ReadinessGauge with percentage and 95% CI band', () => {
-    render(
-      <ReadinessGauge
-        score={82.5}
-        confidenceLow={78.0}
-        confidenceHigh={87.0}
-        size={240}
-      />
-    );
+    render(<ReadinessGauge score={82.5} confidenceLow={78.0} confidenceHigh={87.0} size={240} />);
 
     expect(screen.getByTestId('readiness-gauge')).toBeInTheDocument();
     expect(screen.getByText('82.5')).toBeInTheDocument();
@@ -30,7 +23,7 @@ describe('Readiness Score Components (F009)', () => {
         name="Big Tech Ready (L5/L6)"
         nameVi="Sẵn sàng Big Tech"
         size="md"
-      />
+      />,
     );
 
     expect(screen.getByTestId('tier-badge')).toBeInTheDocument();
@@ -45,7 +38,7 @@ describe('Readiness Score Components (F009)', () => {
         estimatedTargetDate="2026-09-24"
         weeklyRate={0.35}
         currentTierSlug="tier-2"
-      />
+      />,
     );
 
     expect(screen.getByTestId('time-estimate-card')).toBeInTheDocument();

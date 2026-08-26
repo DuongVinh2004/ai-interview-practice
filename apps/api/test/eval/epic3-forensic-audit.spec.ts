@@ -95,6 +95,7 @@ describe('Epic 3 Forensic Quality & Security Audit', () => {
               prisma,
               sseService,
               aiOrchestrator,
+              { checkAndConsumeQuotaInTransaction: jest.fn() } as any,
               { add: jest.fn() } as any,
               { add: jest.fn() } as any,
             ),

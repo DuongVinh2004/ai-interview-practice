@@ -26,8 +26,18 @@ variable "secrets_arn" {
   type = string
 }
 
-variable "db_endpoint" {
+variable "secrets_kms_key_arn" {
   type = string
+}
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for the public HTTPS listener"
+  type        = string
+
+  validation {
+    condition     = can(regex("^arn:aws:acm:", var.certificate_arn))
+    error_message = "certificate_arn must be a valid ACM certificate ARN."
+  }
 }
 
 variable "redis_endpoint" {
@@ -35,6 +45,10 @@ variable "redis_endpoint" {
 }
 
 variable "s3_bucket_name" {
+  type = string
+}
+
+variable "storage_kms_key_arn" {
   type = string
 }
 

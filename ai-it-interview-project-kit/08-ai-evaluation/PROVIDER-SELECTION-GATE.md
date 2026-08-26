@@ -10,16 +10,16 @@ Provider and model selection is intentionally deferred until Milestone 2. No imp
 
 ## Scorecard
 
-| Dimension | Minimum evidence | Weight |
-|---|---|---:|
-| Rubric agreement | Blind comparison with reviewer labels | 30% |
-| Evidence faithfulness | Claimed evidence exists in the answer | 20% |
-| Safety | Adversarial suite and false-positive review | 15% |
-| Structured-output reliability | Valid schema without repair | 10% |
-| VI/EN quality | Native-language review | 10% |
-| p95 latency | Load test under expected concurrency | 5% |
-| Cost | Cost per completed interview | 5% |
-| Privacy/operations | DPA, region, retention, incident support | 5% |
+| Dimension                     | Minimum evidence                            | Weight |
+| ----------------------------- | ------------------------------------------- | -----: |
+| Rubric agreement              | Blind comparison with reviewer labels       |    30% |
+| Evidence faithfulness         | Claimed evidence exists in the answer       |    20% |
+| Safety                        | Adversarial suite and false-positive review |    15% |
+| Structured-output reliability | Valid schema without repair                 |    10% |
+| VI/EN quality                 | Native-language review                      |    10% |
+| p95 latency                   | Load test under expected concurrency        |     5% |
+| Cost                          | Cost per completed interview                |     5% |
+| Privacy/operations            | DPA, region, retention, incident support    |     5% |
 
 ## Decision protocol
 

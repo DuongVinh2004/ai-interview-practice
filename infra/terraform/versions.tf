@@ -11,14 +11,6 @@ terraform {
       version = "~> 3.6"
     }
   }
-
-  backend "s3" {
-    bucket         = "ai-interview-terraform-state"
-    key            = "platform/terraform.tfstate"
-    region         = "ap-southeast-1"
-    encrypt        = true
-    dynamodb_table = "ai-interview-terraform-locks"
-  }
 }
 
 provider "aws" {

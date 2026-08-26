@@ -1,0 +1,17 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Empty provider-key placeholders in the committed environment template"
+condition = "AND"
+regexTarget = "secret"
+paths = ['''(?:^|/)\.env\.example$''']
+regexes = ['''^ELEVENLABS_API_KEY=$''']
+
+[[allowlists]]
+description = "Allow mock secrets in spec and test files"
+paths = [
+  '''(?:^|/)apps/api/src/modules/billing/billing\.service\.spec\.ts$''',
+  '''(?:^|/)apps/api/src/modules/billing/__tests__/stripe-webhook\.spec\.ts$''',
+  '''(?:^|/)apps/api/src/modules/notifications/push-notification\.service\.ts$'''
+]

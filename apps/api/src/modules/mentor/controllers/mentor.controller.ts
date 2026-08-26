@@ -20,19 +20,13 @@ export class MentorController {
 
   @Post('profile')
   @ApiOperation({ summary: 'Create or update mentor profile, bio, and expertise areas' })
-  async updateProfile(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: CreateMentorProfileDto,
-  ) {
+  async updateProfile(@CurrentUser('sub') userId: string, @Body() dto: CreateMentorProfileDto) {
     return this.mentorService.createOrUpdateProfile(userId, dto);
   }
 
   @Post('availability')
   @ApiOperation({ summary: 'Set recurring weekly availability slots for mentorship' })
-  async setAvailability(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: SetAvailabilityDto,
-  ) {
+  async setAvailability(@CurrentUser('sub') userId: string, @Body() dto: SetAvailabilityDto) {
     return this.mentorService.setAvailability(userId, dto);
   }
 

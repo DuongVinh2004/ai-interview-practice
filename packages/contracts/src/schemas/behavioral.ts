@@ -44,12 +44,14 @@ export const AnalyzeStarResponseSchema = z.object({
   missingComponents: z.array(z.enum(['situation', 'task', 'action', 'result'])),
   probeText: z.string().nullable().optional(),
   probeTextVi: z.string().nullable().optional(),
-  annotatedSegments: z.object({
-    situation: z.string().nullable().optional(),
-    task: z.string().nullable().optional(),
-    action: z.string().nullable().optional(),
-    result: z.string().nullable().optional(),
-  }).optional(),
+  annotatedSegments: z
+    .object({
+      situation: z.string().nullable().optional(),
+      task: z.string().nullable().optional(),
+      action: z.string().nullable().optional(),
+      result: z.string().nullable().optional(),
+    })
+    .optional(),
 });
 export type AnalyzeStarResponse = z.infer<typeof AnalyzeStarResponseSchema>;
 

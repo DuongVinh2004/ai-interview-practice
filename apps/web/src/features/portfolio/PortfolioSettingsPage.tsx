@@ -113,7 +113,8 @@ export const PortfolioSettingsPage: React.FC = () => {
     updateMutation.mutate(formData);
   };
 
-  const eligibleForCert = badges?.filter((b) => b.highestLevel === 'GOLD' || b.highestLevel === 'PLATINUM') || [];
+  const eligibleForCert =
+    badges?.filter(b => b.highestLevel === 'GOLD' || b.highestLevel === 'PLATINUM') || [];
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8" data-testid="portfolio-settings-page">
@@ -122,7 +123,8 @@ export const PortfolioSettingsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Public Portfolio & Badge Settings</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Customize your shareable public profile, toggle section privacy, and generate verified digital certificates.
+            Customize your shareable public profile, toggle section privacy, and generate verified
+            digital certificates.
           </p>
         </div>
         {formData.username && formData.isPublic && (
@@ -174,14 +176,16 @@ export const PortfolioSettingsPage: React.FC = () => {
                 <input
                   type="text"
                   value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  onChange={e => setFormData({ ...formData, username: e.target.value })}
                   placeholder="john_doe"
                   className="block w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-emerald-500 focus:border-emerald-500 font-medium"
                   required
                   data-testid="username-input"
                 />
               </div>
-              <p className="text-xs text-slate-400 mt-1">Alphanumeric, underscores, and dashes only.</p>
+              <p className="text-xs text-slate-400 mt-1">
+                Alphanumeric, underscores, and dashes only.
+              </p>
             </div>
 
             <div>
@@ -191,7 +195,7 @@ export const PortfolioSettingsPage: React.FC = () => {
               <Input
                 type="text"
                 value={formData.displayName}
-                onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+                onChange={e => setFormData({ ...formData, displayName: e.target.value })}
                 placeholder="e.g. John Doe, Senior Backend Engineer"
                 data-testid="displayname-input"
               />
@@ -205,7 +209,7 @@ export const PortfolioSettingsPage: React.FC = () => {
             <Textarea
               rows={3}
               value={formData.customBio}
-              onChange={(e) => setFormData({ ...formData, customBio: e.target.value })}
+              onChange={e => setFormData({ ...formData, customBio: e.target.value })}
               placeholder="Tell recruiters about your background, favorite tech stacks, and career goals..."
               data-testid="bio-input"
             />
@@ -222,13 +226,17 @@ export const PortfolioSettingsPage: React.FC = () => {
             {/* Master Public Toggle */}
             <div className="py-3.5 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Enable Public Portfolio</span>
-                <span className="text-xs text-slate-500">Allow anyone with your link to view your public profile</span>
+                <span className="text-sm font-semibold text-slate-900 block">
+                  Enable Public Portfolio
+                </span>
+                <span className="text-xs text-slate-500">
+                  Allow anyone with your link to view your public profile
+                </span>
               </div>
               <input
                 type="checkbox"
                 checked={formData.isPublic}
-                onChange={(e) => setFormData({ ...formData, isPublic: e.target.checked })}
+                onChange={e => setFormData({ ...formData, isPublic: e.target.checked })}
                 className="h-5 w-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
                 data-testid="is-public-toggle"
               />
@@ -237,13 +245,17 @@ export const PortfolioSettingsPage: React.FC = () => {
             {/* Show Skills */}
             <div className="py-3.5 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Show Competency Skills Graph</span>
-                <span className="text-xs text-slate-500">Display evaluated benchmark scores across 5 core technical areas</span>
+                <span className="text-sm font-semibold text-slate-900 block">
+                  Show Competency Skills Graph
+                </span>
+                <span className="text-xs text-slate-500">
+                  Display evaluated benchmark scores across 5 core technical areas
+                </span>
               </div>
               <input
                 type="checkbox"
                 checked={formData.showSkills}
-                onChange={(e) => setFormData({ ...formData, showSkills: e.target.checked })}
+                onChange={e => setFormData({ ...formData, showSkills: e.target.checked })}
                 className="h-5 w-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
               />
             </div>
@@ -251,13 +263,17 @@ export const PortfolioSettingsPage: React.FC = () => {
             {/* Show Badges */}
             <div className="py-3.5 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Show Technical Badges</span>
-                <span className="text-xs text-slate-500">Display Bronze, Silver, Gold, and Platinum achievement badges</span>
+                <span className="text-sm font-semibold text-slate-900 block">
+                  Show Technical Badges
+                </span>
+                <span className="text-xs text-slate-500">
+                  Display Bronze, Silver, Gold, and Platinum achievement badges
+                </span>
               </div>
               <input
                 type="checkbox"
                 checked={formData.showBadges}
-                onChange={(e) => setFormData({ ...formData, showBadges: e.target.checked })}
+                onChange={e => setFormData({ ...formData, showBadges: e.target.checked })}
                 className="h-5 w-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
               />
             </div>
@@ -265,13 +281,17 @@ export const PortfolioSettingsPage: React.FC = () => {
             {/* Show Certificates */}
             <div className="py-3.5 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Show Verified Certificates</span>
-                <span className="text-xs text-slate-500">Display cryptographically signed digital certificates & QR links</span>
+                <span className="text-sm font-semibold text-slate-900 block">
+                  Show Verified Certificates
+                </span>
+                <span className="text-xs text-slate-500">
+                  Display cryptographically signed digital certificates & QR links
+                </span>
               </div>
               <input
                 type="checkbox"
                 checked={formData.showCertificates}
-                onChange={(e) => setFormData({ ...formData, showCertificates: e.target.checked })}
+                onChange={e => setFormData({ ...formData, showCertificates: e.target.checked })}
                 className="h-5 w-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
               />
             </div>
@@ -279,13 +299,17 @@ export const PortfolioSettingsPage: React.FC = () => {
             {/* Show History */}
             <div className="py-3.5 flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-slate-900 block">Show Completed Interview Highlights</span>
-                <span className="text-xs text-slate-500">Display recent completed mock interview results and scores</span>
+                <span className="text-sm font-semibold text-slate-900 block">
+                  Show Completed Interview Highlights
+                </span>
+                <span className="text-xs text-slate-500">
+                  Display recent completed mock interview results and scores
+                </span>
               </div>
               <input
                 type="checkbox"
                 checked={formData.showHistory}
-                onChange={(e) => setFormData({ ...formData, showHistory: e.target.checked })}
+                onChange={e => setFormData({ ...formData, showHistory: e.target.checked })}
                 className="h-5 w-5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
               />
             </div>
@@ -300,7 +324,8 @@ export const PortfolioSettingsPage: React.FC = () => {
               className="gap-2"
               data-testid="save-settings-btn"
             >
-              <Save className="h-4 w-4" /> {updateMutation.isPending ? 'Saving...' : 'Save Portfolio Settings'}
+              <Save className="h-4 w-4" />{' '}
+              {updateMutation.isPending ? 'Saving...' : 'Save Portfolio Settings'}
             </Button>
           </div>
         </div>
@@ -312,7 +337,9 @@ export const PortfolioSettingsPage: React.FC = () => {
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
             <Award className="h-5 w-5 text-amber-500" /> Badge Inventory & Unlock Progress
           </h2>
-          <span className="text-xs text-slate-500">Auto-calculated from evaluation turn benchmarks</span>
+          <span className="text-xs text-slate-500">
+            Auto-calculated from evaluation turn benchmarks
+          </span>
         </div>
 
         {badges && <BadgeGrid badges={badges} isLoading={isLoadingBadges} />}
@@ -323,21 +350,30 @@ export const PortfolioSettingsPage: React.FC = () => {
             <ShieldCheck className="h-5 w-5 text-emerald-600" /> Digital Certificate Generator
           </h3>
           <p className="text-xs text-slate-500 mb-4">
-            Candidates who attain Gold (≥8.0) or Platinum (≥9.0) badge tier can issue digitally signed, HMAC-SHA256 verified certificates.
+            Candidates who attain Gold (≥8.0) or Platinum (≥9.0) badge tier can issue digitally
+            signed, HMAC-SHA256 verified certificates.
           </p>
 
           {eligibleForCert.length === 0 ? (
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
               <Lock className="h-4 w-4 text-slate-400 flex-shrink-0" />
-              <span>Complete more interview turn evaluations and achieve a Gold Badge (score ≥ 8.0) to unlock verified certificates.</span>
+              <span>
+                Complete more interview turn evaluations and achieve a Gold Badge (score ≥ 8.0) to
+                unlock verified certificates.
+              </span>
             </div>
           ) : (
             <div className="space-y-3">
-              {eligibleForCert.map((b) => (
-                <div key={b.competencyArea} className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/80 flex items-center justify-between">
+              {eligibleForCert.map(b => (
+                <div
+                  key={b.competencyArea}
+                  className="p-4 rounded-xl bg-amber-50/50 border border-amber-200/80 flex items-center justify-between"
+                >
                   <div>
                     <span className="text-sm font-bold text-slate-900">{b.areaName}</span>
-                    <span className="text-xs text-amber-800 font-bold ml-2">({b.highestLevel} TIER - {b.currentScore.toFixed(1)}/10)</span>
+                    <span className="text-xs text-amber-800 font-bold ml-2">
+                      ({b.highestLevel} TIER - {b.currentScore.toFixed(1)}/10)
+                    </span>
                   </div>
                   <Button
                     variant="primary"

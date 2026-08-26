@@ -44,8 +44,8 @@ export function TierBadge({ tierSlug, name, nameVi, size = 'md' }: TierBadgeProp
     size === 'lg'
       ? 'px-4 py-2 text-sm font-bold gap-2'
       : size === 'sm'
-      ? 'px-2 py-0.5 text-[10px] font-semibold gap-1'
-      : 'px-3 py-1.5 text-xs font-bold gap-1.5';
+        ? 'px-2 py-0.5 text-[10px] font-semibold gap-1'
+        : 'px-3 py-1.5 text-xs font-bold gap-1.5';
 
   return (
     <span

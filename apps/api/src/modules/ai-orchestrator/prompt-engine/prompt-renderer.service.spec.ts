@@ -21,7 +21,9 @@ describe('PromptRendererService Spec', () => {
   it('wraps candidate answer inside <CANDIDATE_ANSWER> boundary tags', () => {
     const answer = 'My answer is to use idempotency keys.';
     const wrapped = renderer.wrapCandidateAnswer(answer);
-    expect(wrapped).toBe('<CANDIDATE_ANSWER>\nMy answer is to use idempotency keys.\n</CANDIDATE_ANSWER>');
+    expect(wrapped).toBe(
+      '<CANDIDATE_ANSWER>\nMy answer is to use idempotency keys.\n</CANDIDATE_ANSWER>',
+    );
   });
 
   it('strips existing fake boundary tags in malicious user answer', () => {

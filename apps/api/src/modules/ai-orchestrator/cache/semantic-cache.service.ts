@@ -88,21 +88,33 @@ export class SemanticCacheService {
   /**
    * Searches cache for exact or semantic matches.
    */
-  async get<T>(promptText: string, threshold: number = this.defaultThreshold): Promise<CacheLookupResult<T>> {
+  async get<T>(
+    promptText: string,
+    threshold: number = this.defaultThreshold,
+    options?: { namespace?: string; userId?: string },
+  ): Promise<CacheLookupResult<T>> {
     if (!this.isEnabled) {
       return { hit: false };
     }
 
-    const promptHash = this.generateHash(promptText);
+    const namespacePrefix = options?.namespace ? `${options.namespace}:` : '';
+    const userPrefix = options?.userId ? `user:${options.userId}:` : '';
+    const fullKey = `${namespacePrefix}${userPrefix}${promptText}`;
+    const promptHash = this.generateHash(fullKey);
 
     try {
       // 1. Fast path: Exact prompt hash lookup
-      const exactMatch = await this.prisma.semanticCache.findUnique({
-        where: { promptHash },
+      const exactMatch = await this.prisma.semanticCache.findFirst({
+        where: {
+          promptHash,
+          ...(options?.namespace !== undefined ? { namespace: options.namespace } : {}),
+          ...(options?.userId !== undefined ? { userId: options.userId } : {}),
+        },
       });
 
       if (exactMatch) {
-        const isExpired = Date.now() - exactMatch.createdAt.getTime() > exactMatch.ttlSeconds * 1000;
+        const isExpired =
+          Date.now() - exactMatch.createdAt.getTime() > exactMatch.ttlSeconds * 1000;
         if (!isExpired) {
           await this.prisma.semanticCache.update({
             where: { id: exactMatch.id },
@@ -121,9 +133,13 @@ export class SemanticCacheService {
         }
       }
 
-      // 2. Semantic search over recent cache entries
+      // 2. Semantic search over recent cache entries partitioned by namespace/userId
       const queryEmbedding = this.generateEmbedding(promptText);
       const recentEntries = await this.prisma.semanticCache.findMany({
+        where: {
+          ...(options?.namespace !== undefined ? { namespace: options.namespace } : {}),
+          ...(options?.userId !== undefined ? { userId: options.userId } : {}),
+        },
         take: 100,
         orderBy: { lastUsedAt: 'desc' },
       });
@@ -170,17 +186,21 @@ export class SemanticCacheService {
   }
 
   /**
-   * Stores an AI response in the semantic cache.
+   * Stores an AI response in the semantic cache with optional namespace and user partitioning.
    */
   async set(
     promptText: string,
     responsePayload: any,
     metadata?: Record<string, any>,
     ttlSeconds = 86400,
+    options?: { namespace?: string; userId?: string },
   ): Promise<void> {
     if (!this.isEnabled) return;
 
-    const promptHash = this.generateHash(promptText);
+    const namespacePrefix = options?.namespace ? `${options.namespace}:` : '';
+    const userPrefix = options?.userId ? `user:${options.userId}:` : '';
+    const fullKey = `${namespacePrefix}${userPrefix}${promptText}`;
+    const promptHash = this.generateHash(fullKey);
     const embedding = this.generateEmbedding(promptText);
 
     try {
@@ -188,6 +208,8 @@ export class SemanticCacheService {
         where: { promptHash },
         update: {
           promptText,
+          namespace: options?.namespace,
+          userId: options?.userId,
           embedding,
           responsePayload,
           metadata: metadata || {},
@@ -196,6 +218,8 @@ export class SemanticCacheService {
         },
         create: {
           promptHash,
+          namespace: options?.namespace,
+          userId: options?.userId,
           promptText,
           embedding,
           responsePayload,

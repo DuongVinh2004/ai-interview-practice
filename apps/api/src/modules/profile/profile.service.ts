@@ -11,6 +11,7 @@ import {
   SessionState,
 } from '@ai-interview/contracts';
 import { UpdateProfileRequestDto } from './dto/profile.dto';
+import { BillingService } from '../billing/billing.service';
 
 const BENCHMARKS_BY_LEVEL: Record<string, Record<CompetencyArea, number>> = {
   junior: {
@@ -43,10 +44,7 @@ const BENCHMARKS_BY_LEVEL: Record<string, Record<CompetencyArea, number>> = {
   },
 };
 
-const COMPETENCY_META: Record<
-  CompetencyArea,
-  { name: string; recommendationTemplate: string }
-> = {
+const COMPETENCY_META: Record<CompetencyArea, { name: string; recommendationTemplate: string }> = {
   [CompetencyArea.SYSTEM_DESIGN]: {
     name: 'System Design & Scalability',
     recommendationTemplate:
@@ -78,7 +76,10 @@ const COMPETENCY_META: Record<
 export class ProfileService {
   private readonly logger = new Logger(ProfileService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billingService: BillingService,
+  ) {}
 
   async getProfile(userId: string) {
     const profile = await this.prisma.userProfile.findUnique({
@@ -367,9 +368,20 @@ export class ProfileService {
       });
     });
 
+    const documents = await this.prisma.userDocument.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
     return {
       exportedAt: new Date().toISOString(),
       gdprComplianceVersion: 'GDPR-AIP-2026.08',
+      manifestVersion: '1.0.0',
+      retentionPolicySummary: {
+        cvRetentionDays: 30,
+        voiceRetentionDays: 30,
+        sessionRetentionDays: 730,
+      },
       user: {
         id: user.id,
         email: user.email,
@@ -383,6 +395,14 @@ export class ProfileService {
         targetLevel: user.profile?.targetLevel || null,
         bio: user.profile?.bio || null,
       },
+      documents: documents.map(d => ({
+        id: d.id,
+        fileName: d.fileName,
+        fileType: d.fileType,
+        status: d.status,
+        createdAt: d.createdAt.toISOString(),
+        expiresAt: d.expiresAt ? d.expiresAt.toISOString() : null,
+      })),
       sessions: user.sessions.map(s => ({
         id: s.id,
         userId: s.userId,
@@ -490,6 +510,77 @@ export class ProfileService {
         totalEvaluatedTurns: evaluatedTurnsCount,
         averageScore,
       },
+    };
+  }
+
+  async deleteAccount(userId: string): Promise<{ success: boolean; message: string }> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'User not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    // Cancel externally billed subscriptions before anonymizing the account. If the provider
+    // rejects cancellation, fail closed so a locked user is never left with recurring charges.
+    await this.billingService.cancelSubscriptionsForAccountDeletion(userId);
+
+    // GDPR Right to Erasure / Account deletion workflow (PRIV-002)
+    await this.prisma.$transaction(async tx => {
+      // 1. Scrub PII from user profile
+      if (user.profile) {
+        await tx.userProfile.update({
+          where: { userId },
+          data: {
+            fullName: 'Deleted User',
+            bio: null,
+          },
+        });
+      }
+
+      // 2. Revoke every active session before locking the account.
+      await tx.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true },
+      });
+
+      // 3. Anonymize user record, lock it, and invalidate access tokens.
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          status: UserStatus.LOCKED,
+          email: `deleted_${userId}@anonymized.local`,
+          passwordHash: 'DELETED',
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      // 4. Purge user documents
+      await tx.userDocument.deleteMany({
+        where: { userId },
+      });
+
+      // 5. Audit log
+      await tx.auditLog.create({
+        data: {
+          userId,
+          action: 'USER_ACCOUNT_DELETED' as any,
+          resource: 'user',
+          resourceId: userId,
+          details: { reason: 'GDPR Right to Erasure user-initiated account deletion' },
+        },
+      });
+    });
+
+    return {
+      success: true,
+      message: 'User account and personal data successfully deleted and anonymized.',
     };
   }
 }

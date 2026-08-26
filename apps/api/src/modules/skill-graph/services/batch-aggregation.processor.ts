@@ -15,7 +15,7 @@ export class BatchAggregationProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly percentileService: PercentileService,
-    private readonly skillAggregationService: SkillAggregationService
+    private readonly skillAggregationService: SkillAggregationService,
   ) {
     super();
   }

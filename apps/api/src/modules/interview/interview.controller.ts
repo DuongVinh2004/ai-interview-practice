@@ -5,19 +5,27 @@ import {
   Param,
   Body,
   Headers,
+  Query,
+  Req,
   UseGuards,
   Sse,
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader, ApiParam } from '@nestjs/swagger';
+import { SkipThrottle } from '@nestjs/throttler';
+import { Request } from 'express';
 import { Observable } from 'rxjs';
 import { InterviewService } from './interview.service';
 import { SseService, SseSessionEvent } from '../platform/sse/sse.service';
 import { IdempotencyService } from '../platform/guards/idempotency.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UserRole } from '@ai-interview/contracts';
+import { AuthService } from '../auth/auth.service';
+import { UserRole, BillingMetric, ErrorCode } from '@ai-interview/contracts';
+import { DomainException } from '../platform/filters/all-exceptions.filter';
+import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
 import {
   CreateInterviewRequestDto,
   SubmitAnswerRequestDto,
@@ -33,9 +41,12 @@ export class InterviewController {
     private readonly interviewService: InterviewService,
     private readonly sseService: SseService,
     private readonly idempotencyService: IdempotencyService,
+    private readonly authService: AuthService,
   ) {}
 
   @Post()
+  @UseGuards(QuotaGuard)
+  @RequireQuota(BillingMetric.SESSION_COUNT)
   @ApiOperation({ summary: 'Create a new 5-turn interview session' })
   async createInterview(
     @CurrentUser('sub') userId: string,
@@ -96,11 +107,7 @@ export class InterviewController {
       const result = await this.interviewService.submitAnswer(userId, sessionId, dto);
 
       if (idempotencyKey) {
-        await this.idempotencyService.completeKey(
-          idempotencyKey,
-          HttpStatus.OK,
-          result,
-        );
+        await this.idempotencyService.completeKey(idempotencyKey, HttpStatus.OK, result);
       }
 
       return result;
@@ -132,16 +139,34 @@ export class InterviewController {
     );
   }
 
+  @SkipThrottle({ default: true, short: true })
+  @Public()
   @Sse(':id/events')
   @ApiOperation({ summary: 'Server-Sent Events stream for real-time interview progression' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async sseInterviewEvents(
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('role') userRole: UserRole,
     @Param('id') sessionId: string,
+    @Query('token') queryToken?: string,
+    @Req() req?: Request,
   ): Promise<Observable<{ data: SseSessionEvent }>> {
-    await this.interviewService.assertSessionAccess(userId, userRole, sessionId);
+    const authHeader = req?.headers['authorization'];
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
+    const token = bearerToken || queryToken;
+
+    if (!token) {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Authentication token required for SSE stream',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    const payload = await this.authService.validateAccessToken(token);
+    await this.interviewService.assertSessionAccess(
+      payload.sub,
+      payload.role as UserRole,
+      sessionId,
+    );
     return this.sseService.getSessionEventStream(sessionId);
   }
 }
-

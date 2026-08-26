@@ -77,7 +77,9 @@ describe('ShareSessionModal Component', () => {
     );
 
     expect(screen.getByText(/Share with Mentor|Chia sẻ cho Mentor/i)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Generate Share Link|Tạo Liên kết Chia sẻ/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /Generate Share Link|Tạo Liên kết Chia sẻ/i }),
+    ).toBeInTheDocument();
 
     await waitFor(() => {
       expect(screen.getByText(/\/share\/test-crypto.../i)).toBeInTheDocument();

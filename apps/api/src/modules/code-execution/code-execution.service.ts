@@ -13,6 +13,8 @@ import {
 import { MockSandboxProvider } from './providers/mock-sandbox.provider';
 import { Judge0Provider } from './providers/judge0.provider';
 import { ExecuteCodeDto, SubmitCodeDto } from './dto/code-execution.dto';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class CodeExecutionService {
@@ -23,6 +25,7 @@ export class CodeExecutionService {
     private readonly configService: ConfigService,
     private readonly mockSandbox: MockSandboxProvider,
     private readonly judge0Sandbox: Judge0Provider,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {}
 
   private getSandboxProvider() {
@@ -30,6 +33,17 @@ export class CodeExecutionService {
     if (judge0Url) {
       return this.judge0Sandbox;
     }
+    if (process.env.NODE_ENV === 'production') {
+      this.logger.error(
+        'Code execution sandbox (Judge0) is not configured in production environment!',
+      );
+      throw new DomainException(
+        ErrorCode.CODE_EXECUTION_FAILED,
+        'Code execution engine is not configured in production environment',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+    this.logger.warn('Using MockSandboxProvider — results are simulated and non-authoritative');
     return this.mockSandbox;
   }
 
@@ -58,11 +72,36 @@ export class CodeExecutionService {
       );
     }
 
+    const MAX_TEST_CASES = 20;
+    if (dto.testCases && dto.testCases.length > MAX_TEST_CASES) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        `Exceeded maximum allowed test cases (${MAX_TEST_CASES}) per execution`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    if (dto.sourceCode && dto.sourceCode.length > 50000) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Source code exceeds maximum allowed size (50,000 characters)',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const provider = this.getSandboxProvider();
+    const testCases = dto.testCases?.map((tc, idx) => ({
+      id: tc.id,
+      input: tc.input,
+      expectedOutput: tc.expectedOutput,
+      isHidden: tc.isHidden ?? false,
+      order: tc.order ?? idx,
+    }));
+
     const result = await provider.executeCode(
       dto.language,
       dto.sourceCode,
-      dto.testCases,
+      testCases,
       dto.customInput,
     );
 
@@ -125,7 +164,11 @@ export class CodeExecutionService {
     );
 
     // AI Code Review Analysis
-    const aiReview: AiCodeReview = this.analyzeCodeQuality(dto.language, dto.sourceCode, execResult);
+    const aiReview: AiCodeReview = this.analyzeCodeQuality(
+      dto.language,
+      dto.sourceCode,
+      execResult,
+    );
 
     // Persist submission in DB
     const submission = await this.prisma.codeSubmission.create({
@@ -146,10 +189,11 @@ export class CodeExecutionService {
 
     // Save individual test results
     if (execResult.testResults && execResult.testResults.length > 0) {
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       await this.prisma.codeExecutionResult.createMany({
         data: execResult.testResults.map(tr => ({
           submissionId: submission.id,
-          testCaseId: tr.testCaseId || null,
+          testCaseId: tr.testCaseId && UUID_REGEX.test(tr.testCaseId) ? tr.testCaseId : null,
           status: (tr.passed ? SubmissionStatus.COMPLETED : SubmissionStatus.FAILED) as any,
           stdout: execResult.stdout,
           stderr: tr.errorMsg || execResult.stderr,
@@ -175,6 +219,17 @@ export class CodeExecutionService {
       },
     });
 
+    const allPassed =
+      execResult.testResults && execResult.testResults.length > 0
+        ? execResult.testResults.every(tr => tr.passed)
+        : execResult.status === SubmissionStatus.COMPLETED;
+
+    this.eventEmitter?.emit('code.executed', {
+      userId,
+      allTestsPassed: allPassed,
+      language: dto.language,
+    });
+
     return {
       id: submission.id,
       sessionId: submission.sessionId,
@@ -192,7 +247,27 @@ export class CodeExecutionService {
     };
   }
 
-  async getSubmissions(sessionId: string): Promise<CodeSubmissionResponse[]> {
+  async getSubmissions(userId: string, sessionId: string): Promise<CodeSubmissionResponse[]> {
+    const session = await this.prisma.interviewSession.findUnique({
+      where: { id: sessionId },
+    });
+
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.SESSION_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (session.userId !== userId) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'Access to this interview session is forbidden',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+
     const submissions = await this.prisma.codeSubmission.findMany({
       where: { sessionId },
       orderBy: { createdAt: 'desc' },
@@ -228,11 +303,16 @@ export class CodeExecutionService {
       timeComplexity = 'O(n^2)';
     } else if (clean.includes('sort') || clean.includes('.sort(')) {
       timeComplexity = 'O(n log n)';
-    } else if (clean.includes('while') && clean.includes('/ 2') || clean.includes('>> 1')) {
+    } else if ((clean.includes('while') && clean.includes('/ 2')) || clean.includes('>> 1')) {
       timeComplexity = 'O(log n)';
     }
 
-    if (clean.includes('new map') || clean.includes('new set') || clean.includes('{}') || clean.includes('[]')) {
+    if (
+      clean.includes('new map') ||
+      clean.includes('new set') ||
+      clean.includes('{}') ||
+      clean.includes('[]')
+    ) {
       spaceComplexity = 'O(n)';
     }
 
@@ -250,7 +330,9 @@ export class CodeExecutionService {
     }
 
     if (!clean.includes('if') || clean.includes('throw')) {
-      cleanCodeFeedback.push('Ensure guard clauses validate null or empty parameters at the entry point.');
+      cleanCodeFeedback.push(
+        'Ensure guard clauses validate null or empty parameters at the entry point.',
+      );
     }
 
     const codeQualityScore = execResult.allPassed ? 8.5 : 5.0;

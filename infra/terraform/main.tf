@@ -24,14 +24,18 @@ module "redis" {
 }
 
 module "storage" {
-  source      = "./modules/storage"
-  environment = var.environment
+  source          = "./modules/storage"
+  environment     = var.environment
+  allowed_origins = var.frontend_origins
 }
 
 module "secrets" {
   source           = "./modules/secrets"
   environment      = var.environment
   db_password      = module.database.db_password
+  db_endpoint      = module.database.db_endpoint
+  db_username      = module.database.db_username
+  db_name          = module.database.db_name
   redis_auth_token = module.redis.auth_token
 }
 
@@ -44,9 +48,11 @@ module "compute" {
   alb_security_group_id = module.network.alb_security_group_id
   app_security_group_id = module.network.app_security_group_id
   secrets_arn           = module.secrets.secrets_arn
-  db_endpoint           = module.database.db_endpoint
+  secrets_kms_key_arn   = module.secrets.kms_key_arn
+  certificate_arn       = var.certificate_arn
   redis_endpoint        = module.redis.primary_endpoint
   s3_bucket_name        = module.storage.bucket_name
+  storage_kms_key_arn   = module.storage.kms_key_arn
   api_cpu               = var.api_container_cpu
   api_memory            = var.api_container_memory
   worker_cpu            = var.worker_container_cpu

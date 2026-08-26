@@ -83,18 +83,25 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4" data-testid="cv-upload-zone">
+    <div
+      className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4"
+      data-testid="cv-upload-zone"
+    >
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center space-x-2">
           <FileText className="w-5 h-5 text-primary-600" />
-          <h3 className="text-sm font-bold text-slate-800">1. Resume / CV Upload (Hồ sơ ứng viên)</h3>
+          <h3 className="text-sm font-bold text-slate-800">
+            1. Resume / CV Upload (Hồ sơ ứng viên)
+          </h3>
         </div>
         <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
           <button
             type="button"
             onClick={() => setInputMode('upload')}
             className={`px-3 py-1 rounded-md transition-all ${
-              inputMode === 'upload' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              inputMode === 'upload'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             File Upload
@@ -103,7 +110,9 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
             type="button"
             onClick={() => setInputMode('text')}
             className={`px-3 py-1 rounded-md transition-all ${
-              inputMode === 'text' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+              inputMode === 'text'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
             }`}
           >
             Paste Text
@@ -152,14 +161,19 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
             {selectedFile ? (
               <div>
                 <p className="text-sm font-semibold text-slate-800">{selectedFile.name}</p>
-                <p className="text-xs text-slate-500">{(selectedFile.size / 1024).toFixed(1)} KB — Parsed successfully</p>
+                <p className="text-xs text-slate-500">
+                  {(selectedFile.size / 1024).toFixed(1)} KB — Parsed successfully
+                </p>
               </div>
             ) : (
               <div>
                 <p className="text-sm font-medium text-slate-700">
-                  Kéo thả CV (PDF, DOCX, TXT) vào đây hoặc <span className="text-primary-600 font-bold">Chọn tệp</span>
+                  Kéo thả CV (PDF, DOCX, TXT) vào đây hoặc{' '}
+                  <span className="text-primary-600 font-bold">Chọn tệp</span>
                 </p>
-                <p className="text-xs text-slate-400 mt-1">Tối đa 5MB • Tự động mã hóa & bảo vệ PII</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Tối đa 5MB • Tự động mã hóa & bảo vệ PII
+                </p>
               </div>
             )}
           </div>

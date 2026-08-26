@@ -39,19 +39,34 @@ export class MockSandboxProvider implements SandboxProvider {
       };
     }
 
-    const cases = testCases && testCases.length > 0 ? testCases : [
-      { id: 'case-1', input: customInput || '2, 3', expectedOutput: '5', isHidden: false, order: 1 },
-      { id: 'case-2', input: '10, -5', expectedOutput: '5', isHidden: true, order: 2 },
-    ];
+    const cases =
+      testCases && testCases.length > 0
+        ? testCases
+        : [
+            {
+              id: '00000000-0000-0000-0000-000000000001',
+              input: customInput || '2, 3',
+              expectedOutput: '5',
+              isHidden: false,
+              order: 1,
+            },
+            {
+              id: '00000000-0000-0000-0000-000000000002',
+              input: '10, -5',
+              expectedOutput: '5',
+              isHidden: true,
+              order: 2,
+            },
+          ];
 
     const testResults = cases.map(tc => {
       // In mock mode, if code contains return or print, simulate passing output
       const actualOutput = tc.expectedOutput;
       return {
         testCaseId: tc.id,
-        input: tc.input,
-        expectedOutput: tc.expectedOutput,
-        actualOutput,
+        input: tc.isHidden ? '[HIDDEN]' : tc.input,
+        expectedOutput: tc.isHidden ? '[HIDDEN]' : tc.expectedOutput,
+        actualOutput: tc.isHidden ? '[HIDDEN]' : actualOutput,
         passed: true,
         executionTimeMs: Math.floor(Math.random() * 20) + 10,
         memoryUsageKb: Math.floor(Math.random() * 5000) + 12000,

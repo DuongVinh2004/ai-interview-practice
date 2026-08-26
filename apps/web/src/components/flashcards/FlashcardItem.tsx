@@ -62,14 +62,18 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
       <div className="py-6 flex-1 flex flex-col justify-center">
         {!isFlipped ? (
           <div className="space-y-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-primary-600">Question / Prompt:</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-primary-600">
+              Question / Prompt:
+            </span>
             <div className="text-base sm:text-lg font-medium text-slate-900 whitespace-pre-wrap leading-relaxed">
               {front}
             </div>
           </div>
         ) : (
           <div className="space-y-3 animate-in fade-in zoom-in-95 duration-150">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">Key Answer / Invariant:</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
+              Key Answer / Invariant:
+            </span>
             <div className="text-sm sm:text-base font-normal text-slate-800 whitespace-pre-wrap leading-relaxed bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
               {back}
             </div>
@@ -79,8 +83,16 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
 
       {/* Bottom Hint */}
       <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
-        <span>Bấm vào thẻ hoặc nhấn <kbd className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-300 font-mono text-[10px]">Space</kbd> để lật</span>
-        <span className="text-[11px] font-semibold text-slate-500">{isFlipped ? 'Đã lật' : 'Chưa lật'}</span>
+        <span>
+          Bấm vào thẻ hoặc nhấn{' '}
+          <kbd className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-300 font-mono text-[10px]">
+            Space
+          </kbd>{' '}
+          để lật
+        </span>
+        <span className="text-[11px] font-semibold text-slate-500">
+          {isFlipped ? 'Đã lật' : 'Chưa lật'}
+        </span>
       </div>
     </div>
   );

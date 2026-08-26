@@ -17,10 +17,7 @@ describe('AnalyticsService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        AnalyticsService,
-        { provide: PrismaService, useValue: prisma },
-      ],
+      providers: [AnalyticsService, { provide: PrismaService, useValue: prisma }],
     }).compile();
 
     service = module.get<AnalyticsService>(AnalyticsService);
@@ -44,14 +41,20 @@ describe('AnalyticsService', () => {
         turns: [
           {
             turnNumber: 1,
-            question: { keyFocus: 'ACID Transactions and Indexing', content: 'Explain B-Tree index scan.' },
+            question: {
+              keyFocus: 'ACID Transactions and Indexing',
+              content: 'Explain B-Tree index scan.',
+            },
             answer: {
               evaluation: { score: 9.0 },
             },
           },
           {
             turnNumber: 2,
-            question: { keyFocus: 'Circuit Breaker Pattern', content: 'How does resilience circuit breaker work?' },
+            question: {
+              keyFocus: 'Circuit Breaker Pattern',
+              content: 'How does resilience circuit breaker work?',
+            },
             answer: {
               evaluation: { score: 8.0 },
             },
@@ -64,11 +67,15 @@ describe('AnalyticsService', () => {
     expect(result.totalEvaluatedTurns).toBe(2);
     expect(result.overallAverageScore).toBe(8.5);
 
-    const dbComp = result.competencies.find(c => c.competency === CompetencyArea.DATABASE_CONCURRENCY);
+    const dbComp = result.competencies.find(
+      c => c.competency === CompetencyArea.DATABASE_CONCURRENCY,
+    );
     expect(dbComp?.score).toBe(9.0);
     expect(dbComp?.benchmarkLevel).toBe('Senior / Staff');
 
-    const resComp = result.competencies.find(c => c.competency === CompetencyArea.RESILIENCE_SECURITY);
+    const resComp = result.competencies.find(
+      c => c.competency === CompetencyArea.RESILIENCE_SECURITY,
+    );
     expect(resComp?.score).toBe(8.0);
   });
 

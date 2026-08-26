@@ -17,10 +17,7 @@ export class TenantController {
 
   @Post('tenants')
   @ApiOperation({ summary: 'Create a new B2B organization/tenant account' })
-  async createTenant(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: CreateTenantDto,
-  ) {
+  async createTenant(@CurrentUser('sub') userId: string, @Body() dto: CreateTenantDto) {
     return this.tenantService.createTenant(userId, dto);
   }
 
@@ -34,20 +31,14 @@ export class TenantController {
   @Put('b2b/tenant/branding')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN)
   @ApiOperation({ summary: 'Update white-label branding, logo, and theme colors' })
-  async updateBranding(
-    @Req() req: RequestWithTenant,
-    @Body() dto: UpdateBrandingDto,
-  ) {
+  async updateBranding(@Req() req: RequestWithTenant, @Body() dto: UpdateBrandingDto) {
     return this.tenantService.updateBranding(req.tenantId!, dto.brandingConfig);
   }
 
   @Post('b2b/api-keys')
   @RequireTenantRoles(TenantRole.TENANT_ADMIN)
   @ApiOperation({ summary: 'Issue API key for B2B LMS/SSO integration' })
-  async createApiKey(
-    @Req() req: RequestWithTenant,
-    @Body() dto: CreateApiKeyDto,
-  ) {
+  async createApiKey(@Req() req: RequestWithTenant, @Body() dto: CreateApiKeyDto) {
     return this.tenantService.createApiKey(req.tenantId!, dto.name);
   }
 

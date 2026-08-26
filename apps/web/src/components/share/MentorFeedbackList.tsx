@@ -79,7 +79,9 @@ export function MentorFeedbackList({
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
           <UserCheck className="h-5 w-5 text-emerald-600" />
-          <span>{t.share.mentorReviewHeader} ({feedbackList.length})</span>
+          <span>
+            {t.share.mentorReviewHeader} ({feedbackList.length})
+          </span>
         </h3>
       </div>
 

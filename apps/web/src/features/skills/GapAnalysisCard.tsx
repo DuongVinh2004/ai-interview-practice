@@ -13,9 +13,7 @@ export function GapAnalysisCard({ gap }: GapAnalysisCardProps) {
   return (
     <div
       className={`p-4 rounded-xl border transition-all ${
-        isHigh
-          ? 'bg-rose-50/40 border-rose-200 shadow-sm'
-          : 'bg-amber-50/30 border-amber-200'
+        isHigh ? 'bg-rose-50/40 border-rose-200 shadow-sm' : 'bg-amber-50/30 border-amber-200'
       }`}
       data-testid="gap-analysis-card"
     >
@@ -48,7 +46,9 @@ export function GapAnalysisCard({ gap }: GapAnalysisCardProps) {
         <div className="text-right shrink-0">
           <div className="text-xs font-bold text-slate-900">
             {gap.currentScore.toFixed(1)}{' '}
-            <span className="text-[10px] text-slate-400 font-normal">/ {gap.targetScore.toFixed(1)}</span>
+            <span className="text-[10px] text-slate-400 font-normal">
+              / {gap.targetScore.toFixed(1)}
+            </span>
           </div>
           <span className="text-[10px] font-semibold text-rose-600 block">
             -{gap.gapScore.toFixed(1)} pt gap

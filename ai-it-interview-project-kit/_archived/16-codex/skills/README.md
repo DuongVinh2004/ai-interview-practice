@@ -4,18 +4,18 @@ These repository-local skills define how the Control Plane supervises Antigravit
 
 ## Core skills
 
-| Skill | Trigger | Output |
-|---|---|---|
-| `antigravity-supervisor` | Any Antigravity coding/review loop | task state + routed actions + final verdict |
-| `execution-prompt-compiler` | Need a new Anti prompt | bounded `EXECUTE/CORRECT/VERIFY/COMMIT` prompt |
-| `repository-state-inspector` | Start/resume task or state uncertainty | verified baseline packet |
-| `task-dependency-resolver` | Before implementation | READY / BLOCKED / DECISION_REQUIRED |
-| `scope-and-deviation-guard` | Review any diff/handoff | scope/spec deviation findings |
-| `root-cause-debugger` | Anti fails or produces wrong behavior | failure class + causal hypothesis + required evidence |
-| `corrective-prompt-engine` | Validated defect requires another Anti run | stronger bounded correction prompt |
-| `loop-convergence-controller` | One or more correction attempts | escalation level / continue / stop |
-| `verification-and-test-guardian` | Before PASS/commit | acceptance/test/risk-profile verdict |
-| `handoff-state-manager` | End of every run / chat transition | compact handoff + updated state checkpoint |
+| Skill                            | Trigger                                    | Output                                                |
+| -------------------------------- | ------------------------------------------ | ----------------------------------------------------- |
+| `antigravity-supervisor`         | Any Antigravity coding/review loop         | task state + routed actions + final verdict           |
+| `execution-prompt-compiler`      | Need a new Anti prompt                     | bounded `EXECUTE/CORRECT/VERIFY/COMMIT` prompt        |
+| `repository-state-inspector`     | Start/resume task or state uncertainty     | verified baseline packet                              |
+| `task-dependency-resolver`       | Before implementation                      | READY / BLOCKED / DECISION_REQUIRED                   |
+| `scope-and-deviation-guard`      | Review any diff/handoff                    | scope/spec deviation findings                         |
+| `root-cause-debugger`            | Anti fails or produces wrong behavior      | failure class + causal hypothesis + required evidence |
+| `corrective-prompt-engine`       | Validated defect requires another Anti run | stronger bounded correction prompt                    |
+| `loop-convergence-controller`    | One or more correction attempts            | escalation level / continue / stop                    |
+| `verification-and-test-guardian` | Before PASS/commit                         | acceptance/test/risk-profile verdict                  |
+| `handoff-state-manager`          | End of every run / chat transition         | compact handoff + updated state checkpoint            |
 
 ## Review profiles
 

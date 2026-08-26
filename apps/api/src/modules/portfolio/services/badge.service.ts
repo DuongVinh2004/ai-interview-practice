@@ -36,7 +36,9 @@ export class BadgeService {
     return null;
   }
 
-  getNextBadgeTarget(currentLevel: BadgeLevel | null): { level: BadgeLevel; minScore: number; minEvidence: number } | null {
+  getNextBadgeTarget(
+    currentLevel: BadgeLevel | null,
+  ): { level: BadgeLevel; minScore: number; minEvidence: number } | null {
     if (!currentLevel) {
       return { level: BadgeLevel.BRONZE, minScore: 5.0, minEvidence: 3 };
     }
@@ -59,12 +61,27 @@ export class BadgeService {
       include: { skillNode: true },
     });
 
-    const areaMetrics: Record<CompetencyArea, { totalWeightedScore: number; totalWeight: number; totalEvidence: number }> = {
+    const areaMetrics: Record<
+      CompetencyArea,
+      { totalWeightedScore: number; totalWeight: number; totalEvidence: number }
+    > = {
       [CompetencyArea.SYSTEM_DESIGN]: { totalWeightedScore: 0, totalWeight: 0, totalEvidence: 0 },
       [CompetencyArea.LANGUAGE_CORE]: { totalWeightedScore: 0, totalWeight: 0, totalEvidence: 0 },
-      [CompetencyArea.DATABASE_CONCURRENCY]: { totalWeightedScore: 0, totalWeight: 0, totalEvidence: 0 },
-      [CompetencyArea.ARCHITECTURE_PATTERNS]: { totalWeightedScore: 0, totalWeight: 0, totalEvidence: 0 },
-      [CompetencyArea.RESILIENCE_SECURITY]: { totalWeightedScore: 0, totalWeight: 0, totalEvidence: 0 },
+      [CompetencyArea.DATABASE_CONCURRENCY]: {
+        totalWeightedScore: 0,
+        totalWeight: 0,
+        totalEvidence: 0,
+      },
+      [CompetencyArea.ARCHITECTURE_PATTERNS]: {
+        totalWeightedScore: 0,
+        totalWeight: 0,
+        totalEvidence: 0,
+      },
+      [CompetencyArea.RESILIENCE_SECURITY]: {
+        totalWeightedScore: 0,
+        totalWeight: 0,
+        totalEvidence: 0,
+      },
     };
 
     for (const ss of skillScores) {
@@ -100,11 +117,17 @@ export class BadgeService {
       }
     }
 
-    const earnedBadges: Array<{ competencyArea: CompetencyArea; level: BadgeLevel; score: number; evidenceCount: number }> = [];
+    const earnedBadges: Array<{
+      competencyArea: CompetencyArea;
+      level: BadgeLevel;
+      score: number;
+      evidenceCount: number;
+    }> = [];
 
     for (const area of Object.values(CompetencyArea)) {
       const metrics = areaMetrics[area];
-      const avgScore = metrics.totalWeight > 0 ? metrics.totalWeightedScore / metrics.totalWeight : 0;
+      const avgScore =
+        metrics.totalWeight > 0 ? metrics.totalWeightedScore / metrics.totalWeight : 0;
       const evidence = metrics.totalEvidence;
       const unlockedLevel = this.calculateUnlockedBadge(avgScore, evidence);
 
@@ -153,13 +176,17 @@ export class BadgeService {
     for (const b of userBadges) {
       const area = b.competencyArea as unknown as CompetencyArea;
       const existing = badgeByArea.get(area);
-      if (!existing || this.getLevelRank(b.level as unknown as BadgeLevel) > this.getLevelRank(existing.level as unknown as BadgeLevel)) {
+      if (
+        !existing ||
+        this.getLevelRank(b.level as unknown as BadgeLevel) >
+          this.getLevelRank(existing.level as unknown as BadgeLevel)
+      ) {
         badgeByArea.set(area, b);
       }
     }
 
     // Return progress across all 5 areas
-    return Object.values(CompetencyArea).map((area) => {
+    return Object.values(CompetencyArea).map(area => {
       const badge = badgeByArea.get(area);
       const currentLevel = (badge?.level as unknown as BadgeLevel) || null;
       const currentScore = badge?.score || 0;

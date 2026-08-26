@@ -141,35 +141,55 @@ export class HistoryReportService {
       );
     }
 
-    // Compute rubric averages across all evaluated answers
+    // Prefer reviewed/authoritative evaluations, but keep mock/dev sessions useful when
+    // every evaluation is awaiting review.
     const turnsWithEval = session.turns.filter(t => t.answer?.evaluation);
+    const authoritativeTurns = turnsWithEval.filter(
+      t => t.answer!.evaluation!.authorityState === 'AUTHORITATIVE',
+    );
+    const scoreableTurns = authoritativeTurns.length > 0 ? authoritativeTurns : turnsWithEval;
     let avgAccuracy = 0;
     let avgDepth = 0;
     let avgClarity = 0;
 
-    if (turnsWithEval.length > 0) {
+    if (scoreableTurns.length > 0) {
       let totalAcc = 0;
       let totalDepth = 0;
       let totalClarity = 0;
 
-      for (const t of turnsWithEval) {
+      for (const t of scoreableTurns) {
         const rubric = t.answer!.evaluation!.rubricScores as any;
         if (rubric) {
-          totalAcc += rubric.technicalAccuracy || 0;
-          totalDepth += rubric.depth || 0;
-          totalClarity += rubric.clarity || 0;
+          totalAcc += rubric.technicalAccuracy ?? 0;
+          totalDepth += rubric.depth ?? 0;
+          totalClarity += rubric.clarity ?? 0;
         }
       }
 
-      avgAccuracy = Number((totalAcc / turnsWithEval.length).toFixed(1));
-      avgDepth = Number((totalDepth / turnsWithEval.length).toFixed(1));
-      avgClarity = Number((totalClarity / turnsWithEval.length).toFixed(1));
+      avgAccuracy = Number((totalAcc / scoreableTurns.length).toFixed(1));
+      avgDepth = Number((totalDepth / scoreableTurns.length).toFixed(1));
+      avgClarity = Number((totalClarity / scoreableTurns.length).toFixed(1));
     }
+
+    const effectiveOverallScore =
+      scoreableTurns.length > 0
+        ? Number(
+            (
+              scoreableTurns.reduce((sum, t) => sum + t.answer!.evaluation!.score, 0) /
+              scoreableTurns.length
+            ).toFixed(1),
+          )
+        : session.overallScore;
+
+    const learningPathSummary = session.learningPath?.summary?.replace(
+      /overall performance score of \d+(?:\.\d+)?\/10/i,
+      `overall performance score of ${effectiveOverallScore?.toFixed(1) ?? '0.0'}/10`,
+    );
 
     return {
       sessionId: session.id,
       state: session.state,
-      overallScore: session.overallScore,
+      overallScore: effectiveOverallScore,
       completedAt: session.completedAt?.toISOString() || null,
       jobRole: session.jobRole,
       seniorityLevel: session.seniorityLevel,
@@ -180,6 +200,7 @@ export class HistoryReportService {
         clarity: avgClarity,
       },
       turns: session.turns.map(t => ({
+        id: t.id,
         turnNumber: t.turnNumber,
         difficulty: t.difficulty,
         status: t.status,
@@ -212,7 +233,7 @@ export class HistoryReportService {
         ? {
             id: session.learningPath.id,
             status: session.learningPath.status,
-            summary: session.learningPath.summary,
+            summary: learningPathSummary,
             items: session.learningPath.items.map(item => ({
               id: item.id,
               gap: item.gap,
@@ -221,6 +242,8 @@ export class HistoryReportService {
               recommendedAction: item.recommendedAction,
               searchKeywords: item.searchKeywords,
               order: item.order,
+              isCompleted: item.isCompleted,
+              completedAt: item.completedAt?.toISOString() || null,
             })),
           }
         : null,

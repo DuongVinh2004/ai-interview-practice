@@ -24,7 +24,7 @@ export class SkillAggregationService {
   public calculateExponentialDecayScore(
     evidences: ScoreEvidence[],
     lambda: number = SkillAggregationService.DEFAULT_LAMBDA,
-    referenceDate: Date = new Date()
+    referenceDate: Date = new Date(),
   ): number {
     if (!evidences || evidences.length === 0) {
       return 0.0;
@@ -34,7 +34,10 @@ export class SkillAggregationService {
     let weightSum = 0;
 
     for (const evidence of evidences) {
-      const deltaMs = Math.max(0, referenceDate.getTime() - new Date(evidence.evaluatedAt).getTime());
+      const deltaMs = Math.max(
+        0,
+        referenceDate.getTime() - new Date(evidence.evaluatedAt).getTime(),
+      );
       const deltaDays = deltaMs / (1000 * 60 * 60 * 24);
       const weight = Math.exp(-lambda * deltaDays);
 
@@ -89,7 +92,7 @@ export class SkillAggregationService {
     const areaTurnMap = new Map<CompetencyArea, ScoreEvidence[]>();
     for (const turn of interviewTurns) {
       const rawArea = turn.session.competencyArea;
-      const area = (rawArea ? (rawArea as unknown as CompetencyArea) : CompetencyArea.SYSTEM_DESIGN);
+      const area = rawArea ? (rawArea as unknown as CompetencyArea) : CompetencyArea.SYSTEM_DESIGN;
       if (!areaTurnMap.has(area)) {
         areaTurnMap.set(area, []);
       }
@@ -107,8 +110,12 @@ export class SkillAggregationService {
     const level3Nodes = nodes.filter(n => n.level === 3);
 
     const areas = level1Nodes.map(areaNode => {
-      const areaEnum = (areaNode.competencyArea ? (areaNode.competencyArea as unknown as CompetencyArea) : CompetencyArea.SYSTEM_DESIGN);
-      const subNodes = level2Nodes.filter(sub => sub.parentId === areaNode.id || sub.competencyArea === (areaEnum as any));
+      const areaEnum = areaNode.competencyArea
+        ? (areaNode.competencyArea as unknown as CompetencyArea)
+        : CompetencyArea.SYSTEM_DESIGN;
+      const subNodes = level2Nodes.filter(
+        sub => sub.parentId === areaNode.id || sub.competencyArea === (areaEnum as any),
+      );
 
       const subCompetencies: SkillGraphNodeDto[] = subNodes.map(subNode => {
         const topics = level3Nodes.filter(topic => topic.parentId === subNode.id);
@@ -117,7 +124,9 @@ export class SkillAggregationService {
         const childDtos: SkillGraphNodeDto[] = topics.map(topicNode => {
           const topicScoreRec = scoreMap.get(topicNode.id);
           const topicScore = topicScoreRec?.weightedScore || 0;
-          const topicArea = (topicNode.competencyArea ? (topicNode.competencyArea as unknown as CompetencyArea) : areaEnum);
+          const topicArea = topicNode.competencyArea
+            ? (topicNode.competencyArea as unknown as CompetencyArea)
+            : areaEnum;
           return {
             id: topicNode.id,
             name: topicNode.name,
@@ -148,7 +157,9 @@ export class SkillAggregationService {
           }
         }
 
-        const subArea = (subNode.competencyArea ? (subNode.competencyArea as unknown as CompetencyArea) : areaEnum);
+        const subArea = subNode.competencyArea
+          ? (subNode.competencyArea as unknown as CompetencyArea)
+          : areaEnum;
         return {
           id: subNode.id,
           name: subNode.name,
@@ -199,59 +210,122 @@ export class SkillAggregationService {
     };
   }
 
+  private seedingPromise: Promise<void> | null = null;
+
   /**
    * Seed default 5 Areas x 4 Sub-Competencies = 20 root skill nodes if taxonomy empty
    */
   async seedDefaultSkillNodes(): Promise<void> {
+    if (this.seedingPromise) {
+      return this.seedingPromise;
+    }
+    this.seedingPromise = this.executeSeedDefaultSkillNodes().finally(() => {
+      this.seedingPromise = null;
+    });
+    return this.seedingPromise;
+  }
+
+  private async executeSeedDefaultSkillNodes(): Promise<void> {
     const areas = [
-      { area: CompetencyArea.SYSTEM_DESIGN, name: 'System Design & Scalability', nameVi: 'Thiết kế Hệ thống & Mở rộng', slug: 'system-design' },
-      { area: CompetencyArea.LANGUAGE_CORE, name: 'Language & Framework Core', nameVi: 'Ngôn ngữ Lập trình & Nền tảng', slug: 'language-core' },
-      { area: CompetencyArea.DATABASE_CONCURRENCY, name: 'Database & Concurrency', nameVi: 'Cơ sở Dữ liệu & Đa luồng', slug: 'database-concurrency' },
-      { area: CompetencyArea.ARCHITECTURE_PATTERNS, name: 'Architecture & Design Patterns', nameVi: 'Mô hình Kiến trúc & Mẫu Thiết kế', slug: 'architecture-patterns' },
-      { area: CompetencyArea.RESILIENCE_SECURITY, name: 'Resilience & Security', nameVi: 'Bảo mật & Tính Ổn định Hệ thống', slug: 'resilience-security' },
+      {
+        area: CompetencyArea.SYSTEM_DESIGN,
+        name: 'System Design & Scalability',
+        nameVi: 'Thiết kế Hệ thống & Mở rộng',
+        slug: 'system-design',
+      },
+      {
+        area: CompetencyArea.LANGUAGE_CORE,
+        name: 'Language & Framework Core',
+        nameVi: 'Ngôn ngữ Lập trình & Nền tảng',
+        slug: 'language-core',
+      },
+      {
+        area: CompetencyArea.DATABASE_CONCURRENCY,
+        name: 'Database & Concurrency',
+        nameVi: 'Cơ sở Dữ liệu & Đa luồng',
+        slug: 'database-concurrency',
+      },
+      {
+        area: CompetencyArea.ARCHITECTURE_PATTERNS,
+        name: 'Architecture & Design Patterns',
+        nameVi: 'Mô hình Kiến trúc & Mẫu Thiết kế',
+        slug: 'architecture-patterns',
+      },
+      {
+        area: CompetencyArea.RESILIENCE_SECURITY,
+        name: 'Resilience & Security',
+        nameVi: 'Bảo mật & Tính Ổn định Hệ thống',
+        slug: 'resilience-security',
+      },
     ];
 
     for (const a of areas) {
-      const parent = await this.prisma.skillNode.upsert({
-        where: { slug: a.slug },
-        update: {},
-        create: {
-          slug: a.slug,
-          name: a.name,
-          nameVi: a.nameVi,
-          competencyArea: a.area as any,
-          level: 1,
-          weight: 1.0,
-          isActive: true,
-        },
-      });
+      let parent: any;
+      try {
+        parent = await this.prisma.skillNode.upsert({
+          where: { slug: a.slug },
+          update: {},
+          create: {
+            slug: a.slug,
+            name: a.name,
+            nameVi: a.nameVi,
+            competencyArea: a.area as any,
+            level: 1,
+            weight: 1.0,
+            isActive: true,
+          },
+        });
+      } catch (err) {
+        parent = await this.prisma.skillNode.findUnique({ where: { slug: a.slug } });
+      }
+
+      if (!parent) continue;
 
       const subCompetencies = [
-        { name: `${a.name} Fundamentals`, slug: `${a.slug}-fundamentals`, nameVi: 'Kiến thức Nền tảng' },
-        { name: `${a.name} Advanced Concepts`, slug: `${a.slug}-advanced`, nameVi: 'Kỹ thuật Chuyên sâu' },
-        { name: `${a.name} Optimization & Performance`, slug: `${a.slug}-performance`, nameVi: 'Tối ưu Hiệu năng' },
-        { name: `${a.name} Real-world Trade-offs`, slug: `${a.slug}-tradeoffs`, nameVi: 'Đánh giá & Đánh đổi Thực tế' },
+        {
+          name: `${a.name} Fundamentals`,
+          slug: `${a.slug}-fundamentals`,
+          nameVi: 'Kiến thức Nền tảng',
+        },
+        {
+          name: `${a.name} Advanced Concepts`,
+          slug: `${a.slug}-advanced`,
+          nameVi: 'Kỹ thuật Chuyên sâu',
+        },
+        {
+          name: `${a.name} Optimization & Performance`,
+          slug: `${a.slug}-performance`,
+          nameVi: 'Tối ưu Hiệu năng',
+        },
+        {
+          name: `${a.name} Real-world Trade-offs`,
+          slug: `${a.slug}-tradeoffs`,
+          nameVi: 'Đánh giá & Đánh đổi Thực tế',
+        },
       ];
 
       for (let i = 0; i < subCompetencies.length; i++) {
         const sub = subCompetencies[i];
-        await this.prisma.skillNode.upsert({
-          where: { slug: sub.slug },
-          update: {},
-          create: {
-            parentId: parent.id,
-            competencyArea: a.area as any,
-            slug: sub.slug,
-            name: sub.name,
-            nameVi: sub.nameVi,
-            level: 2,
-            weight: 1.0,
-            order: i,
-            isActive: true,
-          },
-        });
+        try {
+          await this.prisma.skillNode.upsert({
+            where: { slug: sub.slug },
+            update: {},
+            create: {
+              parentId: parent.id,
+              competencyArea: a.area as any,
+              slug: sub.slug,
+              name: sub.name,
+              nameVi: sub.nameVi,
+              level: 2,
+              weight: 1.0,
+              order: i,
+              isActive: true,
+            },
+          });
+        } catch {
+          // Ignore concurrent upsert collision on slug
+        }
       }
     }
   }
 }
-

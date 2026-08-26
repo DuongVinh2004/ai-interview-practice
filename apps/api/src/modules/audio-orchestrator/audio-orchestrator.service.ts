@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import {
@@ -96,12 +96,27 @@ export class AudioOrchestratorService {
   }
 
   async transcribeAudio(
+    userId: string,
     audioBuffer: Buffer,
     mimeType: string = 'audio/webm',
     filename: string = 'audio.webm',
     language?: string,
     sessionId?: string,
   ): Promise<AudioSttResult> {
+    // Ownership check: verify session belongs to user (F-008)
+    if (sessionId) {
+      const session = await this.prisma.interviewSession.findUnique({
+        where: { id: sessionId },
+        select: { userId: true },
+      });
+      if (session && session.userId !== userId) {
+        throw new DomainException(
+          ErrorCode.FORBIDDEN,
+          'Access denied: Session does not belong to user',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
     const priorityChain = this.getPriorityChain();
     let lastError: any = null;
     const startTime = Date.now();
@@ -116,7 +131,9 @@ export class AudioOrchestratorService {
       }
 
       if (!this.circuitBreaker.canExecute(providerName, 'audio-transcribe')) {
-        this.logger.warn(`Circuit breaker OPEN for [${providerName}:audio-transcribe]. Cascading...`);
+        this.logger.warn(
+          `Circuit breaker OPEN for [${providerName}:audio-transcribe]. Cascading...`,
+        );
         continue;
       }
 
@@ -177,11 +194,26 @@ export class AudioOrchestratorService {
   }
 
   async synthesizeSpeech(
+    userId: string,
     text: string,
     voice: AudioVoice = AudioVoice.ALLOY,
     speed: number = 1.0,
     sessionId?: string,
   ): Promise<AudioTtsResult> {
+    // Ownership check: verify session belongs to user (F-008)
+    if (sessionId) {
+      const session = await this.prisma.interviewSession.findUnique({
+        where: { id: sessionId },
+        select: { userId: true },
+      });
+      if (session && session.userId !== userId) {
+        throw new DomainException(
+          ErrorCode.FORBIDDEN,
+          'Access denied: Session does not belong to user',
+          HttpStatus.FORBIDDEN,
+        );
+      }
+    }
     const priorityChain = this.getPriorityChain();
     let lastError: any = null;
     const startTime = Date.now();
@@ -196,7 +228,9 @@ export class AudioOrchestratorService {
       }
 
       if (!this.circuitBreaker.canExecute(providerName, 'audio-synthesize')) {
-        this.logger.warn(`Circuit breaker OPEN for [${providerName}:audio-synthesize]. Cascading...`);
+        this.logger.warn(
+          `Circuit breaker OPEN for [${providerName}:audio-synthesize]. Cascading...`,
+        );
         continue;
       }
 

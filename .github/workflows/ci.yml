@@ -1,6 +1,7 @@
 name: CI Pipeline
 
 on:
+  workflow_dispatch:
   push:
     branches: [main, master, develop]
   pull_request:
@@ -13,7 +14,7 @@ jobs:
 
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:16.4-alpine3.20
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -27,7 +28,7 @@ jobs:
           --health-retries 5
 
       redis:
-        image: redis:7-alpine
+        image: redis:7.4.1-alpine3.20
         ports:
           - 6379:6379
         options: >-
@@ -38,15 +39,15 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
-          node-version: 20
+          node-version: 22.13.0
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@f520eceda224fe1a4aed5a2a27a194379a409996 # v6
         with:
           version: 11.0.9
           run_install: false
@@ -57,7 +58,7 @@ jobs:
           echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
 
       - name: Setup pnpm cache
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
         with:
           path: ${{ env.STORE_PATH }}
           key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
@@ -67,20 +68,34 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        run: pnpm --filter api prisma:generate
+
+      - name: Generate Dependency SBOM & Inventory
+        run: |
+          mkdir -p ./artifacts/sbom
+          pnpm list --json --recursive > ./artifacts/sbom/pnpm-dependency-tree.json
+
       - name: Check Formatting
         run: pnpm format:check
 
       - name: Lint Codebase
         run: pnpm lint
 
-      - name: Type Check
-        run: pnpm type-check
+      - name: Build Contracts Package
+        run: pnpm --filter @ai-interview/contracts build
 
-      - name: Generate Prisma Client & Run Migrations
+      - name: Type Check Workspaces
+        run: pnpm --recursive run type-check
+
+      - name: Validate Migrations
         env:
           DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
+          DEMO_ADMIN_EMAIL: 'admin@example.com'
+          DEMO_ADMIN_PASSWORD: 'Admin@123456'
+          DEMO_CANDIDATE_EMAIL: 'candidate@example.com'
+          DEMO_CANDIDATE_PASSWORD: 'Candidate@123456'
         run: |
-          pnpm --filter api prisma:generate
           pnpm --filter api db:migrate:deploy
           pnpm --filter api db:seed
 
@@ -91,7 +106,74 @@ jobs:
           REDIS_PORT: 6379
           JWT_ACCESS_SECRET: 'test-jwt-secret-key-32-chars-long-here'
           JWT_REFRESH_SECRET: 'test-jwt-refresh-secret-key-32-chars'
+          ALLOW_MOCK_PROVIDERS: 'true'
         run: pnpm test
 
-      - name: Build All Workspaces
+      - name: Run API Integration Tests
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_ACCESS_SECRET: 'ci-test-jwt-access-secret-32-chars-long'
+          JWT_REFRESH_SECRET: 'ci-test-jwt-refresh-secret-32-chars-long'
+          ALLOW_MOCK_PROVIDERS: 'true'
+        run: pnpm --filter api test:integration
+
+      - name: Build Production Artifacts
         run: pnpm build
+
+      - name: Run Playwright E2E Tests
+        env:
+          DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public'
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_ACCESS_SECRET: 'ci-test-jwt-access-secret-32-chars-long'
+          JWT_REFRESH_SECRET: 'ci-test-jwt-refresh-secret-32-chars-long'
+          ALLOW_MOCK_PROVIDERS: 'true'
+        run: |
+          pnpm --filter web exec playwright install --with-deps chromium
+          pnpm --filter web test:e2e
+
+      - name: Verify Production Docker Images
+        run: |
+          docker build -t ai-interview-api:ci -f apps/api/Dockerfile .
+          docker build -t ai-interview-web:ci -f apps/web/Dockerfile .
+          docker build -t ai-interview-nginx:ci -f infra/nginx/Dockerfile infra/nginx
+          docker run --rm --entrypoint node ai-interview-api:ci --check apps/api/dist/main.js
+          docker run --rm --entrypoint node ai-interview-api:ci --check apps/api/dist/worker.js
+          docker run --rm --network host \
+            -e NODE_ENV=test \
+            -e DATABASE_URL='postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public' \
+            -e REDIS_HOST=localhost \
+            -e REDIS_PORT=6379 \
+            -e REDIS_TLS=false \
+            -e JWT_ACCESS_SECRET='ci-docker-access-secret-32-chars' \
+            -e JWT_REFRESH_SECRET='ci-docker-refresh-secret-32-chars' \
+            -e ALLOW_MOCK_PROVIDERS=true \
+            -e AI_ALLOW_MOCK=true \
+            --entrypoint sh ai-interview-api:ci -c '
+              node apps/api/dist/main.js & pid=$!;
+              for attempt in 1 2 3 4 5 6; do
+                if wget --quiet --spider http://127.0.0.1:3001/api/v1/health/ready; then
+                  kill "$pid"; wait "$pid" || true; exit 0;
+                fi;
+                sleep 5;
+              done;
+              kill "$pid" 2>/dev/null || true; wait "$pid" || true; exit 1
+            '
+          docker run --rm --network host \
+            -e NODE_ENV=test \
+            -e DATABASE_URL='postgresql://postgres:postgres@localhost:5432/ai_interview_practice?schema=public' \
+            -e REDIS_HOST=localhost \
+            -e REDIS_PORT=6379 \
+            -e REDIS_TLS=false \
+            -e JWT_ACCESS_SECRET='ci-docker-access-secret-32-chars' \
+            -e JWT_REFRESH_SECRET='ci-docker-refresh-secret-32-chars' \
+            -e ALLOW_MOCK_PROVIDERS=true \
+            -e AI_ALLOW_MOCK=true \
+            --entrypoint sh ai-interview-api:ci -c '
+              timeout 15 node apps/api/dist/worker.js || true;
+              code=$?; test "$code" -eq 124 || test "$code" -eq 0 || test "$code" -eq 143 || test "$code" -eq 137
+            '
+          docker run --rm ai-interview-web:ci nginx -t
+          docker run --rm --add-host api:127.0.0.1 --add-host web:127.0.0.1 ai-interview-nginx:ci nginx -t

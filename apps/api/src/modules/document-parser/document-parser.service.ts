@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { TextExtractorService } from './services/text-extractor.service';
 import { CvAnalyzerService } from './services/cv-analyzer.service';
@@ -27,11 +33,7 @@ export class DocumentParserService {
   /**
    * Uploads and parses CV text / document, saving UserDocument and ParsedProfile with 30-day TTL.
    */
-  async parseCv(
-    userId: string,
-    req: ParseCvRequest,
-    buffer?: Buffer,
-  ) {
+  async parseCv(userId: string, req: ParseCvRequest, buffer?: Buffer) {
     let rawText = req.rawText;
     if (buffer) {
       rawText = await this.textExtractor.extractText(buffer, req.fileType, req.fileName);
@@ -45,12 +47,14 @@ export class DocumentParserService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 30);
 
+    const scrubbedRawText = this.scrubPii(rawText);
+
     const doc = await this.prisma.userDocument.create({
       data: {
         userId,
         fileName: req.fileName,
         fileType: req.fileType,
-        rawText,
+        rawText: scrubbedRawText,
         status: 'PARSED',
         expiresAt,
       },
@@ -72,9 +76,25 @@ export class DocumentParserService {
     });
 
     return {
-      document: doc,
+      document: {
+        ...doc,
+        rawText: undefined,
+      },
       parsedProfile: profile,
     };
+  }
+
+  private scrubPii(text: string): string {
+    // Mask emails
+    let scrubbed = text.replace(/[\w.-]+@[\w.-]+\.\w+/g, '[EMAIL_REDACTED]');
+    // Mask phone numbers (formats with country codes, dashes, parentheses)
+    scrubbed = scrubbed.replace(
+      /(\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g,
+      '[PHONE_REDACTED]',
+    );
+    // Mask SSN / national ID numbers
+    scrubbed = scrubbed.replace(/\b\d{3}-\d{2}-\d{4}\b|\b\d{9,12}\b/g, '[ID_REDACTED]');
+    return scrubbed;
   }
 
   /**
@@ -175,17 +195,34 @@ export class DocumentParserService {
   }
 
   async getUserDocuments(userId: string) {
+    const now = new Date();
     return this.prisma.userDocument.findMany({
-      where: { userId },
-      include: { parsedProfile: true },
+      where: {
+        userId,
+        expiresAt: { gt: now },
+      },
+      select: {
+        id: true,
+        userId: true,
+        fileName: true,
+        fileType: true,
+        status: true,
+        expiresAt: true,
+        createdAt: true,
+        parsedProfile: true,
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
 
   async getUserProfiles(userId: string) {
+    const now = new Date();
     return this.prisma.parsedProfile.findMany({
       where: {
-        document: { userId },
+        document: {
+          userId,
+          expiresAt: { gt: now },
+        },
       },
       include: { document: true },
       orderBy: { createdAt: 'desc' },
@@ -193,10 +230,14 @@ export class DocumentParserService {
   }
 
   async getUserBlueprints(userId: string) {
+    const now = new Date();
     return this.prisma.interviewBlueprint.findMany({
       where: {
         parsedProfile: {
-          document: { userId },
+          document: {
+            userId,
+            expiresAt: { gt: now },
+          },
         },
       },
       include: {
@@ -226,6 +267,15 @@ export class DocumentParserService {
 
     if (docOwnerId && docOwnerId !== userId && jdOwnerId && jdOwnerId !== userId) {
       throw new ForbiddenException('You do not have access to this interview blueprint.');
+    }
+
+    if (
+      blueprint.parsedProfile?.document?.expiresAt &&
+      blueprint.parsedProfile.document.expiresAt <= new Date()
+    ) {
+      throw new NotFoundException(
+        'This document and its blueprint have expired per retention policy',
+      );
     }
 
     return blueprint;

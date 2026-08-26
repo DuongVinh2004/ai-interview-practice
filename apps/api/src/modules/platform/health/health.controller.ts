@@ -34,15 +34,30 @@ export class HealthController {
       redis: 'down',
     };
 
+    const timeoutMs = 2500;
+
+    const withTimeout = async <T>(promise: Promise<T>): Promise<T> => {
+      let timer: NodeJS.Timeout;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Timeout')), timeoutMs);
+        if (typeof timer.unref === 'function') timer.unref();
+      });
+      try {
+        return await Promise.race([promise, timeoutPromise]);
+      } finally {
+        clearTimeout(timer!);
+      }
+    };
+
     try {
-      await this.prisma.$queryRaw`SELECT 1`;
+      await withTimeout(this.prisma.$queryRaw`SELECT 1`);
       checks.database = 'up';
     } catch {
       checks.database = 'down';
     }
 
     try {
-      const pong = await this.redis.getClient().ping();
+      const pong = await withTimeout(this.redis.getClient().ping());
       if (pong === 'PONG') {
         checks.redis = 'up';
       }

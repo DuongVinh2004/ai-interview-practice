@@ -13,8 +13,8 @@ export type SupportedCodeLanguage = z.infer<typeof SupportedCodeLanguageSchema>;
 
 export const TestCaseSchema = z.object({
   id: z.string().uuid().optional(),
-  input: z.string(),
-  expectedOutput: z.string(),
+  input: z.string().max(10000),
+  expectedOutput: z.string().max(10000),
   isHidden: z.boolean().default(false),
   order: z.number().int().default(0),
 });
@@ -23,9 +23,10 @@ export type TestCaseDto = z.infer<typeof TestCaseSchema>;
 export const ExecuteCodeRequestSchema = z.object({
   language: SupportedCodeLanguageSchema,
   sourceCode: z.string().min(1, 'Source code cannot be empty').max(50000),
-  customInput: z.string().optional(),
-  testCases: z.array(TestCaseSchema).optional(),
+  customInput: z.string().max(10000).optional(),
+  testCases: z.array(TestCaseSchema).max(20).optional(),
 });
+
 export type ExecuteCodeRequest = z.infer<typeof ExecuteCodeRequestSchema>;
 
 export const TestCaseExecutionResultSchema = z.object({

@@ -20,7 +20,10 @@ interface CircuitStats {
 }
 
 export class CircuitBreakerOpenException extends Error {
-  constructor(public readonly provider: string, public readonly operation: string) {
+  constructor(
+    public readonly provider: string,
+    public readonly operation: string,
+  ) {
     super(`Circuit breaker is OPEN for provider '${provider}' on operation '${operation}'.`);
     this.name = 'CircuitBreakerOpenException';
   }
@@ -70,7 +73,9 @@ export class CircuitBreaker {
       if (now - circuit.openedAt >= this.resetTimeoutMs) {
         circuit.state = CircuitState.HALF_OPEN;
         circuit.halfOpenInFlight = false;
-        this.logger.log(`Circuit for [${key}] transitioned from OPEN to HALF_OPEN (probing recovery)`);
+        this.logger.log(
+          `Circuit for [${key}] transitioned from OPEN to HALF_OPEN (probing recovery)`,
+        );
       }
     }
 
@@ -93,7 +98,6 @@ export class CircuitBreaker {
     return result;
   }
 
-
   /**
    * Checks if an execution is allowed.
    */
@@ -110,7 +114,9 @@ export class CircuitBreaker {
     const circuit = this.getCircuit(key);
 
     if (circuit.state === CircuitState.HALF_OPEN) {
-      this.logger.log(`Circuit for [${key}] recovered successfully. Transitioning HALF_OPEN -> CLOSED`);
+      this.logger.log(
+        `Circuit for [${key}] recovered successfully. Transitioning HALF_OPEN -> CLOSED`,
+      );
     }
 
     circuit.state = CircuitState.CLOSED;
@@ -154,11 +160,7 @@ export class CircuitBreaker {
   /**
    * Executes an async operation protected by the circuit breaker.
    */
-  async execute<T>(
-    provider: string,
-    operation: string,
-    fn: () => Promise<T>,
-  ): Promise<T> {
+  async execute<T>(provider: string, operation: string, fn: () => Promise<T>): Promise<T> {
     const state = this.getState(provider, operation);
     const key = this.getKey(provider, operation);
     const circuit = this.getCircuit(key);

@@ -148,7 +148,9 @@ export class AiOrchestratorService {
         latencyMs: result.latencyMs || Date.now() - startTime,
         costEstimate: result.costEstimate,
         status: AiRunStatus.SUCCESS,
-        metadata: postProcessed.safetyFlags ? { safetyFlags: postProcessed.safetyFlags } : undefined,
+        metadata: postProcessed.safetyFlags
+          ? { safetyFlags: postProcessed.safetyFlags }
+          : undefined,
       });
 
       return postProcessed;
@@ -254,7 +256,13 @@ export class AiOrchestratorService {
         },
       });
     } catch (e: any) {
-      this.logger.error('Failed to persist AI audit run', e.message);
+      this.logger.error('CRITICAL: Failed to persist AI audit run', e.message);
+      // In production, audit failure should block the result for compliance (F-017)
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+          `AI audit persistence failed: ${e.message}. Evaluation aborted for compliance.`,
+        );
+      }
     }
   }
 }

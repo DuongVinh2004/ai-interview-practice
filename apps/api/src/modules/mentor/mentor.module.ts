@@ -9,11 +9,7 @@ import { BookingController } from './controllers/booking.controller';
 import { LiveSessionController } from './controllers/live-session.controller';
 
 @Module({
-  controllers: [
-    MentorController,
-    BookingController,
-    LiveSessionController,
-  ],
+  controllers: [MentorController, BookingController, LiveSessionController],
   providers: [
     MentorService,
     BookingService,
@@ -24,11 +20,6 @@ import { LiveSessionController } from './controllers/live-session.controller';
       useClass: MockMediaProvider,
     },
   ],
-  exports: [
-    MentorService,
-    BookingService,
-    LiveSessionService,
-    CopilotHintService,
-  ],
+  exports: [MentorService, BookingService, LiveSessionService, CopilotHintService],
 })
 export class MentorModule {}

@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CreateTenantDto, TenantBrandingDto, TenantRole } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
@@ -21,7 +26,9 @@ export class TenantService {
         name: dto.name,
         slug: dto.slug,
         domain: dto.domain || null,
-        brandingConfig: dto.brandingConfig ? (dto.brandingConfig as any) : { primaryColor: '#059669', accentColor: '#10b981' },
+        brandingConfig: dto.brandingConfig
+          ? (dto.brandingConfig as any)
+          : { primaryColor: '#059669', accentColor: '#10b981' },
         isActive: true,
       },
     });
@@ -103,7 +110,7 @@ export class TenantService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return keys.map((k) => ({
+    return keys.map(k => ({
       id: k.id,
       tenantId: k.tenantId,
       name: k.name,

@@ -10,7 +10,9 @@ export class PublicPortfolioController {
 
   @Public()
   @Get('portfolio/:username')
-  @ApiOperation({ summary: 'Public endpoint to view candidate portfolio, badges, skills, and certs' })
+  @ApiOperation({
+    summary: 'Public endpoint to view candidate portfolio, badges, skills, and certs',
+  })
   async getPublicPortfolio(@Param('username') username: string) {
     return this.portfolioService.getPublicPortfolio(username);
   }

@@ -30,7 +30,9 @@ export const MentorLiveRoom: React.FC = () => {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [mentorNotes, setMentorNotes] = useState('');
-  const [chatMessages, setChatMessages] = useState<Array<{ sender: string; text: string; time: string }>>([
+  const [chatMessages, setChatMessages] = useState<
+    Array<{ sender: string; text: string; time: string }>
+  >([
     {
       sender: 'System',
       text: 'Live Session room connected via WebRTC Mock Provider.',
@@ -80,7 +82,7 @@ export const MentorLiveRoom: React.FC = () => {
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setChatMessages((prev) => [
+    setChatMessages(prev => [
       ...prev,
       {
         sender: roomInfo?.role === 'MENTOR' ? 'Mentor' : 'Candidate',
@@ -98,7 +100,10 @@ export const MentorLiveRoom: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="h-[calc(100vh-4rem)] bg-slate-900 flex items-center justify-center text-white" data-testid="live-room-loading">
+      <div
+        className="h-[calc(100vh-4rem)] bg-slate-900 flex items-center justify-center text-white"
+        data-testid="live-room-loading"
+      >
         <div className="text-center space-y-4">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-sm font-medium">Connecting to ephemeral live interview room...</p>
@@ -110,7 +115,10 @@ export const MentorLiveRoom: React.FC = () => {
   const isMentor = roomInfo?.role === 'MENTOR';
 
   return (
-    <div className="h-[calc(100vh-4rem)] bg-slate-950 flex flex-col md:flex-row overflow-hidden" data-testid="mentor-live-room">
+    <div
+      className="h-[calc(100vh-4rem)] bg-slate-950 flex flex-col md:flex-row overflow-hidden"
+      data-testid="mentor-live-room"
+    >
       {/* Left: Video Call Stage & Controls */}
       <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 overflow-hidden">
         {/* Top Room Bar */}
@@ -120,7 +128,8 @@ export const MentorLiveRoom: React.FC = () => {
             <div>
               <h2 className="font-bold text-sm">{roomInfo?.roomName || 'Mock Interview Room'}</h2>
               <p className="text-xs text-slate-400">
-                Connected as <strong className="text-emerald-400">{roomInfo?.role}</strong> ({roomInfo?.participantName})
+                Connected as <strong className="text-emerald-400">{roomInfo?.role}</strong> (
+                {roomInfo?.participantName})
               </p>
             </div>
           </div>
@@ -159,7 +168,9 @@ export const MentorLiveRoom: React.FC = () => {
                 C
               </div>
               <p className="text-white font-bold text-base">Candidate Stream</p>
-              <span className="text-xs text-emerald-400 font-medium">Video active (WebRTC Mock)</span>
+              <span className="text-xs text-emerald-400 font-medium">
+                Video active (WebRTC Mock)
+              </span>
             </div>
             <div className="absolute bottom-4 left-4 bg-slate-950/80 backdrop-blur px-3 py-1 rounded-xl text-xs text-white border border-slate-700 font-medium">
               Candidate
@@ -255,10 +266,7 @@ export const MentorLiveRoom: React.FC = () => {
         {/* Tab Content */}
         <div className="flex-1 overflow-hidden">
           {activeTab === 'copilot' && (
-            <AiCoPilotHintPanel
-              sessionId={sessionId || ''}
-              onSelectHint={handleInsertHint}
-            />
+            <AiCoPilotHintPanel sessionId={sessionId || ''} onSelectHint={handleInsertHint} />
           )}
 
           {activeTab === 'chat' && (
@@ -271,8 +279,8 @@ export const MentorLiveRoom: React.FC = () => {
                       msg.sender === 'Mentor'
                         ? 'bg-emerald-50 border border-emerald-200 text-emerald-950 ml-6'
                         : msg.sender === 'Candidate'
-                        ? 'bg-slate-100 text-slate-900 mr-6'
-                        : 'bg-slate-50 text-slate-500 text-center text-[11px]'
+                          ? 'bg-slate-100 text-slate-900 mr-6'
+                          : 'bg-slate-50 text-slate-500 text-center text-[11px]'
                     }`}
                   >
                     <div className="flex justify-between font-bold mb-1">
@@ -289,11 +297,17 @@ export const MentorLiveRoom: React.FC = () => {
                   type="text"
                   placeholder="Type a message or probing question..."
                   value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
+                  onChange={e => setChatInput(e.target.value)}
                   className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-xs focus:ring-emerald-500 focus:border-emerald-500"
                   data-testid="chat-input"
                 />
-                <Button type="submit" variant="primary" size="sm" className="px-3" data-testid="send-chat-btn">
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  className="px-3"
+                  data-testid="send-chat-btn"
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </form>
@@ -301,7 +315,10 @@ export const MentorLiveRoom: React.FC = () => {
           )}
 
           {activeTab === 'notes' && (
-            <div className="p-4 space-y-4 h-full flex flex-col justify-between" data-testid="notes-panel">
+            <div
+              className="p-4 space-y-4 h-full flex flex-col justify-between"
+              data-testid="notes-panel"
+            >
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
@@ -313,7 +330,7 @@ export const MentorLiveRoom: React.FC = () => {
                 <Textarea
                   rows={8}
                   value={mentorNotes}
-                  onChange={(e) => setMentorNotes(e.target.value)}
+                  onChange={e => setMentorNotes(e.target.value)}
                   placeholder="Record candidate strengths, architectural design decisions, and areas for improvement..."
                   className="text-xs font-mono"
                   data-testid="mentor-notes-textarea"
@@ -336,7 +353,8 @@ export const MentorLiveRoom: React.FC = () => {
                   <ShieldAlert className="h-4 w-4 text-amber-600" /> Human Evaluation Moderation
                 </div>
                 <p className="text-slate-600">
-                  Did the candidate clarify a key insight during live discussion? You can adjust the AI evaluation score.
+                  Did the candidate clarify a key insight during live discussion? You can adjust the
+                  AI evaluation score.
                 </p>
                 <Button
                   variant="primary"

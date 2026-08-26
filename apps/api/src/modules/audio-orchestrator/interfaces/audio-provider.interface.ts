@@ -9,6 +9,7 @@ export interface AudioSttResult {
   model: string;
   latencyMs: number;
   costEstimate?: number;
+  isFallback?: boolean;
 }
 
 export interface AudioTtsResult {
@@ -31,9 +32,5 @@ export interface AudioProviderInterface {
     language?: string,
   ): Promise<AudioSttResult>;
 
-  synthesize(
-    text: string,
-    voice?: AudioVoice,
-    speed?: number,
-  ): Promise<AudioTtsResult>;
+  synthesize(text: string, voice?: AudioVoice, speed?: number): Promise<AudioTtsResult>;
 }

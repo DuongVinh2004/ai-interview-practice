@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { FSRSEngine, FSRSCard } from './fsrs/fsrs-engine';
 import {
@@ -8,18 +14,19 @@ import {
   ReviewCardDto,
   AutoGenerateFlashcardsDto,
 } from './dto/flashcard.dto';
-import {
-  CardType,
-  CardState,
-  FlashcardStatsDto,
-} from '@ai-interview/contracts';
+import { CardType, CardState, FlashcardStatsDto } from '@ai-interview/contracts';
+import { EventEmitter2 } from '@nestjs/event-emitter';
+import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class FlashcardService {
   private readonly logger = new Logger(FlashcardService.name);
   private readonly fsrs = new FSRSEngine();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
+  ) {}
 
   // 1. Deck Operations
   async createDeck(userId: string, dto: CreateDeckDto) {
@@ -83,7 +90,7 @@ export class FlashcardService {
           cardCount: deck._count.flashcards,
           dueCount,
         };
-      })
+      }),
     );
 
     return enriched;
@@ -211,6 +218,12 @@ export class FlashcardService {
     // Update UserStreak
     await this.updateUserStreak(userId, now);
 
+    this.eventEmitter?.emit('flashcard.reviewed', {
+      userId,
+      cardId,
+      rating: dto.rating,
+    });
+
     return { card: updatedCard, log: reviewLog };
   }
 
@@ -282,9 +295,19 @@ export class FlashcardService {
     if (!session) throw new NotFoundException('Interview session not found');
     if (session.userId !== userId) throw new ForbiddenException('Access denied');
 
-    // Find or create Deck
+    // Find or validate/create Deck
     let targetDeckId = dto.deckId;
-    if (!targetDeckId) {
+    if (targetDeckId) {
+      const existingDeck = await this.prisma.flashcardDeck.findUnique({
+        where: { id: targetDeckId },
+      });
+      if (!existingDeck) {
+        throw new NotFoundException('Target flashcard deck not found');
+      }
+      if (existingDeck.userId !== userId) {
+        throw new ForbiddenException('Access denied: you do not own the specified flashcard deck');
+      }
+    } else {
       const roleName = session.jobRole?.name || 'Interview';
       const dateStr = new Date().toLocaleDateString('vi-VN');
       const newDeck = await this.prisma.flashcardDeck.create({
@@ -369,22 +392,30 @@ export class FlashcardService {
   async getStats(userId: string): Promise<FlashcardStatsDto> {
     const now = new Date();
 
-    const [totalCards, dueToday, newCards, learningCards, reviewCards, relearningCards, userStreak, reviewLogs] =
-      await Promise.all([
-        this.prisma.flashcard.count({ where: { deck: { userId } } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, due: { lte: now } } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.NEW } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.LEARNING } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.REVIEW } }),
-        this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.RELEARNING } }),
-        this.prisma.userStreak.findUnique({ where: { userId } }),
-        this.prisma.reviewLog.findMany({
-          where: { flashcard: { deck: { userId } } },
-          select: { reviewedAt: true },
-          orderBy: { reviewedAt: 'desc' },
-          take: 365,
-        }),
-      ]);
+    const [
+      totalCards,
+      dueToday,
+      newCards,
+      learningCards,
+      reviewCards,
+      relearningCards,
+      userStreak,
+      reviewLogs,
+    ] = await Promise.all([
+      this.prisma.flashcard.count({ where: { deck: { userId } } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, due: { lte: now } } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.NEW } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.LEARNING } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.REVIEW } }),
+      this.prisma.flashcard.count({ where: { deck: { userId }, state: CardState.RELEARNING } }),
+      this.prisma.userStreak.findUnique({ where: { userId } }),
+      this.prisma.reviewLog.findMany({
+        where: { flashcard: { deck: { userId } } },
+        select: { reviewedAt: true },
+        orderBy: { reviewedAt: 'desc' },
+        take: 365,
+      }),
+    ]);
 
     // Aggregate review logs by date for activity heatmap
     const countsByDate: Record<string, number> = {};
@@ -405,7 +436,9 @@ export class FlashcardService {
       streak: {
         currentStreak: userStreak?.currentStreak || 0,
         longestStreak: userStreak?.longestStreak || 0,
-        lastReviewDate: userStreak?.lastReviewDate ? userStreak.lastReviewDate.toISOString().split('T')[0] : null,
+        lastReviewDate: userStreak?.lastReviewDate
+          ? userStreak.lastReviewDate.toISOString().split('T')[0]
+          : null,
         totalReviews: userStreak?.totalReviews || 0,
       },
       heatmap,

@@ -15,8 +15,16 @@ describe('ProviderRouterService Spec', () => {
   let mockAnthropic: jest.Mocked<AnthropicProvider>;
   let mockProvider: MockAiProvider;
   let mockSemanticCache: Partial<SemanticCacheService>;
+  let configGet: jest.Mock;
 
   beforeEach(async () => {
+    configGet = jest.fn((key: string, defaultValue: any) => {
+      if (key === 'ai.provider') return 'router';
+      if (key === 'ai.providerPriority') return 'gemini,openai,anthropic,mock';
+      if (key === 'ai.dailyBudgetUsd') return 50.0;
+      return defaultValue;
+    });
+
     mockGemini = {
       name: 'gemini',
       generateQuestion: jest.fn(),
@@ -51,14 +59,7 @@ describe('ProviderRouterService Spec', () => {
         ProviderRouterService,
         {
           provide: ConfigService,
-          useValue: {
-            get: jest.fn((key: string, defaultValue: any) => {
-              if (key === 'ai.provider') return 'router';
-              if (key === 'ai.providerPriority') return 'gemini,openai,anthropic,mock';
-              if (key === 'ai.dailyBudgetUsd') return 50.0;
-              return defaultValue;
-            }),
-          },
+          useValue: { get: configGet },
         },
         { provide: GeminiProvider, useValue: mockGemini },
         { provide: OpenAiProvider, useValue: mockOpenAi },
@@ -74,6 +75,48 @@ describe('ProviderRouterService Spec', () => {
   it('resolves priority chain correctly from config', () => {
     const chain = routerService.getPriorityChain();
     expect(chain).toEqual(['gemini', 'openai', 'anthropic', 'mock']);
+  });
+
+  it('removes mock from the production router fallback chain', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalAllowMock = process.env.AI_ALLOW_MOCK;
+
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.AI_ALLOW_MOCK;
+
+      expect(routerService.getPriorityChain()).toEqual(['gemini', 'openai', 'anthropic']);
+    } finally {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+      if (originalAllowMock === undefined) delete process.env.AI_ALLOW_MOCK;
+      else process.env.AI_ALLOW_MOCK = originalAllowMock;
+    }
+  });
+
+  it('fails closed when production router priority contains no real provider', () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalAllowMock = process.env.AI_ALLOW_MOCK;
+    configGet.mockImplementation((key: string, defaultValue: any) => {
+      if (key === 'ai.provider') return 'router';
+      if (key === 'ai.providerPriority') return 'mock,unknown';
+      if (key === 'ai.dailyBudgetUsd') return 50.0;
+      return defaultValue;
+    });
+
+    try {
+      process.env.NODE_ENV = 'production';
+      delete process.env.AI_ALLOW_MOCK;
+
+      expect(() => routerService.getPriorityChain()).toThrow(
+        'No production AI provider configured',
+      );
+    } finally {
+      if (originalNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = originalNodeEnv;
+      if (originalAllowMock === undefined) delete process.env.AI_ALLOW_MOCK;
+      else process.env.AI_ALLOW_MOCK = originalAllowMock;
+    }
   });
 
   it('routes to primary provider (Gemini) when healthy', async () => {
@@ -190,5 +233,54 @@ describe('ProviderRouterService Spec', () => {
 
     expect(mockGemini.evaluateAnswer).toHaveBeenCalledTimes(1); // No retries for 401
     expect(result.provider).toBe('openai');
+  });
+
+  it('does not use semantic cache for personalized learning paths', async () => {
+    (mockSemanticCache.isCacheEnabled as jest.Mock).mockReturnValue(true);
+    (mockSemanticCache.get as jest.Mock).mockResolvedValue({
+      hit: true,
+      data: { summary: 'Another candidate path', items: [] },
+    });
+    mockGemini.generateLearningPath.mockResolvedValueOnce({
+      data: {
+        summary: 'Candidate-specific learning path',
+        items: [
+          {
+            gap: 'Concurrency',
+            topic: 'Database transactions',
+            priority: 'HIGH',
+            recommendedAction: 'Practice transaction isolation and locking patterns.',
+            searchKeywords: ['transaction isolation'],
+          },
+        ],
+      },
+      model: 'gemini-2.0-flash',
+      provider: 'gemini',
+      latencyMs: 100,
+    });
+
+    const result = await routerService.generateLearningPath(
+      {
+        role: 'Backend Engineer',
+        level: 'Senior',
+        overallScore: 7,
+        turns: [
+          {
+            turnNumber: 1,
+            question: 'How do transactions work?',
+            answer: 'Candidate-specific answer',
+            score: 7,
+            strengths: ['Clear explanation'],
+            improvements: ['Cover isolation anomalies'],
+          },
+        ],
+      },
+      'System prompt',
+    );
+
+    expect(result.provider).toBe('gemini');
+    expect(mockGemini.generateLearningPath).toHaveBeenCalledTimes(1);
+    expect(mockSemanticCache.get).not.toHaveBeenCalled();
+    expect(mockSemanticCache.set).not.toHaveBeenCalled();
   });
 });

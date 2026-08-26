@@ -16,7 +16,7 @@ describe('Flashcard & Spaced Repetition Components (F005)', () => {
         type={CardType.CONCEPT}
         isFlipped={false}
         onFlip={onFlip}
-      />
+      />,
     );
 
     expect(screen.getByTestId('flashcard-item')).toBeInTheDocument();
@@ -35,7 +35,7 @@ describe('Flashcard & Spaced Repetition Components (F005)', () => {
         type={CardType.CONCEPT}
         isFlipped={true}
         onFlip={onFlip}
-      />
+      />,
     );
 
     expect(screen.getByText('Consistency, Availability, Partition tolerance.')).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe('Flashcard & Spaced Repetition Components (F005)', () => {
         deckId="deck-123"
         onCreateCard={onCreateCard}
         isSubmitting={false}
-      />
+      />,
     );
 
     expect(screen.getByTestId('create-card-modal')).toBeInTheDocument();
@@ -84,7 +84,11 @@ describe('Flashcard & Spaced Repetition Components (F005)', () => {
     const backInput = screen.getByPlaceholderText(/Toàn bộ single-threaded/i);
 
     fireEvent.change(frontInput, { target: { value: 'Explain idempotency in REST APIs' } });
-    fireEvent.change(backInput, { target: { value: 'Making multiple identical requests has the same effect as a single request.' } });
+    fireEvent.change(backInput, {
+      target: {
+        value: 'Making multiple identical requests has the same effect as a single request.',
+      },
+    });
 
     const submitBtn = screen.getByText('Tạo Flashcard');
     fireEvent.click(submitBtn);

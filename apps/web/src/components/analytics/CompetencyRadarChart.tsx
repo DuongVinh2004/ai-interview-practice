@@ -10,7 +10,7 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const center = size / 2;
-  const radius = (size / 2) - 45;
+  const radius = size / 2 - 45;
   const count = competencies.length || 5;
   const angleStep = (Math.PI * 2) / count;
 
@@ -35,7 +35,10 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
     .join(' ');
 
   return (
-    <div className="relative flex flex-col items-center justify-center select-none" data-testid="competency-radar-chart">
+    <div
+      className="relative flex flex-col items-center justify-center select-none"
+      data-testid="competency-radar-chart"
+    >
       <svg width={size} height={size} className="overflow-visible">
         {/* Background Grid Rings */}
         {levels.map(level => {
@@ -62,15 +65,7 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
         {competencies.map((_, i) => {
           const { x, y } = getCoordinates(i, 10);
           return (
-            <line
-              key={i}
-              x1={center}
-              y1={center}
-              x2={x}
-              y2={y}
-              stroke="#cbd5e1"
-              strokeWidth="1"
-            />
+            <line key={i} x1={center} y1={center} x2={x} y2={y} stroke="#cbd5e1" strokeWidth="1" />
           );
         })}
 
@@ -131,7 +126,7 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
               onMouseEnter={() => setHoveredIndex(i)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              {c.name.split(' & ')[0]}
+              {(c.name || c.competency || '').split(' & ')[0]}
             </text>
           );
         })}
@@ -140,7 +135,9 @@ export function CompetencyRadarChart({ competencies, size = 340 }: CompetencyRad
       {/* Hover Info Tooltip */}
       {hoveredIndex !== null && competencies[hoveredIndex] && (
         <div className="absolute bottom-1 bg-slate-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg border border-slate-700 flex items-center gap-2 animate-fade-in pointer-events-none">
-          <span className="font-semibold">{competencies[hoveredIndex].name}:</span>
+          <span className="font-semibold">
+            {competencies[hoveredIndex].name || competencies[hoveredIndex].competency}:
+          </span>
           <span className="text-emerald-400 font-bold font-mono">
             {competencies[hoveredIndex].score.toFixed(1)} / 10
           </span>

@@ -112,7 +112,7 @@ export class CohortAnalyticsService {
         // Collect turn scores for competency heatmap
         for (const session of completedSessions) {
           const sessionArea = session.competencyArea as CompetencyArea | null;
-          for (const turn of (session.turns || [])) {
+          for (const turn of session.turns || []) {
             const evalRecord = turn.answer?.evaluation;
             if (evalRecord) {
               const targetArea = sessionArea || CompetencyArea.LANGUAGE_CORE;
@@ -146,15 +146,13 @@ export class CohortAnalyticsService {
       });
     }
 
-    const activeStudents = studentProgressList.filter((s) => s.completedAssignments > 0).length;
+    const activeStudents = studentProgressList.filter(s => s.completedAssignments > 0).length;
     const overallAverageScore = scoredCount > 0 ? Number((scoreSum / scoredCount).toFixed(1)) : 0.0;
     const completionRate =
-      totalStudents > 0
-        ? Math.round((activeStudents / totalStudents) * 100)
-        : 0;
+      totalStudents > 0 ? Math.round((activeStudents / totalStudents) * 100) : 0;
 
     // Build real skill heatmap based on aggregated data (M-005)
-    const skillHeatmap = Object.values(CompetencyArea).map((area) => {
+    const skillHeatmap = Object.values(CompetencyArea).map(area => {
       const turns = areaTurnScores[area] || [];
       const totalTurns = turns.length;
       let areaAvg = 0;
@@ -165,13 +163,17 @@ export class CohortAnalyticsService {
       if (totalTurns > 0) {
         const sum = turns.reduce((acc, t) => acc + t.score, 0);
         areaAvg = Number((sum / totalTurns).toFixed(1));
-        const passingCount = turns.filter((t) => t.score >= 6.0).length;
+        const passingCount = turns.filter(t => t.score >= 6.0).length;
         passRate = Math.round((passingCount / totalTurns) * 100);
 
         // Derive weakest / strongest topics from scored turns
         const sorted = [...turns].sort((a, b) => a.score - b.score);
-        weakestTopic = sorted[0]?.topic || (area === CompetencyArea.SYSTEM_DESIGN ? 'Consistent Hashing' : 'Garbage Collection');
-        strongestTopic = sorted[sorted.length - 1]?.topic || (area === CompetencyArea.SYSTEM_DESIGN ? 'Load Balancing' : 'OOP Polymorphism');
+        weakestTopic =
+          sorted[0]?.topic ||
+          (area === CompetencyArea.SYSTEM_DESIGN ? 'Consistent Hashing' : 'Garbage Collection');
+        strongestTopic =
+          sorted[sorted.length - 1]?.topic ||
+          (area === CompetencyArea.SYSTEM_DESIGN ? 'Load Balancing' : 'OOP Polymorphism');
       } else if (overallAverageScore > 0) {
         areaAvg = overallAverageScore;
         passRate = Math.min(Math.round(overallAverageScore * 10), 100);
@@ -187,12 +189,10 @@ export class CohortAnalyticsService {
       };
     });
 
-    const studentsNeedingHelp = studentProgressList
-      .filter((s) => s.needsAssistance)
-      .slice(0, 10);
+    const studentsNeedingHelp = studentProgressList.filter(s => s.needsAssistance).slice(0, 10);
 
     const topPerformers = studentProgressList
-      .filter((s) => s.averageScore >= 8.0)
+      .filter(s => s.averageScore >= 8.0)
       .sort((a, b) => b.averageScore - a.averageScore)
       .slice(0, 10);
 

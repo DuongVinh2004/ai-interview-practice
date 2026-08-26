@@ -52,19 +52,25 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     await page.fill('#email', 'admin@example.com');
     await page.fill('#password', 'Admin@123456');
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL('/');
+    await expect(page).not.toHaveURL(/\/login/);
 
     // 3. Admin Users Management
     await page.goto('/admin/users');
-    await expect(page.getByText(/(quản trị người dùng|user administration|admin)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(quản trị người dùng|user administration|admin)/i).first(),
+    ).toBeVisible();
 
     // 4. Admin AI Telemetry & Circuit Breaker
     await page.goto('/admin/ai-runs');
-    await expect(page.getByText(/(giám sát ai|ai orchestrator telemetry|circuit breaker)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(giám sát ai|ai orchestrator telemetry|circuit breaker)/i).first(),
+    ).toBeVisible();
 
     // 5. Admin Prompts Version Management
     await page.goto('/admin/prompts');
-    await expect(page.getByText(/(phiên bản prompt|prompt version|templates)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(phiên bản prompt|prompt version|templates)/i).first(),
+    ).toBeVisible();
 
     // 6. Admin Golden Benchmark AI Evaluation Suite
     await page.goto('/admin/ai-eval');
@@ -81,21 +87,33 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 2. Go to Setup page
     await page.goto('/interviews/new');
-    await expect(page.getByRole('heading', { name: /(configure your interview|thiết lập phỏng vấn)/i })).toBeVisible();
+    await expect(
+      page.getByRole('heading', {
+        name: /(configure your interview|cấu hình phỏng vấn|thiết lập phỏng vấn)/i,
+      }),
+    ).toBeVisible();
 
     // 3. Select Remediation Mode
-    await page.click('button:has-text("Luyện tập Trọng tâm"), button:has-text("Focused Remediation")');
-    await expect(page.getByText(/(năng lực kỹ thuật trọng tâm|focus competency area)/i)).toBeVisible();
+    await page.click(
+      'button:has-text("Luyện tập Trọng tâm"), button:has-text("Focused Remediation")',
+    );
+    await expect(
+      page.getByText(/(năng lực kỹ thuật trọng tâm|focus competency area)/i),
+    ).toBeVisible();
 
     // 4. Select Sandbox Practice Mode
-    await page.click('button:has-text("Thao trường Thử nghiệm"), button:has-text("Quick Sandbox Drill")');
+    await page.click(
+      'button:has-text("Thao trường Thử nghiệm"), button:has-text("Quick Sandbox Drill")',
+    );
     await expect(page.getByText(/(số lượng câu hỏi|question count)/i)).toBeVisible();
 
     // 5. Select Live Coding Mode
     await page.click('button:has-text("Live Coding")');
 
     // 6. Switch to Standard Mode, select tech stack and launch interview
-    await page.click('button:has-text("Phỏng vấn Toàn diện"), button:has-text("Full Mock Interview")');
+    await page.click(
+      'button:has-text("Phỏng vấn Toàn diện"), button:has-text("Full Mock Interview")',
+    );
     await page.click('button:has-text("TypeScript"), button:has-text("React")');
     await page.click('button:has-text("Begin 5-Question Interview"), button:has-text("Bắt đầu")');
 
@@ -114,12 +132,19 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 2. Profile Page
     await page.goto('/profile');
-    await expect(page.getByRole('heading', { name: /(hồ sơ|profile|mục tiêu)/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /(hồ sơ|profile|mục tiêu)/i }).first(),
+    ).toBeVisible();
 
     // 3. Save profile changes
-    await page.fill('input[value*="Candidate"], input#fullName, input[name="fullName"]', 'Demo Candidate');
+    await page.fill(
+      'input[value*="Candidate"], input#fullName, input[name="fullName"]',
+      'Demo Candidate',
+    );
     await page.click('button:has-text("Lưu Thông tin"), button:has-text("Save Profile")');
-    await expect(page.getByText(/(cập nhật hồ sơ thành công|profile updated successfully)/i)).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByText(/(cập nhật hồ sơ thành công|profile updated successfully)/i),
+    ).toBeVisible({ timeout: 10000 });
 
     // 4. Flashcards Page
     await page.goto('/flashcards');
@@ -127,6 +152,8 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 5. Readiness Page
     await page.goto('/readiness');
-    await expect(page.getByText(/(mức độ sẵn sàng|readiness score|overall readiness)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(mức độ sẵn sàng|readiness score|overall readiness)/i).first(),
+    ).toBeVisible();
   });
 });

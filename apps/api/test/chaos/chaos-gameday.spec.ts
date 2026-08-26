@@ -118,9 +118,15 @@ describe('Game Day: AI Provider Outage & Chaos Resilience (AIP-062)', () => {
 
   it('Game Day Scenario 1: Triple Provider Outage -> Cascades to Mock Provider with zero data loss', async () => {
     // Simulate catastrophic outage across all 3 external cloud providers
-    (geminiProvider.evaluateAnswer as jest.Mock).mockRejectedValue(new Error('Google Gemini API 503 Overloaded'));
-    (openAiProvider.evaluateAnswer as jest.Mock).mockRejectedValue(new Error('OpenAI API 500 Internal Server Error'));
-    (anthropicProvider.evaluateAnswer as jest.Mock).mockRejectedValue(new Error('Anthropic Claude 429 Rate Limit Exceeded'));
+    (geminiProvider.evaluateAnswer as jest.Mock).mockRejectedValue(
+      new Error('Google Gemini API 503 Overloaded'),
+    );
+    (openAiProvider.evaluateAnswer as jest.Mock).mockRejectedValue(
+      new Error('OpenAI API 500 Internal Server Error'),
+    );
+    (anthropicProvider.evaluateAnswer as jest.Mock).mockRejectedValue(
+      new Error('Anthropic Claude 429 Rate Limit Exceeded'),
+    );
 
     const evalContext: EvaluationPromptContext = {
       role: 'Backend Engineer',
@@ -143,7 +149,9 @@ describe('Game Day: AI Provider Outage & Chaos Resilience (AIP-062)', () => {
   });
 
   it('Game Day Scenario 2: Circuit Breaker transitions to OPEN upon consecutive provider failures', async () => {
-    (geminiProvider.generateQuestion as jest.Mock).mockRejectedValue(new Error('Gemini 500 Outage'));
+    (geminiProvider.generateQuestion as jest.Mock).mockRejectedValue(
+      new Error('Gemini 500 Outage'),
+    );
 
     const circuitBreaker = routerService.getCircuitBreaker();
     expect(circuitBreaker.canExecute('gemini', 'generateQuestion')).toBe(true);
@@ -171,7 +179,8 @@ describe('Game Day: AI Provider Outage & Chaos Resilience (AIP-062)', () => {
       role: 'Backend Engineer',
       level: 'Mid',
       question: 'Explain PostgreSQL MVCC',
-      answer: 'PostgreSQL uses multi-version concurrency control with xmin and xmax transaction IDs.',
+      answer:
+        'PostgreSQL uses multi-version concurrency control with xmin and xmax transaction IDs.',
     };
 
     // Inject $55 cost

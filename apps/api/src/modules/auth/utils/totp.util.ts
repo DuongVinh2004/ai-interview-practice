@@ -152,7 +152,7 @@ export class TotpUtil {
   static encryptSecret(plainSecret: string, encryptionKey: string): string {
     const key = crypto.createHash('sha256').update(encryptionKey).digest();
     const iv = crypto.randomBytes(12);
-    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
     let encrypted = cipher.update(plainSecret, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     const authTag = cipher.getAuthTag().toString('hex');
@@ -172,7 +172,9 @@ export class TotpUtil {
         return encryptedPayload;
       }
       const key = crypto.createHash('sha256').update(encryptionKey).digest();
-      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'));
+      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'), {
+        authTagLength: 16,
+      });
       decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
       let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
       decrypted += decipher.final('utf8');

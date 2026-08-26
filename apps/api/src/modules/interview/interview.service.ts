@@ -1,6 +1,7 @@
 import { Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { SseService } from '../platform/sse/sse.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
@@ -16,6 +17,7 @@ import {
   AuditAction,
   SessionMode,
   CompetencyArea,
+  BillingMetric,
 } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 import {
@@ -23,6 +25,7 @@ import {
   SubmitAnswerRequestDto,
   ReEvaluateTurnRequestDto,
 } from './dto/interview.dto';
+import { UsageMeterService } from '../billing/usage-meter.service';
 
 @Injectable()
 export class InterviewService {
@@ -32,6 +35,7 @@ export class InterviewService {
     private readonly prisma: PrismaService,
     private readonly sseService: SseService,
     private readonly aiOrchestrator: AiOrchestratorService,
+    private readonly usageMeter: UsageMeterService,
     @InjectQueue(QueueName.QUESTION_GENERATION)
     private readonly questionQueue: Queue,
     @InjectQueue(QueueName.ANSWER_EVALUATION)
@@ -75,40 +79,50 @@ export class InterviewService {
     const turnIndices = Array.from({ length: totalTurns }, (_, i) => i + 1);
 
     // Create session, technologies join, and turn rows
-    const session = await this.prisma.interviewSession.create({
-      data: {
-        userId,
-        jobRoleId: dto.jobRoleId,
-        seniorityLevelId: dto.seniorityLevelId,
-        state: SessionState.CREATED,
-        sessionMode,
-        competencyArea,
-        isSandbox,
-        currentTurn: 1,
-        totalTurns,
-        targetDifficulty: 1,
-        technologies: {
-          create: dto.technologyIds.map(techId => ({
-            technologyId: techId,
-          })),
-        },
-        turns: {
-          create: turnIndices.map(turnNum => ({
-            turnNumber: turnNum,
-            difficulty: 1,
-            status: 'PENDING',
-          })),
-        },
+    const session = await this.prisma.$transaction(
+      async tx => {
+        await this.usageMeter.checkAndConsumeQuotaInTransaction(
+          tx,
+          userId,
+          BillingMetric.SESSION_COUNT,
+        );
+        return tx.interviewSession.create({
+          data: {
+            userId,
+            jobRoleId: dto.jobRoleId,
+            seniorityLevelId: dto.seniorityLevelId,
+            state: SessionState.CREATED,
+            sessionMode,
+            competencyArea,
+            isSandbox,
+            currentTurn: 1,
+            totalTurns,
+            targetDifficulty: 1,
+            technologies: {
+              create: dto.technologyIds.map(techId => ({
+                technologyId: techId,
+              })),
+            },
+            turns: {
+              create: turnIndices.map(turnNum => ({
+                turnNumber: turnNum,
+                difficulty: 1,
+                status: 'PENDING',
+              })),
+            },
+          },
+          include: {
+            jobRole: true,
+            seniorityLevel: true,
+            technologies: { include: { technology: true } },
+            turns: {
+              orderBy: { turnNumber: 'asc' },
+            },
+          },
+        });
       },
-      include: {
-        jobRole: true,
-        seniorityLevel: true,
-        technologies: { include: { technology: true } },
-        turns: {
-          orderBy: { turnNumber: 'asc' },
-        },
-      },
-    });
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10000 },
+    );
 
     const firstTurn = session.turns.find(t => t.turnNumber === 1);
     if (!firstTurn) {
@@ -154,10 +168,7 @@ export class InterviewService {
         .updateMany({
           where: {
             id: dto.blueprintId,
-            OR: [
-              { jdAnalysis: { userId } },
-              { parsedProfile: { document: { userId } } },
-            ],
+            OR: [{ jdAnalysis: { userId } }, { parsedProfile: { document: { userId } } }],
           },
           data: { interviewId: session.id },
         })
@@ -365,7 +376,7 @@ export class InterviewService {
       );
     }
 
-    // 1. PERSIST ANSWER TO DATABASE FIRST
+    // 1. PERSIST ANSWER TO DATABASE FIRST WITH CAS STATE TRANSITION
     const answer = await this.prisma.$transaction(async tx => {
       const createdAnswer = await tx.answer.create({
         data: {
@@ -379,10 +390,18 @@ export class InterviewService {
         data: { status: 'ANSWER_SUBMITTED' },
       });
 
-      await tx.interviewSession.update({
-        where: { id: sessionId },
+      const sessionUpdate = await tx.interviewSession.updateMany({
+        where: { id: sessionId, state: SessionState.ACTIVE },
         data: { state: SessionState.EVALUATING },
       });
+
+      if (sessionUpdate.count === 0) {
+        throw new DomainException(
+          ErrorCode.INVALID_STATE_TRANSITION,
+          'Interview session is no longer in ACTIVE state (concurrent state modification)',
+          HttpStatus.CONFLICT,
+        );
+      }
 
       return createdAnswer;
     });
@@ -409,14 +428,30 @@ export class InterviewService {
         },
       );
     } catch (queueErr: any) {
-      this.logger.error(`Failed to enqueue evaluation job: ${queueErr.message}`);
-      await this.prisma.interviewSession.update({
-        where: { id: sessionId },
-        data: { state: SessionState.FAILED },
-      });
+      this.logger.error(
+        `Failed to enqueue evaluation job: ${queueErr.message}. Reverting session state to ACTIVE to allow user retry.`,
+      );
+      // Full rollback: delete the committed answer, revert turn and session state (REL-001)
+      try {
+        await this.prisma.$transaction([
+          this.prisma.answer.delete({ where: { id: answer.id } }),
+          this.prisma.interviewTurn.update({
+            where: { id: turn.id },
+            data: { status: 'AWAITING_ANSWER' },
+          }),
+          this.prisma.interviewSession.updateMany({
+            where: { id: sessionId, state: SessionState.EVALUATING },
+            data: { state: SessionState.ACTIVE },
+          }),
+        ]);
+      } catch (rollbackErr: any) {
+        this.logger.error(
+          `Failed to rollback answer/turn/session state: ${rollbackErr.message}. Manual intervention may be required.`,
+        );
+      }
       throw new DomainException(
         ErrorCode.INTERNAL_SERVER_ERROR,
-        'Failed to enqueue answer evaluation. Please retry your submission.',
+        'Evaluation queue is temporarily unavailable. Please try submitting your answer again.',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -490,6 +525,60 @@ export class InterviewService {
       answer: turn.answer.content,
     });
 
+    const existingEval = this.prisma.evaluation?.findUnique
+      ? await this.prisma.evaluation.findUnique({
+          where: { answerId: turn.answer.id },
+        })
+      : this.prisma.evaluation?.findFirst
+        ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
+        : null;
+
+    const lastRun =
+      existingEval && this.prisma.evaluationRun?.findFirst
+        ? await this.prisma.evaluationRun.findFirst({
+            where: { evaluationId: existingEval.id },
+            orderBy: { runNumber: 'desc' },
+          })
+        : null;
+    const runNumberVal = (lastRun?.runNumber || 0) + 1;
+
+    const evalRecord =
+      existingEval ||
+      (this.prisma.evaluation?.create
+        ? await this.prisma.evaluation.create({
+            data: {
+              answerId: turn.answer.id,
+              score: evalResult.score,
+              rubricScores: evalResult.rubricScores as any,
+              strengths: evalResult.strengths,
+              improvements: evalResult.improvements,
+              conciseFeedback: evalResult.conciseFeedback,
+              evidence: evalResult.evidence,
+            },
+          })
+        : { id: turn.answer.id });
+
+    const run = this.prisma.evaluationRun?.create
+      ? await this.prisma.evaluationRun.create({
+          data: {
+            evaluationId: evalRecord.id,
+            runNumber: runNumberVal,
+            score: evalResult.score,
+            rubricScores: evalResult.rubricScores as any,
+            strengths: evalResult.strengths,
+            improvements: evalResult.improvements,
+            conciseFeedback: evalResult.conciseFeedback,
+            evidence: evalResult.evidence,
+            needsReview: (evalResult as any).needsReview || false,
+            authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+            provider: (evalResult as any).provider || undefined,
+            fallbackReason: (evalResult as any).fallbackReason || undefined,
+            confidence: evalResult.confidence || 0.85,
+            triggeredBy: 'RE_EVALUATION',
+          },
+        })
+      : null;
+
     const updatedEval = await this.prisma.evaluation.update({
       where: { answerId: turn.answer.id },
       data: {
@@ -499,18 +588,35 @@ export class InterviewService {
         improvements: evalResult.improvements,
         conciseFeedback: evalResult.conciseFeedback,
         evidence: evalResult.evidence,
+        needsReview: (evalResult as any).needsReview || false,
+        authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+        provider: (evalResult as any).provider || undefined,
+        fallbackReason: (evalResult as any).fallbackReason || undefined,
+        confidence: evalResult.confidence || 0.85,
+        ...(run ? { currentRunId: run.id } : {}),
       },
     });
 
     // Recalculate overall score across all completed turn evaluations
-    const allEvaluations = await this.prisma.evaluation.findMany({
-      where: { answer: { turn: { sessionId } } },
+    let allEvaluations = await this.prisma.evaluation.findMany({
+      where: {
+        answer: { turn: { sessionId } },
+        authorityState: 'AUTHORITATIVE', // Only count authoritative evaluations (F-011)
+      },
     });
+
+    if (allEvaluations.length === 0) {
+      allEvaluations = await this.prisma.evaluation.findMany({
+        where: { answer: { turn: { sessionId } } },
+      });
+    }
 
     const overallScore =
       allEvaluations.length > 0
         ? Number(
-            (allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length).toFixed(1),
+            (allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length).toFixed(
+              1,
+            ),
           )
         : null;
 
@@ -568,7 +674,6 @@ export class InterviewService {
       createdAt: (updatedEval.createdAt || new Date()).toISOString(),
     };
   }
-
 
   private mapToSessionDto(session: any) {
     return {

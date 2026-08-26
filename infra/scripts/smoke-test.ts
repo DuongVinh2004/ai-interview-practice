@@ -51,7 +51,9 @@ async function runSmokeTests() {
           durationMs: duration,
           passed,
         });
-        console.log(`  ${passed ? '✅' : '❌'} ${check.name.padEnd(30)} [${res.status}] (${duration}ms)`);
+        console.log(
+          `  ${passed ? '✅' : '❌'} ${check.name.padEnd(30)} [${res.status}] (${duration}ms)`,
+        );
       } else {
         // Fallback for non-fetch runtime environments
         results.push({

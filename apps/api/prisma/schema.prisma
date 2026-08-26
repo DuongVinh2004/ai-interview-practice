@@ -95,6 +95,12 @@ model User {
   mentorProfile     MentorProfile?
   candidateLiveSessions LiveSession[]   @relation("CandidateUserSessions")
   tenantMembers     TenantMember[]
+  userXp            UserXp?
+  xpTransactions    XpTransaction[]
+  badgeUnlocks      UserBadgeUnlock[]
+  pushSubscriptions PushSubscription[]
+  notificationPreference NotificationPreference?
+  fileAssets        FileAsset[]
 
   @@index([status])
   @@index([role])
@@ -119,6 +125,7 @@ model UserProfile {
 model RefreshToken {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
+  familyId  String   @default(uuid()) @map("family_id") @db.Uuid
   tokenHash String   @unique @map("token_hash") @db.VarChar(255)
   isRevoked Boolean  @default(false) @map("is_revoked")
   expiresAt DateTime @map("expires_at")
@@ -127,6 +134,7 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([familyId])
   @@map("refresh_tokens")
 }
 
@@ -283,11 +291,48 @@ model Evaluation {
   improvements    Json     // string[]
   conciseFeedback String   @map("concise_feedback") @db.Text
   evidence        Json     // string[]
+  needsReview     Boolean  @default(false) @map("needs_review")
+  authorityState  String   @default("AUTHORITATIVE") @map("authority_state") @db.VarChar(30)
+  provider        String?  @db.VarChar(50)
+  fallbackReason  String?  @map("fallback_reason") @db.VarChar(255)
+  confidence      Float?
+  currentRunId    String?  @map("current_run_id") @db.Uuid
   createdAt       DateTime @default(now()) @map("created_at")
 
   answer          Answer   @relation(fields: [answerId], references: [id], onDelete: Cascade)
+  runs            EvaluationRun[]
 
   @@map("evaluations")
+}
+
+// Immutable evaluation run history (F-010 audit finding)
+model EvaluationRun {
+  id              String   @id @default(uuid()) @db.Uuid
+  evaluationId    String   @map("evaluation_id") @db.Uuid
+  runNumber       Int      @map("run_number")
+  score           Float
+  rubricScores    Json     @map("rubric_scores")
+  strengths       Json
+  improvements    Json
+  conciseFeedback String   @map("concise_feedback") @db.Text
+  evidence        Json
+  needsReview     Boolean  @default(false) @map("needs_review")
+  authorityState  String   @default("AUTHORITATIVE") @map("authority_state") @db.VarChar(30)
+  provider        String?  @db.VarChar(50)
+  model           String?  @db.VarChar(100)
+  fallbackReason  String?  @map("fallback_reason") @db.VarChar(255)
+  confidence      Float?
+  promptVersionId String?  @map("prompt_version_id") @db.Uuid
+  rubricVersion   String?  @map("rubric_version") @db.VarChar(50)
+  triggeredBy     String   @default("SYSTEM") @map("triggered_by") @db.VarChar(30)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  evaluation      Evaluation     @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  promptVersion   PromptVersion? @relation(fields: [promptVersionId], references: [id], onDelete: SetNull)
+
+  @@unique([evaluationId, runNumber])
+  @@index([evaluationId])
+  @@map("evaluation_runs")
 }
 
 model LearningPath {
@@ -334,6 +379,7 @@ model PromptVersion {
   updatedAt          DateTime @updatedAt @map("updated_at")
 
   aiRuns             AiRun[]
+  evaluationRuns     EvaluationRun[]
 
   @@unique([slug, version])
   @@map("prompt_versions")
@@ -453,6 +499,8 @@ model RecoveryCode {
 
 model SemanticCache {
   id              String   @id @default(uuid()) @db.Uuid
+  namespace       String?  @db.VarChar(100)
+  userId          String?  @map("user_id") @db.Uuid
   promptHash      String   @unique @map("prompt_hash") @db.VarChar(64)
   promptText      String   @map("prompt_text") @db.Text
   embedding       Float[]
@@ -464,6 +512,8 @@ model SemanticCache {
   lastUsedAt      DateTime @default(now()) @map("last_used_at")
 
   @@index([promptHash])
+  @@index([namespace])
+  @@index([userId])
   @@map("semantic_cache")
 }
 
@@ -748,6 +798,15 @@ model PromoCode {
   @@map("promo_codes")
 }
 
+model StripeEvent {
+  id        String   @id @db.VarChar(255) // Stripe event ID (evt_xxx)
+  eventType String   @map("event_type") @db.VarChar(100)
+  processed Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("stripe_events")
+}
+
 // ---- F004: JD & Resume Parsing ----
 model UserDocument {
   id            String        @id @default(uuid()) @db.Uuid
@@ -756,10 +815,12 @@ model UserDocument {
   fileType      String        @map("file_type") @db.VarChar(10) // pdf, docx, text
   rawText       String        @map("raw_text") @db.Text
   status        String        @default("PARSED") @db.VarChar(20) // UPLOADED, PARSING, PARSED, FAILED
+  fileAssetId   String?       @unique @map("file_asset_id") @db.Uuid
   expiresAt     DateTime      @map("expires_at") // 30-day TTL
   createdAt     DateTime      @default(now()) @map("created_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fileAsset     FileAsset?    @relation(fields: [fileAssetId], references: [id], onDelete: SetNull)
   parsedProfile ParsedProfile?
 
   @@index([userId, createdAt(sort: Desc)])
@@ -967,15 +1028,18 @@ model ReviewLog {
 }
 
 model UserStreak {
-  id             String    @id @default(uuid()) @db.Uuid
-  userId         String    @unique @map("user_id") @db.Uuid
-  currentStreak  Int       @default(0) @map("current_streak")
-  longestStreak  Int       @default(0) @map("longest_streak")
-  lastReviewDate DateTime? @map("last_review_date") @db.Date
-  totalReviews   Int       @default(0) @map("total_reviews")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @unique @map("user_id") @db.Uuid
+  currentStreak         Int       @default(0) @map("current_streak")
+  longestStreak         Int       @default(0) @map("longest_streak")
+  lastReviewDate        DateTime? @map("last_review_date") @db.Date
+  totalReviews          Int       @default(0) @map("total_reviews")
+  streakFreezeCount     Int       @default(0) @map("streak_freeze_count")
+  streakFreezeUsedToday Boolean   @default(false) @map("streak_freeze_used_today")
+  freezeLastUsedAt      DateTime? @map("freeze_last_used_at") @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_streaks")
 }
@@ -1133,14 +1197,17 @@ model CanvasSnapshot {
   id              String              @id @default(uuid()) @db.Uuid
   sessionId       String              @map("session_id") @db.Uuid
   imageUrl        String              @map("image_url") @db.Text
+  imageAssetId    String?             @map("image_asset_id") @db.Uuid
   canvasStateJson Json?               @map("canvas_state_json")
   elapsedSeconds  Int                 @map("elapsed_seconds")
   aiAnalysis      Json?               @map("ai_analysis")
   createdAt       DateTime            @default(now()) @map("created_at")
 
   session         SystemDesignSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  imageAsset      FileAsset?          @relation(fields: [imageAssetId], references: [id], onDelete: SetNull)
 
   @@index([sessionId, elapsedSeconds])
+  @@index([imageAssetId])
   @@map("canvas_snapshots")
 }
 
@@ -1154,11 +1221,42 @@ model DesignEvaluation {
   dataModelScore       Float?              @map("data_model_score")
   overallScore         Float               @map("overall_score")
   feedback             String?             @db.Text
+  annotations          Json?               @map("annotations")
+  authorityState       String              @default("AUTHORITATIVE") @map("authority_state")
+  provider             String?             @map("provider")
   createdAt            DateTime            @default(now()) @map("created_at")
 
   session              SystemDesignSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@map("design_evaluations")
+}
+
+// ----------------------------------------------------
+// B1: Cloud Object Storage (File Assets)
+// ----------------------------------------------------
+
+model FileAsset {
+  id           String          @id @default(uuid()) @db.Uuid
+  key          String          @unique @db.VarChar(255)
+  bucket       String          @db.VarChar(100)
+  filename     String          @db.VarChar(255)
+  mimeType     String          @map("mime_type") @db.VarChar(100)
+  sizeBytes    Int             @map("size_bytes")
+  url          String?         @db.Text
+  isPublic     Boolean         @default(false) @map("is_public")
+
+  userId       String          @map("user_id") @db.Uuid
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  userDocument UserDocument?
+  snapshots    CanvasSnapshot[]
+
+  @@index([userId])
+  @@index([key])
+  @@map("file_assets")
 }
 
 // ----------------------------------------------------
@@ -1507,6 +1605,122 @@ model TenantApiKey {
   @@map("tenant_api_keys")
 }
 
+// One-time MFA challenge token tracking (F-013 audit finding)
+model MfaChallenge {
+  id        String   @id @default(uuid()) @db.Uuid
+  jti       String   @unique @db.VarChar(50)
+  userId    String   @map("user_id") @db.Uuid
+  consumed  Boolean  @default(false)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("mfa_challenges")
+}
 
+// ----------------------------------------------------
+// PLAN C: Gamification Engine Models
+// ----------------------------------------------------
+
+enum XpSource {
+  INTERVIEW_COMPLETE
+  FLASHCARD_REVIEW
+  CODING_SUBMIT
+  STAR_COMPLETE
+  STREAK_BONUS
+  BADGE_UNLOCK
+  DAILY_LOGIN
+}
+
+model UserXp {
+  id          String    @id @default(uuid()) @db.Uuid
+  userId      String    @unique @map("user_id") @db.Uuid
+  totalXp     Int       @default(0) @map("total_xp")
+  currentLevel Int      @default(1) @map("current_level")
+  dailyXp     Int       @default(0) @map("daily_xp")
+  lastEarnedAt DateTime? @map("last_earned_at") @db.Timestamptz
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_xp")
+}
+
+model XpTransaction {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  amount      Int
+  source      XpSource
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("xp_transactions")
+}
+
+model BadgeDefinition {
+  id            String   @id @default(uuid()) @db.Uuid
+  slug          String   @unique @db.VarChar(50)
+  name          String   @db.VarChar(100)
+  nameVi        String   @map("name_vi") @db.VarChar(100)
+  description   String   @db.Text
+  descriptionVi String   @map("description_vi") @db.Text
+  iconUrl       String   @map("icon_url") @db.VarChar(255)
+  category      String   @db.VarChar(50) // 'INTERVIEW', 'CODING', 'STREAK', 'LEARNING'
+  criteria      Json     // { metric: string, op: 'gte'|'eq'|'between', value: number | string | any[] }
+  xpReward      Int      @default(50) @map("xp_reward")
+  isSecret      Boolean  @default(false) @map("is_secret")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  unlocks       UserBadgeUnlock[]
+
+  @@map("badge_definitions")
+}
+
+model UserBadgeUnlock {
+  id         String          @id @default(uuid()) @db.Uuid
+  userId     String          @map("user_id") @db.Uuid
+  badgeId    String          @map("badge_id") @db.Uuid
+  unlockedAt DateTime        @default(now()) @map("unlocked_at") @db.Timestamptz
+
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge      BadgeDefinition @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@map("user_badge_unlocks")
+}
+
+// ----------------------------------------------------
+// PLAN C: Push Notification & Preference Models
+// ----------------------------------------------------
+
+model PushSubscription {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  endpoint  String   @unique @db.Text
+  p256dh    String   @db.Text
+  auth      String   @db.VarChar(255)
+  device    String?  @db.VarChar(50) // 'Mobile', 'Desktop'
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
+}
+
+model NotificationPreference {
+  userId        String  @id @map("user_id") @db.Uuid
+  dailyReminder Boolean @default(true) @map("daily_reminder")
+  streakWarning Boolean @default(true) @map("streak_warning")
+  newFeatures   Boolean @default(false) @map("new_features")
+  reminderTime  String  @default("20:00") @map("reminder_time") @db.VarChar(10)
+
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
 

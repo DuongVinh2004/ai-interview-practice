@@ -134,7 +134,11 @@
       "answer": "Saga Choreography dựa vào event-driven pub/sub giữa các service, dễ triển khai cho hệ thống nhỏ nhưng dễ rối khi luồng phức tạp. Saga Orchestration dùng một central orchestrator điều phối luồng, theo dõi trạng thái và gửi Compensating Transaction khi có bước thất bại.",
       "expected": {
         "scoreInterval": [8.0, 10.0],
-        "requiredEvidenceTerms": ["Saga Orchestration", "Compensating Transaction", "central orchestrator"],
+        "requiredEvidenceTerms": [
+          "Saga Orchestration",
+          "Compensating Transaction",
+          "central orchestrator"
+        ],
         "needsReview": false,
         "isSafetyCase": false
       }

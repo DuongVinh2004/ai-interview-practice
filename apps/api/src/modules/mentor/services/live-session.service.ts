@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Inject } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+  Inject,
+} from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { MediaProvider } from '../providers/media-provider.interface';
 import { LiveSessionStatus } from '@ai-interview/contracts';
@@ -153,6 +159,17 @@ export class LiveSessionService {
     newScore: number,
     justification: string,
   ) {
+    // 1. Validate score bounds and justification
+    if (typeof newScore !== 'number' || isNaN(newScore) || newScore < 0 || newScore > 10) {
+      throw new BadRequestException('Score must be a number between 0.0 and 10.0');
+    }
+
+    if (!justification || typeof justification !== 'string' || justification.trim().length < 5) {
+      throw new BadRequestException(
+        'A valid justification of at least 5 characters is required for score override',
+      );
+    }
+
     const evaluation = await this.prisma.evaluation.findUnique({
       where: { id: evaluationId },
       include: {
@@ -172,7 +189,7 @@ export class LiveSessionService {
       throw new NotFoundException('Evaluation record not found');
     }
 
-    // Verify mentor identity
+    // 2. Verify mentor identity
     const mentorProfile = await this.prisma.mentorProfile.findUnique({
       where: { userId: mentorUserId },
     });
@@ -181,35 +198,128 @@ export class LiveSessionService {
       throw new ForbiddenException('Only registered mentors can perform score overrides');
     }
 
+    const candidateUserId = evaluation.answer.turn.session.userId;
+    const sessionId = evaluation.answer.turn.sessionId;
+    const interviewCreatedAt = evaluation.answer.turn.session.createdAt;
+
+    // 3. Find matching LiveSession engagement
+    const assignment = await this.prisma.liveSession.findFirst({
+      where: {
+        mentorId: mentorProfile.id,
+        candidateId: candidateUserId,
+        status: { in: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'] },
+      },
+      orderBy: { scheduledAt: 'desc' },
+    });
+
+    if (!assignment) {
+      throw new ForbiddenException(
+        "You are not the designated mentor for this candidate's session",
+      );
+    }
+
+    // 4. SEC-006: Enforce bounded time window & target interview engagement binding
+    const OVERRIDE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
+    const now = Date.now();
+
+    if (assignment.status === 'COMPLETED') {
+      const sessionEndTime = assignment.endedAt
+        ? new Date(assignment.endedAt).getTime()
+        : assignment.scheduledAt
+          ? new Date(assignment.scheduledAt).getTime()
+          : new Date(assignment.updatedAt).getTime();
+
+      if (now - sessionEndTime > OVERRIDE_WINDOW_MS) {
+        throw new ForbiddenException(
+          'Mentor score override window has expired for this live session (48-hour limit)',
+        );
+      }
+
+      // Ensure the target interview session was not created after the live session ended (unrelated future interview)
+      if (
+        interviewCreatedAt &&
+        new Date(interviewCreatedAt).getTime() > sessionEndTime + OVERRIDE_WINDOW_MS
+      ) {
+        throw new ForbiddenException(
+          'Cannot override score for an interview session created outside the mentor engagement window',
+        );
+      }
+    }
+
     const originalScore = evaluation.score;
 
     // Update evaluation score with appended justification audit in feedback
     const auditFeedback = `${evaluation.conciseFeedback}\n\n[Mentor Score Override (${new Date().toISOString()}): Original: ${originalScore} -> Adjusted: ${newScore}. Reason: ${justification}]`;
 
-    const updated = await this.prisma.evaluation.update({
-      where: { id: evaluationId },
-      data: {
-        score: newScore,
-        conciseFeedback: auditFeedback,
-      },
-    });
+    const updated = await this.prisma.$transaction(async tx => {
+      const lastRun = tx.evaluationRun
+        ? await tx.evaluationRun.findFirst({
+            where: { evaluationId },
+            orderBy: { runNumber: 'desc' },
+          })
+        : null;
+      const runNumberVal = (lastRun?.runNumber || 0) + 1;
 
-    // Update session overall score if needed
-    const sessionId = evaluation.answer.turn.sessionId;
-    const allEvaluations = await this.prisma.evaluation.findMany({
-      where: {
-        answer: { turn: { sessionId } },
-      },
-    });
+      const run = tx.evaluationRun
+        ? await tx.evaluationRun.create({
+            data: {
+              evaluationId,
+              runNumber: runNumberVal,
+              score: newScore,
+              rubricScores: evaluation.rubricScores as any,
+              strengths: evaluation.strengths as any,
+              improvements: evaluation.improvements as any,
+              conciseFeedback: auditFeedback,
+              evidence: evaluation.evidence as any,
+              needsReview: false,
+              authorityState: 'AUTHORITATIVE',
+              provider: evaluation.provider,
+              fallbackReason: `Mentor override: ${justification}`,
+              confidence: 1.0,
+              triggeredBy: 'MENTOR_OVERRIDE',
+            },
+          })
+        : null;
 
-    if (allEvaluations.length > 0) {
-      const avgScore =
-        allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length;
-      await this.prisma.interviewSession.update({
-        where: { id: sessionId },
-        data: { overallScore: Number(avgScore.toFixed(1)) },
+      const updatedEval = await tx.evaluation.update({
+        where: { id: evaluationId },
+        data: {
+          score: newScore,
+          conciseFeedback: auditFeedback,
+          needsReview: false,
+          authorityState: 'AUTHORITATIVE',
+          ...(run ? { currentRunId: run.id } : {}),
+        },
       });
-    }
+
+      const allEvaluations = await tx.evaluation.findMany({
+        where: {
+          answer: { turn: { sessionId } },
+          authorityState: 'AUTHORITATIVE',
+        },
+      });
+
+      if (allEvaluations.length > 0) {
+        const avgScore =
+          allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length;
+        await tx.interviewSession.update({
+          where: { id: sessionId },
+          data: { overallScore: Number(avgScore.toFixed(1)) },
+        });
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: mentorUserId,
+          action: 'EVALUATION_OVERRIDDEN',
+          resource: 'evaluation',
+          resourceId: evaluationId,
+          details: { originalScore, newScore, justification, mentorId: mentorProfile.id },
+        },
+      });
+
+      return updatedEval;
+    });
 
     return {
       evaluationId: updated.id,
@@ -249,8 +359,7 @@ export class LiveSessionService {
 
     if (ratedSessions.length > 0) {
       const avg =
-        ratedSessions.reduce((sum, s) => sum + (s.candidateRating || 0), 0) /
-        ratedSessions.length;
+        ratedSessions.reduce((sum, s) => sum + (s.candidateRating || 0), 0) / ratedSessions.length;
       await this.prisma.mentorProfile.update({
         where: { id: session.mentorId },
         data: { rating: Number(avg.toFixed(1)) },

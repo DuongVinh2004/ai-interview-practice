@@ -5,6 +5,11 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
     open-pull-requests-limit: 10
     groups:
       dependencies:
@@ -16,9 +21,13 @@ updates:
     directory: '/'
     schedule:
       interval: 'monthly'
+    cooldown:
+      default-days: 7
 
   # Maintain Docker dependencies
   - package-ecosystem: 'docker'
     directory: '/'
     schedule:
       interval: 'monthly'
+    cooldown:
+      default-days: 7

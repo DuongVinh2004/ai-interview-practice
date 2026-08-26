@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { SystemDesignSessionDto, CanvasSnapshotDto } from '@ai-interview/contracts';
 
@@ -6,10 +6,29 @@ import { SystemDesignSessionDto, CanvasSnapshotDto } from '@ai-interview/contrac
 export class CanvasService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private async verifySessionOwnership(userId: string, interviewId: string) {
+    const interview = await this.prisma.interviewSession.findUnique({
+      where: { id: interviewId },
+    });
+    if (!interview) {
+      throw new NotFoundException(`Interview session ${interviewId} not found`);
+    }
+    if (interview.userId !== userId) {
+      throw new ForbiddenException('Access to this system design session is forbidden');
+    }
+    return interview;
+  }
+
   /**
    * Initialize a system design whiteboard session
    */
-  async initSession(interviewId: string, initialPrompt?: string): Promise<SystemDesignSessionDto> {
+  async initSession(
+    userId: string,
+    interviewId: string,
+    initialPrompt?: string,
+  ): Promise<SystemDesignSessionDto> {
+    await this.verifySessionOwnership(userId, interviewId);
+
     const session = await this.prisma.systemDesignSession.upsert({
       where: { interviewId },
       update: {
@@ -36,11 +55,14 @@ export class CanvasService {
    * Save a canvas snapshot
    */
   async saveSnapshot(
+    userId: string,
     interviewId: string,
     imageUrl: string,
     canvasStateJson?: any,
-    elapsedSeconds: number = 0
+    elapsedSeconds: number = 0,
   ): Promise<CanvasSnapshotDto> {
+    await this.verifySessionOwnership(userId, interviewId);
+
     const session = await this.prisma.systemDesignSession.findUnique({
       where: { interviewId },
     });
@@ -73,7 +95,9 @@ export class CanvasService {
   /**
    * Get all snapshots for time-lapse replay
    */
-  async getSnapshotHistory(interviewId: string): Promise<CanvasSnapshotDto[]> {
+  async getSnapshotHistory(userId: string, interviewId: string): Promise<CanvasSnapshotDto[]> {
+    await this.verifySessionOwnership(userId, interviewId);
+
     const session = await this.prisma.systemDesignSession.findUnique({
       where: { interviewId },
       include: {
@@ -93,7 +117,9 @@ export class CanvasService {
   /**
    * Get latest session info
    */
-  async getSession(interviewId: string): Promise<SystemDesignSessionDto> {
+  async getSession(userId: string, interviewId: string): Promise<SystemDesignSessionDto> {
+    await this.verifySessionOwnership(userId, interviewId);
+
     const session = await this.prisma.systemDesignSession.findUnique({
       where: { interviewId },
       include: {

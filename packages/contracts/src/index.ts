@@ -34,6 +34,7 @@ export {
   LiveSessionStatus,
   TenantRole,
   AssignmentStatus,
+  XpSource,
 } from './enums/index';
 
 export * from './schemas/common';
@@ -62,8 +63,6 @@ export * from './schemas/readiness';
 export * from './schemas/portfolio';
 export * from './schemas/mentor';
 export * from './schemas/b2b';
-
-
-
-
-
+export * from './schemas/gamification';
+export * from './schemas/storage';
+export * from './schemas/email';

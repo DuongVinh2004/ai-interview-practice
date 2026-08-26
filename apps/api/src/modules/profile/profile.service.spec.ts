@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ProfileService } from './profile.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { UserRole, UserStatus, SessionState, CompetencyArea } from '@ai-interview/contracts';
+import { BillingService } from '../billing/billing.service';
 
 describe('ProfileService', () => {
   let service: ProfileService;
   let prisma: any;
+  let billingService: any;
 
   beforeEach(async () => {
     prisma = {
@@ -20,6 +22,9 @@ describe('ProfileService', () => {
         findMany: jest.fn(),
       },
     };
+    billingService = {
+      cancelSubscriptionsForAccountDeletion: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -28,6 +33,7 @@ describe('ProfileService', () => {
           provide: PrismaService,
           useValue: prisma,
         },
+        { provide: BillingService, useValue: billingService },
       ],
     }).compile();
 
@@ -127,7 +133,9 @@ describe('ProfileService', () => {
       expect(result.targetLevel).toBe('Senior');
       expect(result.evaluatedTurnsCount).toBe(2);
       expect(result.benchmarks.length).toBe(5);
-      expect(result.benchmarks.find(b => b.competency === CompetencyArea.SYSTEM_DESIGN)?.userScore).toBe(9.0);
+      expect(
+        result.benchmarks.find(b => b.competency === CompetencyArea.SYSTEM_DESIGN)?.userScore,
+      ).toBe(9.0);
       expect(result.readinessPercentage).toBeGreaterThan(0);
       expect(result.summary).toBeDefined();
     });
@@ -161,8 +169,21 @@ describe('ProfileService', () => {
             overallScore: 8.4,
             createdAt: new Date('2026-08-10T00:00:00Z'),
             updatedAt: new Date('2026-08-10T01:00:00Z'),
-            jobRole: { id: 'role-1', slug: 'backend', name: 'Backend', description: '', isActive: true },
-            seniorityLevel: { id: 'lvl-1', slug: 'senior', name: 'Senior', order: 3, description: '', isActive: true },
+            jobRole: {
+              id: 'role-1',
+              slug: 'backend',
+              name: 'Backend',
+              description: '',
+              isActive: true,
+            },
+            seniorityLevel: {
+              id: 'lvl-1',
+              slug: 'senior',
+              name: 'Senior',
+              order: 3,
+              description: '',
+              isActive: true,
+            },
             technologies: [],
             turns: [
               {
@@ -230,14 +251,81 @@ describe('ProfileService', () => {
       };
 
       prisma.user.findUnique.mockResolvedValue(mockUser);
+      prisma.userDocument = {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'doc-1',
+            fileName: 'resume.pdf',
+            fileType: 'application/pdf',
+            status: 'PARSED',
+            createdAt: new Date('2026-08-01T00:00:00Z'),
+            expiresAt: new Date('2026-08-31T00:00:00Z'),
+          },
+        ]),
+      };
 
       const result = await service.exportUserData('user-1');
       expect(result.gdprComplianceVersion).toBe('GDPR-AIP-2026.08');
+      expect(result.manifestVersion).toBe('1.0.0');
+      expect(result.retentionPolicySummary).toBeDefined();
       expect(result.user.email).toBe('alex@example.com');
       expect(result.profile.fullName).toBe('Alex Candidate');
+      expect(result.documents?.length).toBe(1);
       expect(result.sessions.length).toBe(1);
       expect(result.summary.completedSessionsCount).toBe(1);
       expect(result.summary.averageScore).toBe(8.4);
+    });
+  });
+
+  describe('deleteAccount (GDPR Right to Erasure PRIV-002)', () => {
+    it('successfully anonymizes profile, updates user status, purges documents and logs audit', async () => {
+      const mockUser = {
+        id: 'user-to-delete',
+        email: 'user@example.com',
+        profile: { id: 'prof-del', fullName: 'John Doe', bio: 'Some bio' },
+      };
+
+      prisma.user.findUnique.mockResolvedValue(mockUser);
+      prisma.user.update = jest.fn().mockResolvedValue({});
+      prisma.userProfile = { update: jest.fn().mockResolvedValue({}) };
+      prisma.userDocument = { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) };
+      prisma.refreshToken = { updateMany: jest.fn().mockResolvedValue({ count: 2 }) };
+      prisma.auditLog = { create: jest.fn().mockResolvedValue({}) };
+      prisma.$transaction = jest.fn(async (cb: any) => cb(prisma));
+
+      const result = await service.deleteAccount('user-to-delete');
+      expect(result.success).toBe(true);
+      expect(billingService.cancelSubscriptionsForAccountDeletion).toHaveBeenCalledWith(
+        'user-to-delete',
+      );
+      expect(prisma.userProfile.update).toHaveBeenCalledWith({
+        where: { userId: 'user-to-delete' },
+        data: expect.objectContaining({ fullName: 'Deleted User', bio: null }),
+      });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-to-delete' },
+        data: expect.objectContaining({
+          status: UserStatus.LOCKED,
+          email: 'deleted_user-to-delete@anonymized.local',
+          tokenVersion: { increment: 1 },
+        }),
+      });
+
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-to-delete', isRevoked: false },
+        data: { isRevoked: true },
+      });
+
+      expect(prisma.userDocument.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-to-delete' },
+      });
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          userId: 'user-to-delete',
+          action: 'USER_ACCOUNT_DELETED',
+        }),
+      });
     });
   });
 });

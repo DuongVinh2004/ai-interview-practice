@@ -16,19 +16,7 @@ import { VerificationController } from './controllers/verification.controller';
     CertificateController,
     VerificationController,
   ],
-  providers: [
-    SignatureService,
-    QrCodeService,
-    BadgeService,
-    CertificateService,
-    PortfolioService,
-  ],
-  exports: [
-    SignatureService,
-    QrCodeService,
-    BadgeService,
-    CertificateService,
-    PortfolioService,
-  ],
+  providers: [SignatureService, QrCodeService, BadgeService, CertificateService, PortfolioService],
+  exports: [SignatureService, QrCodeService, BadgeService, CertificateService, PortfolioService],
 })
 export class PortfolioModule {}

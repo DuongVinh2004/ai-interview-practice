@@ -19,10 +19,24 @@ export class CvAnalyzerService {
   }
 
   private extractStructuredProfile(text: string): ParsedProfileDto {
-    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = text
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean);
 
     // 1. Detect target role / title
-    const roleKeywords = ['Frontend', 'Backend', 'Fullstack', 'DevOps', 'Software Engineer', 'Tech Lead', 'Mobile', 'QA', 'Architect', 'Data Engineer'];
+    const roleKeywords = [
+      'Frontend',
+      'Backend',
+      'Fullstack',
+      'DevOps',
+      'Software Engineer',
+      'Tech Lead',
+      'Mobile',
+      'QA',
+      'Architect',
+      'Data Engineer',
+    ];
     let targetRole = 'Software Engineer';
     for (const line of lines.slice(0, 15)) {
       for (const kw of roleKeywords) {
@@ -36,9 +50,17 @@ export class CvAnalyzerService {
     // 2. Detect seniority
     let seniorityLevel = 'MID';
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('senior') || lowerText.includes('lead') || lowerText.includes('principal')) {
+    if (
+      lowerText.includes('senior') ||
+      lowerText.includes('lead') ||
+      lowerText.includes('principal')
+    ) {
       seniorityLevel = 'SENIOR';
-    } else if (lowerText.includes('junior') || lowerText.includes('intern') || lowerText.includes('fresher')) {
+    } else if (
+      lowerText.includes('junior') ||
+      lowerText.includes('intern') ||
+      lowerText.includes('fresher')
+    ) {
       seniorityLevel = 'JUNIOR';
     } else if (lowerText.includes('staff') || lowerText.includes('architect')) {
       seniorityLevel = 'STAFF';
@@ -46,10 +68,41 @@ export class CvAnalyzerService {
 
     // 3. Extract tech skills
     const techCatalog = [
-      'JavaScript', 'TypeScript', 'Node.js', 'React', 'Vue', 'Angular', 'Next.js', 'NestJS', 'Express',
-      'Python', 'Django', 'FastAPI', 'Go', 'Golang', 'Java', 'Spring Boot', 'C#', '.NET',
-      'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Kafka', 'RabbitMQ', 'Elasticsearch',
-      'Docker', 'Kubernetes', 'AWS', 'GCP', 'Azure', 'Terraform', 'CI/CD', 'Git', 'GraphQL', 'REST'
+      'JavaScript',
+      'TypeScript',
+      'Node.js',
+      'React',
+      'Vue',
+      'Angular',
+      'Next.js',
+      'NestJS',
+      'Express',
+      'Python',
+      'Django',
+      'FastAPI',
+      'Go',
+      'Golang',
+      'Java',
+      'Spring Boot',
+      'C#',
+      '.NET',
+      'PostgreSQL',
+      'MySQL',
+      'MongoDB',
+      'Redis',
+      'Kafka',
+      'RabbitMQ',
+      'Elasticsearch',
+      'Docker',
+      'Kubernetes',
+      'AWS',
+      'GCP',
+      'Azure',
+      'Terraform',
+      'CI/CD',
+      'Git',
+      'GraphQL',
+      'REST',
     ];
     const skillsDetected = new Set<string>();
     for (const tech of techCatalog) {
@@ -70,7 +123,12 @@ export class CvAnalyzerService {
         inExpSection = true;
         continue;
       }
-      if (inExpSection && (line.toLowerCase().includes('education') || line.toLowerCase().includes('skills') || line.toLowerCase().includes('học vấn'))) {
+      if (
+        inExpSection &&
+        (line.toLowerCase().includes('education') ||
+          line.toLowerCase().includes('skills') ||
+          line.toLowerCase().includes('học vấn'))
+      ) {
         inExpSection = false;
         break;
       }
@@ -83,7 +141,9 @@ export class CvAnalyzerService {
               company: parts[0] || 'Tech Company',
               role: parts[1] || targetRole,
               duration: '1-3 years',
-              responsibilities: lines.slice(i + 1, Math.min(i + 4, lines.length)).filter(l => l.startsWith('-') || l.startsWith('*')),
+              responsibilities: lines
+                .slice(i + 1, Math.min(i + 4, lines.length))
+                .filter(l => l.startsWith('-') || l.startsWith('*')),
               projects: [
                 {
                   name: `${parts[0]} Core Platform`,
@@ -91,8 +151,8 @@ export class CvAnalyzerService {
                   technologies: Array.from(skillsDetected).slice(0, 4),
                   description: `Engineered microservices and web components using ${Array.from(skillsDetected).slice(0, 3).join(', ')}.`,
                   highlights: ['Optimized response latency', 'Implemented automated testing'],
-                }
-              ]
+                },
+              ],
             });
           }
         }
@@ -101,16 +161,22 @@ export class CvAnalyzerService {
 
     // 5. Education parsing
     const educationList: string[] = [];
-    if (lowerText.includes('computer science') || lowerText.includes('bachelor') || lowerText.includes('đại học') || lowerText.includes('công nghệ thông tin')) {
+    if (
+      lowerText.includes('computer science') ||
+      lowerText.includes('bachelor') ||
+      lowerText.includes('đại học') ||
+      lowerText.includes('công nghệ thông tin')
+    ) {
       educationList.push('B.S. in Computer Science / Information Technology');
     } else if (lowerText.includes('education') || lowerText.includes('học vấn')) {
       educationList.push('Higher Education in Technical / Engineering Field');
     }
 
     const detectedSkills = Array.from(skillsDetected);
-    const summary = detectedSkills.length > 0
-      ? `Candidate with ${seniorityLevel} level background in ${targetRole}, skills: ${detectedSkills.slice(0, 6).join(', ')}.`
-      : `Profile extracted for ${targetRole} (${seniorityLevel}).`;
+    const summary =
+      detectedSkills.length > 0
+        ? `Candidate with ${seniorityLevel} level background in ${targetRole}, skills: ${detectedSkills.slice(0, 6).join(', ')}.`
+        : `Profile extracted for ${targetRole} (${seniorityLevel}).`;
 
     return {
       fullName: '[CANDIDATE_NAME]',

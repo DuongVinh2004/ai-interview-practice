@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:16.4-alpine3.20
     container_name: ai_interview_postgres
     restart: unless-stopped
     environment:
@@ -24,7 +24,7 @@ services:
       - app_network
 
   redis:
-    image: redis:7-alpine
+    image: redis:7.4.1-alpine3.20
     container_name: ai_interview_redis
     restart: unless-stopped
     command: ['redis-server', '--appendonly', 'yes']
@@ -55,6 +55,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       AI_PROVIDER: ${AI_PROVIDER:-mock}
+      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-true}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -77,13 +78,14 @@ services:
       target: runner
     container_name: ai_interview_worker
     restart: unless-stopped
-    command: ['node', 'dist/worker.js']
+    command: ['node', 'apps/api/dist/worker.js']
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_interview_practice}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
       AI_PROVIDER: ${AI_PROVIDER:-mock}
+      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-true}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -104,7 +106,7 @@ services:
     container_name: ai_interview_web
     restart: unless-stopped
     ports:
-      - '5173:80'
+      - '5173:8080'
     depends_on:
       - api
     networks:
@@ -116,7 +118,7 @@ services:
     container_name: ai_interview_nginx
     restart: unless-stopped
     ports:
-      - '80:80'
+      - '80:8080'
     depends_on:
       - api
       - web

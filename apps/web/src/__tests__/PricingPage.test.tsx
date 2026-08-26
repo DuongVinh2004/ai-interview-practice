@@ -23,7 +23,13 @@ describe('PricingPage Component (F014)', () => {
       priceYearly: 0,
       currency: 'USD',
       features: ['3 mock sessions/month'],
-      limits: { sessionsPerMonth: 3, voiceMinutesPerMonth: 15, allowLiveCoding: true, allowSystemDesign: false, mentorFeedbackLimit: 0 },
+      limits: {
+        sessionsPerMonth: 3,
+        voiceMinutesPerMonth: 15,
+        allowLiveCoding: true,
+        allowSystemDesign: false,
+        mentorFeedbackLimit: 0,
+      },
       isActive: true,
     },
     {
@@ -36,7 +42,13 @@ describe('PricingPage Component (F014)', () => {
       priceYearly: 190,
       currency: 'USD',
       features: ['Unlimited AI evaluation', 'Live Coding sandbox'],
-      limits: { sessionsPerMonth: 20, voiceMinutesPerMonth: 60, allowLiveCoding: true, allowSystemDesign: true, mentorFeedbackLimit: 5 },
+      limits: {
+        sessionsPerMonth: 20,
+        voiceMinutesPerMonth: 60,
+        allowLiveCoding: true,
+        allowSystemDesign: true,
+        mentorFeedbackLimit: 5,
+      },
       isActive: true,
     },
   ];

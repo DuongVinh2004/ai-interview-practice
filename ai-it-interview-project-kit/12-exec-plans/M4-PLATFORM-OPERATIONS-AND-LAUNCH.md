@@ -5,6 +5,7 @@
 Establish the complete platform engineering foundation, automated security scanning, production Infrastructure as Code (IaC), distributed tracing, Prometheus metrics exporter, Grafana dashboards, Alertmanager SLO alert rules, Point-in-Time Recovery (PITR) backup & restore drills, Game Day chaos testing, and production release dossier with smoke test automation.
 
 Reviewers and platform operators can prove this outcome by:
+
 1. Validating automated CI security scanning (SAST, Gitleaks, Trivy SCA/IaC) and reviewing `SECURITY.md`.
 2. Inspecting and validating modular Terraform infrastructure in `infra/terraform/` covering VPC, Multi-AZ RDS PostgreSQL, ElastiCache Redis, encrypted S3 buckets, ECS Fargate compute, and Secrets Manager.
 3. Accessing the `/metrics` endpoint in the API to scrape Prometheus metrics (RED metrics, BullMQ queues, AI token spend & cost, Circuit Breaker status) and inspecting distributed trace propagation via W3C TraceContext.
@@ -21,6 +22,7 @@ Reviewers and platform operators can prove this outcome by:
 ## Scope and non-goals
 
 ### Inclusions
+
 - Security: CI scanning workflows (Semgrep, Gitleaks, Trivy), `SECURITY.md` (VDP, SLAs, contact), pre-launch penetration test report.
 - Infrastructure: Modular Terraform/OpenTofu files in `infra/terraform/` for VPC, RDS Multi-AZ, ElastiCache, S3, ECS Fargate, and Secrets Manager; hardened Dockerfiles; Nginx reverse proxy with SSE tuning.
 - Observability: Prometheus metrics registry & `/metrics` endpoint (`prom-client`), OpenTelemetry distributed trace propagation across API, queues, and AI providers; declarative Grafana dashboards & Alertmanager alert rules.
@@ -28,6 +30,7 @@ Reviewers and platform operators can prove this outcome by:
 - Release: Production release dossier v1.0, sign-off checklist, canary rollout strategy, and end-to-end smoke test script.
 
 ### Exclusions (Non-goals)
+
 - Mutating live paid cloud resources during local verification.
 - Replacing the core NestJS modular architecture.
 - Removing or weakening any existing functional or AI evaluation tests.

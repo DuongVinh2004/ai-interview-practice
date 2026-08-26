@@ -96,7 +96,8 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
               JSON.stringify({
                 data: {
                   secret: 'JBSWY3DPEHPK3PXP',
-                  otpauthUrl: 'otpauth://totp/AI%20Interview:test@example.com?secret=JBSWY3DPEHPK3PXP',
+                  otpauthUrl:
+                    'otpauth://totp/AI%20Interview:test@example.com?secret=JBSWY3DPEHPK3PXP',
                   issuer: 'AI Interview Practice',
                   accountName: 'test@example.com',
                 },
@@ -116,6 +117,18 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
                 data: {
                   success: true,
                   mfaEnabled: true,
+                  user: {
+                    id: 'user-1',
+                    email: 'alex@example.com',
+                    role: UserRole.CANDIDATE,
+                    status: UserStatus.ACTIVE,
+                    mfaEnabled: true,
+                    createdAt: '2026-08-01T00:00:00Z',
+                    profile: { id: 'prof-1', fullName: 'Alex Nguyen' },
+                  },
+                  accessToken: 'post-mfa-access-token',
+                  refreshToken: 'post-mfa-refresh-token',
+                  expiresIn: 900,
                   recoveryCodes: [
                     'A1B2-C3D4-E5',
                     'F6G7-H8J9-K0',
@@ -213,15 +226,71 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     fireEvent.change(totpInput, { target: { value: '123456' } });
 
     // Submit MFA verification
-    fireEvent.click(
-      screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }));
 
     // Verify authenticated state
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
       expect(useAuthStore.getState().user?.email).toBe('admin@example.com');
     });
+  });
+
+  it('redirects an admin without MFA to enrollment instead of showing the verification form', async () => {
+    const defaultFetch = global.fetch as ReturnType<typeof vi.fn>;
+    global.fetch = vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url.endsWith('/auth/login')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                data: {
+                  user: {
+                    id: 'user-admin-1',
+                    email: 'admin@example.com',
+                    role: UserRole.ADMIN,
+                    status: UserStatus.ACTIVE,
+                    mfaEnabled: false,
+                  },
+                  accessToken: 'restricted-admin-access-token',
+                  refreshToken: 'admin-refresh-token',
+                  forceMfaSetup: true,
+                },
+              }),
+            ),
+        });
+      }
+      return defaultFetch(url, options);
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/login']}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+      target: { value: 'admin@example.com' },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: 'Admin@123456' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+
+    await waitFor(() => {
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/auth/mfa/setup'),
+        expect.objectContaining({ method: 'POST' }),
+      );
+    });
+    expect(screen.queryByText(/Two-Factor Verification Required/i)).not.toBeInTheDocument();
   });
 
   it('allows switching to recovery code input on 2-step login', async () => {
@@ -257,18 +326,14 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     fireEvent.click(recoveryBtn);
 
     // Expect recovery code input
-    expect(
-      screen.getByPlaceholderText(/Recovery code|Mã khôi phục/i),
-    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Recovery code|Mã khôi phục/i)).toBeInTheDocument();
 
     // Fill recovery code
     const recoveryInput = screen.getByPlaceholderText(/Recovery code|Mã khôi phục/i);
     fireEvent.change(recoveryInput, { target: { value: 'A1B2-C3D4-E5' } });
 
     // Submit recovery code
-    fireEvent.click(
-      screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }),
-    );
+    fireEvent.click(screen.getByRole('button', { name: /Verify & Sign In|Xác thực & Đăng nhập/i }));
 
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -326,12 +391,12 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     await waitFor(() => {
       expect(screen.getByText('A1B2-C3D4-E5')).toBeInTheDocument();
       expect(screen.getByText('M6N7-P8Q9-R0')).toBeInTheDocument();
-      expect(
-        screen.getByText(/Copy Codes|Sao chép mã/i),
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText(/Download TXT|Tải file TXT/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Copy Codes|Sao chép mã/i)).toBeInTheDocument();
+      expect(screen.getByText(/Download TXT|Tải file TXT/i)).toBeInTheDocument();
+      expect(useAuthStore.getState().accessToken).toBe('post-mfa-access-token');
+      expect(useAuthStore.getState().refreshToken).toBe('post-mfa-refresh-token');
+      expect(useAuthStore.getState().user?.mfaEnabled).toBe(true);
+      expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });
   });
 });

@@ -26,6 +26,10 @@ import { ReadinessModule } from './modules/readiness/readiness.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { MentorModule } from './modules/mentor/mentor.module';
 import { B2bModule } from './modules/b2b/b2b.module';
+import { GamificationModule } from './modules/gamification/gamification.module';
+import { NotificationModule } from './modules/notifications/notification.module';
+import { StorageModule } from './modules/storage/storage.module';
+import { EmailModule } from './modules/email/email.module';
 import { AllExceptionsFilter } from './modules/platform/filters/all-exceptions.filter';
 import { TransformInterceptor } from './modules/platform/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './modules/platform/interceptors/logging.interceptor';
@@ -35,9 +39,14 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
   imports: [
     ThrottlerModule.forRoot([
       {
-        name: 'short',
+        name: 'default',
         ttl: 60000, // 1 minute
         limit: 100, // 100 requests per min
+      },
+      {
+        name: 'short',
+        ttl: 60000,
+        limit: 100,
       },
     ]),
     PlatformModule,
@@ -65,6 +74,10 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     PortfolioModule,
     MentorModule,
     B2bModule,
+    GamificationModule,
+    NotificationModule,
+    StorageModule,
+    EmailModule,
   ],
   providers: [
     {

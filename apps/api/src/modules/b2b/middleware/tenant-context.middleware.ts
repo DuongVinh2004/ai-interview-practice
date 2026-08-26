@@ -32,14 +32,18 @@ export class TenantContextMiddleware implements NestMiddleware {
         }
       }
     } else if (userId) {
-      // Find the first tenant the user belongs to
-      const member = await this.prisma.tenantMember.findFirst({
-        where: { userId },
-      });
-      if (member) {
-        req.tenantId = member.tenantId;
-        req.tenantRole = member.role;
+      // Fail closed: require explicit tenant selection for multi-tenant users
+      const memberCount = await this.prisma.tenantMember.count({ where: { userId } });
+      if (memberCount === 1) {
+        // Single tenant: auto-resolve (unambiguous)
+        const member = await this.prisma.tenantMember.findFirst({ where: { userId } });
+        if (member) {
+          req.tenantId = member.tenantId;
+          req.tenantRole = member.role;
+        }
       }
+      // memberCount === 0: no tenant context (non-B2B user)
+      // memberCount > 1: no auto-select, require explicit x-tenant-id header
     }
 
     next();

@@ -1,16 +1,8 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Put,
-  Body,
-  Param,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Post, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { MfaStepUpGuard } from '../auth/guards/mfa-step-up.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { UserRole } from '@ai-interview/contracts';
@@ -32,15 +24,14 @@ export class ReadinessController {
   constructor(
     private readonly readinessService: ReadinessService,
     private readonly weightProfileService: WeightProfileService,
-    private readonly tierClassificationService: TierClassificationService
+    private readonly tierClassificationService: TierClassificationService,
   ) {}
 
   @Get('profile/readiness')
-  @ApiOperation({ summary: 'Get candidate composite readiness score, confidence interval, and roadmap' })
-  async getReadiness(
-    @CurrentUser('sub') userId: string,
-    @Query() query: ReadinessQueryDto
-  ) {
+  @ApiOperation({
+    summary: 'Get candidate composite readiness score, confidence interval, and roadmap',
+  })
+  async getReadiness(@CurrentUser('sub') userId: string, @Query() query: ReadinessQueryDto) {
     return this.readinessService.getReadinessDashboard(userId, query.role || 'backend');
   }
 
@@ -48,7 +39,7 @@ export class ReadinessController {
   @ApiOperation({ summary: 'Get candidate readiness progression time-series history' })
   async getReadinessHistory(
     @CurrentUser('sub') userId: string,
-    @Query() query: ReadinessHistoryQueryDto
+    @Query() query: ReadinessHistoryQueryDto,
   ) {
     return this.readinessService.getReadinessHistory(userId, query.period || '30d');
   }
@@ -60,7 +51,7 @@ export class ReadinessController {
   }
 
   @Get('admin/readiness/weight-profiles')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: List role readiness weight profiles' })
   async getWeightProfiles() {
@@ -68,19 +59,19 @@ export class ReadinessController {
   }
 
   @Post('admin/readiness/weight-profiles')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: Create or update weight profile' })
   async upsertWeightProfile(@Body() dto: CreateWeightProfileDto) {
     return this.weightProfileService.upsertWeightProfile(
       dto.jobRoleSlug,
       dto.competencyArea,
-      dto.weight
+      dto.weight,
     );
   }
 
   @Get('admin/readiness/tiers')
-  @UseGuards(RolesGuard)
+  @UseGuards(RolesGuard, MfaStepUpGuard)
   @Roles(UserRole.ADMIN)
   @ApiOperation({ summary: 'Admin: List readiness tier definitions' })
   async getTiers() {

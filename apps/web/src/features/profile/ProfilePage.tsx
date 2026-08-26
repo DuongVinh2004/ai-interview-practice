@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { useAuthStore } from '../../stores/auth.store';
@@ -24,9 +25,11 @@ import {
 } from 'lucide-react';
 
 export function ProfilePage() {
-  const { user, setUser } = useAuthStore();
+  const { user, setUser, setAuth, logout } = useAuthStore();
   const { t } = useI18nStore();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const autoMfaSetupStarted = useRef(false);
 
   const [fullName, setFullName] = useState(user?.profile?.fullName || '');
   const [targetRole, setTargetRole] = useState(user?.profile?.targetRole || 'Fullstack Engineer');
@@ -69,12 +72,12 @@ export function ProfilePage() {
 
   useEffect(() => {
     if (profileData) {
-      setFullName(profileData.fullName || '');
-      setTargetRole(profileData.targetRole || 'Fullstack Engineer');
-      setTargetLevel(profileData.targetLevel || 'Senior');
-      setBio(profileData.bio || '');
+      setFullName(profileData.fullName || user?.profile?.fullName || '');
+      setTargetRole(profileData.targetRole || user?.profile?.targetRole || 'Fullstack Engineer');
+      setTargetLevel(profileData.targetLevel || user?.profile?.targetLevel || 'Senior');
+      setBio(profileData.bio || user?.profile?.bio || '');
     }
-  }, [profileData]);
+  }, [profileData, user]);
 
   // Update profile mutation
   const updateMutation = useMutation({
@@ -157,6 +160,14 @@ export function ProfilePage() {
     }
   };
 
+  useEffect(() => {
+    const shouldStartSetup = searchParams.get('setupMfa') === '1';
+    if (shouldStartSetup && !user?.mfaEnabled && !autoMfaSetupStarted.current) {
+      autoMfaSetupStarted.current = true;
+      void handleStartMfaSetup();
+    }
+  }, [searchParams, user?.mfaEnabled]);
+
   const handleConfirmEnableMfa = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!mfaVerifyCode.trim()) return;
@@ -167,13 +178,18 @@ export function ProfilePage() {
         method: 'POST',
         body: JSON.stringify({ code: mfaVerifyCode.trim() }),
       });
+      if (!res.accessToken || !res.refreshToken || !res.user) {
+        await logout();
+        setErrorMsg(
+          'Two-factor authentication was enabled, but session rotation failed. Sign in again.',
+        );
+        return;
+      }
+      setAuth(res.user, res.accessToken, res.refreshToken);
       setRecoveryCodes(res.recoveryCodes);
       setMfaSetupData(null);
       setMfaVerifyCode('');
       setSuccessMsg(res.message);
-      if (user) {
-        setUser({ ...user, mfaEnabled: true });
-      }
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to enable MFA');
@@ -372,7 +388,11 @@ export function ProfilePage() {
                       onClick={() => copyToClipboard(recoveryCodes.join('\n'), 'codes')}
                       className="gap-1.5 text-xs"
                     >
-                      {copiedCodes ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedCodes ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                       <span>{copiedCodes ? 'Copied!' : t.mfa.copyCodes}</span>
                     </Button>
                     <Button
@@ -418,7 +438,11 @@ export function ProfilePage() {
                       onClick={() => copyToClipboard(mfaSetupData.secret, 'key')}
                       className="text-xs gap-1"
                     >
-                      {copiedKey ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedKey ? (
+                        <Check className="h-3.5 w-3.5 text-emerald-600" />
+                      ) : (
+                        <Copy className="h-3.5 w-3.5" />
+                      )}
                       <span>{copiedKey ? 'Copied' : 'Copy'}</span>
                     </Button>
                   </div>
@@ -456,7 +480,10 @@ export function ProfilePage() {
                 </div>
               ) : isDisablingMfa ? (
                 /* --- Active Disable 2FA Form --- */
-                <form onSubmit={handleDisableMfa} className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3">
+                <form
+                  onSubmit={handleDisableMfa}
+                  className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-3"
+                >
                   <h4 className="font-semibold text-sm text-rose-900">{t.mfa.disableTitle}</h4>
                   <p className="text-xs text-rose-700">{t.mfa.disableWarning}</p>
 
@@ -648,13 +675,9 @@ export function ProfilePage() {
                       className="p-4 rounded-xl border border-slate-200 bg-white shadow-xs space-y-2 hover:border-slate-300 transition-colors"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-xs text-slate-900">
-                          {item.name}
-                        </span>
+                        <span className="font-semibold text-xs text-slate-900">{item.name}</span>
                         <Badge
-                          variant={
-                            isExceeds ? 'success' : isMeets ? 'default' : 'warning'
-                          }
+                          variant={isExceeds ? 'success' : isMeets ? 'default' : 'warning'}
                           className="text-[10px]"
                         >
                           {isExceeds

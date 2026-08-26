@@ -2,6 +2,21 @@ resource "random_id" "bucket_suffix" {
   byte_length = 4
 }
 
+resource "aws_kms_key" "app_storage" {
+  description             = "Customer-managed key for AI Interview application storage"
+  enable_key_rotation     = true
+  deletion_window_in_days = 30
+
+  tags = {
+    Name = "ai-interview-storage-kms-${var.environment}"
+  }
+}
+
+resource "aws_kms_alias" "app_storage" {
+  name          = "alias/ai-interview-storage-${var.environment}"
+  target_key_id = aws_kms_key.app_storage.key_id
+}
+
 resource "aws_s3_bucket" "app_storage" {
   bucket        = "ai-interview-storage-${var.environment}-${random_id.bucket_suffix.hex}"
   force_destroy = var.environment == "production" ? false : true
@@ -24,8 +39,10 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "storage_encryptio
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      kms_master_key_id = aws_kms_key.app_storage.arn
+      sse_algorithm     = "aws:kms"
     }
+    bucket_key_enabled = true
   }
 }
 
@@ -44,7 +61,7 @@ resource "aws_s3_bucket_cors_configuration" "storage_cors" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["GET", "PUT", "POST"]
-    allowed_origins = ["*"]
+    allowed_origins = var.allowed_origins
     expose_headers  = ["ETag"]
     max_age_seconds = 3000
   }

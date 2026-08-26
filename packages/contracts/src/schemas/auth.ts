@@ -71,16 +71,19 @@ export const AuthResponseSchema = z.object({
   expiresIn: z.number().optional(),
   mfaRequired: z.boolean().optional(),
   mfaSessionToken: z.string().optional(),
+  forceMfaSetup: z.boolean().optional(),
+  message: z.string().optional(),
 });
 
 export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 export const JwtPayloadSchema = z.object({
   sub: z.string().uuid(),
+  id: z.string().uuid().optional(),
   email: z.string().email(),
   role: z.nativeEnum(UserRole),
   status: z.nativeEnum(UserStatus),
-  tokenType: z.enum(['access', 'mfa_challenge']).optional(),
+  tokenType: z.enum(['access', 'mfa_challenge', 'mfa_enrollment']).optional(),
   tokenVersion: z.number().optional(),
   mfaPending: z.boolean().optional(),
   mfaVerified: z.boolean().optional(),
@@ -109,6 +112,10 @@ export const MfaEnableResponseSchema = z.object({
   success: z.boolean(),
   mfaEnabled: z.boolean(),
   recoveryCodes: z.array(z.string()),
+  user: UserDtoSchema,
+  accessToken: z.string().min(1),
+  refreshToken: z.string().min(1),
+  expiresIn: z.number().positive(),
   message: z.string(),
 });
 

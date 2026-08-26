@@ -365,7 +365,9 @@ export class AdminService {
       },
     });
 
-    this.logger.log(`Prompt version ${target.slug} v${target.version} activated by admin ${adminId}`);
+    this.logger.log(
+      `Prompt version ${target.slug} v${target.version} activated by admin ${adminId}`,
+    );
 
     return {
       id: target.id,
@@ -407,5 +409,3 @@ export class AdminService {
     return this.semanticCache.getMetrics();
   }
 }
-
-

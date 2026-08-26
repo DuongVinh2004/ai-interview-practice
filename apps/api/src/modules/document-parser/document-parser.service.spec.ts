@@ -16,22 +16,32 @@ describe('DocumentParser Module (F004)', () => {
 
   const mockPrisma = {
     userDocument: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'doc-uuid-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'doc-uuid-1', ...data })),
       findUnique: jest.fn(),
       findMany: jest.fn(),
       delete: jest.fn().mockResolvedValue({ id: 'doc-uuid-1' }),
     },
     parsedProfile: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'profile-uuid-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'profile-uuid-1', ...data })),
       findUnique: jest.fn(),
       findMany: jest.fn(),
     },
     jdAnalysis: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'jd-uuid-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) => Promise.resolve({ id: 'jd-uuid-1', ...data })),
       findUnique: jest.fn(),
     },
     interviewBlueprint: {
-      create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'blueprint-uuid-1', ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }: any) =>
+          Promise.resolve({ id: 'blueprint-uuid-1', ...data }),
+        ),
       findUnique: jest.fn(),
       findMany: jest.fn(),
     },
@@ -77,7 +87,9 @@ describe('DocumentParser Module (F004)', () => {
 
     it('rejects files larger than 5MB', async () => {
       const largeBuffer = Buffer.alloc(6 * 1024 * 1024);
-      await expect(textExtractor.extractText(largeBuffer, 'pdf', 'heavy.pdf')).rejects.toThrow(BadRequestException);
+      await expect(textExtractor.extractText(largeBuffer, 'pdf', 'heavy.pdf')).rejects.toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -128,7 +140,11 @@ describe('DocumentParser Module (F004)', () => {
             company: 'Alpha Corp',
             role: 'Senior Developer',
             projects: [
-              { name: 'E-commerce API', technologies: ['Node.js', 'PostgreSQL'], highlights: ['10k RPS'] },
+              {
+                name: 'E-commerce API',
+                technologies: ['Node.js', 'PostgreSQL'],
+                highlights: ['10k RPS'],
+              },
             ],
           },
         ],
@@ -169,7 +185,8 @@ describe('DocumentParser Module (F004)', () => {
 
       // 2. Analyze JD
       const jdResult = await parserService.analyzeJd('user-1', {
-        jdText: 'Looking for a Senior Backend Developer proficient in Node.js, PostgreSQL, Kafka, and Docker.',
+        jdText:
+          'Looking for a Senior Backend Developer proficient in Node.js, PostgreSQL, Kafka, and Docker.',
       });
       expect(jdResult.id).toBe('jd-uuid-1');
 
@@ -240,6 +257,24 @@ describe('DocumentParser Module (F004)', () => {
       await expect(
         textExtractor.extractText(corruptDocxBuffer, 'docx', 'malicious.docx'),
       ).rejects.toThrow('Invalid DOCX file header. Missing ZIP/DOCX signature.');
+    });
+
+    it('rejects retrieval of blueprint when associated document has expired', async () => {
+      const expiredDate = new Date(Date.now() - 24 * 3600 * 1000); // 1 day ago
+      mockPrisma.interviewBlueprint.findUnique.mockResolvedValueOnce({
+        id: 'bp-expired',
+        parsedProfile: {
+          document: {
+            userId: 'user-1',
+            expiresAt: expiredDate,
+          },
+        },
+        jdAnalysis: { userId: 'user-1' },
+      });
+
+      await expect(parserService.getBlueprint('user-1', 'bp-expired')).rejects.toThrow(
+        'This document and its blueprint have expired per retention policy',
+      );
     });
   });
 });

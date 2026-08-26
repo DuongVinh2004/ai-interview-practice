@@ -4,16 +4,10 @@ import { ComponentPalette, SystemComponentItem } from './ComponentPalette';
 import { DesignFeedbackPanel } from './DesignFeedbackPanel';
 import { CanvasTimelapse } from './CanvasTimelapse';
 import { DesignEvaluationReport } from './DesignEvaluationReport';
+import { VisualAnnotationOverlay } from '../../components/whiteboard/VisualAnnotationOverlay';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
-import {
-  Pen,
-  Square,
-  ArrowRight,
-  Camera,
-  CheckCircle2,
-  Trash2,
-} from 'lucide-react';
+import { Pen, Square, ArrowRight, Camera, CheckCircle2, Trash2 } from 'lucide-react';
 
 interface CanvasElement {
   id: string;
@@ -108,8 +102,24 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
     setElements(prev => [...prev, newElement]);
   };
 
+  const generateCanvasSvgDataUri = (elems: CanvasElement[]) => {
+    const svgElements = elems
+      .map(
+        el =>
+          `<g transform="translate(${el.x},${el.y})">` +
+          `<rect width="${el.width}" height="${el.height}" rx="8" fill="${el.color}" stroke="#0f172a" stroke-width="1.5" />` +
+          `<text x="${el.width / 2}" y="${el.height / 2 + 5}" text-anchor="middle" fill="#ffffff" font-size="12" font-family="system-ui, sans-serif" font-weight="600">${el.label.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</text>` +
+          `</g>`,
+      )
+      .join('');
+
+    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600"><rect width="100%" height="100%" fill="#f8fafc" /><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="#e2e8f0" stroke-width="1"/></pattern><rect width="100%" height="100%" fill="url(#grid)" />${svgElements}</svg>`;
+
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svgString)}`;
+  };
+
   const handleSaveSnapshot = async () => {
-    const snapshotUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>`;
+    const snapshotUrl = generateCanvasSvgDataUri(elements);
     await saveSnapshot({
       imageUrl: snapshotUrl,
       canvasStateJson: { elements },
@@ -118,7 +128,7 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
   };
 
   const handleTriggerAnalysis = async () => {
-    const snapshotUrl = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="400"><rect width="100%" height="100%" fill="%23f8fafc"/></svg>`;
+    const snapshotUrl = generateCanvasSvgDataUri(elements);
     await analyzeCanvas({
       imageUrl: snapshotUrl,
       canvasStateJson: { elements },
@@ -133,7 +143,10 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
 
   if (isLoadingSession) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3" data-testid="whiteboard-loading">
+      <div
+        className="flex flex-col items-center justify-center py-20 gap-3"
+        data-testid="whiteboard-loading"
+      >
         <Spinner size="lg" />
         <p className="text-sm text-slate-500">Initializing system design whiteboard...</p>
       </div>
@@ -190,7 +203,9 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
                 type="button"
                 onClick={() => setTool('select')}
                 className={`p-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${
-                  tool === 'select' ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+                  tool === 'select'
+                    ? 'bg-slate-900 text-white'
+                    : 'text-slate-600 hover:bg-slate-100'
                 }`}
                 title="Select & Move"
               >
@@ -278,8 +293,18 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
             {elements.map(el => (
               <div
                 key={el.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`Diagram component ${el.label}`}
+                aria-pressed={selectedElementId === el.id}
                 onClick={() => setSelectedElementId(el.id)}
-                className={`absolute p-2.5 rounded-xl border bg-white shadow-sm flex items-center gap-2 cursor-move transition-all ${
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedElementId(el.id);
+                  }
+                }}
+                className={`absolute p-2.5 rounded-xl border bg-white shadow-sm flex items-center gap-2 cursor-move transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
                   selectedElementId === el.id
                     ? 'ring-2 ring-emerald-500 border-emerald-500 shadow-md'
                     : 'border-slate-300 hover:border-slate-400'
@@ -297,6 +322,13 @@ export function WhiteboardRoom({ interviewId, onCompleteSession }: WhiteboardRoo
                 <span className="text-xs font-bold text-slate-800 truncate">{el.label}</span>
               </div>
             ))}
+
+            {/* Multimodal AI Vision Bounding Box Annotations Overlay */}
+            <VisualAnnotationOverlay
+              annotations={
+                (evaluation as any)?.annotations || (analysisResult as any)?.annotations || []
+              }
+            />
           </div>
 
           {/* Time-Lapse Slider */}

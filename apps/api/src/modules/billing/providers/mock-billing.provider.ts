@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BillingProvider } from '../interfaces/billing-provider.interface';
-import {
-  CreateCheckoutRequest,
-  CheckoutResponse,
-} from '@ai-interview/contracts';
+import { CreateCheckoutRequest, CheckoutResponse } from '@ai-interview/contracts';
 
 @Injectable()
 export class MockBillingProvider implements BillingProvider {

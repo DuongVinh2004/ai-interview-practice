@@ -34,7 +34,7 @@ export const SkillNodeSchema: z.ZodType<ISkillNode, z.ZodTypeDef, any> = z.lazy(
     createdAt: z.string().or(z.date()),
     updatedAt: z.string().or(z.date()),
     children: z.array(SkillNodeSchema).optional(),
-  })
+  }),
 );
 
 export type SkillNodeDto = ISkillNode;
@@ -86,21 +86,22 @@ export interface ISkillGraphNodeDto {
   children?: ISkillGraphNodeDto[];
 }
 
-export const SkillGraphNodeDtoSchema: z.ZodType<ISkillGraphNodeDto, z.ZodTypeDef, any> = z.lazy(() =>
-  z.object({
-    id: z.string(),
-    name: z.string(),
-    nameVi: z.string().optional().nullable(),
-    slug: z.string(),
-    level: z.number(),
-    competencyArea: z.nativeEnum(CompetencyArea).optional().nullable(),
-    score: z.number(),
-    rawScore: z.number(),
-    evidenceCount: z.number(),
-    benchmarkP50: z.number().optional().nullable(),
-    percentile: z.number().optional().nullable(),
-    children: z.array(SkillGraphNodeDtoSchema).optional(),
-  })
+export const SkillGraphNodeDtoSchema: z.ZodType<ISkillGraphNodeDto, z.ZodTypeDef, any> = z.lazy(
+  () =>
+    z.object({
+      id: z.string(),
+      name: z.string(),
+      nameVi: z.string().optional().nullable(),
+      slug: z.string(),
+      level: z.number(),
+      competencyArea: z.nativeEnum(CompetencyArea).optional().nullable(),
+      score: z.number(),
+      rawScore: z.number(),
+      evidenceCount: z.number(),
+      benchmarkP50: z.number().optional().nullable(),
+      percentile: z.number().optional().nullable(),
+      children: z.array(SkillGraphNodeDtoSchema).optional(),
+    }),
 );
 
 export type SkillGraphNodeDto = ISkillGraphNodeDto;
@@ -116,7 +117,7 @@ export const SkillGraphResponseSchema = z.object({
       benchmarkP50: z.number(),
       percentile: z.number().optional().nullable(),
       subCompetencies: z.array(SkillGraphNodeDtoSchema),
-    })
+    }),
   ),
   lastUpdated: z.string().or(z.date()),
 });
@@ -139,7 +140,7 @@ export const BenchmarkRankingSchema = z.object({
       p75: z.number(),
       p90: z.number(),
       percentile: z.number(),
-    })
+    }),
   ),
 });
 

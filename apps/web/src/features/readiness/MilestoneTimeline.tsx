@@ -13,7 +13,10 @@ interface MilestoneTimelineProps {
 
 export function MilestoneTimeline({ milestones }: MilestoneTimelineProps) {
   return (
-    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3" data-testid="milestone-timeline">
+    <div
+      className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3"
+      data-testid="milestone-timeline"
+    >
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
           Offer Readiness Milestones

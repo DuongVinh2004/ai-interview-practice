@@ -137,7 +137,9 @@ export function AudioVisualizer({
   }, [isActive, getAnalyserData, mode, theme]);
 
   return (
-    <div className={`relative flex items-center justify-center overflow-hidden rounded-xl ${className}`}>
+    <div
+      className={`relative flex items-center justify-center overflow-hidden rounded-xl ${className}`}
+    >
       <canvas
         ref={canvasRef}
         width={380}

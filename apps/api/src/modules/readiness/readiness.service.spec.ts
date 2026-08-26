@@ -49,11 +49,11 @@ describe('Readiness Services (F009)', () => {
   describe('Composite Readiness Formula', () => {
     it('computes weighted readiness and strictly caps at 100%', () => {
       const weights: Record<CompetencyArea, number> = {
-        [CompetencyArea.SYSTEM_DESIGN]: 0.30,
+        [CompetencyArea.SYSTEM_DESIGN]: 0.3,
         [CompetencyArea.DATABASE_CONCURRENCY]: 0.25,
-        [CompetencyArea.LANGUAGE_CORE]: 0.20,
+        [CompetencyArea.LANGUAGE_CORE]: 0.2,
         [CompetencyArea.ARCHITECTURE_PATTERNS]: 0.15,
-        [CompetencyArea.RESILIENCE_SECURITY]: 0.10,
+        [CompetencyArea.RESILIENCE_SECURITY]: 0.1,
       };
 
       const targets: Record<CompetencyArea, number> = {
@@ -73,7 +73,11 @@ describe('Readiness Services (F009)', () => {
         [CompetencyArea.RESILIENCE_SECURITY]: 8.5,
       };
 
-      const perfectReadiness = readinessService.computeCompositeReadiness(perfectScores, weights, targets);
+      const perfectReadiness = readinessService.computeCompositeReadiness(
+        perfectScores,
+        weights,
+        targets,
+      );
       expect(perfectReadiness).toBe(100.0);
 
       // Case 2: Candidate with 4.0 out of 8.0 everywhere (50% fulfillment)
@@ -85,7 +89,11 @@ describe('Readiness Services (F009)', () => {
         [CompetencyArea.RESILIENCE_SECURITY]: 4.0,
       };
 
-      const halfReadiness = readinessService.computeCompositeReadiness(halfScores, weights, targets);
+      const halfReadiness = readinessService.computeCompositeReadiness(
+        halfScores,
+        weights,
+        targets,
+      );
       expect(halfReadiness).toBe(50.0);
     });
   });

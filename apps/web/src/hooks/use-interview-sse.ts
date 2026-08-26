@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { SseEventType } from '@ai-interview/contracts';
 import { apiClient } from '../lib/api-client';
+import { useAuthStore } from '../stores/auth.store';
 
 interface UseInterviewSseOptions {
   sessionId?: string;
@@ -20,15 +21,23 @@ export function useInterviewSse({
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const onEventRef = useRef(onEvent);
+  const onSessionUpdatedRef = useRef(onSessionUpdated);
+
+  useEffect(() => {
+    onEventRef.current = onEvent;
+    onSessionUpdatedRef.current = onSessionUpdated;
+  });
+
   const pollStatus = useCallback(async () => {
     if (!sessionId) return;
     try {
       await apiClient(`/interviews/${sessionId}/status`);
-      onSessionUpdated?.();
+      onSessionUpdatedRef.current?.();
     } catch (err) {
       console.warn('Polling status error:', err);
     }
-  }, [sessionId, onSessionUpdated]);
+  }, [sessionId]);
 
   useEffect(() => {
     if (!sessionId || !enabled) {
@@ -45,7 +54,8 @@ export function useInterviewSse({
     }
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    const sseUrl = `${API_BASE}/interviews/${sessionId}/events`;
+    const accessToken = useAuthStore.getState().accessToken;
+    const sseUrl = `${API_BASE}/interviews/${sessionId}/events${accessToken ? `?token=${encodeURIComponent(accessToken)}` : ''}`;
 
     try {
       const eventSource = new EventSource(sseUrl, { withCredentials: true });
@@ -64,8 +74,8 @@ export function useInterviewSse({
         try {
           const payload = JSON.parse(event.data);
           if (payload.type !== SseEventType.HEARTBEAT) {
-            onEvent?.(payload.type, payload.data);
-            onSessionUpdated?.();
+            onEventRef.current?.(payload.type, payload.data);
+            onSessionUpdatedRef.current?.();
           }
         } catch {
           // non-json or ping
@@ -100,7 +110,7 @@ export function useInterviewSse({
       }
       setIsConnected(false);
     };
-  }, [sessionId, enabled, onEvent, onSessionUpdated, pollStatus]);
+  }, [sessionId, enabled, pollStatus]);
 
   return { isConnected, usingFallbackPolling };
 }

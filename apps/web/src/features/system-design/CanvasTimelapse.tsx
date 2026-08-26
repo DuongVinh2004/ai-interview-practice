@@ -8,11 +8,7 @@ interface CanvasTimelapseProps {
   onSelectSnapshot: (idx: number | null) => void;
 }
 
-export function CanvasTimelapse({
-  snapshots,
-  activeIdx,
-  onSelectSnapshot,
-}: CanvasTimelapseProps) {
+export function CanvasTimelapse({ snapshots, activeIdx, onSelectSnapshot }: CanvasTimelapseProps) {
   const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
@@ -42,7 +38,10 @@ export function CanvasTimelapse({
   };
 
   return (
-    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2.5" data-testid="canvas-timelapse">
+    <div
+      className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2.5"
+      data-testid="canvas-timelapse"
+    >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <History className="w-4 h-4 text-emerald-600" />

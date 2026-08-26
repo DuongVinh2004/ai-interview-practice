@@ -7,7 +7,12 @@ interface CreateCardModalProps {
   isOpen: boolean;
   onClose: () => void;
   deckId: string;
-  onCreateCard: (data: { deckId: string; type: CardType; frontContent: string; backContent: string }) => Promise<any>;
+  onCreateCard: (data: {
+    deckId: string;
+    type: CardType;
+    frontContent: string;
+    backContent: string;
+  }) => Promise<any>;
   isSubmitting: boolean;
 }
 
@@ -43,7 +48,10 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150" data-testid="create-card-modal">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+      data-testid="create-card-modal"
+    >
       <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
@@ -51,7 +59,10 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
             <Plus className="w-5 h-5 text-emerald-600" />
             <h3 className="font-bold text-base text-slate-900">Thêm Flashcard Mới</h3>
           </div>
-          <button onClick={onClose} className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -80,7 +91,9 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Mặt trước (Câu hỏi / Đề bài)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Mặt trước (Câu hỏi / Đề bài)
+            </label>
             <textarea
               value={front}
               onChange={e => setFront(e.target.value)}
@@ -91,7 +104,9 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Mặt sau (Đáp án / Nguyên lý cốt lõi)</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              Mặt sau (Đáp án / Nguyên lý cốt lõi)
+            </label>
             <textarea
               value={back}
               onChange={e => setBack(e.target.value)}
@@ -105,7 +120,11 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Hủy
             </Button>
-            <Button type="submit" isLoading={isSubmitting} disabled={isSubmitting || !front.trim() || !back.trim()}>
+            <Button
+              type="submit"
+              isLoading={isSubmitting}
+              disabled={isSubmitting || !front.trim() || !back.trim()}
+            >
               Tạo Flashcard
             </Button>
           </div>

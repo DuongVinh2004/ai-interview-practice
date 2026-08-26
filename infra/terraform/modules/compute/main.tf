@@ -1,3 +1,7 @@
+data "aws_caller_identity" "current" {}
+
+data "aws_region" "current" {}
+
 resource "aws_ecs_cluster" "main" {
   name = "ai-interview-cluster-${var.environment}"
 
@@ -11,15 +15,63 @@ resource "aws_ecs_cluster" "main" {
   }
 }
 
+resource "aws_kms_key" "cloudwatch_logs" {
+  description             = "Customer-managed encryption key for ECS CloudWatch logs"
+  enable_key_rotation     = true
+  deletion_window_in_days = 30
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "EnableAccountAdministration"
+        Effect    = "Allow"
+        Principal = { AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:root" }
+        Action    = "kms:*"
+        Resource  = "*"
+      },
+      {
+        Sid       = "AllowCloudWatchLogs"
+        Effect    = "Allow"
+        Principal = { Service = "logs.${data.aws_region.current.name}.amazonaws.com" }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:Describe*"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnLike = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/ecs/ai-interview-*"
+          }
+        }
+      }
+    ]
+  })
+
+  tags = {
+    Name = "ai-interview-cloudwatch-kms-${var.environment}"
+  }
+}
+
+resource "aws_kms_alias" "cloudwatch_logs" {
+  name          = "alias/ai-interview-cloudwatch-${var.environment}"
+  target_key_id = aws_kms_key.cloudwatch_logs.key_id
+}
+
 # CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/ai-interview-api-${var.environment}"
   retention_in_days = 30
+  kms_key_id        = aws_kms_key.cloudwatch_logs.arn
 }
 
 resource "aws_cloudwatch_log_group" "worker" {
   name              = "/ecs/ai-interview-worker-${var.environment}"
   retention_in_days = 30
+  kms_key_id        = aws_kms_key.cloudwatch_logs.arn
 }
 
 # IAM Roles for ECS Execution & Task
@@ -58,6 +110,84 @@ resource "aws_iam_role_policy" "secrets_access" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [var.secrets_arn]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt"
+        ]
+        Resource = [var.secrets_kms_key_arn]
+      }
+    ]
+  })
+}
+
+resource "random_id" "alb_logs_suffix" {
+  byte_length = 4
+}
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket        = "ai-interview-alb-logs-${var.environment}-${random_id.alb_logs_suffix.hex}"
+  force_destroy = false
+
+  tags = {
+    Name = "ai-interview-alb-logs-${var.environment}"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+#trivy:ignore:AVD-AWS-0132 S3 access-log delivery does not support SSE-KMS destination buckets.
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire-alb-access-logs"
+    status = "Enabled"
+
+    filter {}
+
+    expiration {
+      days = 90
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid       = "AllowLoadBalancerLogDelivery"
+        Effect    = "Allow"
+        Principal = { Service = "logdelivery.elasticloadbalancing.amazonaws.com" }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.alb_logs.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+      },
+      {
+        Sid       = "AllowLoadBalancerAclCheck"
+        Effect    = "Allow"
+        Principal = { Service = "logdelivery.elasticloadbalancing.amazonaws.com" }
+        Action    = "s3:GetBucketAcl"
+        Resource  = aws_s3_bucket.alb_logs.arn
       }
     ]
   })
@@ -100,6 +230,15 @@ resource "aws_iam_role_policy" "s3_access" {
           "arn:aws:s3:::${var.s3_bucket_name}",
           "arn:aws:s3:::${var.s3_bucket_name}/*"
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:Encrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = [var.storage_kms_key_arn]
       }
     ]
   })
@@ -107,13 +246,22 @@ resource "aws_iam_role_policy" "s3_access" {
 
 # Application Load Balancer
 resource "aws_lb" "main" {
-  name               = "ai-interview-alb-${var.environment}"
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [var.alb_security_group_id]
-  subnets            = var.public_subnet_ids
+  name = "ai-interview-alb-${var.environment}"
+  #trivy:ignore:AVD-AWS-0053 This is the intentionally public HTTPS entrypoint; ECS tasks remain private.
+  internal                   = false
+  load_balancer_type         = "application"
+  security_groups            = [var.alb_security_group_id]
+  subnets                    = var.public_subnet_ids
+  drop_invalid_header_fields = true
 
   enable_deletion_protection = var.environment == "production" ? true : false
+
+  access_logs {
+    bucket  = aws_s3_bucket.alb_logs.id
+    enabled = true
+  }
+
+  depends_on = [aws_s3_bucket_policy.alb_logs]
 
   tags = {
     Name = "ai-interview-alb-${var.environment}"
@@ -129,7 +277,7 @@ resource "aws_lb_target_group" "api" {
 
   health_check {
     enabled             = true
-    path                = "/api/v1/health/live"
+    path                = "/api/v1/health/ready"
     port                = "3001"
     protocol            = "HTTP"
     matcher             = "200"
@@ -144,6 +292,24 @@ resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.main.arn
   port              = 80
   protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = var.certificate_arn
+  ssl_policy        = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 
   default_action {
     type             = "forward"
@@ -177,10 +343,18 @@ resource "aws_ecs_task_definition" "api" {
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3001" },
         { name = "API_PREFIX", value = "/api/v1" },
-        { name = "DATABASE_URL", value = "postgresql://${var.db_endpoint}/${var.environment}?schema=public" },
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = "6379" },
+        { name = "REDIS_TLS", value = "true" },
         { name = "S3_BUCKET_NAME", value = var.s3_bucket_name }
+      ]
+      secrets = [
+        { name = "DATABASE_URL", valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
+        { name = "REDIS_PASSWORD", valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
+        { name = "JWT_ACCESS_SECRET", valueFrom = "${var.secrets_arn}:JWT_ACCESS_SECRET::" },
+        { name = "JWT_REFRESH_SECRET", valueFrom = "${var.secrets_arn}:JWT_REFRESH_SECRET::" },
+        { name = "MFA_ENCRYPTION_KEY", valueFrom = "${var.secrets_arn}:MFA_ENCRYPTION_KEY::" },
+        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -208,14 +382,22 @@ resource "aws_ecs_task_definition" "worker" {
     {
       name      = "worker"
       image     = "ai-interview-api:latest"
-      command   = ["node", "dist/src/worker.js"]
+      command   = ["node", "apps/api/dist/worker.js"]
       essential = true
       environment = [
         { name = "NODE_ENV", value = "production" },
-        { name = "DATABASE_URL", value = "postgresql://${var.db_endpoint}/${var.environment}?schema=public" },
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = "6379" },
+        { name = "REDIS_TLS", value = "true" },
         { name = "S3_BUCKET_NAME", value = var.s3_bucket_name }
+      ]
+      secrets = [
+        { name = "DATABASE_URL", valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
+        { name = "REDIS_PASSWORD", valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
+        { name = "JWT_ACCESS_SECRET", valueFrom = "${var.secrets_arn}:JWT_ACCESS_SECRET::" },
+        { name = "JWT_REFRESH_SECRET", valueFrom = "${var.secrets_arn}:JWT_REFRESH_SECRET::" },
+        { name = "MFA_ENCRYPTION_KEY", valueFrom = "${var.secrets_arn}:MFA_ENCRYPTION_KEY::" },
+        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"

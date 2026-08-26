@@ -79,9 +79,11 @@ export class SubmitAnswerRequestDto {
 }
 
 export class ReEvaluateTurnRequestDto {
-  @ApiProperty({ example: 'I added concrete architectural mechanisms and would like a re-evaluation.', required: false })
+  @ApiProperty({
+    example: 'I added concrete architectural mechanisms and would like a re-evaluation.',
+    required: false,
+  })
   @IsString()
   @MaxLength(500, { message: 'Reason cannot exceed 500 characters' })
   reason?: string;
 }
-

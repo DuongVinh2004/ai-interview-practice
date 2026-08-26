@@ -1,4 +1,15 @@
-import { Controller, Post, Get, Delete, Param, Body, UseGuards, Query, Res, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Query,
+  Res,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ShareService } from './share.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,7 +25,7 @@ import { Response } from 'express';
 export class ShareController {
   constructor(private readonly shareService: ShareService) {}
 
-  @Post('share')
+  @Post(['share', 'shares'])
   @ApiOperation({ summary: 'Create a secure, time-limited share link for mentor review' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async createShareLink(
@@ -28,10 +39,7 @@ export class ShareController {
   @Get('shares')
   @ApiOperation({ summary: 'List all share links and mentor feedbacks for an interview session' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
-  async getShareLinks(
-    @CurrentUser('sub') userId: string,
-    @Param('id') sessionId: string,
-  ) {
+  async getShareLinks(@CurrentUser('sub') userId: string, @Param('id') sessionId: string) {
     return this.shareService.getSessionShareTokens(userId, sessionId);
   }
 

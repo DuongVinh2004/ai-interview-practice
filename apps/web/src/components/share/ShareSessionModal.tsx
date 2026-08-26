@@ -7,17 +7,8 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Spinner } from '../ui/Spinner';
 import { Alert } from '../ui/Alert';
-import {
-  Share2,
-  Copy,
-  Check,
-  Eye,
-  Trash2,
-  Globe,
-  Clock,
-  UserX,
-  X,
-} from 'lucide-react';
+import { Modal } from '../ui/Modal';
+import { Copy, Check, Eye, Trash2, Globe, Clock, UserX } from 'lucide-react';
 
 interface ShareSessionModalProps {
   sessionId: string;
@@ -37,24 +28,29 @@ export function ShareSessionModal({ sessionId, isOpen, onClose }: ShareSessionMo
     data: shareTokens = [],
     isLoading,
     refetch,
-  } = useQuery<any[]>({
-    queryKey: ['session-shares', sessionId],
-    queryFn: () => apiClient(`/interviews/${sessionId}/shares`),
+  } = useQuery({
+    queryKey: ['shareTokens', sessionId],
+    queryFn: async () => {
+      const res = await apiClient<any>(`/interviews/${sessionId}/shares`);
+      return Array.isArray(res) ? res : res?.data || [];
+    },
     enabled: isOpen && !!sessionId,
   });
 
   const createMutation = useMutation({
     mutationFn: () =>
-      apiClient(`/interviews/${sessionId}/share`, {
+      apiClient<{ data: any }>(`/interviews/${sessionId}/shares`, {
         method: 'POST',
-        body: JSON.stringify({ expiry, isAnonymized }),
+        body: JSON.stringify({
+          expiry,
+          isAnonymized,
+        }),
       }),
-    onSuccess: (newShare: any) => {
+    onSuccess: () => {
       refetch();
-      handleCopy(newShare.token);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to create share link');
+      setErrorMessage(err.message || 'Failed to create share link.');
     },
   });
 
@@ -78,30 +74,17 @@ export function ShareSessionModal({ sessionId, isOpen, onClose }: ShareSessionMo
     }
   };
 
-  if (!isOpen) return null;
+  const activeShares = shareTokens;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-5">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
-              <Share2 className="h-5 w-5" />
-            </div>
-            <div>
-              <h3 className="text-base font-bold text-slate-900">{t.share.shareTitle}</h3>
-              <p className="text-xs text-slate-500">{t.share.shareSubtitle}</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t.share.shareTitle}
+      description={t.share.shareSubtitle}
+      maxWidth="xl"
+    >
+      <div className="space-y-5">
         {errorMessage && <Alert variant="error">{errorMessage}</Alert>}
 
         {/* Generate Link Controls */}
@@ -115,7 +98,7 @@ export function ShareSessionModal({ sessionId, isOpen, onClose }: ShareSessionMo
               <select
                 value={expiry}
                 onChange={e => setExpiry(e.target.value as ShareExpiryDuration)}
-                className="w-full text-xs font-medium bg-white border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value={ShareExpiryDuration.ONE_DAY}>{t.share.expiry1d}</option>
                 <option value={ShareExpiryDuration.SEVEN_DAYS}>{t.share.expiry7d}</option>
@@ -124,57 +107,72 @@ export function ShareSessionModal({ sessionId, isOpen, onClose }: ShareSessionMo
               </select>
             </div>
 
-            <div className="flex flex-col justify-end">
-              <label className="flex items-center gap-2 text-xs font-medium text-slate-700 cursor-pointer select-none bg-white p-2.5 rounded-lg border border-slate-300 hover:bg-slate-50">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 block mb-1.5 flex items-center gap-1.5">
+                <UserX className="h-3.5 w-3.5 text-slate-500" />
+                <span>{t.share.anonymizeOption}</span>
+              </label>
+              <label className="flex items-center gap-2 mt-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isAnonymized}
                   onChange={e => setIsAnonymized(e.target.checked)}
-                  className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
+                  className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4 border-slate-300"
                 />
-                <UserX className="h-4 w-4 text-slate-500" />
-                <span className="text-[11px] leading-tight">{t.share.anonymizeOption}</span>
+                <span className="text-xs text-slate-600">{t.share.anonymizeOption}</span>
               </label>
             </div>
           </div>
 
           <Button
+            variant="primary"
+            size="sm"
             onClick={() => createMutation.mutate()}
             disabled={createMutation.isPending}
-            className="w-full gap-2"
-            size="md"
+            className="w-full justify-center"
           >
-            {createMutation.isPending ? <Spinner size="sm" /> : <Globe className="h-4 w-4" />}
-            <span>{t.share.createLink}</span>
+            {createMutation.isPending ? (
+              <>
+                <Spinner size="sm" className="mr-2" />
+                Loading...
+              </>
+            ) : (
+              <>
+                <Globe className="h-4 w-4 mr-2" />
+                {t.share.createLink}
+              </>
+            )}
           </Button>
         </div>
 
-        {/* Existing Active Share Links */}
-        <div className="space-y-2.5">
-          <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-            Active & Past Share Links ({shareTokens.length})
+        {/* Existing Links Section */}
+        <div className="space-y-3">
+          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Active & Past Share Links ({activeShares.length})
           </h4>
 
           {isLoading ? (
-            <div className="py-6 flex justify-center">
+            <div className="py-4 flex justify-center">
               <Spinner size="md" />
             </div>
-          ) : shareTokens.length === 0 ? (
-            <p className="text-xs text-slate-400 py-3 text-center bg-slate-50 rounded-lg border border-slate-100">
+          ) : activeShares.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-xl border border-dashed border-slate-200">
               No share links created yet.
             </p>
           ) : (
-            <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-              {shareTokens.map(token => {
+            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {activeShares.map((token: any) => {
+                const isRevoked = token.isRevoked || token.status === 'REVOKED';
                 const isCopied = copiedToken === token.token;
+
                 return (
                   <div
                     key={token.id}
-                    className="flex items-center justify-between gap-3 p-3 bg-white rounded-xl border border-slate-200 text-xs shadow-2xl-sm"
+                    className="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between gap-3 text-xs"
                   >
-                    <div className="space-y-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        {token.isRevoked ? (
+                        {isRevoked ? (
                           <Badge variant="danger">{t.share.revokedBadge}</Badge>
                         ) : (
                           <Badge variant="success">{t.share.activeBadge}</Badge>
@@ -194,7 +192,7 @@ export function ShareSessionModal({ sessionId, isOpen, onClose }: ShareSessionMo
                     </div>
 
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      {!token.isRevoked && (
+                      {!isRevoked && (
                         <>
                           <Button
                             variant="secondary"
@@ -242,6 +240,6 @@ export function ShareSessionModal({ sessionId, isOpen, onClose }: ShareSessionMo
           </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

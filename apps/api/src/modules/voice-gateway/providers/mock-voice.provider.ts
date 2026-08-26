@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { ErrorCode } from '@ai-interview/contracts';
+import { DomainException } from '../../platform/filters/all-exceptions.filter';
 
 export interface VoiceStreamChunk {
   audioBuffer: Buffer;
@@ -10,10 +12,28 @@ export interface VoiceStreamChunk {
 export class MockVoiceProvider {
   private readonly logger = new Logger(MockVoiceProvider.name);
 
+  private checkProductionGuard() {
+    const isProduction =
+      process.env.NODE_ENV === 'production' || process.env.APP_ENV === 'production';
+    const allowMock = process.env.ALLOW_MOCK_PROVIDERS === 'true';
+
+    if (isProduction && !allowMock) {
+      this.logger.error(
+        'MockVoiceProvider invoked in production without ALLOW_MOCK_PROVIDERS=true',
+      );
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Voice synthesis and transcription service is currently unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+  }
+
   /**
    * Generates deterministic mock STT transcript based on candidate's audio activity
    */
   async transcribeAudio(audioBytes: Buffer, turnNumber = 1): Promise<string> {
+    this.checkProductionGuard();
     if (!audioBytes || audioBytes.length === 0) {
       return 'I would structure the architecture using a message broker with idempotent consumer handlers.';
     }
@@ -42,6 +62,7 @@ export class MockVoiceProvider {
     onChunk: (chunk: Buffer, isLast: boolean) => void,
     onCancelled?: () => boolean,
   ): Promise<void> {
+    this.checkProductionGuard();
     return new Promise(resolve => {
       const words = text.split(' ');
       const totalChunks = Math.min(20, Math.max(5, words.length));

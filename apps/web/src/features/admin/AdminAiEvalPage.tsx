@@ -118,7 +118,11 @@ export function AdminAiEvalPage() {
                       isGatePassed ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                     }`}
                   >
-                    {isGatePassed ? <CheckCircle2 className="h-6 w-6" /> : <XCircle className="h-6 w-6" />}
+                    {isGatePassed ? (
+                      <CheckCircle2 className="h-6 w-6" />
+                    ) : (
+                      <XCircle className="h-6 w-6" />
+                    )}
                   </div>
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -128,7 +132,10 @@ export function AdminAiEvalPage() {
                       {isGatePassed ? t.adminEval.gatePassed : t.adminEval.gateFailed}
                     </h2>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      Dataset: <span className="font-semibold text-slate-700">{report.datasetId}</span> (v{report.datasetVersion}) • Run: <span className="font-mono">{report.runId}</span>
+                      Dataset:{' '}
+                      <span className="font-semibold text-slate-700">{report.datasetId}</span> (v
+                      {report.datasetVersion}) • Run:{' '}
+                      <span className="font-mono">{report.runId}</span>
                     </p>
                   </div>
                 </div>
@@ -137,7 +144,8 @@ export function AdminAiEvalPage() {
                   <div className="text-right">
                     <span className="text-slate-400 block">{t.adminEval.lastRun}</span>
                     <span className="font-semibold text-slate-700">
-                      {new Date(report.timestamp).toLocaleTimeString()} {new Date(report.timestamp).toLocaleDateString()}
+                      {new Date(report.timestamp).toLocaleTimeString()}{' '}
+                      {new Date(report.timestamp).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
@@ -168,9 +176,7 @@ export function AdminAiEvalPage() {
                   <span>{t.adminEval.evidencePrecision}</span>
                   <CheckCircle2 className="h-4 w-4 text-emerald-500" />
                 </div>
-                <div className="text-2xl font-bold text-slate-900">
-                  {gate?.evidencePrecision}%
-                </div>
+                <div className="text-2xl font-bold text-slate-900">{gate?.evidencePrecision}%</div>
                 <div className="text-[11px] text-slate-400">Target Threshold: ≥ 90.0%</div>
               </CardContent>
             </Card>
@@ -182,9 +188,7 @@ export function AdminAiEvalPage() {
                   <span>{t.adminEval.safetyPassRate}</span>
                   <ShieldCheck className="h-4 w-4 text-emerald-600" />
                 </div>
-                <div className="text-2xl font-bold text-slate-900">
-                  {gate?.safetyPassRate}%
-                </div>
+                <div className="text-2xl font-bold text-slate-900">{gate?.safetyPassRate}%</div>
                 <div className="text-[11px] text-slate-400">Target Threshold: 100% (Hard Gate)</div>
               </CardContent>
             </Card>
@@ -196,10 +200,10 @@ export function AdminAiEvalPage() {
                   <span>{t.adminEval.p95Latency}</span>
                   <Zap className="h-4 w-4 text-amber-500" />
                 </div>
-                <div className="text-2xl font-bold text-slate-900">
-                  {gate?.p95LatencyMs} ms
+                <div className="text-2xl font-bold text-slate-900">{gate?.p95LatencyMs} ms</div>
+                <div className="text-[11px] text-slate-400">
+                  p50: {gate?.p50LatencyMs}ms (Threshold: ≤ 3500ms)
                 </div>
-                <div className="text-[11px] text-slate-400">p50: {gate?.p50LatencyMs}ms (Threshold: ≤ 3500ms)</div>
               </CardContent>
             </Card>
           </div>
@@ -229,10 +233,14 @@ export function AdminAiEvalPage() {
                           className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between text-xs"
                         >
                           <span className="font-semibold text-slate-800">
-                            {s.sliceKey === 'locale:vi-VN' ? '🇻🇳 Vietnamese (vi-VN)' : '🇬🇧 English (en-US)'}
+                            {s.sliceKey === 'locale:vi-VN'
+                              ? '🇻🇳 Vietnamese (vi-VN)'
+                              : '🇬🇧 English (en-US)'}
                           </span>
                           <div className="flex items-center gap-3">
-                            <span className="text-slate-500">{s.passedCases}/{s.totalCases} passed</span>
+                            <span className="text-slate-500">
+                              {s.passedCases}/{s.totalCases} passed
+                            </span>
                             <Badge variant={s.adherencePercentage >= 90 ? 'success' : 'warning'}>
                               {s.adherencePercentage}%
                             </Badge>
@@ -260,7 +268,9 @@ export function AdminAiEvalPage() {
                             {s.sliceKey.replace('competency:', '')}
                           </span>
                           <div className="flex items-center gap-3">
-                            <span className="text-slate-500">{s.passedCases}/{s.totalCases} passed</span>
+                            <span className="text-slate-500">
+                              {s.passedCases}/{s.totalCases} passed
+                            </span>
                             <Badge variant={s.adherencePercentage >= 90 ? 'success' : 'warning'}>
                               {s.adherencePercentage}%
                             </Badge>
@@ -299,16 +309,17 @@ export function AdminAiEvalPage() {
                         {tc.caseId}
                       </td>
                       <td className="py-3 px-4">
-                        <span className="font-semibold text-slate-800">{tc.role}</span> ({tc.seniority}) •{' '}
+                        <span className="font-semibold text-slate-800">{tc.role}</span> (
+                        {tc.seniority}) •{' '}
                         <span className="text-slate-500">{tc.competencyArea}</span>
                       </td>
                       <td className="py-3 px-4 font-mono">
                         <span className="font-bold text-slate-900">{tc.score}</span> / 10{' '}
-                        <span className="text-slate-400 font-normal">[{tc.expectedMin} - {tc.expectedMax}]</span>
+                        <span className="text-slate-400 font-normal">
+                          [{tc.expectedMin} - {tc.expectedMax}]
+                        </span>
                       </td>
-                      <td className="py-3 px-4 font-mono text-slate-500">
-                        {tc.latencyMs}ms
-                      </td>
+                      <td className="py-3 px-4 font-mono text-slate-500">{tc.latencyMs}ms</td>
                       <td className="py-3 px-4 text-right">
                         <Badge variant={tc.status === 'PASSED' ? 'success' : 'danger'}>
                           {tc.status}

@@ -4,6 +4,7 @@ import { BillingService } from './billing.service';
 import { UsageMeterService } from './usage-meter.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { CreateCheckoutDto, ValidatePromoDto } from './dto/billing.dto';
 
 @ApiTags('Billing & Subscriptions')
@@ -14,6 +15,7 @@ export class BillingController {
     private readonly usageMeter: UsageMeterService,
   ) {}
 
+  @Public()
   @Get('plans')
   @ApiOperation({ summary: 'List all available subscription plans and pricing tiers' })
   async listPlans() {
@@ -32,13 +34,23 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create checkout session for subscription upgrade' })
-  async createCheckout(
-    @CurrentUser('sub') userId: string,
-    @Body() dto: CreateCheckoutDto,
-  ) {
+  async createCheckout(@CurrentUser('sub') userId: string, @Body() dto: CreateCheckoutDto) {
     return this.billingService.createCheckout(userId, {
       ...dto,
       billingCycle: dto.billingCycle || 'monthly',
+    });
+  }
+
+  @Post('payos/checkout')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create PayOS VietQR payment link for subscription upgrade' })
+  async createPayosCheckout(@CurrentUser('sub') userId: string, @Body() dto: any) {
+    return this.billingService.createPayosPayment(userId, {
+      planSlug: dto.planSlug,
+      billingCycle: dto.billingCycle || 'monthly',
+      returnUrl: dto.returnUrl,
+      cancelUrl: dto.cancelUrl,
     });
   }
 
@@ -66,6 +78,7 @@ export class BillingController {
     return this.billingService.getInvoices(userId);
   }
 
+  @Public()
   @Post('promo/validate')
   @ApiOperation({ summary: 'Validate discount promotional code' })
   async validatePromo(@Body() dto: ValidatePromoDto) {

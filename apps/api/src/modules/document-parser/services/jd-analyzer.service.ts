@@ -14,8 +14,15 @@ export class JdAnalyzerService {
     // 1. Detect role title
     let roleTitle = suggestedTitle || 'Senior Software Engineer';
     const roleKeywords = [
-      'Backend Engineer', 'Frontend Engineer', 'Fullstack Engineer', 'DevOps Engineer',
-      'System Architect', 'Data Engineer', 'QA Automation Engineer', 'Mobile Engineer', 'Tech Lead'
+      'Backend Engineer',
+      'Frontend Engineer',
+      'Fullstack Engineer',
+      'DevOps Engineer',
+      'System Architect',
+      'Data Engineer',
+      'QA Automation Engineer',
+      'Mobile Engineer',
+      'Tech Lead',
     ];
     for (const kw of roleKeywords) {
       if (lowerText.includes(kw.toLowerCase())) {
@@ -26,21 +33,69 @@ export class JdAnalyzerService {
 
     // 2. Detect seniority
     let seniorityLevel = 'SENIOR';
-    if (lowerText.includes('junior') || lowerText.includes('entry level') || lowerText.includes('fresher')) {
+    if (
+      lowerText.includes('junior') ||
+      lowerText.includes('entry level') ||
+      lowerText.includes('fresher')
+    ) {
       seniorityLevel = 'JUNIOR';
-    } else if (lowerText.includes('mid') || lowerText.includes('middle') || lowerText.includes('2-3 years') || lowerText.includes('2+ years')) {
+    } else if (
+      lowerText.includes('mid') ||
+      lowerText.includes('middle') ||
+      lowerText.includes('2-3 years') ||
+      lowerText.includes('2+ years')
+    ) {
       seniorityLevel = 'MID';
-    } else if (lowerText.includes('lead') || lowerText.includes('principal') || lowerText.includes('staff')) {
+    } else if (
+      lowerText.includes('lead') ||
+      lowerText.includes('principal') ||
+      lowerText.includes('staff')
+    ) {
       seniorityLevel = 'LEAD';
     }
 
     // 3. Extract required and preferred skills
     const techCatalog = [
-      'JavaScript', 'TypeScript', 'Node.js', 'React', 'Vue', 'Angular', 'Next.js', 'NestJS', 'Express',
-      'Python', 'Django', 'FastAPI', 'Go', 'Golang', 'Java', 'Spring Boot', 'C#', '.NET',
-      'PostgreSQL', 'MySQL', 'MongoDB', 'Redis', 'Kafka', 'RabbitMQ', 'Elasticsearch',
-      'Docker', 'Kubernetes', 'AWS', 'GCP', 'Azure', 'Terraform', 'CI/CD', 'Git', 'GraphQL', 'REST',
-      'System Design', 'Microservices', 'Clean Architecture', 'Unit Testing', 'High Availability'
+      'JavaScript',
+      'TypeScript',
+      'Node.js',
+      'React',
+      'Vue',
+      'Angular',
+      'Next.js',
+      'NestJS',
+      'Express',
+      'Python',
+      'Django',
+      'FastAPI',
+      'Go',
+      'Golang',
+      'Java',
+      'Spring Boot',
+      'C#',
+      '.NET',
+      'PostgreSQL',
+      'MySQL',
+      'MongoDB',
+      'Redis',
+      'Kafka',
+      'RabbitMQ',
+      'Elasticsearch',
+      'Docker',
+      'Kubernetes',
+      'AWS',
+      'GCP',
+      'Azure',
+      'Terraform',
+      'CI/CD',
+      'Git',
+      'GraphQL',
+      'REST',
+      'System Design',
+      'Microservices',
+      'Clean Architecture',
+      'Unit Testing',
+      'High Availability',
     ];
 
     const detectedTech: string[] = [];
@@ -61,11 +116,20 @@ export class JdAnalyzerService {
 
     // 4. Extract responsibilities
     const responsibilities: string[] = [];
-    const lines = jdText.split('\n').map(l => l.trim()).filter(Boolean);
+    const lines = jdText
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean);
     for (const line of lines) {
       if (
         (line.startsWith('-') || line.startsWith('•') || line.startsWith('*')) &&
-        (line.toLowerCase().includes('design') || line.toLowerCase().includes('build') || line.toLowerCase().includes('develop') || line.toLowerCase().includes('lead') || line.toLowerCase().includes('maintain') || line.toLowerCase().includes('xây dựng') || line.toLowerCase().includes('phát triển'))
+        (line.toLowerCase().includes('design') ||
+          line.toLowerCase().includes('build') ||
+          line.toLowerCase().includes('develop') ||
+          line.toLowerCase().includes('lead') ||
+          line.toLowerCase().includes('maintain') ||
+          line.toLowerCase().includes('xây dựng') ||
+          line.toLowerCase().includes('phát triển'))
       ) {
         responsibilities.push(line.replace(/^[-•*]\s*/, ''));
       }
@@ -76,7 +140,7 @@ export class JdAnalyzerService {
         `Design and implement scalable backend microservices and REST/GraphQL APIs`,
         `Collaborate with cross-functional product and infrastructure teams`,
         `Optimize system latency, database queries, and distributed caching mechanisms`,
-        `Participate in code reviews, architectural discussions, and technical mentoring`
+        `Participate in code reviews, architectural discussions, and technical mentoring`,
       );
     }
 

@@ -5,6 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { JwtPayload, UserStatus, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
+import { Request } from 'express';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -15,6 +16,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
+      passReqToCallback: true,
       secretOrKey: configService.get<string>(
         'jwt.accessSecret',
         'dev-access-secret-min-32-chars-ok',
@@ -22,12 +24,24 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: JwtPayload): Promise<JwtPayload> {
+  async validate(req: Request, payload: JwtPayload): Promise<JwtPayload> {
     // Reject temporary MFA challenge tokens attempting to access protected routes (B-001)
-    if (payload.mfaPending || payload.tokenType === 'mfa_challenge') {
+    if (payload.tokenType === 'mfa_challenge') {
       throw new UnauthorizedException(
         'MFA verification required. Challenge token cannot access protected endpoints.',
       );
+    }
+
+    // Enrollment tokens can only access the two endpoints required to complete enrollment.
+    if (payload.tokenType === 'mfa_enrollment') {
+      const requestPath = (req.originalUrl || req.path || '').split('?')[0];
+      const isEnrollmentEndpoint =
+        req.method === 'POST' && /\/auth\/mfa\/(setup|enable)\/?$/.test(requestPath);
+      if (!isEnrollmentEndpoint) {
+        throw new UnauthorizedException(
+          'MFA enrollment required. Please complete MFA setup before accessing this resource.',
+        );
+      }
     }
 
     const user = await this.prisma.user.findUnique({
@@ -53,16 +67,20 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       user.tokenVersion !== undefined &&
       payload.tokenVersion !== user.tokenVersion
     ) {
-      throw new UnauthorizedException('Session invalidated due to password change or security update');
+      throw new UnauthorizedException(
+        'Session invalidated due to password change or security update',
+      );
     }
 
     return {
       sub: user.id,
+      id: user.id,
       email: user.email,
       role: user.role as any,
       status: user.status as any,
       tokenVersion: user.tokenVersion,
-      tokenType: 'access',
+      tokenType: payload.tokenType || 'access',
+      mfaVerified: payload.mfaVerified ?? false,
     };
   }
 }

@@ -46,7 +46,9 @@ export class DocumentParserController {
           !ext.endsWith('.txt')
         ) {
           return callback(
-            new BadRequestException('Invalid file type. Only PDF, DOCX, and TXT files are allowed.'),
+            new BadRequestException(
+              'Invalid file type. Only PDF, DOCX, and TXT files are allowed.',
+            ),
             false,
           );
         }
@@ -61,7 +63,11 @@ export class DocumentParserController {
   ) {
     if (file) {
       const fileName = file.originalname || 'resume.pdf';
-      const fileType = fileName.endsWith('.pdf') ? 'pdf' : fileName.endsWith('.docx') ? 'docx' : 'text';
+      const fileType = fileName.endsWith('.pdf')
+        ? 'pdf'
+        : fileName.endsWith('.docx')
+          ? 'docx'
+          : 'text';
       return this.parserService.parseCv(userId, { fileName, fileType, rawText: '' }, file.buffer);
     }
 
@@ -73,25 +79,23 @@ export class DocumentParserController {
   }
 
   @Post('analyze-jd')
-  async analyzeJd(
-    @CurrentUser('sub') userId: string,
-    @Body() body: any,
-  ) {
+  async analyzeJd(@CurrentUser('sub') userId: string, @Body() body: any) {
     const parsed = AnalyzeJdRequestSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid JD analysis payload');
+      throw new BadRequestException(
+        parsed.error.errors[0]?.message || 'Invalid JD analysis payload',
+      );
     }
     return this.parserService.analyzeJd(userId, parsed.data);
   }
 
   @Post('generate-blueprint')
-  async generateBlueprint(
-    @CurrentUser('sub') userId: string,
-    @Body() body: any,
-  ) {
+  async generateBlueprint(@CurrentUser('sub') userId: string, @Body() body: any) {
     const parsed = GenerateBlueprintRequestSchema.safeParse(body);
     if (!parsed.success) {
-      throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid blueprint request payload');
+      throw new BadRequestException(
+        parsed.error.errors[0]?.message || 'Invalid blueprint request payload',
+      );
     }
     return this.parserService.generateBlueprint(userId, parsed.data);
   }
@@ -112,18 +116,12 @@ export class DocumentParserController {
   }
 
   @Get('blueprints/:id')
-  async getBlueprint(
-    @CurrentUser('sub') userId: string,
-    @Param('id') id: string,
-  ) {
+  async getBlueprint(@CurrentUser('sub') userId: string, @Param('id') id: string) {
     return this.parserService.getBlueprint(userId, id);
   }
 
   @Delete(':id')
-  async deleteDocument(
-    @CurrentUser('sub') userId: string,
-    @Param('id') id: string,
-  ) {
+  async deleteDocument(@CurrentUser('sub') userId: string, @Param('id') id: string) {
     return this.parserService.deleteDocument(userId, id);
   }
 }

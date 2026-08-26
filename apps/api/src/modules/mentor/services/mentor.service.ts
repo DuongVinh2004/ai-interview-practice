@@ -80,7 +80,7 @@ export class MentorService {
       });
 
       await this.prisma.mentorAvailability.createMany({
-        data: dto.availabilities.map((slot) => ({
+        data: dto.availabilities.map(slot => ({
           mentorId: updated.id,
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
@@ -102,7 +102,7 @@ export class MentorService {
 
     if (dto.slots && dto.slots.length > 0) {
       await this.prisma.mentorAvailability.createMany({
-        data: dto.slots.map((slot) => ({
+        data: dto.slots.map(slot => ({
           mentorId: profile.id,
           dayOfWeek: slot.dayOfWeek,
           startTime: slot.startTime,
@@ -156,7 +156,7 @@ export class MentorService {
       orderBy: [{ rating: 'desc' }, { totalSessions: 'desc' }],
     });
 
-    return mentors.map((m) => ({
+    return mentors.map(m => ({
       id: m.id,
       userId: m.userId,
       fullName: m.user.profile?.fullName || m.user.email.split('@')[0],

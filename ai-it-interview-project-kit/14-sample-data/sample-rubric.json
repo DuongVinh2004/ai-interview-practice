@@ -2,7 +2,7 @@
   "id": "rubric_idempotency",
   "version": "1.0.0",
   "status": "published",
-  "scoreRange": {"min": 0, "max": 100},
+  "scoreRange": { "min": 0, "max": 100 },
   "criteria": [
     {
       "id": "idempotency_key",

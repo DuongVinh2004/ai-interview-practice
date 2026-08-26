@@ -30,10 +30,7 @@ export function AdminAiRunsPage() {
   });
 
   // 2. Fetch AI Runs List
-  const {
-    data: runsData,
-    isLoading: isRunsLoading,
-  } = useQuery<{ items: any[]; meta: any }>({
+  const { data: runsData, isLoading: isRunsLoading } = useQuery<{ items: any[]; meta: any }>({
     queryKey: ['admin-ai-runs', page, providerFilter, statusFilter],
     queryFn: () => {
       const params = new URLSearchParams();
@@ -167,7 +164,10 @@ export function AdminAiRunsPage() {
           {circuitEntries.length === 0 ? (
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <ShieldCheck className="h-4 w-4 text-emerald-600" />
-              <span>All provider circuits are healthy and in <strong>CLOSED</strong> (operational) state.</span>
+              <span>
+                All provider circuits are healthy and in <strong>CLOSED</strong> (operational)
+                state.
+              </span>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">

@@ -23,7 +23,11 @@ export function useTutor() {
   });
 
   // 2. Fetch session history
-  const { data: session, isLoading: isLoadingSession, refetch: refetchSession } = useQuery({
+  const {
+    data: session,
+    isLoading: isLoadingSession,
+    refetch: refetchSession,
+  } = useQuery({
     queryKey: ['tutor', 'session', activeSessionId],
     queryFn: async () => {
       if (!activeSessionId) return null;

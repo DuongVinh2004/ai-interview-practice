@@ -10,14 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { RubricBreakdown } from '../../components/interview/RubricBreakdown';
 import { MentorFeedbackList } from '../../components/share/MentorFeedbackList';
-import {
-  Award,
-  Globe,
-  Printer,
-  BookOpen,
-  AlertCircle,
-  User,
-} from 'lucide-react';
+import { Award, Globe, Printer, BookOpen, AlertCircle, User, ShieldCheck } from 'lucide-react';
 
 export function PublicSharedResultPage() {
   const { token } = useParams<{ token: string }>();
@@ -33,9 +26,10 @@ export function PublicSharedResultPage() {
   } = useQuery<any>({
     queryKey: ['public-share-report', token, submittedPasscode],
     queryFn: () =>
-      apiClient(
-        `/public/share/${token}${submittedPasscode ? `?passcode=${encodeURIComponent(submittedPasscode)}` : ''}`,
-      ),
+      apiClient(`/public/share/${token}/access`, {
+        method: 'POST',
+        body: JSON.stringify({ passcode: submittedPasscode || undefined }),
+      }),
     enabled: !!token,
     retry: false,
   });
@@ -65,9 +59,7 @@ export function PublicSharedResultPage() {
           </div>
           <h2 className="text-xl font-bold text-slate-900">Link Unavailable or Expired</h2>
           <p className="text-xs text-slate-500">
-            {errorMsg.includes('passcode')
-              ? 'This report is protected by a passcode.'
-              : errorMsg}
+            {errorMsg.includes('passcode') ? 'This report is protected by a passcode.' : errorMsg}
           </p>
 
           {errorMsg.includes('passcode') && (
@@ -115,11 +107,10 @@ export function PublicSharedResultPage() {
               <Globe className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-sm sm:text-base font-bold">
-                {t.share.publicReviewBanner}
-              </h1>
+              <h1 className="text-sm sm:text-base font-bold">{t.share.publicReviewBanner}</h1>
               <p className="text-xs text-emerald-100 mt-0.5">
-                Verified Evaluation Artifact • {new Date(publicReport.createdAt).toLocaleDateString()}
+                Verified Evaluation Artifact •{' '}
+                {new Date(publicReport.createdAt).toLocaleDateString()}
               </p>
             </div>
           </div>
@@ -132,6 +123,20 @@ export function PublicSharedResultPage() {
             <Printer className="h-4 w-4" />
             <span>{t.share.printPdf}</span>
           </Button>
+        </div>
+
+        {/* Formative Practice Disclaimer Alert */}
+        <div className="bg-emerald-50/80 border border-emerald-200 p-4 rounded-2xl flex items-start gap-3 text-xs text-emerald-900 shadow-xs">
+          <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
+          <div>
+            <span className="font-bold block text-emerald-950 text-sm">
+              Practice Assessment Report • Mentorship & Learning Artifact
+            </span>
+            <p className="mt-0.5 text-emerald-800 leading-relaxed">
+              This report is shared for peer mentoring and developmental feedback. All scores are
+              formative and reflect practice session performance.
+            </p>
+          </div>
         </div>
 
         {/* Candidate & Scorecard Header */}
@@ -148,7 +153,11 @@ export function PublicSharedResultPage() {
                 </h2>
                 <div className="flex flex-wrap gap-1.5 justify-center md:justify-start pt-1">
                   {session.technologies.map((t: any) => (
-                    <Badge key={t.id} variant="default" className="bg-slate-800 text-slate-300 border-slate-700">
+                    <Badge
+                      key={t.id}
+                      variant="default"
+                      className="bg-slate-800 text-slate-300 border-slate-700"
+                    >
                       {t.name}
                     </Badge>
                   ))}
@@ -270,15 +279,30 @@ export function PublicSharedResultPage() {
               <p className="text-sm text-slate-600">{session.learningPath.summary}</p>
               <div className="space-y-3">
                 {session.learningPath.items.map((item: any) => (
-                  <div key={item.id} className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                  <div
+                    key={item.id}
+                    className="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-2"
+                  >
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-slate-900">{item.topic}</span>
-                      <Badge variant={item.priority === 'HIGH' ? 'danger' : item.priority === 'MEDIUM' ? 'warning' : 'default'}>
+                      <Badge
+                        variant={
+                          item.priority === 'HIGH'
+                            ? 'danger'
+                            : item.priority === 'MEDIUM'
+                              ? 'warning'
+                              : 'default'
+                        }
+                      >
                         {item.priority} Priority
                       </Badge>
                     </div>
-                    <p className="text-xs text-slate-600"><strong className="text-slate-700">Skill Gap:</strong> {item.gap}</p>
-                    <p className="text-xs text-slate-700"><strong className="text-slate-800">Action:</strong> {item.recommendedAction}</p>
+                    <p className="text-xs text-slate-600">
+                      <strong className="text-slate-700">Skill Gap:</strong> {item.gap}
+                    </p>
+                    <p className="text-xs text-slate-700">
+                      <strong className="text-slate-800">Action:</strong> {item.recommendedAction}
+                    </p>
                   </div>
                 ))}
               </div>

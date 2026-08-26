@@ -28,16 +28,23 @@ export const JdInputCard: React.FC<JdInputCardProps> = ({
       const res = await onAnalyzeJd(jdText, roleTitle || undefined);
       onAnalyzed(res);
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không thể phân tích Job Description');
+      setError(
+        err?.response?.data?.message || err?.message || 'Không thể phân tích Job Description',
+      );
     }
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4" data-testid="jd-input-card">
+    <div
+      className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm space-y-4"
+      data-testid="jd-input-card"
+    >
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center space-x-2">
           <Briefcase className="w-5 h-5 text-indigo-600" />
-          <h3 className="text-sm font-bold text-slate-800">2. Job Description (Mô tả công việc mục tiêu)</h3>
+          <h3 className="text-sm font-bold text-slate-800">
+            2. Job Description (Mô tả công việc mục tiêu)
+          </h3>
         </div>
       </div>
 

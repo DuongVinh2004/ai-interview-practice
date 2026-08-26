@@ -28,10 +28,7 @@ describe('TutorService (F006)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        TutorService,
-        { provide: PrismaService, useValue: mockPrisma },
-      ],
+      providers: [TutorService, { provide: PrismaService, useValue: mockPrisma }],
     }).compile();
 
     tutorService = module.get<TutorService>(TutorService);
@@ -173,7 +170,8 @@ describe('TutorService (F006)', () => {
         interviewId: 'int-123',
         turnNumber: 1,
         originalAnswer: 'Just use Redis SETNX.',
-        retryAnswer: 'Use Redlock algorithm with TTL and random UUID token to prevent releasing other locks.',
+        retryAnswer:
+          'Use Redlock algorithm with TTL and random UUID token to prevent releasing other locks.',
         originalScore: 5.0,
         retryScore: 8.5,
         improvement: 3.5,
@@ -183,7 +181,8 @@ describe('TutorService (F006)', () => {
       const result = await tutorService.submitRetry('user-1', {
         interviewId: 'int-123',
         turnNumber: 1,
-        retryAnswer: 'Use Redlock algorithm with TTL and random UUID token to prevent releasing other locks.',
+        retryAnswer:
+          'Use Redlock algorithm with TTL and random UUID token to prevent releasing other locks.',
       });
 
       expect(result.retryId).toBe('retry-uuid-1');
