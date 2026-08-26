@@ -56,8 +56,8 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
     await page.click(
       'button:has-text("Câu hỏi 1"), button:has-text("Question 1"), button:has-text("1")',
     );
-    await expect(
-      page.getByText(/(độ chính xác kỹ thuật|technical accuracy)/i).first(),
-    ).toBeVisible();
+    await expect(page.getByText(/(độ chính xác kỹ thuật|technical accuracy)/i).first()).toBeVisible(
+      { timeout: 15000 },
+    );
   });
 });

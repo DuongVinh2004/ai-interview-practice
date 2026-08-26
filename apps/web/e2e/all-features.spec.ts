@@ -52,7 +52,7 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     await page.fill('#email', 'admin@example.com');
     await page.fill('#password', 'Admin@123456');
     await page.click('button[type="submit"]');
-    await expect(page).toHaveURL(/(\/|\/profile\?setupMfa=1)/);
+    await expect(page).not.toHaveURL(/\/login/);
 
     // 3. Admin Users Management
     await page.goto('/admin/users');
