@@ -127,4 +127,3 @@ export const PayosWebhookSchema = z.object({
   signature: z.string(),
 });
 export type PayosWebhookDto = z.infer<typeof PayosWebhookSchema>;
-

@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { XpSource } from '../enums/index';
 
-
 export const XpTransactionDtoSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),

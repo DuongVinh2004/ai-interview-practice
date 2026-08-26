@@ -57,3 +57,37 @@ variable "worker_memory" {
   type    = number
   default = 1024
 }
+
+variable "jwt_access_secret" {
+  type      = string
+  sensitive = true
+  default   = "production-jwt-access-secret-min-32-chars-override"
+}
+
+variable "jwt_refresh_secret" {
+  type      = string
+  sensitive = true
+  default   = "production-jwt-refresh-secret-min-32-chars-override"
+}
+
+variable "db_username" {
+  type    = string
+  default = "postgres"
+}
+
+variable "db_password" {
+  type      = string
+  sensitive = true
+  default   = ""
+}
+
+variable "db_name" {
+  type    = string
+  default = "ai_interview_practice"
+}
+
+variable "redis_auth_token" {
+  type      = string
+  sensitive = true
+  default   = ""
+}

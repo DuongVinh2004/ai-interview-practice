@@ -74,6 +74,7 @@ export const SystemDesignSessionDtoSchema = z.object({
 export type SystemDesignSessionDto = z.infer<typeof SystemDesignSessionDtoSchema>;
 
 export const VisionAnalysisResultSchema = z.object({
+  snapshotId: z.string().optional(),
   summary: z.string(),
   detectedComponents: z.array(z.string()),
   architectureStyle: z.string(),

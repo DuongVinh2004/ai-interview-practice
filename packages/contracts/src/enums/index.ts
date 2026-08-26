@@ -336,4 +336,3 @@ export enum XpSource {
   BADGE_UNLOCK = 'BADGE_UNLOCK',
   DAILY_LOGIN = 'DAILY_LOGIN',
 }
-

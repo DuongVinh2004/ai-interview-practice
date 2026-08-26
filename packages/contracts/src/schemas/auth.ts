@@ -79,10 +79,11 @@ export type AuthResponse = z.infer<typeof AuthResponseSchema>;
 
 export const JwtPayloadSchema = z.object({
   sub: z.string().uuid(),
+  id: z.string().uuid().optional(),
   email: z.string().email(),
   role: z.nativeEnum(UserRole),
   status: z.nativeEnum(UserStatus),
-  tokenType: z.enum(['access', 'mfa_challenge']).optional(),
+  tokenType: z.enum(['access', 'mfa_challenge', 'mfa_enrollment']).optional(),
   tokenVersion: z.number().optional(),
   mfaPending: z.boolean().optional(),
   mfaVerified: z.boolean().optional(),

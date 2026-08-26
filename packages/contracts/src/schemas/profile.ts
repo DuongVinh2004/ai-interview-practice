@@ -62,6 +62,14 @@ export type CompetencyBenchmarkResponse = z.infer<typeof CompetencyBenchmarkResp
 export const UserDataExportSchema = z.object({
   exportedAt: z.string(),
   gdprComplianceVersion: z.string(),
+  manifestVersion: z.string().default('1.0.0'),
+  retentionPolicySummary: z
+    .object({
+      cvRetentionDays: z.number().int().default(30),
+      voiceRetentionDays: z.number().int().default(30),
+      sessionRetentionDays: z.number().int().default(730),
+    })
+    .optional(),
   user: z.object({
     id: z.string().uuid(),
     email: z.string().email(),
@@ -76,6 +84,19 @@ export const UserDataExportSchema = z.object({
     bio: z.string().nullable().optional(),
   }),
   sessions: z.array(InterviewSessionDtoSchema),
+  documents: z
+    .array(
+      z.object({
+        id: z.string(),
+        fileName: z.string(),
+        fileType: z.string(),
+        status: z.string(),
+        createdAt: z.string(),
+        expiresAt: z.string().nullable().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
   summary: z.object({
     totalSessionsCount: z.number().int().min(0),
     completedSessionsCount: z.number().int().min(0),

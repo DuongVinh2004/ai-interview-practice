@@ -129,7 +129,7 @@ resource "aws_lb_target_group" "api" {
 
   health_check {
     enabled             = true
-    path                = "/api/v1/health/live"
+    path                = "/api/v1/health/ready"
     port                = "3001"
     protocol            = "HTTP"
     matcher             = "200"
@@ -177,9 +177,13 @@ resource "aws_ecs_task_definition" "api" {
         { name = "NODE_ENV", value = "production" },
         { name = "PORT", value = "3001" },
         { name = "API_PREFIX", value = "/api/v1" },
-        { name = "DATABASE_URL", value = "postgresql://${var.db_endpoint}/${var.environment}?schema=public" },
+        { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${var.db_password}@${var.db_endpoint}/${var.db_name}?schema=public&sslmode=require" },
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = "6379" },
+        { name = "REDIS_PASSWORD", value = var.redis_auth_token },
+        { name = "REDIS_TLS", value = "true" },
+        { name = "JWT_ACCESS_SECRET", value = var.jwt_access_secret },
+        { name = "JWT_REFRESH_SECRET", value = var.jwt_refresh_secret },
         { name = "S3_BUCKET_NAME", value = var.s3_bucket_name }
       ]
       logConfiguration = {
@@ -208,13 +212,17 @@ resource "aws_ecs_task_definition" "worker" {
     {
       name      = "worker"
       image     = "ai-interview-api:latest"
-      command   = ["node", "dist/src/worker.js"]
+      command   = ["node", "apps/api/dist/worker.js"]
       essential = true
       environment = [
         { name = "NODE_ENV", value = "production" },
-        { name = "DATABASE_URL", value = "postgresql://${var.db_endpoint}/${var.environment}?schema=public" },
+        { name = "DATABASE_URL", value = "postgresql://${var.db_username}:${var.db_password}@${var.db_endpoint}/${var.db_name}?schema=public&sslmode=require" },
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = "6379" },
+        { name = "REDIS_PASSWORD", value = var.redis_auth_token },
+        { name = "REDIS_TLS", value = "true" },
+        { name = "JWT_ACCESS_SECRET", value = var.jwt_access_secret },
+        { name = "JWT_REFRESH_SECRET", value = var.jwt_refresh_secret },
         { name = "S3_BUCKET_NAME", value = var.s3_bucket_name }
       ]
       logConfiguration = {
