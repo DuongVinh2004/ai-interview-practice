@@ -110,8 +110,12 @@ async function bootstrapWorker() {
 
   const handleShutdown = async (signal: string) => {
     logger.log(`Received ${signal}, closing worker gracefully...`);
-    server.close();
-    await app.close();
+    try {
+      server.close();
+    } catch {}
+    try {
+      await app.close();
+    } catch {}
     process.exit(0);
   };
 

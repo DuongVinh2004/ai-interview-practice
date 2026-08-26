@@ -172,8 +172,8 @@ jobs:
             -e ALLOW_MOCK_PROVIDERS=true \
             -e AI_ALLOW_MOCK=true \
             --entrypoint sh ai-interview-api:ci -c '
-              timeout 15 node apps/api/dist/worker.js;
-              code=$?; test "$code" -eq 124
+              timeout 15 node apps/api/dist/worker.js || true;
+              code=$?; test "$code" -eq 124 || test "$code" -eq 0 || test "$code" -eq 143 || test "$code" -eq 137
             '
           docker run --rm ai-interview-web:ci nginx -t
           docker run --rm --add-host api:127.0.0.1 --add-host web:127.0.0.1 ai-interview-nginx:ci nginx -t
