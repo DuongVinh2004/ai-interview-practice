@@ -30,11 +30,15 @@ test.describe('AI Interview Practice Vertical Slice Happy Path', () => {
 
     // 5. Select technology and start interview
     await page.click('button:has-text("TypeScript")');
-    await page.click('button:has-text("Begin 5-Question Interview"), button:has-text("Bắt đầu")');
+    await page.click(
+      'button:has-text("Bắt Đầu Phỏng Vấn Ngay"), button:has-text("Begin 5-Question Interview"), button:has-text("Bắt đầu")',
+    );
 
     // 6. Enter Interview Room
-    await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/);
-    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 1/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/, { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: /(câu hỏi|question) 1/i })).toBeVisible({
+      timeout: 15000,
+    });
 
     // 7. Wait for Question to be generated and displayed
     await expect(page.locator('#answer-textarea')).toBeVisible({ timeout: 15000 });

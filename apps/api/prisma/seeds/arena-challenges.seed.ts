@@ -1,4 +1,4 @@
-import { PrismaClient, ChallengeStatus } from '@prisma/client';
+import { PrismaClient, ArenaChallengeStatus } from '@prisma/client';
 import { BENCHMARK_CHALLENGES } from '../../src/modules/engineering-arena/fixtures/benchmark-challenges';
 
 const prisma = new PrismaClient();
@@ -17,7 +17,7 @@ export async function seedArenaChallenges() {
         category: manifest.category as any,
         difficulty: manifest.difficulty,
         estimatedMinutes: manifest.estimatedMinutes,
-        status: ChallengeStatus.PUBLISHED,
+        status: ArenaChallengeStatus.PUBLISHED,
       },
       create: {
         slug: manifest.slug,
@@ -26,7 +26,7 @@ export async function seedArenaChallenges() {
         category: manifest.category as any,
         difficulty: manifest.difficulty,
         estimatedMinutes: manifest.estimatedMinutes,
-        status: ChallengeStatus.PUBLISHED,
+        status: ArenaChallengeStatus.PUBLISHED,
       },
     });
 
@@ -39,13 +39,13 @@ export async function seedArenaChallenges() {
       },
       update: {
         manifestJson: manifest as any,
-        changelog: 'Initial benchmark release version 1.0',
+        validationSummary: 'Initial benchmark release version 1.0',
       },
       create: {
         challengeId: challenge.id,
         versionNumber: 1,
         manifestJson: manifest as any,
-        changelog: 'Initial benchmark release version 1.0',
+        validationSummary: 'Initial benchmark release version 1.0',
       },
     });
 
