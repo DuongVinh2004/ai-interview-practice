@@ -48,7 +48,7 @@ export class RolesGuard implements CanActivate {
 
     // Administrators accessing admin-protected endpoints must have verified MFA (SEC-003)
     if (requiredRoles.includes(UserRole.ADMIN) && user.role === UserRole.ADMIN) {
-      if (process.env.ALLOW_MOCK_PROVIDERS === 'true' || process.env.NODE_ENV === 'test') {
+      if (process.env.BYPASS_ADMIN_MFA === 'true') {
         return true;
       }
       const dbUser = await this.prisma.user.findUnique({

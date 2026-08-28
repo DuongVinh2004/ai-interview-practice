@@ -130,6 +130,7 @@ jobs:
           JWT_ACCESS_SECRET: 'ci-test-jwt-access-secret-32-chars-long'
           JWT_REFRESH_SECRET: 'ci-test-jwt-refresh-secret-32-chars-long'
           ALLOW_MOCK_PROVIDERS: 'true'
+          BYPASS_ADMIN_MFA: 'true'
         run: |
           pnpm --filter web exec playwright install --with-deps chromium
           pnpm --filter web test:e2e

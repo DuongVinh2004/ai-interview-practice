@@ -262,7 +262,7 @@ export class AuthService {
 
     // Enforce: Admin must setup MFA if not yet enabled (SEC-003)
     if (user.role === UserRole.ADMIN && !user.mfaEnabled) {
-      if (process.env.ALLOW_MOCK_PROVIDERS === 'true' || process.env.NODE_ENV === 'test') {
+      if (process.env.BYPASS_ADMIN_MFA === 'true') {
         return this.generateAuthResponse(user, true);
       }
       const authResponse = this.generateMfaEnrollmentResponse(user);
