@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { VoiceEventType, SpeakerRole } from '@ai-interview/contracts';
+import { apiClient } from '../lib/api-client';
 
 export interface TranscriptItem {
   speaker: SpeakerRole;
@@ -24,6 +25,9 @@ export function useVoiceStreaming(interviewId?: string) {
   const [isCandidateSpeaking, setIsCandidateSpeaking] = useState(false);
   const [candidateVolume, setCandidateVolume] = useState(0);
   const [aiVolume, setAiVolume] = useState(0);
+  const [silenceDurationSec, setSilenceDurationSec] = useState(0);
+  const [isProlongedSilence, setIsProlongedSilence] = useState(false);
+  const [isFallbackToRest, setIsFallbackToRest] = useState(false);
   const [transcripts, setTranscripts] = useState<TranscriptItem[]>([]);
   const [networkQuality, setNetworkQuality] = useState<NetworkQuality>({
     latencyMs: 22,
@@ -39,16 +43,97 @@ export function useVoiceStreaming(interviewId?: string) {
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const pingIntervalRef = useRef<any>(null);
+  const silenceTimerRef = useRef<any>(null);
+  const isMountedRef = useRef(true);
+  const mediaGenerationRef = useRef(0);
 
-  // 1. Connect to Voice WebSocket Gateway
-  const connect = useCallback(() => {
+  const isCandidateSpeakingRef = useRef(false);
+  const isAiSpeakingRef = useRef(false);
+  const isMutedRef = useRef(false);
+
+  isCandidateSpeakingRef.current = isCandidateSpeaking;
+  isAiSpeakingRef.current = isAiSpeaking;
+  isMutedRef.current = isMuted;
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      mediaGenerationRef.current += 1;
+    };
+  }, []);
+
+  // 1. Resource Cleanup to Prevent Memory & Socket Leaks
+  const stopMicrophone = useCallback(() => {
+    mediaGenerationRef.current += 1;
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(t => {
+        try {
+          t.stop();
+        } catch {
+          // ignore
+        }
+      });
+      mediaStreamRef.current = null;
+    }
+    if (workletNodeRef.current) {
+      try {
+        if (workletNodeRef.current.port) {
+          workletNodeRef.current.port.onmessage = null;
+        }
+        workletNodeRef.current.disconnect();
+      } catch {
+        // ignore
+      }
+      workletNodeRef.current = null;
+    }
+    if (scriptProcessorRef.current) {
+      try {
+        scriptProcessorRef.current.onaudioprocess = null;
+        scriptProcessorRef.current.disconnect();
+      } catch {
+        // ignore
+      }
+      scriptProcessorRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    setCandidateVolume(0);
+    setIsCandidateSpeaking(false);
+  }, []);
+
+  const resetSilenceTimer = useCallback(() => {
+    setSilenceDurationSec(0);
+    setIsProlongedSilence(false);
+  }, []);
+
+  // 2. Connect to Voice WebSocket Gateway
+  const connect = useCallback(async () => {
     if (!interviewId || wsRef.current) return;
 
     setConnectionStatus('CONNECTING');
+    setIsFallbackToRest(false);
+
+    let ticket: string | undefined;
+    try {
+      const res = await apiClient.post<{ ticket?: string; data?: { ticket?: string } }>(
+        '/voice-gateway/ticket',
+        { interviewId },
+      );
+      ticket = (res as any)?.ticket || (res as any)?.data?.ticket;
+    } catch {
+      // Allow fallback / direct connect in mock/test
+    }
+
+    if (!isMountedRef.current) return;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
-    const wsUrl = `${protocol}//${host}/voice`;
+    const wsUrl = ticket
+      ? `${protocol}//${host}/voice?ticket=${encodeURIComponent(ticket)}`
+      : `${protocol}//${host}/voice`;
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -60,6 +145,7 @@ export function useVoiceStreaming(interviewId?: string) {
         JSON.stringify({
           type: VoiceEventType.CONNECT,
           interviewId,
+          ticket,
         }),
       );
 
@@ -70,6 +156,24 @@ export function useVoiceStreaming(interviewId?: string) {
           ws.send(JSON.stringify({ type: 'ping', clientTimestamp: pingStart }));
         }
       }, 3000);
+
+      // Start silence tracking interval (evaluates every second)
+      silenceTimerRef.current = setInterval(() => {
+        if (!isAiSpeakingRef.current && !isMutedRef.current) {
+          if (!isCandidateSpeakingRef.current) {
+            setSilenceDurationSec(prev => {
+              const next = prev + 1;
+              if (next >= 15) {
+                setIsProlongedSilence(true);
+              }
+              return next;
+            });
+          } else {
+            setSilenceDurationSec(0);
+            setIsProlongedSilence(false);
+          }
+        }
+      }, 1000);
     };
 
     ws.onmessage = async event => {
@@ -90,14 +194,17 @@ export function useVoiceStreaming(interviewId?: string) {
       setConnectionStatus('ENDED');
       stopMicrophone();
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
     };
 
     ws.onerror = () => {
       setConnectionStatus('ERROR');
+      setIsFallbackToRest(true);
       stopMicrophone();
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
     };
-  }, [interviewId]);
+  }, [interviewId, stopMicrophone]);
 
   const handleServerJsonEvent = (msg: any) => {
     switch (msg.type) {
@@ -108,6 +215,8 @@ export function useVoiceStreaming(interviewId?: string) {
 
       case VoiceEventType.AI_SPEAKING_START:
         setIsAiSpeaking(true);
+        setSilenceDurationSec(0);
+        setIsProlongedSilence(false);
         if (msg.text) {
           setTranscripts(prev => [
             ...prev,
@@ -119,6 +228,7 @@ export function useVoiceStreaming(interviewId?: string) {
       case VoiceEventType.AI_SPEAKING_END:
         setIsAiSpeaking(false);
         setAiVolume(0);
+        setSilenceDurationSec(0);
         break;
 
       case VoiceEventType.INTERIM_TRANSCRIPT:
@@ -165,14 +275,36 @@ export function useVoiceStreaming(interviewId?: string) {
         });
         break;
 
+      case VoiceEventType.FALLBACK_TO_TEXT:
+        setIsFallbackToRest(true);
+        break;
+
+      case VoiceEventType.QUOTA_EXCEEDED:
+        setConnectionStatus('ERROR');
+        setIsFallbackToRest(true);
+        stopMicrophone();
+        break;
+
+      case VoiceEventType.ERROR:
+        if (
+          msg.message?.toLowerCase().includes('quota') ||
+          msg.message?.toLowerCase().includes('limit')
+        ) {
+          setConnectionStatus('ERROR');
+          setIsFallbackToRest(true);
+          stopMicrophone();
+        }
+        break;
+
       case VoiceEventType.DISCONNECT:
         setConnectionStatus('ENDED');
         break;
     }
   };
 
-  // 2. Microphone Capture with AudioWorkletNode & ScriptProcessor fallback
+  // 3. Microphone Capture with AudioWorkletNode & ScriptProcessor fallback
   const startMicrophone = async () => {
+    const generation = ++mediaGenerationRef.current;
     try {
       if (!navigator.mediaDevices?.getUserMedia) return;
 
@@ -185,6 +317,18 @@ export function useVoiceStreaming(interviewId?: string) {
           autoGainControl: true,
         },
       });
+
+      if (!isMountedRef.current || mediaGenerationRef.current !== generation) {
+        stream.getTracks().forEach(t => {
+          try {
+            t.stop();
+          } catch {
+            // ignore track stop error on aborted stream
+          }
+        });
+        return;
+      }
+
       mediaStreamRef.current = stream;
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -203,7 +347,8 @@ export function useVoiceStreaming(interviewId?: string) {
           workletNodeRef.current = workletNode;
 
           workletNode.port.onmessage = (event: MessageEvent) => {
-            if (isMuted || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+            if (isMutedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
+              return;
             const buffer = event.data as ArrayBuffer;
             const int16 = new Int16Array(buffer);
             let sum = 0;
@@ -212,7 +357,12 @@ export function useVoiceStreaming(interviewId?: string) {
             }
             const avg = sum / int16.length / 32768.0;
             setCandidateVolume(avg);
-            setIsCandidateSpeaking(avg > 0.03);
+            const speaking = avg > 0.03;
+            setIsCandidateSpeaking(speaking);
+            if (speaking) {
+              setSilenceDurationSec(0);
+              setIsProlongedSilence(false);
+            }
 
             wsRef.current.send(buffer);
           };
@@ -231,7 +381,8 @@ export function useVoiceStreaming(interviewId?: string) {
         scriptProcessorRef.current = processor;
 
         processor.onaudioprocess = e => {
-          if (isMuted || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+          if (isMutedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
+            return;
 
           const inputData = e.inputBuffer.getChannelData(0);
           const pcm16 = new Int16Array(inputData.length);
@@ -244,7 +395,12 @@ export function useVoiceStreaming(interviewId?: string) {
 
           const avgVolume = sum / inputData.length;
           setCandidateVolume(avgVolume);
-          setIsCandidateSpeaking(avgVolume > 0.03);
+          const speaking = avgVolume > 0.03;
+          setIsCandidateSpeaking(speaking);
+          if (speaking) {
+            setSilenceDurationSec(0);
+            setIsProlongedSilence(false);
+          }
 
           wsRef.current.send(pcm16.buffer);
         };
@@ -257,26 +413,7 @@ export function useVoiceStreaming(interviewId?: string) {
     }
   };
 
-  const stopMicrophone = () => {
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach(t => t.stop());
-      mediaStreamRef.current = null;
-    }
-    if (workletNodeRef.current) {
-      workletNodeRef.current.disconnect();
-      workletNodeRef.current = null;
-    }
-    if (scriptProcessorRef.current) {
-      scriptProcessorRef.current.disconnect();
-      scriptProcessorRef.current = null;
-    }
-    if (audioContextRef.current) {
-      audioContextRef.current.close().catch(() => {});
-      audioContextRef.current = null;
-    }
-  };
-
-  // 3. Audio Chunk Playback
+  // 4. Audio Chunk Playback
   const playAudioChunk = async (arrayBuffer: ArrayBuffer) => {
     try {
       if (!audioContextRef.current) {
@@ -311,7 +448,7 @@ export function useVoiceStreaming(interviewId?: string) {
     }
   };
 
-  // 4. Client Controls
+  // 5. Client Controls
   const triggerBargeIn = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: VoiceEventType.INTERRUPT }));
@@ -325,21 +462,40 @@ export function useVoiceStreaming(interviewId?: string) {
     setIsMuted(prev => !prev);
   };
 
-  const disconnect = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: VoiceEventType.DISCONNECT }));
-      wsRef.current.close();
+  const disconnect = useCallback(() => {
+    if (wsRef.current) {
+      const ws = wsRef.current;
+      if (ws.readyState === WebSocket.OPEN) {
+        try {
+          ws.send(JSON.stringify({ type: VoiceEventType.DISCONNECT }));
+          ws.close();
+        } catch {
+          // ignore
+        }
+      }
+      ws.onopen = null;
+      ws.onmessage = null;
+      ws.onclose = null;
+      ws.onerror = null;
+      wsRef.current = null;
     }
     stopMicrophone();
-    if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
+    if (silenceTimerRef.current) {
+      clearInterval(silenceTimerRef.current);
+      silenceTimerRef.current = null;
+    }
     setConnectionStatus('ENDED');
-  };
+  }, [stopMicrophone]);
 
   useEffect(() => {
     return () => {
       disconnect();
     };
-  }, []);
+  }, [disconnect]);
 
   return {
     connectionStatus,
@@ -351,6 +507,10 @@ export function useVoiceStreaming(interviewId?: string) {
     isCandidateSpeaking,
     candidateVolume,
     aiVolume,
+    silenceDurationSec,
+    isProlongedSilence,
+    resetSilenceTimer,
+    isFallbackToRest,
     transcripts,
     networkQuality,
     bargeInCount,

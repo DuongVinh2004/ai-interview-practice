@@ -189,6 +189,36 @@ resource "aws_security_group" "app" {
   }
 }
 
+resource "aws_security_group" "monitoring" {
+  name        = "ai-interview-monitoring-sg-${var.environment}"
+  description = "Service identity for approved private metrics collectors"
+  vpc_id      = aws_vpc.main.id
+
+  tags = {
+    Name = "ai-interview-monitoring-sg-${var.environment}"
+  }
+}
+
+resource "aws_security_group_rule" "metrics_from_monitoring" {
+  type                     = "ingress"
+  description              = "Authenticated metrics from approved collectors"
+  from_port                = 9090
+  to_port                  = 9091
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.monitoring.id
+  security_group_id        = aws_security_group.app.id
+}
+
+resource "aws_security_group_rule" "monitoring_to_metrics" {
+  type                     = "egress"
+  description              = "Scrape API and worker metrics exporters"
+  from_port                = 9090
+  to_port                  = 9091
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.app.id
+  security_group_id        = aws_security_group.monitoring.id
+}
+
 resource "aws_security_group" "db" {
   name        = "ai-interview-db-sg-${var.environment}"
   description = "Security group for RDS PostgreSQL"

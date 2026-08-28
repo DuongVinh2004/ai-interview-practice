@@ -25,6 +25,10 @@ export class ElevenLabsTtsProvider {
     this.isConfigured = !!this.apiKey && !this.apiKey.includes('mock');
   }
 
+  isPaidConfigured(): boolean {
+    return this.isConfigured;
+  }
+
   createStreamingSession(voiceId: string = this.defaultVoiceId): TtsStreamSession {
     const audioStream = new Subject<Buffer>();
 

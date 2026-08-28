@@ -9,6 +9,7 @@ export interface VisionEvaluationOptions {
 }
 
 export interface VisionEvaluationResult {
+  usageTokens?: number;
   overallScore: number;
   requirementsScore: number;
   highLevelScore: number;

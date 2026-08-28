@@ -4,6 +4,7 @@ import { PrismaService } from '../../platform/prisma/prisma.service';
 import { UserRole, LiveSessionStatus, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
 import { HttpStatus } from '@nestjs/common';
+import { MentorAuthorityPolicy } from '../../mentor/policies/mentor-authority.policy';
 
 describe('BehavioralService (F007 / SEC-004)', () => {
   let service: BehavioralService;
@@ -40,13 +41,13 @@ describe('BehavioralService (F007 / SEC-004)', () => {
         ]),
       },
       interviewSession: {
-        findUnique: jest.fn(),
+        findUnique: jest.fn().mockResolvedValue({ id: 'session-123', userId: ownerUserId }),
       },
       answer: {
         findUnique: jest.fn(),
       },
       mentorProfile: {
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
       liveSession: {
         findFirst: jest.fn(),
@@ -54,7 +55,11 @@ describe('BehavioralService (F007 / SEC-004)', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [BehavioralService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        BehavioralService,
+        MentorAuthorityPolicy,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<BehavioralService>(BehavioralService);
@@ -62,13 +67,17 @@ describe('BehavioralService (F007 / SEC-004)', () => {
 
   describe('analyzeStar logic', () => {
     it('should generate dynamic probing question when candidate answer lacks quantifiable results', async () => {
-      const analysis = await service.analyzeStar({
-        sessionId: 'session-123',
-        turnNumber: 1,
-        questionText: 'Describe a challenging technical project you led.',
-        candidateAnswer:
-          'At my company, we had high server load. I was responsible for fixing it. I implemented Redis caching and load balancing with Nginx.',
-      });
+      const analysis = await service.analyzeStar(
+        {
+          sessionId: 'session-123',
+          turnNumber: 1,
+          questionText: 'Describe a challenging technical project you led.',
+          candidateAnswer:
+            'At my company, we had high server load. I was responsible for fixing it. I implemented Redis caching and load balancing with Nginx.',
+        },
+        ownerUserId,
+        UserRole.CANDIDATE,
+      );
 
       expect(analysis.actionNeeded).toBe('PROBE');
       expect(analysis.starIdentified.result).toBe(false);
@@ -77,13 +86,17 @@ describe('BehavioralService (F007 / SEC-004)', () => {
     });
 
     it('should return COMPLETE when all STAR components are present', async () => {
-      const analysis = await service.analyzeStar({
-        sessionId: 'session-123',
-        turnNumber: 1,
-        questionText: 'Describe a challenging technical project you led.',
-        candidateAnswer:
-          'When I was at TechCorp, our production microservice had latency spikes. My responsibility was to optimize queries. I implemented connection pooling with PgBouncer and indexing. As a result, we reduced p99 latency by 65%.',
-      });
+      const analysis = await service.analyzeStar(
+        {
+          sessionId: 'session-123',
+          turnNumber: 1,
+          questionText: 'Describe a challenging technical project you led.',
+          candidateAnswer:
+            'When I was at TechCorp, our production microservice had latency spikes. My responsibility was to optimize queries. I implemented connection pooling with PgBouncer and indexing. As a result, we reduced p99 latency by 65%.',
+        },
+        ownerUserId,
+        UserRole.CANDIDATE,
+      );
 
       expect(analysis.actionNeeded).toBe('COMPLETE');
       expect(analysis.starIdentified.situation).toBe(true);
@@ -175,7 +188,7 @@ describe('BehavioralService (F007 / SEC-004)', () => {
 
     it('denies non-owner candidate from retrieving persisted STAR report (BOLA mitigation)', async () => {
       prismaMock.answer.findUnique.mockResolvedValue(mockAnswerWithOwner);
-      prismaMock.mentorProfile.findUnique.mockResolvedValue(null);
+      prismaMock.mentorProfile.findFirst.mockResolvedValue(null);
 
       await expect(
         service.getStarEvaluationReport(otherUserId, UserRole.CANDIDATE, answerId),
@@ -190,7 +203,7 @@ describe('BehavioralService (F007 / SEC-004)', () => {
 
     it('denies non-owner candidate from retrieving fallback on-the-fly STAR report', async () => {
       prismaMock.answer.findUnique.mockResolvedValue(mockAnswerWithoutStarEval);
-      prismaMock.mentorProfile.findUnique.mockResolvedValue(null);
+      prismaMock.mentorProfile.findFirst.mockResolvedValue(null);
 
       await expect(
         service.getStarEvaluationReport(otherUserId, UserRole.CANDIDATE, answerId),
@@ -214,9 +227,11 @@ describe('BehavioralService (F007 / SEC-004)', () => {
 
     it('allows authorized mentor with active LiveSession to retrieve candidate STAR report', async () => {
       prismaMock.answer.findUnique.mockResolvedValue(mockAnswerWithOwner);
-      prismaMock.mentorProfile.findUnique.mockResolvedValue({
+      prismaMock.mentorProfile.findFirst.mockResolvedValue({
         id: 'mentor-prof-1',
         userId: mentorUserId,
+        authorityState: 'APPROVED',
+        isActive: true,
       });
       prismaMock.liveSession.findFirst.mockResolvedValue({
         id: 'live-session-1',
@@ -237,12 +252,9 @@ describe('BehavioralService (F007 / SEC-004)', () => {
         where: {
           mentorId: 'mentor-prof-1',
           candidateId: ownerUserId,
+          interviewId: 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa',
           status: {
-            in: [
-              LiveSessionStatus.SCHEDULED,
-              LiveSessionStatus.IN_PROGRESS,
-              LiveSessionStatus.COMPLETED,
-            ],
+            in: [LiveSessionStatus.IN_PROGRESS, LiveSessionStatus.COMPLETED],
           },
         },
         select: { id: true },
@@ -251,9 +263,11 @@ describe('BehavioralService (F007 / SEC-004)', () => {
 
     it('denies unrelated mentor without LiveSession with candidate', async () => {
       prismaMock.answer.findUnique.mockResolvedValue(mockAnswerWithOwner);
-      prismaMock.mentorProfile.findUnique.mockResolvedValue({
+      prismaMock.mentorProfile.findFirst.mockResolvedValue({
         id: 'mentor-prof-2',
         userId: unrelatedMentorUserId,
+        authorityState: 'APPROVED',
+        isActive: true,
       });
       prismaMock.liveSession.findFirst.mockResolvedValue(null);
 
@@ -309,7 +323,7 @@ describe('BehavioralService (F007 / SEC-004)', () => {
         id: sessionId,
         userId: ownerUserId,
       });
-      prismaMock.mentorProfile.findUnique.mockResolvedValue(null);
+      prismaMock.mentorProfile.findFirst.mockResolvedValue(null);
 
       await expect(
         service.analyzeStar(
@@ -356,9 +370,11 @@ describe('BehavioralService (F007 / SEC-004)', () => {
         id: sessionId,
         userId: ownerUserId,
       });
-      prismaMock.mentorProfile.findUnique.mockResolvedValue({
+      prismaMock.mentorProfile.findFirst.mockResolvedValue({
         id: 'mentor-prof-1',
         userId: mentorUserId,
+        authorityState: 'APPROVED',
+        isActive: true,
       });
       prismaMock.liveSession.findFirst.mockResolvedValue({
         id: 'live-session-1',

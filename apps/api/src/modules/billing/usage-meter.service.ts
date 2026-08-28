@@ -197,6 +197,20 @@ export class UsageMeterService {
     });
   }
 
+  async refundQuota(userId: string, metric: BillingMetric, quantity = 1): Promise<void> {
+    try {
+      await this.prisma.usageRecord.create({
+        data: {
+          userId,
+          metric,
+          quantity: -quantity,
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(`Failed to refund quota for user ${userId}: ${err.message}`);
+    }
+  }
+
   async getUsageSummary(userId: string): Promise<UsageSummary> {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);

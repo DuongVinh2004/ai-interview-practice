@@ -1,4 +1,5 @@
 import { CheckCircle2, Circle } from 'lucide-react';
+import { useI18nStore } from '../../stores/i18n.store';
 
 interface MilestoneItem {
   type: string;
@@ -12,6 +13,10 @@ interface MilestoneTimelineProps {
 }
 
 export function MilestoneTimeline({ milestones }: MilestoneTimelineProps) {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+  const achievedCount = milestones.filter(m => m.achieved).length;
+
   return (
     <div
       className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3"
@@ -19,10 +24,14 @@ export function MilestoneTimeline({ milestones }: MilestoneTimelineProps) {
     >
       <div className="flex items-center justify-between">
         <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-          Offer Readiness Milestones
+          {isVi
+            ? 'Các Cột Mốc Sẵn Sàng (Offer Readiness Milestones)'
+            : 'Offer Readiness Milestones'}
         </span>
-        <span className="text-[11px] text-slate-500">
-          {milestones.filter(m => m.achieved).length} of {milestones.length} Completed
+        <span className="text-[11px] text-slate-500 font-medium">
+          {isVi
+            ? `Đạt ${achievedCount} / ${milestones.length} Cột mốc`
+            : `${achievedCount} of ${milestones.length} Completed`}
         </span>
       </div>
 
@@ -44,16 +53,22 @@ export function MilestoneTimeline({ milestones }: MilestoneTimelineProps) {
               )}
             </div>
 
-            <div className="text-xs font-bold">{m.type} Ready</div>
+            <div className="text-xs font-bold">
+              {isVi ? `Sẵn sàng ${m.type}` : `${m.type} Ready`}
+            </div>
             <span className="text-[10px] block text-slate-500 mt-0.5">
               {m.achieved
                 ? m.achievedAt
-                  ? new Date(m.achievedAt).toLocaleDateString(undefined, {
+                  ? new Date(m.achievedAt).toLocaleDateString(isVi ? 'vi-VN' : 'en-US', {
                       month: 'short',
                       day: 'numeric',
                     })
-                  : 'Achieved'
-                : 'Pending'}
+                  : isVi
+                    ? 'Đã đạt'
+                    : 'Achieved'
+                : isVi
+                  ? 'Chưa đạt'
+                  : 'Pending'}
             </span>
           </div>
         ))}

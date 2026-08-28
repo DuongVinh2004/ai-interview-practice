@@ -13,6 +13,7 @@ import {
 import { MockSandboxProvider } from './providers/mock-sandbox.provider';
 import { Judge0Provider } from './providers/judge0.provider';
 import { ExecuteCodeDto, SubmitCodeDto } from './dto/code-execution.dto';
+import { SandboxSecurityValidator, SANDBOX_LIMITS } from './utils/sandbox-security.validator';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Optional } from '@nestjs/common';
 
@@ -72,7 +73,12 @@ export class CodeExecutionService {
       );
     }
 
-    const MAX_TEST_CASES = 20;
+    // Security & Constraints Validation
+    SandboxSecurityValidator.validateSourceCode(dto.sourceCode);
+    SandboxSecurityValidator.validateCompilerOptions(dto.language, dto.compilerOptions);
+    SandboxSecurityValidator.validateStdin(dto.customInput);
+
+    const MAX_TEST_CASES = SANDBOX_LIMITS.MAX_TEST_CASES;
     if (dto.testCases && dto.testCases.length > MAX_TEST_CASES) {
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
@@ -81,12 +87,10 @@ export class CodeExecutionService {
       );
     }
 
-    if (dto.sourceCode && dto.sourceCode.length > 50000) {
-      throw new DomainException(
-        ErrorCode.VALIDATION_ERROR,
-        'Source code exceeds maximum allowed size (50,000 characters)',
-        HttpStatus.BAD_REQUEST,
-      );
+    if (dto.testCases) {
+      for (const tc of dto.testCases) {
+        SandboxSecurityValidator.validateStdin(tc.input);
+      }
     }
 
     const provider = this.getSandboxProvider();
@@ -103,6 +107,7 @@ export class CodeExecutionService {
       dto.sourceCode,
       testCases,
       dto.customInput,
+      dto.compilerOptions,
     );
 
     await this.prisma.auditLog.create({
@@ -149,6 +154,10 @@ export class CodeExecutionService {
       );
     }
 
+    // Security & Constraints Validation
+    SandboxSecurityValidator.validateSourceCode(dto.sourceCode);
+    SandboxSecurityValidator.validateCompilerOptions(dto.language, dto.compilerOptions);
+
     // Run against test cases
     const provider = this.getSandboxProvider();
     const execResult = await provider.executeCode(
@@ -161,6 +170,8 @@ export class CodeExecutionService {
         isHidden: tc.isHidden,
         order: tc.order,
       })),
+      undefined,
+      dto.compilerOptions,
     );
 
     // AI Code Review Analysis

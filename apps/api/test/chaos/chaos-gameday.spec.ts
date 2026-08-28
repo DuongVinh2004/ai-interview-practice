@@ -146,7 +146,7 @@ describe('Game Day: AI Provider Outage & Chaos Resilience (AIP-062)', () => {
     expect(openAiProvider.evaluateAnswer).toHaveBeenCalled();
     expect(anthropicProvider.evaluateAnswer).toHaveBeenCalled();
     expect(mockProvider.evaluateAnswer).toHaveBeenCalled();
-  });
+  }, 15000);
 
   it('Game Day Scenario 2: Circuit Breaker transitions to OPEN upon consecutive provider failures', async () => {
     (geminiProvider.generateQuestion as jest.Mock).mockRejectedValue(

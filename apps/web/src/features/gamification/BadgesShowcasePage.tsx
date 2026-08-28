@@ -85,7 +85,7 @@ export function BadgesShowcasePage() {
               />
             </div>
             <span className="text-[11px] text-slate-300 mt-1 block">
-              {progressPercent}% Hoàn thành
+              {progressPercent}% {language === 'vi' ? 'Hoàn thành' : 'Completed'}
             </span>
           </div>
         </div>

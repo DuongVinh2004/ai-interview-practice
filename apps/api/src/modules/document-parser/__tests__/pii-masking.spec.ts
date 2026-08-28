@@ -5,6 +5,7 @@ import { TextExtractorService } from '../services/text-extractor.service';
 import { CvAnalyzerService } from '../services/cv-analyzer.service';
 import { JdAnalyzerService } from '../services/jd-analyzer.service';
 import { BlueprintGeneratorService } from '../services/blueprint-generator.service';
+import { TaxonomyService } from '../../taxonomy/taxonomy.service';
 
 describe('Document Parser PII Scrubbing (P2-003)', () => {
   let documentParserService: DocumentParserService;
@@ -33,6 +34,9 @@ describe('Document Parser PII Scrubbing (P2-003)', () => {
   };
   const mockJdAnalyzer = { analyzeJd: jest.fn() };
   const mockBlueprintGenerator = { generateBlueprint: jest.fn() };
+  const mockTaxonomyService = {
+    matchCvProfile: jest.fn().mockResolvedValue({ technologyIds: [] }),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -43,6 +47,7 @@ describe('Document Parser PII Scrubbing (P2-003)', () => {
         { provide: CvAnalyzerService, useValue: mockCvAnalyzer },
         { provide: JdAnalyzerService, useValue: mockJdAnalyzer },
         { provide: BlueprintGeneratorService, useValue: mockBlueprintGenerator },
+        { provide: TaxonomyService, useValue: mockTaxonomyService },
       ],
     }).compile();
 

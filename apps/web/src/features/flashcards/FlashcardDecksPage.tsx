@@ -8,9 +8,12 @@ import { Spinner } from '../../components/ui/Spinner';
 import { StreakHeatmap } from '../../components/flashcards/StreakHeatmap';
 import { CreateCardModal } from '../../components/flashcards/CreateCardModal';
 import { useFlashcards } from '../../hooks/useFlashcards';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export function FlashcardDecksPage() {
   const navigate = useNavigate();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const { decks, isLoadingDecks, stats, createDeck, isCreatingDeck, createCard, isCreatingCard } =
     useFlashcards();
 
@@ -38,7 +41,9 @@ export function FlashcardDecksPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Spinner size="lg" />
-        <p className="text-sm text-slate-500">Đang tải danh sách bộ thẻ flashcards...</p>
+        <p className="text-sm text-slate-500">
+          {isVi ? 'Đang tải danh sách bộ thẻ flashcards...' : 'Loading flashcard decks...'}
+        </p>
       </div>
     );
   }
@@ -50,10 +55,14 @@ export function FlashcardDecksPage() {
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center space-x-2.5">
             <BookOpen className="w-8 h-8 text-emerald-600" />
-            <span>Spaced Repetition Drills</span>
+            <span>
+              {isVi ? 'Luyện Trí Nhớ Gián Đoạn (Spaced Repetition)' : 'Spaced Repetition Drills'}
+            </span>
           </h1>
           <p className="text-slate-600 mt-1">
-            Ghi nhớ dài hạn các khái niệm và câu hỏi phỏng vấn theo thuật toán FSRS v4.
+            {isVi
+              ? 'Ghi nhớ dài hạn các khái niệm và câu hỏi phỏng vấn theo thuật toán FSRS v4.'
+              : 'Master long-term retention of core engineering concepts using FSRS v4.'}
           </p>
         </div>
 
@@ -65,13 +74,15 @@ export function FlashcardDecksPage() {
               className="bg-emerald-600 hover:bg-emerald-700 shadow-md font-bold text-sm"
             >
               <Sparkles className="w-4 h-4 mr-2" />
-              <span>Ôn tập ngay ({totalDue} thẻ)</span>
+              <span>
+                {isVi ? `Ôn tập ngay (${totalDue} thẻ)` : `Review Now (${totalDue} cards)`}
+              </span>
             </Button>
           )}
 
           <Button variant="outline" size="lg" onClick={() => setIsCreateDeckOpen(true)}>
             <Plus className="w-4 h-4 mr-1.5" />
-            <span>Tạo Bộ Thẻ Mới</span>
+            <span>{isVi ? 'Tạo Bộ Thẻ Mới' : 'Create New Deck'}</span>
           </Button>
         </div>
       </div>
@@ -82,20 +93,26 @@ export function FlashcardDecksPage() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold uppercase text-slate-400">Tổng số thẻ</span>
+          <span className="text-[11px] font-bold uppercase text-slate-400">
+            {isVi ? 'Tổng số thẻ' : 'Total Cards'}
+          </span>
           <p className="text-2xl font-black text-slate-900 mt-1">{stats?.totalCards || 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold uppercase text-amber-600">Cần ôn hôm nay</span>
+          <span className="text-[11px] font-bold uppercase text-amber-600">
+            {isVi ? 'Cần ôn hôm nay' : 'Due Today'}
+          </span>
           <p className="text-2xl font-black text-amber-600 mt-1">{stats?.dueToday || 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
-          <span className="text-[11px] font-bold uppercase text-sky-600">Đang học (Learning)</span>
+          <span className="text-[11px] font-bold uppercase text-sky-600">
+            {isVi ? 'Đang học' : 'Learning'}
+          </span>
           <p className="text-2xl font-black text-sky-600 mt-1">{stats?.learningCards || 0}</p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <span className="text-[11px] font-bold uppercase text-emerald-600">
-            Thành thục (Review)
+            {isVi ? 'Thành thục (Review)' : 'Mastered (Review)'}
           </span>
           <p className="text-2xl font-black text-emerald-600 mt-1">{stats?.reviewCards || 0}</p>
         </div>
@@ -105,19 +122,24 @@ export function FlashcardDecksPage() {
       <div className="space-y-4">
         <h3 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
           <Layers className="w-5 h-5 text-slate-700" />
-          <span>Danh sách Bộ Thẻ ({decks.length})</span>
+          <span>
+            {isVi ? `Danh sách Bộ Thẻ (${decks.length})` : `Your Decks (${decks.length})`}
+          </span>
         </h3>
 
         {decks.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-12 text-center space-y-3">
             <BookOpen className="w-12 h-12 text-slate-300 mx-auto" />
-            <h4 className="text-base font-bold text-slate-800">Chưa có bộ thẻ flashcard nào</h4>
+            <h4 className="text-base font-bold text-slate-800">
+              {isVi ? 'Chưa có bộ thẻ flashcard nào' : 'No flashcard decks yet'}
+            </h4>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Tạo bộ thẻ thủ công hoặc nhấn "Generate Flashcards" ở trang kết quả phỏng vấn để AI tự
-              động trích xuất các điểm yếu cần ôn luyện.
+              {isVi
+                ? 'Tạo bộ thẻ thủ công hoặc nhấn "Tạo Flashcards Ôn tập" ở trang kết quả phỏng vấn để AI tự động trích xuất các điểm yếu cần ôn luyện.'
+                : 'Create decks manually or click "Generate Flashcards" on interview results to auto-extract remediation cards.'}
             </p>
             <Button size="sm" onClick={() => setIsCreateDeckOpen(true)}>
-              Tạo bộ thẻ đầu tiên
+              {isVi ? 'Tạo bộ thẻ đầu tiên' : 'Create First Deck'}
             </Button>
           </div>
         ) : (
@@ -134,11 +156,11 @@ export function FlashcardDecksPage() {
                     </CardTitle>
                     {deck.dueCount > 0 ? (
                       <Badge variant="danger" className="shrink-0 text-[11px]">
-                        {deck.dueCount} đến hạn
+                        {deck.dueCount} {isVi ? 'đến hạn' : 'due'}
                       </Badge>
                     ) : (
                       <Badge variant="success" className="shrink-0 text-[11px]">
-                        Đã xong
+                        {isVi ? 'Đã xong' : 'Completed'}
                       </Badge>
                     )}
                   </div>
@@ -149,7 +171,9 @@ export function FlashcardDecksPage() {
 
                 <CardContent className="pt-0 space-y-4">
                   <div className="flex items-center justify-between text-xs text-slate-500 border-t border-slate-100 pt-3">
-                    <span>{deck.cardCount} thẻ</span>
+                    <span>
+                      {deck.cardCount} {isVi ? 'thẻ' : 'cards'}
+                    </span>
                     <div className="flex items-center space-x-1">
                       {deck.tags?.map((tag, idx) => (
                         <span
@@ -170,7 +194,7 @@ export function FlashcardDecksPage() {
                       className="text-xs"
                     >
                       <Plus className="w-3.5 h-3.5 mr-1" />
-                      <span>Thêm thẻ</span>
+                      <span>{isVi ? 'Thêm thẻ' : 'Add Card'}</span>
                     </Button>
 
                     <Button
@@ -179,7 +203,7 @@ export function FlashcardDecksPage() {
                       disabled={deck.dueCount === 0}
                       className="text-xs"
                     >
-                      <span>Học ngay</span>
+                      <span>{isVi ? 'Học ngay' : 'Practice'}</span>
                       <ArrowRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </div>
@@ -194,29 +218,37 @@ export function FlashcardDecksPage() {
       {isCreateDeckOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-200 space-y-4">
-            <h3 className="text-base font-bold text-slate-900">Tạo Bộ Thẻ Flashcard Mới</h3>
+            <h3 className="text-base font-bold text-slate-900">
+              {isVi ? 'Tạo Bộ Thẻ Flashcard Mới' : 'Create New Flashcard Deck'}
+            </h3>
             <form onSubmit={handleCreateDeckSubmit} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tên bộ thẻ
+                  {isVi ? 'Tên bộ thẻ' : 'Deck Name'}
                 </label>
                 <input
                   type="text"
                   value={newDeckName}
                   onChange={e => setNewDeckName(e.target.value)}
-                  placeholder="VD: System Design Core & Scalability"
+                  placeholder={
+                    isVi ? 'VD: System Design Core & Scalability' : 'e.g. System Design Core'
+                  }
                   className="w-full text-xs p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Mô tả (Tùy chọn)
+                  {isVi ? 'Mô tả (Tùy chọn)' : 'Description (Optional)'}
                 </label>
                 <textarea
                   value={newDeckDesc}
                   onChange={e => setNewDeckDesc(e.target.value)}
                   rows={3}
-                  placeholder="VD: Tổng hợp các câu hỏi phân tán và cơ chế chịu lỗi..."
+                  placeholder={
+                    isVi
+                      ? 'VD: Tổng hợp các câu hỏi phân tán và cơ chế chịu lỗi...'
+                      : 'e.g. Core architectural patterns and fault tolerance principles...'
+                  }
                   className="w-full text-xs p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                 />
               </div>
@@ -227,7 +259,7 @@ export function FlashcardDecksPage() {
                   size="sm"
                   onClick={() => setIsCreateDeckOpen(false)}
                 >
-                  Hủy
+                  {isVi ? 'Hủy' : 'Cancel'}
                 </Button>
                 <Button
                   type="submit"
@@ -235,7 +267,7 @@ export function FlashcardDecksPage() {
                   isLoading={isCreatingDeck}
                   disabled={!newDeckName.trim()}
                 >
-                  Tạo Bộ Thẻ
+                  {isVi ? 'Tạo Bộ Thẻ' : 'Create Deck'}
                 </Button>
               </div>
             </form>

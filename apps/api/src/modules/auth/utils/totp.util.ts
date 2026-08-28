@@ -164,23 +164,19 @@ export class TotpUtil {
    */
   static decryptSecret(encryptedPayload: string, encryptionKey: string): string {
     if (!encryptedPayload || !encryptedPayload.includes(':')) {
-      return encryptedPayload;
+      throw new Error('Invalid encrypted TOTP payload: missing segment delimiter');
     }
-    try {
-      const [ivHex, authTagHex, cipherHex] = encryptedPayload.split(':');
-      if (!ivHex || !authTagHex || !cipherHex) {
-        return encryptedPayload;
-      }
-      const key = crypto.createHash('sha256').update(encryptionKey).digest();
-      const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'), {
-        authTagLength: 16,
-      });
-      decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
-      let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
-      decrypted += decipher.final('utf8');
-      return decrypted;
-    } catch {
-      return encryptedPayload;
+    const [ivHex, authTagHex, cipherHex] = encryptedPayload.split(':');
+    if (!ivHex || !authTagHex || !cipherHex) {
+      throw new Error('Malformed encrypted TOTP payload: missing components');
     }
+    const key = crypto.createHash('sha256').update(encryptionKey).digest();
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(ivHex, 'hex'), {
+      authTagLength: 16,
+    });
+    decipher.setAuthTag(Buffer.from(authTagHex, 'hex'));
+    let decrypted = decipher.update(cipherHex, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    return decrypted;
   }
 }

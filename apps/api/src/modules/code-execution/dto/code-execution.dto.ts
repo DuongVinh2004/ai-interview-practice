@@ -56,8 +56,14 @@ export class ExecuteCodeDto {
   @ApiPropertyOptional({ example: '2, 3' })
   @IsString()
   @IsOptional()
-  @MaxLength(10000)
+  @MaxLength(50000)
   customInput?: string;
+
+  @ApiPropertyOptional({ example: '-O2' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  compilerOptions?: string;
 
   @ApiPropertyOptional({ type: [TestCaseItemDto] })
   @IsArray()
@@ -85,4 +91,10 @@ export class SubmitCodeDto {
   @IsNotEmpty()
   @MaxLength(50000)
   sourceCode!: string;
+
+  @ApiPropertyOptional({ example: '-O2' })
+  @IsString()
+  @IsOptional()
+  @MaxLength(500)
+  compilerOptions?: string;
 }

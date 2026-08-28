@@ -7,6 +7,7 @@ import {
   XpTransactionDto,
   LeaderboardEntryDto,
 } from '@ai-interview/contracts';
+import { getLocalDayBoundaries } from './timezone.util';
 
 export interface LevelInfo {
   level: number;
@@ -184,39 +185,103 @@ export class XpService {
     };
   }
 
-  async claimDailyLogin(userId: string): Promise<{
+  async claimDailyLogin(
+    userId: string,
+    timezone?: string,
+  ): Promise<{
     claimed: boolean;
     xpAwarded: number;
     profile: GamificationProfileDto;
   }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { startOfDay, endOfDay } = getLocalDayBoundaries(new Date(), timezone);
 
-    const existingDailyClaim = await this.prisma.xpTransaction.findFirst({
-      where: {
-        userId,
-        source: XpSource.DAILY_LOGIN as any,
-        createdAt: { gte: today },
-      },
+    const result = await this.prisma.$transaction(async tx => {
+      const existingDailyClaim = await tx.xpTransaction.findFirst({
+        where: {
+          userId,
+          source: XpSource.DAILY_LOGIN as any,
+          createdAt: { gte: startOfDay, lte: endOfDay },
+        },
+      });
+
+      if (existingDailyClaim) {
+        return { claimed: false, xpAwarded: 0 };
+      }
+
+      const amount = 10;
+      const transaction = await tx.xpTransaction.create({
+        data: {
+          userId,
+          amount,
+          source: XpSource.DAILY_LOGIN as any,
+          description: 'Điểm danh hàng ngày / Daily Login Streak',
+        },
+      });
+
+      const existing = await tx.userXp.findUnique({ where: { userId } });
+      const oldLevel = existing?.currentLevel || 1;
+      const newTotalXp = (existing?.totalXp || 0) + amount;
+      const levelInfo = this.calculateLevel(newTotalXp);
+      const isLevelUp = levelInfo.level > oldLevel;
+
+      const userXp = await tx.userXp.upsert({
+        where: { userId },
+        create: {
+          userId,
+          totalXp: amount,
+          currentLevel: levelInfo.level,
+          dailyXp: amount,
+          lastEarnedAt: new Date(),
+        },
+        update: {
+          totalXp: { increment: amount },
+          currentLevel: levelInfo.level,
+          dailyXp: { increment: amount },
+          lastEarnedAt: new Date(),
+        },
+      });
+
+      return {
+        claimed: true,
+        xpAwarded: amount,
+        isLevelUp,
+        oldLevel,
+        newLevel: levelInfo.level,
+        newTotalXp: userXp?.totalXp ?? newTotalXp,
+        levelInfo,
+      };
     });
 
-    if (existingDailyClaim) {
-      const profile = await this.getGamificationProfile(userId);
-      return { claimed: false, xpAwarded: 0, profile };
+    if (result.claimed) {
+      this.eventEmitter.emit('gamification.xp_awarded', {
+        userId,
+        amount: result.xpAwarded,
+        source: XpSource.DAILY_LOGIN,
+        totalXp: result.newTotalXp,
+        currentLevel: result.newLevel,
+        isLevelUp: result.isLevelUp,
+      });
+
+      if (result.isLevelUp) {
+        this.logger.log(
+          `User ${userId} leveled up from ${result.oldLevel} to ${result.newLevel} (${result.levelInfo?.levelTitle})!`,
+        );
+        this.eventEmitter.emit('gamification.level_up', {
+          userId,
+          oldLevel: result.oldLevel,
+          newLevel: result.newLevel,
+          totalXp: result.newTotalXp,
+          levelTitle: result.levelInfo?.levelTitle,
+          levelTitleVi: result.levelInfo?.levelTitleVi,
+        });
+      }
     }
 
-    await this.awardXp(
-      userId,
-      10,
-      XpSource.DAILY_LOGIN,
-      'Điểm danh hàng ngày / Daily Login Streak',
-    );
-
-    const profile = await this.getGamificationProfile(userId);
-    return { claimed: true, xpAwarded: 10, profile };
+    const profile = await this.getGamificationProfile(userId, timezone);
+    return { claimed: result.claimed, xpAwarded: result.xpAwarded, profile };
   }
 
-  async getGamificationProfile(userId: string): Promise<GamificationProfileDto> {
+  async getGamificationProfile(userId: string, timezone?: string): Promise<GamificationProfileDto> {
     const userXp = await this.prisma.userXp.findUnique({
       where: { userId },
     });
@@ -225,17 +290,86 @@ export class XpService {
       where: { userId },
     });
 
-    const totalXp = userXp?.totalXp || 0;
+    let currentStreak = userStreak?.currentStreak || 0;
+
+    // Guard against impossible streak numbers (e.g. 8 days streak on a 1-day old account)
+    if (this.prisma.user?.findUnique) {
+      try {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { createdAt: true },
+        });
+        if (user?.createdAt) {
+          const accountAgeDays = Math.max(
+            1,
+            Math.ceil((Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24)) +
+              1,
+          );
+          if (currentStreak > accountAgeDays) {
+            currentStreak = Math.min(currentStreak, accountAgeDays);
+            if (userStreak) {
+              this.prisma.userStreak
+                .update({
+                  where: { userId },
+                  data: { currentStreak },
+                })
+                .catch(() => {});
+            }
+          }
+        }
+      } catch {
+        // Ignore in test mocks
+      }
+    }
+
+    let totalXp = userXp?.totalXp || 0;
+
+    // Auto-restore XP from completed interviews if totalXp is 0 for existing active users
+    if (totalXp === 0 && this.prisma.interviewSession) {
+      try {
+        const completedSessions = await this.prisma.interviewSession.findMany({
+          where: { userId, state: 'COMPLETED' as any },
+          select: { overallScore: true },
+        });
+        if (completedSessions && completedSessions.length > 0) {
+          let backfillXp = 0;
+          for (const s of completedSessions) {
+            backfillXp += 50 + ((s.overallScore || 0) >= 8.0 ? 20 : 0);
+          }
+          if (backfillXp > 0) {
+            totalXp = backfillXp;
+            const calculatedLevel = this.calculateLevel(totalXp);
+            this.prisma.userXp
+              .upsert({
+                where: { userId },
+                create: {
+                  userId,
+                  totalXp: backfillXp,
+                  currentLevel: calculatedLevel.level,
+                  dailyXp: 0,
+                },
+                update: {
+                  totalXp: backfillXp,
+                  currentLevel: calculatedLevel.level,
+                },
+              })
+              .catch(() => {});
+          }
+        }
+      } catch {
+        // Ignore in test mocks
+      }
+    }
+
     const levelInfo = this.calculateLevel(totalXp);
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const { startOfDay, endOfDay } = getLocalDayBoundaries(new Date(), timezone);
 
     const dailyLoginClaim = await this.prisma.xpTransaction.findFirst({
       where: {
         userId,
         source: XpSource.DAILY_LOGIN as any,
-        createdAt: { gte: today },
+        createdAt: { gte: startOfDay, lte: endOfDay },
       },
     });
 
@@ -280,8 +414,8 @@ export class XpService {
       dailyXp: userXp?.dailyXp || 0,
       dailyLoginClaimed: !!dailyLoginClaim,
       streak: {
-        currentStreak: userStreak?.currentStreak || 0,
-        longestStreak: userStreak?.longestStreak || 0,
+        currentStreak,
+        longestStreak: Math.max(userStreak?.longestStreak || 0, currentStreak),
         totalReviews: userStreak?.totalReviews || 0,
         freezeCount: userStreak?.streakFreezeCount || 0,
         freezeUsedToday: userStreak?.streakFreezeUsedToday || false,

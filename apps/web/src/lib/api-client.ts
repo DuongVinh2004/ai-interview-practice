@@ -75,6 +75,11 @@ export async function apiClient<T = any>(
     ...(headers as Record<string, string>),
   };
 
+  if (isFormData) {
+    delete reqHeaders['Content-Type'];
+    delete reqHeaders['content-type'];
+  }
+
   if (!skipAuth && authStore.accessToken) {
     reqHeaders['Authorization'] = `Bearer ${authStore.accessToken}`;
   }
@@ -93,7 +98,7 @@ export async function apiClient<T = any>(
   });
 
   // Handle 401 unauthorized & refresh token attempt with global mutex lock (NEW-SEC-04)
-  if (response.status === 401 && !skipAuth && authStore.refreshToken) {
+  if (response.status === 401 && !skipAuth) {
     const newAccessToken = await performTokenRefresh();
     if (newAccessToken) {
       reqHeaders['Authorization'] = `Bearer ${newAccessToken}`;

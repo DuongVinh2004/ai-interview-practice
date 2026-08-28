@@ -6,6 +6,7 @@ export interface VADResult {
   speechDurationMs: number;
   silenceDurationMs: number;
   isBargeIn: boolean; // True if candidate interrupted while AI was speaking
+  isProlongedSilence: boolean; // True if candidate has been silent for > 15s (15,000ms)
 }
 
 @Injectable()
@@ -73,12 +74,17 @@ export class VadEngineService {
       }
     }
 
+    const silenceDurationMs = state.consecutiveSilenceFrames * frameDurationMs;
+    const speechDurationMs = state.consecutiveSpeechFrames * frameDurationMs;
+    const isProlongedSilence = silenceDurationMs >= 15000;
+
     return {
       isSpeaking,
       rms,
-      speechDurationMs: state.consecutiveSpeechFrames * frameDurationMs,
-      silenceDurationMs: state.consecutiveSilenceFrames * frameDurationMs,
+      speechDurationMs,
+      silenceDurationMs,
       isBargeIn,
+      isProlongedSilence,
     };
   }
 }

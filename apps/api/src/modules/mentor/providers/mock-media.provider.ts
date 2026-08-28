@@ -1,10 +1,20 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { MediaProvider } from './media-provider.interface';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class MockMediaProvider implements MediaProvider {
-  private readonly signingKey = crypto.randomBytes(32);
+  private readonly signingKey: Buffer;
+
+  constructor(@Optional() private readonly configService?: ConfigService) {
+    const baseSecret =
+      this.configService?.get<string>('JWT_ACCESS_SECRET') ||
+      this.configService?.get<string>('MFA_ENCRYPTION_KEY') ||
+      process.env.JWT_ACCESS_SECRET ||
+      'deterministic-mock-media-signing-seed-key-2026';
+    this.signingKey = crypto.createHash('sha256').update(`mock-media:${baseSecret}`).digest();
+  }
 
   async createRoom(sessionId: string): Promise<{ roomName: string }> {
     return {

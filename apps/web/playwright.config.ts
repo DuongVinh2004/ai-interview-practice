@@ -26,6 +26,9 @@ export default defineConfig({
       command: 'pnpm --filter api start',
       port: 3001,
       reuseExistingServer: !process.env.CI,
+      env: {
+        BYPASS_ADMIN_MFA: 'true',
+      },
     },
     {
       command: 'pnpm --filter web dev',

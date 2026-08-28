@@ -84,7 +84,7 @@ export class EvaluationProcessor extends WorkerHost {
       return;
     }
 
-    // Pre-execution guard: Skip processing if session is cancelled/failed, or if this turn is already evaluated
+    // Pre-execution guard: Skip processing if session is cancelled/failed
     if (session.state === SessionState.CANCELLED || session.state === SessionState.FAILED) {
       this.logger.warn(
         `Session ${sessionId} is in cancelled/failed state ${session.state}. Skipping answer evaluation.`,
@@ -107,6 +107,37 @@ export class EvaluationProcessor extends WorkerHost {
       );
       return;
     }
+
+    // Atomic CAS claim: set turn to EVALUATION_PROCESSING to prevent concurrent workers from calling AI
+    const claimResult = await this.prisma.interviewTurn.updateMany({
+      where: {
+        id: turnId,
+        sessionId,
+        status: 'ANSWER_SUBMITTED',
+      },
+      data: {
+        status: 'EVALUATION_PROCESSING',
+      },
+    });
+
+    if (claimResult.count === 0) {
+      const currentTurn = await this.prisma.interviewTurn.findUnique({ where: { id: turnId } });
+      if (currentTurn?.status === 'EVALUATED') {
+        const totalTurns = session.totalTurns && session.totalTurns >= 1 ? session.totalTurns : 5;
+        if (
+          session.state === SessionState.COMPLETED &&
+          turnNumber >= totalTurns &&
+          !session.learningPath
+        ) {
+          await this.enqueueLearningPath(sessionId, traceparent);
+        }
+      }
+      this.logger.warn(
+        `Turn ${turn.turnNumber} for session ${sessionId} could not be claimed for evaluation (already claimed or evaluated). Skipping duplicate execution.`,
+      );
+      return;
+    }
+
     const question = turn.question!;
     const answer = turn.answer!;
 
@@ -118,6 +149,7 @@ export class EvaluationProcessor extends WorkerHost {
         keyFocus: question.keyFocus || undefined,
         expectedPoints: (question.expectedPoints as string[]) || undefined,
         answer: answer.content,
+        language: (session as any).language || 'vi',
       });
 
       // Calculate next difficulty
@@ -441,6 +473,14 @@ export class EvaluationProcessor extends WorkerHost {
         `Error evaluating answer for session ${sessionId}: ${error.message}`,
         error.stack,
       );
+      try {
+        await this.prisma.interviewTurn.updateMany({
+          where: { id: turnId, status: 'EVALUATION_PROCESSING' },
+          data: { status: 'ANSWER_SUBMITTED' },
+        });
+      } catch {
+        // Ignore secondary rollback error
+      }
       if (job.attemptsMade >= (job.opts.attempts || 3) - 1) {
         // Guarded state transition: do not overwrite terminal states (F-012)
         const failResult = await this.prisma.interviewSession.updateMany({

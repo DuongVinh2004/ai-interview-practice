@@ -1,6 +1,8 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CompetencyArea } from '@ai-interview/contracts';
+import { LiveSessionStatus } from '@ai-interview/contracts';
+import { MentorAuthorityPolicy } from '../policies/mentor-authority.policy';
 
 export interface ProbingHint {
   id: string;
@@ -14,38 +16,46 @@ export interface ProbingHint {
 
 @Injectable()
 export class CopilotHintService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mentorAuthorityPolicy: MentorAuthorityPolicy,
+  ) {}
 
   async getProbingHints(
     sessionId: string,
+    userId: string,
     topic?: string,
-    userId?: string,
   ): Promise<{ sessionId: string; currentTurnTopic: string; hints: ProbingHint[] }> {
-    if (userId) {
-      const liveSession = await this.prisma.liveSession.findUnique({
-        where: { id: sessionId },
-        include: { mentor: true },
-      });
+    const liveSession = await this.prisma.liveSession.findUnique({
+      where: { id: sessionId },
+      include: { mentor: true },
+    });
 
-      if (liveSession) {
-        if (liveSession.mentor.userId !== userId) {
-          throw new ForbiddenException(
-            'Only the designated mentor can view co-pilot probing hints',
-          );
-        }
-      } else {
-        const mentorProfile = await this.prisma.mentorProfile.findUnique({
-          where: { userId },
-        });
-        if (!mentorProfile) {
-          throw new ForbiddenException('Only registered mentors can access co-pilot hints');
-        }
-      }
+    if (
+      !liveSession ||
+      liveSession.mentor.userId !== userId ||
+      liveSession.status !== LiveSessionStatus.IN_PROGRESS ||
+      !liveSession.interviewId
+    ) {
+      throw new ForbiddenException(
+        'Only the approved designated mentor can view hints for an active live session',
+      );
+    }
+    await this.mentorAuthorityPolicy.requireApprovedByUser(userId);
+
+    const interview = await this.prisma.interviewSession.findFirst({
+      where: { id: liveSession.interviewId, userId: liveSession.candidateId },
+      select: { id: true },
+    });
+    if (!interview) {
+      throw new ForbiddenException(
+        'Only the approved designated mentor can view hints for an active live session',
+      );
     }
 
     // 1. Fetch any context from interview turns or live session
     const turns = await this.prisma.interviewTurn.findMany({
-      where: { sessionId },
+      where: { sessionId: interview.id },
       include: { question: true, answer: { include: { evaluation: true } } },
       orderBy: { turnNumber: 'desc' },
       take: 1,

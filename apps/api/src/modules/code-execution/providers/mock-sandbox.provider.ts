@@ -11,6 +11,7 @@ export class MockSandboxProvider implements SandboxProvider {
     sourceCode: string,
     testCases?: TestCaseDto[],
     customInput?: string,
+    compilerOptions?: string,
   ): Promise<ExecuteCodeResponse> {
     // Quick syntax or runtime error simulation if source has intentional error keywords
     if (sourceCode.includes('SYNTAX_ERROR')) {

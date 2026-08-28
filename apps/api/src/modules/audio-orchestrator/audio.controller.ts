@@ -6,6 +6,7 @@ import {
   UseInterceptors,
   UploadedFile,
   Query,
+  Headers,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
@@ -15,11 +16,10 @@ import {
   ApiConsumes,
   ApiBody,
   ApiQuery,
+  ApiHeader,
 } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
-import { BillingMetric } from '@ai-interview/contracts';
 import { AudioOrchestratorService } from './audio-orchestrator.service';
 import {
   SynthesizeSpeechRequestDto,
@@ -47,14 +47,14 @@ const ALLOWED_AUDIO_MIMES = new Set([
 
 @ApiTags('Audio')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, QuotaGuard)
+@UseGuards(JwtAuthGuard)
 @Controller('audio')
 export class AudioController {
   constructor(private readonly audioOrchestratorService: AudioOrchestratorService) {}
 
   @Post('transcribe')
-  @RequireQuota(BillingMetric.AUDIO_MINUTE)
   @ApiOperation({ summary: 'Transcribe audio recording to text via Whisper STT' })
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -80,6 +80,7 @@ export class AudioController {
     @UploadedFile() file?: Express.Multer.File,
     @Query('language') language?: string,
     @Query('sessionId') sessionId?: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<TranscribeAudioResponseDto> {
     if (!file) {
       throw new DomainException(
@@ -108,6 +109,7 @@ export class AudioController {
       file.originalname || 'audio.webm',
       language,
       sessionId,
+      idempotencyKey,
     );
 
     return {
@@ -120,12 +122,13 @@ export class AudioController {
   }
 
   @Post('synthesize')
-  @RequireQuota(BillingMetric.AUDIO_MINUTE)
   @ApiOperation({ summary: 'Synthesize text into speech audio base64 stream via OpenAI TTS' })
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
   async synthesizeSpeech(
     @CurrentUser('sub') userId: string,
     @Body() dto: SynthesizeSpeechRequestDto,
     @Query('sessionId') sessionId?: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ): Promise<SynthesizeSpeechResponseDto> {
     const result = await this.audioOrchestratorService.synthesizeSpeech(
       userId,
@@ -133,6 +136,7 @@ export class AudioController {
       dto.voice,
       dto.speed,
       sessionId,
+      idempotencyKey,
     );
 
     return {

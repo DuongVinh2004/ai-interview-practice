@@ -21,10 +21,17 @@ export const EnvSchema = z.object({
   AI_PROVIDER: z
     .enum(['mock', 'gemini', 'openai', 'anthropic', 'router', 'external'])
     .default('mock'),
+  AI_ALLOW_MOCK: z.enum(['true', 'false']).default('false'),
+  ALLOW_MOCK_PROVIDERS: z.enum(['true', 'false']).default('false'),
+  PROCESS_ROLE: z.enum(['api', 'worker']).default('api'),
+  METRICS_EXPORTER_ENABLED: z.enum(['true', 'false']).default('false'),
+  METRICS_EXPORTER_HOST: z.string().min(1).default('127.0.0.1'),
+  METRICS_EXPORTER_PORT: z.coerce.number().int().min(1).max(65535).default(9091),
+  METRICS_AUTH_TOKEN: z.string().optional().default(''),
   OPENAI_API_KEY: z.string().optional().default(''),
   ANTHROPIC_API_KEY: z.string().optional().default(''),
   GEMINI_API_KEY: z.string().optional().default(''),
-  GEMINI_MODEL: z.string().default('gemini-2.0-flash'),
+  GEMINI_MODEL: z.string().default('gemini-3.6-flash'),
   OPENAI_MODEL: z.string().default('gpt-4o'),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-20250514'),
   AI_MODEL_NAME: z.string().default('mock-model-v1'),
@@ -40,6 +47,7 @@ export const EnvSchema = z.object({
   FEATURE_SOCRATIC_TUTOR: z.string().optional().default('false'),
   FEATURE_SPACED_REPETITION: z.string().optional().default('false'),
   FEATURE_VOICE_STREAMING: z.string().optional().default('false'),
+  FEATURE_QUESTION_BANK: z.string().optional().default('true'),
   STRIPE_SECRET_KEY: z.string().optional().default(''),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(''),
   JUDGE0_API_URL: z.string().optional().default(''),
@@ -85,6 +93,24 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     if (missingSecrets.length > 0) {
       throw new Error(
         `❌ Configuration validation error:\n${missingSecrets.join(', ')} must be configured in production`,
+      );
+    }
+    const insecureMockSettings = [
+      result.data.AI_PROVIDER === 'mock' ? 'AI_PROVIDER=mock' : null,
+      result.data.AI_ALLOW_MOCK === 'true' ? 'AI_ALLOW_MOCK=true' : null,
+      result.data.ALLOW_MOCK_PROVIDERS === 'true' ? 'ALLOW_MOCK_PROVIDERS=true' : null,
+    ].filter((value): value is string => value !== null);
+    if (insecureMockSettings.length > 0) {
+      throw new Error(
+        `❌ Configuration validation error:\nMock providers are forbidden in production: ${insecureMockSettings.join(', ')}`,
+      );
+    }
+    if (
+      result.data.METRICS_EXPORTER_ENABLED === 'true' &&
+      result.data.METRICS_AUTH_TOKEN.length < 32
+    ) {
+      throw new Error(
+        '❌ Configuration validation error:\nMETRICS_AUTH_TOKEN must contain at least 32 characters when the metrics exporter is enabled',
       );
     }
   }

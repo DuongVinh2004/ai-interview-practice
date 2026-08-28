@@ -7,6 +7,7 @@ import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { QueueName, UserRole } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 import { UsageMeterService } from '../billing/usage-meter.service';
+import { InterviewConfigurationService } from '../interview-configuration/interview-configuration.service';
 
 describe('InterviewService (Unit)', () => {
   let service: InterviewService;
@@ -59,6 +60,13 @@ describe('InterviewService (Unit)', () => {
       }),
     };
 
+    const mockConfigService = {
+      buildConfigurationSnapshot: jest.fn().mockResolvedValue({}),
+      recordRecentConfiguration: jest.fn().mockResolvedValue(undefined),
+      validateConfiguration: jest.fn().mockResolvedValue({ isValid: true, issues: [] }),
+      computeFingerprint: jest.fn().mockReturnValue('mock-fingerprint'),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InterviewService,
@@ -66,6 +74,7 @@ describe('InterviewService (Unit)', () => {
         { provide: SseService, useValue: sseService },
         { provide: AiOrchestratorService, useValue: mockAiOrchestrator },
         { provide: UsageMeterService, useValue: usageMeter },
+        { provide: InterviewConfigurationService, useValue: mockConfigService },
         { provide: getQueueToken(QueueName.QUESTION_GENERATION), useValue: questionQueue },
         { provide: getQueueToken(QueueName.ANSWER_EVALUATION), useValue: evaluationQueue },
       ],
@@ -86,15 +95,26 @@ describe('InterviewService (Unit)', () => {
       ).resolves.not.toThrow();
     });
 
-    it('should allow access if requester is ADMIN even if not owner', async () => {
+    it('should allow access if requester is ADMIN with verified MFA even if not owner', async () => {
       prisma.interviewSession.findUnique.mockResolvedValue({
         id: 'session-123',
         userId: 'owner-user-id',
       });
 
       await expect(
-        service.assertSessionAccess('admin-user-id', UserRole.ADMIN, 'session-123'),
+        service.assertSessionAccess('admin-user-id', UserRole.ADMIN, 'session-123', true),
       ).resolves.not.toThrow();
+    });
+
+    it('should deny access if requester is ADMIN but mfaVerified is false (BOLA protection)', async () => {
+      prisma.interviewSession.findUnique.mockResolvedValue({
+        id: 'session-123',
+        userId: 'owner-user-id',
+      });
+
+      await expect(
+        service.assertSessionAccess('admin-user-id', UserRole.ADMIN, 'session-123', false),
+      ).rejects.toThrow(DomainException);
     });
 
     it('should deny access (throw FORBIDDEN) if another candidate tries to access the session', async () => {

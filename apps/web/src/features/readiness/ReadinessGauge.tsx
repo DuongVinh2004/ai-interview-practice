@@ -1,3 +1,5 @@
+import { useI18nStore } from '../../stores/i18n.store';
+
 interface ReadinessGaugeProps {
   score: number; // 0 - 100
   confidenceLow: number;
@@ -11,6 +13,9 @@ export function ReadinessGauge({
   confidenceHigh,
   size = 240,
 }: ReadinessGaugeProps) {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const strokeWidth = 18;
   const radius = (size - strokeWidth * 2) / 2;
   const center = size / 2;
@@ -89,12 +94,14 @@ export function ReadinessGauge({
         </span>
 
         <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mt-1">
-          Readiness Index
+          {isVi ? 'Chỉ Số Sẵn Sàng' : 'Readiness Index'}
         </span>
 
         {/* 95% Confidence Interval Tag */}
         <div className="mt-2 px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-200 text-[10px] text-slate-600 font-mono">
-          95% CI: [{confidenceLow.toFixed(1)}% – {confidenceHigh.toFixed(1)}%]
+          {isVi
+            ? `Độ tin cậy 95%: [${confidenceLow.toFixed(1)}% – ${confidenceHigh.toFixed(1)}%]`
+            : `95% CI: [${confidenceLow.toFixed(1)}% – ${confidenceHigh.toFixed(1)}%]`}
         </div>
       </div>
     </div>

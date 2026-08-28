@@ -103,12 +103,13 @@ export class StreakReminderCron {
         }
       } catch (err: any) {
         this.logger.warn(
-          `Redis lock attempt failed, falling back to process-local locking: ${err.message}`,
+          `Redis lock attempt failed: ${err.message}. Failing-closed to avoid multi-pod duplicate spam (NEW-OPS-03).`,
         );
+        return false;
       }
     }
 
-    // In-memory fallback
+    // In-memory lock fallback for single-instance development/testing without Redis
     if (this.localExecutionLocks.has(lockKey)) {
       return false;
     }

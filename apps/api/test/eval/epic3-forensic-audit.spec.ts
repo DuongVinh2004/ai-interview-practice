@@ -96,6 +96,10 @@ describe('Epic 3 Forensic Quality & Security Audit', () => {
               sseService,
               aiOrchestrator,
               { checkAndConsumeQuotaInTransaction: jest.fn() } as any,
+              {
+                buildConfigurationSnapshot: jest.fn().mockResolvedValue({}),
+                recordRecentConfiguration: jest.fn().mockResolvedValue(undefined),
+              } as any,
               { add: jest.fn() } as any,
               { add: jest.fn() } as any,
             ),
@@ -257,10 +261,11 @@ describe('Epic 3 Forensic Quality & Security Audit', () => {
 
       const result = await interviewService.reEvaluateTurn(
         userId,
-        UserRole.CANDIDATE,
+        UserRole.ADMIN,
         sessionId,
         1,
         { reason: 'Added B-Tree complexity details' },
+        true,
       );
 
       expect(result.score).toBe(9.2);

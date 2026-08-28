@@ -145,7 +145,24 @@ describe('Readiness Services (F009)', () => {
 
   describe('Full Dashboard Aggregation', () => {
     it('generates complete dashboard response with milestones, roadmap and Vietnamese disclaimer', async () => {
-      mockPrisma.interviewTurn.findMany.mockResolvedValue([]);
+      mockPrisma.interviewTurn.findMany.mockResolvedValue([
+        {
+          id: 'turn-1',
+          turnNumber: 1,
+          createdAt: new Date('2026-08-20'),
+          session: { userId: 'user-123', competencyArea: 'SYSTEM_DESIGN' },
+          question: { content: 'System design question', keyFocus: 'scalability' },
+          answer: { evaluation: { score: 8.0 } },
+        },
+        {
+          id: 'turn-2',
+          turnNumber: 2,
+          createdAt: new Date('2026-08-21'),
+          session: { userId: 'user-123', competencyArea: 'DATABASE_CONCURRENCY' },
+          question: { content: 'Database locking question', keyFocus: 'database' },
+          answer: { evaluation: { score: 7.5 } },
+        },
+      ]);
       mockPrisma.readinessWeightProfile.findMany.mockResolvedValue([]);
 
       const dashboard = await readinessService.getReadinessDashboard('user-123', 'backend');

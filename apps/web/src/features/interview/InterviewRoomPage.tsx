@@ -14,8 +14,10 @@ import { useAudioSettingsStore } from '../../stores/audio-settings.store';
 import { useSpeechSynthesizer } from '../../hooks/use-speech-synthesizer';
 import { formatDifficulty, formatScore } from '../../lib/utils';
 import { useI18nStore } from '../../stores/i18n.store';
+import { useAuthStore } from '../../stores/auth.store';
 import { Button } from '../../components/ui/Button';
 import { Textarea } from '../../components/ui/Textarea';
+import { Modal } from '../../components/ui/Modal';
 import {
   Card,
   CardContent,
@@ -41,6 +43,7 @@ import { TestCasePanel } from '../../components/code-editor/TestCasePanel';
 import { AiCodeReviewPanel } from '../../components/code-editor/AiCodeReviewPanel';
 import { StarGuidePanel } from '../../components/interview/StarGuidePanel';
 import { VoiceInterviewRoom } from '../../components/interview/VoiceInterviewRoom';
+import { GreenRoomModal } from './GreenRoomModal';
 import { WhiteboardRoom } from '../system-design/WhiteboardRoom';
 import { useCodeExecution } from '../../hooks/useCodeExecution';
 import { useFocusModeStore } from '../../stores/focus-mode.store';
@@ -54,7 +57,7 @@ import {
   BarChart2,
   TrendingUp,
   RotateCcw,
-  Sparkles,
+  AlertCircle,
   Volume2,
   Code2,
   Wifi,
@@ -62,6 +65,7 @@ import {
   RefreshCw,
   Maximize2,
   Minimize2,
+  Sparkles,
 } from 'lucide-react';
 
 export function InterviewRoomPage() {
@@ -82,6 +86,7 @@ export function InterviewRoomPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [reEvalModalTurn, setReEvalModalTurn] = useState<number | null>(null);
   const [reEvalReason, setReEvalReason] = useState('');
+  const [isGreenRoomOpen, setIsGreenRoomOpen] = useState(false);
 
   const { executeCode, isExecuting, executionResult, submitCode, submissionResult } =
     useCodeExecution(sessionId || '');
@@ -126,6 +131,9 @@ export function InterviewRoomPage() {
     }
   };
 
+  const authUser = useAuthStore(state => state.user);
+  const userId = authUser?.id || 'anonymous';
+
   const setDraft = (key: string, value: string) => {
     try {
       if (typeof window !== 'undefined' && window.localStorage) {
@@ -149,20 +157,20 @@ export function InterviewRoomPage() {
   // Restore cached draft from localStorage if available
   useEffect(() => {
     if (sessionId && currentTurn && !answer) {
-      const draftKey = `draft-answer-${sessionId}-turn-${currentTurn.turnNumber}`;
+      const draftKey = `draft-answer-${userId}-${sessionId}-turn-${currentTurn.turnNumber}`;
       const savedDraft = getDraft(draftKey);
       if (savedDraft && !answerText) {
         setAnswerText(savedDraft);
       }
     }
-  }, [sessionId, currentTurn, answer]);
+  }, [sessionId, currentTurn, answer, userId]);
 
   // Persist draft to localStorage on change
   const handleDraftChange = useCallback(
     (text: string) => {
       setAnswerText(text);
       if (sessionId && currentTurn) {
-        const draftKey = `draft-answer-${sessionId}-turn-${currentTurn.turnNumber}`;
+        const draftKey = `draft-answer-${userId}-${sessionId}-turn-${currentTurn.turnNumber}`;
         if (text.trim()) {
           setDraft(draftKey, text);
         } else {
@@ -170,8 +178,21 @@ export function InterviewRoomPage() {
         }
       }
     },
-    [sessionId, currentTurn],
+    [sessionId, currentTurn, userId],
   );
+
+  // Open Green Room if explicitly flagged in sessionStorage
+  useEffect(() => {
+    if (sessionId && session?.state === SessionState.ACTIVE && !currentTurn?.answer) {
+      try {
+        if (sessionStorage.getItem(`open-greenroom-${sessionId}`) === 'true') {
+          setIsGreenRoomOpen(true);
+        }
+      } catch {
+        // ignore storage errors
+      }
+    }
+  }, [sessionId, session?.state, currentTurn?.answer]);
 
   // Warn before unload if user has unsaved draft text
   useEffect(() => {
@@ -234,7 +255,7 @@ export function InterviewRoomPage() {
       });
 
       // Clear draft from storage on successful submission
-      const draftKey = `draft-answer-${sessionId}-turn-${currentTurn.turnNumber}`;
+      const draftKey = `draft-answer-${userId}-${sessionId}-turn-${currentTurn.turnNumber}`;
       removeDraft(draftKey);
       setAnswerText('');
       await refetch();
@@ -416,7 +437,18 @@ export function InterviewRoomPage() {
         interviewId={session.id}
         roleName={session.jobRole?.name}
         levelName={session.seniorityLevel?.name}
-        onFinish={() => navigate(`/interviews/${session.id}/result`)}
+        onRestAnswerSubmit={async (text: string) => {
+          if (currentTurn?.id) {
+            await handleSubmitAnswerText(text);
+          }
+        }}
+        onFinish={() => {
+          if (session.state === SessionState.COMPLETED) {
+            navigate(`/interviews/${session.id}/result`);
+          } else {
+            refetch();
+          }
+        }}
       />
     );
   }
@@ -477,7 +509,7 @@ export function InterviewRoomPage() {
                   title="Real-time SSE event stream connected"
                 >
                   <Wifi className="h-3 w-3 text-emerald-600" />
-                  <span>Live Stream</span>
+                  <span>{language === 'vi' ? 'Trực tiếp (SSE)' : 'Live Stream'}</span>
                 </span>
               )}
             </div>
@@ -493,6 +525,22 @@ export function InterviewRoomPage() {
               isActive={session.state === SessionState.ACTIVE && !answer}
               turnNumber={currentTurnNumber}
             />
+
+            {/* Green Room Device Check Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsGreenRoomOpen(true)}
+              title={
+                language === 'vi'
+                  ? 'Mở Phòng chuẩn bị thiết bị (Green Room)'
+                  : 'Open Pre-Interview Green Room'
+              }
+              className="gap-1.5 text-xs text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800 hover:bg-indigo-50 dark:hover:bg-indigo-950/40"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-indigo-600 dark:text-indigo-400" />
+              <span className="hidden sm:inline">Green Room</span>
+            </Button>
 
             {/* Focus / Zen Mode Toggle */}
             <Button
@@ -524,13 +572,7 @@ export function InterviewRoomPage() {
         </div>
 
         {/* Accessible Progress Bar */}
-        <ProgressBar
-          value={currentTurnNumber}
-          max={totalTurnsCount}
-          label={`Interview Progress: Question ${currentTurnNumber} of ${totalTurnsCount}`}
-          variant="emerald"
-          size="sm"
-        />
+        <ProgressBar value={currentTurnNumber} max={totalTurnsCount} variant="emerald" size="sm" />
       </div>
 
       {/* Voice Mode Controls Toolbar */}
@@ -553,18 +595,58 @@ export function InterviewRoomPage() {
         </Alert>
       )}
 
-      {/* STATE 1: Question Generating / Waiting for Turn */}
-      {session.state === SessionState.CREATED && !question && (
-        <Card className="text-center py-16 border-slate-200">
-          <CardContent className="flex flex-col items-center gap-4">
-            <Spinner size="lg" />
-            <h3 className="text-lg font-bold text-slate-900">{t.interview.generatingQuestion}</h3>
-            <p className="text-xs sm:text-sm text-slate-500 max-w-md leading-relaxed">
-              {t.interview.generatingHint} ({session.technologies.map(t => t.name).join(', ')}).
+      {/* STATE 0: Terminal Failure / Cancelled */}
+      {(session.state === SessionState.FAILED || session.state === SessionState.CANCELLED) && (
+        <Card className="text-center py-12 border-rose-200 bg-rose-50/30">
+          <CardContent className="flex flex-col items-center gap-4 max-w-md mx-auto">
+            <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center">
+              <AlertCircle className="h-6 w-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">
+              {session.state === SessionState.CANCELLED
+                ? language === 'vi'
+                  ? 'Phiên phỏng vấn đã kết thúc/hủy'
+                  : 'Interview Session Cancelled'
+                : language === 'vi'
+                  ? 'Khởi tạo phỏng vấn không thành công'
+                  : 'Interview Generation Failed'}
+            </h3>
+            <p className="text-xs text-slate-600">
+              {session.state === SessionState.CANCELLED
+                ? language === 'vi'
+                  ? 'Phiên phỏng vấn này đã bị hủy bỏ.'
+                  : 'This interview session has been cancelled.'
+                : language === 'vi'
+                  ? 'Đã xảy ra sự cố trong quá trình khởi tạo câu hỏi. Vui lòng thử tạo phiên mới hoặc quay lại lịch sử.'
+                  : 'Failed to generate interview questions. Please start a new session or return to history.'}
             </p>
+            <div className="flex gap-3 mt-2">
+              <Button variant="outline" size="sm" onClick={() => navigate('/history')}>
+                {language === 'vi' ? 'Về Lịch sử' : 'Back to History'}
+              </Button>
+              <Button variant="primary" size="sm" onClick={() => navigate('/setup')}>
+                {language === 'vi' ? 'Tạo phiên mới' : 'New Interview'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
+
+      {/* STATE 1: Question Generating / Waiting for Turn */}
+      {!question &&
+        session.state !== SessionState.COMPLETED &&
+        session.state !== SessionState.FAILED &&
+        session.state !== SessionState.CANCELLED && (
+          <Card className="text-center py-16 border-slate-200">
+            <CardContent className="flex flex-col items-center gap-4">
+              <Spinner size="lg" />
+              <h3 className="text-lg font-bold text-slate-900">{t.interview.generatingQuestion}</h3>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-md leading-relaxed">
+                {t.interview.generatingHint} ({session.technologies.map(t => t.name).join(', ')}).
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
       {/* STATE 2: Question Ready & Answer Drafting / Evaluating */}
       {session.state !== SessionState.COMPLETED && question && (
@@ -620,7 +702,7 @@ export function InterviewRoomPage() {
           </Card>
 
           {/* Candidate Response Editor Area */}
-          {!answer && session.state === SessionState.ACTIVE && (
+          {!answer && (
             <div>
               {session.sessionMode === 'SYSTEM_DESIGN' ||
               (session.sessionMode as any) === SessionMode.SYSTEM_DESIGN ? (
@@ -725,7 +807,7 @@ export function InterviewRoomPage() {
           )}
 
           {/* STATE 3: Evaluating in Progress */}
-          {answer && session.state === SessionState.EVALUATING && !evaluation && (
+          {answer && !evaluation && (
             <Card className="border-amber-200 bg-amber-50/40 shadow-sm animate-pulse-subtle">
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
@@ -953,59 +1035,83 @@ export function InterviewRoomPage() {
       )}
 
       {/* Re-evaluation Modal Dialog */}
-      {reEvalModalTurn !== null && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-slide-up">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-emerald-100 text-emerald-800">
-                <Sparkles className="h-5 w-5" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-900">
-                  {t.interview.requestReEvaluation} (Turn {reEvalModalTurn})
-                </h3>
-                <p className="text-xs text-slate-500">
-                  AI Orchestrator will re-assess your answer with deterministic rubrics.
-                </p>
-              </div>
-            </div>
+      <Modal
+        isOpen={reEvalModalTurn !== null}
+        onClose={() => setReEvalModalTurn(null)}
+        title={`${t.interview.requestReEvaluation} (${language === 'vi' ? 'Lượt' : 'Turn'} ${reEvalModalTurn || 1})`}
+        description={
+          language === 'vi'
+            ? 'AI sẽ đánh giá lại câu trả lời theo các tiêu chí rubric chuẩn hóa.'
+            : 'AI Orchestrator will re-assess your answer with deterministic rubrics.'
+        }
+      >
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <label
+              htmlFor="re-eval-reason-input"
+              className="text-xs font-semibold text-slate-700 block"
+            >
+              {t.interview.reEvaluationPrompt}
+            </label>
+            <textarea
+              id="re-eval-reason-input"
+              value={reEvalReason}
+              onChange={e => setReEvalReason(e.target.value)}
+              placeholder={
+                language === 'vi'
+                  ? 'VD: Đã làm rõ thêm về cơ chế transaction isolation và xử lý lỗi...'
+                  : 'E.g. Elaborated on transactional isolation and resilience...'
+              }
+              rows={3}
+              className="w-full text-xs p-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-700 block">
-                {t.interview.reEvaluationPrompt}
-              </label>
-              <textarea
-                value={reEvalReason}
-                onChange={e => setReEvalReason(e.target.value)}
-                placeholder="E.g. Elaborated on transactional isolation and resilience..."
-                rows={3}
-                className="w-full text-xs p-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setReEvalModalTurn(null)}
-                disabled={isReEvaluating}
-              >
-                {t.interview.cancel}
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleReEvaluateConfirm}
-                isLoading={isReEvaluating}
-                className="gap-1.5"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-                <span>{t.interview.reEvaluationConfirm}</span>
-              </Button>
-            </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReEvalModalTurn(null)}
+              disabled={isReEvaluating}
+            >
+              {t.interview.cancel}
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleReEvaluateConfirm}
+              isLoading={isReEvaluating}
+              className="gap-1.5"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              <span>{t.interview.reEvaluationConfirm}</span>
+            </Button>
           </div>
         </div>
-      )}
+      </Modal>
+
+      {/* Pre-Interview Green Room Modal */}
+      <GreenRoomModal
+        isOpen={isGreenRoomOpen}
+        onClose={() => {
+          try {
+            sessionStorage.setItem(`greenroom-skipped-${sessionId}`, 'true');
+          } catch {
+            // sessionStorage unavailable fallback
+          }
+          setIsGreenRoomOpen(false);
+        }}
+        onReady={() => {
+          try {
+            sessionStorage.setItem(`greenroom-done-${sessionId}`, 'true');
+          } catch {
+            // sessionStorage unavailable fallback
+          }
+          setIsGreenRoomOpen(false);
+        }}
+        sessionId={sessionId || ''}
+        roleTitle={session?.jobRole?.name}
+      />
     </div>
   );
 }

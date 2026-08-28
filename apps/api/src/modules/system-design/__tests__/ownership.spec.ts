@@ -5,6 +5,7 @@ import { DesignEvaluationService } from '../services/design-evaluation.service';
 import { MockVisionProvider } from '../providers/mock-vision.provider';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { VisionEntitlementService } from '../services/vision-entitlement.service';
 
 describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
   let canvasService: CanvasService;
@@ -39,6 +40,10 @@ describe('System Design BOLA / Ownership Enforcement (P1-002)', () => {
         MockVisionProvider,
         { provide: 'VISION_PROVIDER', useClass: MockVisionProvider },
         { provide: PrismaService, useValue: mockPrisma },
+        {
+          provide: VisionEntitlementService,
+          useValue: { evaluate: jest.fn(input => input.provider.evaluateDiagram(input.options)) },
+        },
       ],
     }).compile();
 

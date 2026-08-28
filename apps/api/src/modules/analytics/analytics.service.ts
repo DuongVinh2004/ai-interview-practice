@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../platform/prisma/prisma.service';
+import { RedisService } from '../platform/redis/redis.service';
 import { CompetencyArea, SessionState } from '@ai-interview/contracts';
 
 interface CompetencyMapping {
@@ -115,12 +117,29 @@ const COMPETENCY_DEFINITIONS: CompetencyMapping[] = [
 export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly redisService?: RedisService,
+  ) {}
 
   /**
    * Aggregates evaluated interview turns into a multi-dimensional Competency Radar
    */
   async getCompetencyRadar(userId: string) {
+    const cacheKey = `user:analytics:${userId}:radar`;
+    if (this.redisService) {
+      try {
+        const client = this.redisService.getClient();
+        if (client) {
+          const cached = await client.get(cacheKey);
+          if (cached) {
+            return JSON.parse(cached);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Redis get cache error for ${cacheKey}: ${err.message}`);
+      }
+    }
     // 1. Fetch completed non-sandbox sessions with evaluated turns
     const sessions = await this.prisma.interviewSession.findMany({
       where: {
@@ -153,9 +172,13 @@ export class AnalyticsService {
     for (const session of sessions) {
       const techNames = session.technologies.map(t => t.technology.name.toLowerCase());
       for (const turn of session.turns) {
-        if (turn.answer?.evaluation) {
+        const evaluation = turn.answer?.evaluation;
+        if (
+          evaluation &&
+          (!evaluation.authorityState || evaluation.authorityState === 'AUTHORITATIVE')
+        ) {
           turnEvaluations.push({
-            score: turn.answer.evaluation.score,
+            score: evaluation.score,
             keyFocus: turn.question?.keyFocus?.toLowerCase() || '',
             questionContent: turn.question?.content?.toLowerCase() || '',
             techNames,
@@ -272,7 +295,7 @@ export class AnalyticsService {
       .reverse()
       .map(c => c.name);
 
-    return {
+    const result = {
       userId,
       totalEvaluatedTurns,
       overallAverageScore,
@@ -281,12 +304,40 @@ export class AnalyticsService {
       growthAreas,
       updatedAt: new Date().toISOString(),
     };
+
+    if (this.redisService) {
+      try {
+        const client = this.redisService.getClient();
+        if (client) {
+          await client.set(cacheKey, JSON.stringify(result), 'EX', 3600);
+        }
+      } catch (err: any) {
+        this.logger.warn(`Redis set cache error for ${cacheKey}: ${err.message}`);
+      }
+    }
+
+    return result;
   }
 
   /**
    * Computes longitudinal progression trends across completed interview sessions
    */
   async getProgressHistory(userId: string) {
+    const cacheKey = `user:analytics:${userId}:progress`;
+    if (this.redisService) {
+      try {
+        const client = this.redisService.getClient();
+        if (client) {
+          const cached = await client.get(cacheKey);
+          if (cached) {
+            return JSON.parse(cached);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`Redis get cache error for ${cacheKey}: ${err.message}`);
+      }
+    }
+
     const sessions = await this.prisma.interviewSession.findMany({
       where: {
         userId,
@@ -303,7 +354,7 @@ export class AnalyticsService {
     });
 
     if (sessions.length === 0) {
-      return {
+      const emptyResult = {
         userId,
         totalCompletedSessions: 0,
         averageScore: 0,
@@ -311,6 +362,19 @@ export class AnalyticsService {
         scoreVelocity: 0,
         sessions: [],
       };
+
+      if (this.redisService) {
+        try {
+          const client = this.redisService.getClient();
+          if (client) {
+            await client.set(cacheKey, JSON.stringify(emptyResult), 'EX', 3600);
+          }
+        } catch (err: any) {
+          this.logger.warn(`Redis set cache error for ${cacheKey}: ${err.message}`);
+        }
+      }
+
+      return emptyResult;
     }
 
     const sessionPoints = sessions.map(s => ({
@@ -336,7 +400,7 @@ export class AnalyticsService {
       scoreVelocity = Number((latestAvg - earliestAvg).toFixed(1));
     }
 
-    return {
+    const result = {
       userId,
       totalCompletedSessions: sessions.length,
       averageScore,
@@ -344,5 +408,48 @@ export class AnalyticsService {
       scoreVelocity,
       sessions: sessionPoints,
     };
+
+    if (this.redisService) {
+      try {
+        const client = this.redisService.getClient();
+        if (client) {
+          await client.set(cacheKey, JSON.stringify(result), 'EX', 3600);
+        }
+      } catch (err: any) {
+        this.logger.warn(`Redis set cache error for ${cacheKey}: ${err.message}`);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Invalidates cached analytics data for a specific user (NEW-DATA-03)
+   */
+  async invalidateUserAnalyticsCache(userId: string): Promise<void> {
+    if (!userId || !this.redisService) return;
+    try {
+      const client = this.redisService.getClient();
+      if (client) {
+        await client.del(
+          `user:analytics:${userId}:radar`,
+          `user:analytics:${userId}:progress`,
+          `user:analytics:${userId}`,
+        );
+        this.logger.log(`[NEW-DATA-03] Invalidated analytics cache for user: ${userId}`);
+      }
+    } catch (err: any) {
+      this.logger.warn(`Failed to invalidate analytics cache for user ${userId}: ${err.message}`);
+    }
+  }
+
+  @OnEvent('interview.completed')
+  async handleInterviewCompleted(payload: { userId: string; sessionId?: string }) {
+    if (payload?.userId) {
+      this.logger.log(
+        `Handling interview.completed event for analytics cache invalidation (user ${payload.userId})`,
+      );
+      await this.invalidateUserAnalyticsCache(payload.userId);
+    }
   }
 }

@@ -15,7 +15,12 @@ export class BookingController {
   @Post('book')
   @ApiOperation({ summary: 'Book collision-safe 1-on-1 interview session with a mentor' })
   async bookSession(@CurrentUser('sub') candidateId: string, @Body() dto: BookSessionDto) {
-    return this.bookingService.bookSession(candidateId, dto.mentorId, dto.scheduledAt);
+    return this.bookingService.bookSession(
+      candidateId,
+      dto.mentorId,
+      dto.scheduledAt,
+      dto.interviewId,
+    );
   }
 
   @Get('my')

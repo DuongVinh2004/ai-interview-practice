@@ -48,11 +48,12 @@ export class HistoryReportController {
   @Get(':id/result')
   @ApiOperation({ summary: 'Get full result breakdown and rubrics for a completed interview' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
-  async getSessionResult(
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('role') userRole: UserRole,
-    @Param('id') sessionId: string,
-  ) {
-    return this.historyReportService.getSessionResult(userId, userRole, sessionId);
+  async getSessionResult(@CurrentUser() user: any, @Param('id') sessionId: string) {
+    return this.historyReportService.getSessionResult(
+      user.sub,
+      user.role,
+      sessionId,
+      user.mfaVerified,
+    );
   }
 }

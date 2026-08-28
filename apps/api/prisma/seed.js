@@ -159,22 +159,30 @@ async function main() {
   console.log(`✅ Seeded ${jobRoles.length} job roles`);
   const seniorityLevels = [
     {
+      slug: 'fresher',
+      name: 'Fresher',
+      order: 1,
+      description:
+        '0-1 year of experience; focus on core CS fundamentals, data structures, and basic syntax.',
+    },
+    {
       slug: 'junior',
       name: 'Junior',
-      order: 1,
-      description: '0-2 years of experience; focus on fundamentals and clean code.',
+      order: 2,
+      description:
+        '1-2 years of experience; focus on practical implementation, framework fundamentals, and clean code.',
     },
     {
       slug: 'mid-level',
       name: 'Mid-Level',
-      order: 2,
+      order: 3,
       description:
         '2-5 years of experience; focus on practical design patterns, debugging, and independence.',
     },
     {
       slug: 'senior',
       name: 'Senior',
-      order: 3,
+      order: 4,
       description:
         '5+ years of experience; focus on architecture, trade-offs, scaling, and system design.',
     },

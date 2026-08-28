@@ -3,17 +3,20 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
   Inject,
 } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { MediaProvider } from '../providers/media-provider.interface';
 import { LiveSessionStatus } from '@ai-interview/contracts';
+import { MentorAuthorityPolicy } from '../policies/mentor-authority.policy';
 
 @Injectable()
 export class LiveSessionService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('MEDIA_PROVIDER') private readonly mediaProvider: MediaProvider,
+    private readonly mentorAuthorityPolicy: MentorAuthorityPolicy,
   ) {}
 
   async joinSession(sessionId: string, userId: string) {
@@ -36,6 +39,10 @@ export class LiveSessionService {
       throw new ForbiddenException('You are not a participant in this live session');
     }
 
+    if (isMentor) {
+      await this.mentorAuthorityPolicy.requireApprovedByUser(userId);
+    }
+
     if (session.status === LiveSessionStatus.CANCELED) {
       throw new BadRequestException('This session has been canceled');
     }
@@ -52,14 +59,6 @@ export class LiveSessionService {
       role,
       participantName,
     );
-
-    // Save token if not present
-    if (!session.roomToken) {
-      await this.prisma.liveSession.update({
-        where: { id: sessionId },
-        data: { roomToken },
-      });
-    }
 
     return {
       sessionId: session.id,
@@ -84,16 +83,20 @@ export class LiveSessionService {
     if (session.mentor.userId !== userId) {
       throw new ForbiddenException('Only the mentor can start the session');
     }
+    await this.mentorAuthorityPolicy.requireApprovedByUser(userId);
 
-    const updated = await this.prisma.liveSession.update({
-      where: { id: sessionId },
+    const transition = await this.prisma.liveSession.updateMany({
+      where: { id: sessionId, status: LiveSessionStatus.SCHEDULED },
       data: {
         status: LiveSessionStatus.IN_PROGRESS,
         startedAt: new Date(),
       },
     });
+    if (transition.count !== 1) {
+      throw new ConflictException('Only a scheduled live session can be started');
+    }
 
-    return updated;
+    return this.prisma.liveSession.findUnique({ where: { id: sessionId } });
   }
 
   async endSession(sessionId: string, userId: string) {
@@ -109,14 +112,22 @@ export class LiveSessionService {
     if (session.mentor.userId !== userId) {
       throw new ForbiddenException('Only the mentor can end the session');
     }
+    await this.mentorAuthorityPolicy.requireApprovedByUser(userId);
 
-    const updated = await this.prisma.liveSession.update({
-      where: { id: sessionId },
+    const transition = await this.prisma.liveSession.updateMany({
+      where: {
+        id: sessionId,
+        status: LiveSessionStatus.IN_PROGRESS,
+        startedAt: { not: null },
+      },
       data: {
         status: LiveSessionStatus.COMPLETED,
         endedAt: new Date(),
       },
     });
+    if (transition.count !== 1) {
+      throw new ConflictException('Only an in-progress live session can be completed');
+    }
 
     // Increment mentor total sessions
     await this.prisma.mentorProfile.update({
@@ -124,7 +135,7 @@ export class LiveSessionService {
       data: { totalSessions: { increment: 1 } },
     });
 
-    return updated;
+    return this.prisma.liveSession.findUnique({ where: { id: sessionId } });
   }
 
   async saveMentorNotes(sessionId: string, userId: string, notes: string) {
@@ -140,6 +151,7 @@ export class LiveSessionService {
     if (session.mentor.userId !== userId) {
       throw new ForbiddenException('Only the mentor can edit private notes');
     }
+    await this.mentorAuthorityPolicy.requireApprovedByUser(userId);
 
     const updated = await this.prisma.liveSession.update({
       where: { id: sessionId },
@@ -170,101 +182,69 @@ export class LiveSessionService {
       );
     }
 
-    const evaluation = await this.prisma.evaluation.findUnique({
-      where: { id: evaluationId },
-      include: {
-        answer: {
-          include: {
-            turn: {
-              include: {
-                session: true,
+    const runOverride = () =>
+      this.prisma.$transaction(
+        async tx => {
+          const evaluation = await tx.evaluation.findUnique({
+            where: { id: evaluationId },
+            include: {
+              answer: {
+                include: {
+                  turn: {
+                    include: { session: true },
+                  },
+                },
               },
             },
-          },
-        },
-      },
-    });
+          });
+          if (!evaluation) {
+            throw new NotFoundException('Evaluation record not found');
+          }
 
-    if (!evaluation) {
-      throw new NotFoundException('Evaluation record not found');
-    }
+          const mentorProfile = await this.mentorAuthorityPolicy.requireApprovedByUser(
+            mentorUserId,
+            tx,
+          );
+          const candidateUserId = evaluation.answer.turn.session.userId;
+          const sessionId = evaluation.answer.turn.sessionId;
+          const engagement = await tx.liveSession.findFirst({
+            where: {
+              mentorId: mentorProfile.id,
+              candidateId: candidateUserId,
+              interviewId: sessionId,
+              status: {
+                in: [LiveSessionStatus.IN_PROGRESS, LiveSessionStatus.COMPLETED],
+              },
+            },
+          });
+          if (!engagement) {
+            throw new ForbiddenException(
+              'An exact active mentor, candidate, and interview engagement is required',
+            );
+          }
 
-    // 2. Verify mentor identity
-    const mentorProfile = await this.prisma.mentorProfile.findUnique({
-      where: { userId: mentorUserId },
-    });
+          const overrideWindowMs = 48 * 60 * 60 * 1000;
+          if (engagement.status === LiveSessionStatus.COMPLETED) {
+            const endedAt = engagement.endedAt ? new Date(engagement.endedAt).getTime() : NaN;
+            const now = Date.now();
+            if (!Number.isFinite(endedAt) || endedAt > now || now - endedAt > overrideWindowMs) {
+              throw new ForbiddenException(
+                'Mentor score override window has expired for this live session (48-hour limit)',
+              );
+            }
+          }
 
-    if (!mentorProfile) {
-      throw new ForbiddenException('Only registered mentors can perform score overrides');
-    }
-
-    const candidateUserId = evaluation.answer.turn.session.userId;
-    const sessionId = evaluation.answer.turn.sessionId;
-    const interviewCreatedAt = evaluation.answer.turn.session.createdAt;
-
-    // 3. Find matching LiveSession engagement
-    const assignment = await this.prisma.liveSession.findFirst({
-      where: {
-        mentorId: mentorProfile.id,
-        candidateId: candidateUserId,
-        status: { in: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED'] },
-      },
-      orderBy: { scheduledAt: 'desc' },
-    });
-
-    if (!assignment) {
-      throw new ForbiddenException(
-        "You are not the designated mentor for this candidate's session",
-      );
-    }
-
-    // 4. SEC-006: Enforce bounded time window & target interview engagement binding
-    const OVERRIDE_WINDOW_MS = 48 * 60 * 60 * 1000; // 48 hours
-    const now = Date.now();
-
-    if (assignment.status === 'COMPLETED') {
-      const sessionEndTime = assignment.endedAt
-        ? new Date(assignment.endedAt).getTime()
-        : assignment.scheduledAt
-          ? new Date(assignment.scheduledAt).getTime()
-          : new Date(assignment.updatedAt).getTime();
-
-      if (now - sessionEndTime > OVERRIDE_WINDOW_MS) {
-        throw new ForbiddenException(
-          'Mentor score override window has expired for this live session (48-hour limit)',
-        );
-      }
-
-      // Ensure the target interview session was not created after the live session ended (unrelated future interview)
-      if (
-        interviewCreatedAt &&
-        new Date(interviewCreatedAt).getTime() > sessionEndTime + OVERRIDE_WINDOW_MS
-      ) {
-        throw new ForbiddenException(
-          'Cannot override score for an interview session created outside the mentor engagement window',
-        );
-      }
-    }
-
-    const originalScore = evaluation.score;
-
-    // Update evaluation score with appended justification audit in feedback
-    const auditFeedback = `${evaluation.conciseFeedback}\n\n[Mentor Score Override (${new Date().toISOString()}): Original: ${originalScore} -> Adjusted: ${newScore}. Reason: ${justification}]`;
-
-    const updated = await this.prisma.$transaction(async tx => {
-      const lastRun = tx.evaluationRun
-        ? await tx.evaluationRun.findFirst({
+          const originalScore = evaluation.score;
+          const normalizedJustification = justification.trim();
+          const auditFeedback = `${evaluation.conciseFeedback}\n\n[Mentor Score Override (${new Date().toISOString()}): Original: ${originalScore} -> Adjusted: ${newScore}. Reason: ${normalizedJustification}]`;
+          const lastRun = await tx.evaluationRun.findFirst({
             where: { evaluationId },
             orderBy: { runNumber: 'desc' },
-          })
-        : null;
-      const runNumberVal = (lastRun?.runNumber || 0) + 1;
-
-      const run = tx.evaluationRun
-        ? await tx.evaluationRun.create({
+          });
+          const run = await tx.evaluationRun.create({
             data: {
               evaluationId,
-              runNumber: runNumberVal,
+              runNumber: (lastRun?.runNumber || 0) + 1,
               score: newScore,
               rubricScores: evaluation.rubricScores as any,
               strengths: evaluation.strengths as any,
@@ -274,61 +254,80 @@ export class LiveSessionService {
               needsReview: false,
               authorityState: 'AUTHORITATIVE',
               provider: evaluation.provider,
-              fallbackReason: `Mentor override: ${justification}`,
+              fallbackReason: `Mentor override: ${normalizedJustification}`,
               confidence: 1.0,
               triggeredBy: 'MENTOR_OVERRIDE',
             },
-          })
-        : null;
+          });
+          const updatedEvaluation = await tx.evaluation.update({
+            where: { id: evaluationId },
+            data: {
+              score: newScore,
+              conciseFeedback: auditFeedback,
+              needsReview: false,
+              authorityState: 'AUTHORITATIVE',
+              currentRunId: run.id,
+            },
+          });
 
-      const updatedEval = await tx.evaluation.update({
-        where: { id: evaluationId },
-        data: {
-          score: newScore,
-          conciseFeedback: auditFeedback,
-          needsReview: false,
-          authorityState: 'AUTHORITATIVE',
-          ...(run ? { currentRunId: run.id } : {}),
+          const allEvaluations = await tx.evaluation.findMany({
+            where: {
+              answer: { turn: { sessionId } },
+              authorityState: 'AUTHORITATIVE',
+            },
+          });
+          if (allEvaluations.length > 0) {
+            const avgScore =
+              allEvaluations.reduce((sum, current) => sum + current.score, 0) /
+              allEvaluations.length;
+            await tx.interviewSession.update({
+              where: { id: sessionId },
+              data: { overallScore: Number(avgScore.toFixed(1)) },
+            });
+          }
+
+          await tx.auditLog.create({
+            data: {
+              userId: mentorUserId,
+              action: 'EVALUATION_OVERRIDDEN',
+              resource: 'evaluation',
+              resourceId: evaluationId,
+              details: {
+                engagementId: engagement.id,
+                mentorId: mentorProfile.id,
+                candidateId: candidateUserId,
+                interviewId: sessionId,
+                previousScore: originalScore,
+                newScore,
+                reason: normalizedJustification,
+              },
+            },
+          });
+
+          return {
+            evaluationId: updatedEvaluation.id,
+            originalScore,
+            newScore: updatedEvaluation.score,
+            justification: normalizedJustification,
+            overriddenByMentorId: mentorProfile.id,
+            engagementId: engagement.id,
+            updatedAt: new Date(),
+          };
         },
-      });
+        { isolationLevel: 'Serializable' },
+      );
 
-      const allEvaluations = await tx.evaluation.findMany({
-        where: {
-          answer: { turn: { sessionId } },
-          authorityState: 'AUTHORITATIVE',
-        },
-      });
-
-      if (allEvaluations.length > 0) {
-        const avgScore =
-          allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length;
-        await tx.interviewSession.update({
-          where: { id: sessionId },
-          data: { overallScore: Number(avgScore.toFixed(1)) },
-        });
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await runOverride();
+      } catch (error: any) {
+        const retryable = error?.code === 'P2034' || error?.code === 'P2002';
+        if (!retryable || attempt === 3) {
+          throw error;
+        }
       }
-
-      await tx.auditLog.create({
-        data: {
-          userId: mentorUserId,
-          action: 'EVALUATION_OVERRIDDEN',
-          resource: 'evaluation',
-          resourceId: evaluationId,
-          details: { originalScore, newScore, justification, mentorId: mentorProfile.id },
-        },
-      });
-
-      return updatedEval;
-    });
-
-    return {
-      evaluationId: updated.id,
-      originalScore,
-      newScore: updated.score,
-      justification,
-      overriddenByMentorId: mentorProfile.id,
-      updatedAt: new Date(),
-    };
+    }
+    throw new ConflictException('Score override could not be serialized');
   }
 
   async rateMentor(sessionId: string, candidateId: string, rating: number, feedback?: string) {

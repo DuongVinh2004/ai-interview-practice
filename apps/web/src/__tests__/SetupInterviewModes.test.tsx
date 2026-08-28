@@ -111,7 +111,11 @@ describe('SetupInterviewPage Modes (Epic 6)', () => {
     expect(
       screen.getByText(/Focus Competency Area|Năng lực Kỹ thuật Trọng tâm/i),
     ).toBeInTheDocument();
-    expect(screen.getByText('System Design & Scalability')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '3 Questions' })).toBeInTheDocument();
+    expect(
+      screen.getAllByText(/System Design & Scalability|Thiết Kế Hệ Thống/i).length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole('button', { name: /3 (Questions|câu hỏi)/i }).length,
+    ).toBeGreaterThan(0);
   });
 });

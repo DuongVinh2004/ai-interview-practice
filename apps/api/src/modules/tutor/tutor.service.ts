@@ -15,12 +15,16 @@ import {
   TutorRatingDto,
 } from './dto/tutor.dto';
 import { TutorRole, QuestionRetryResponse } from '@ai-interview/contracts';
+import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 
 @Injectable()
 export class TutorService {
   private readonly logger = new Logger(TutorService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly aiOrchestrator: AiOrchestratorService,
+  ) {}
 
   /**
    * Creates or returns an existing TutorSession for a specific interview turn.
@@ -177,24 +181,56 @@ export class TutorService {
     res.setHeader('X-Accel-Buffering', 'no');
     res.flushHeaders?.();
 
-    // Formulate Socratic tutor response
-    const socraticGuidance = this.generateSocraticResponse(
-      dto.message,
-      tutorSession.messages.length,
+    // Fetch interview context for Socratic system prompt
+    const interviewSession = await this.prisma.interviewSession.findUnique({
+      where: { id: tutorSession.interviewId },
+      include: {
+        jobRole: true,
+        seniorityLevel: true,
+        turns: {
+          where: { turnNumber: tutorSession.turnNumber },
+          include: {
+            question: true,
+            answer: { include: { evaluation: true } },
+          },
+        },
+      },
+    });
+
+    const targetTurn = interviewSession?.turns[0];
+    const evalData = targetTurn?.answer?.evaluation;
+    const chatHistory = tutorSession.messages.map(m => ({
+      role: m.role as any,
+      content: m.content,
+    }));
+
+    const socraticContext = {
+      role: interviewSession?.jobRole?.name || 'Software Engineer',
+      level: interviewSession?.seniorityLevel?.name || 'Mid-Level',
+      question: targetTurn?.question?.content || 'Interview Question',
+      originalAnswer: targetTurn?.answer?.content || '',
+      score: evalData?.score || 5.0,
+      strengths: (evalData?.strengths as string[]) || [],
+      improvements: (evalData?.improvements as string[]) || [],
+      keyFocus: targetTurn?.question?.keyFocus || undefined,
+      userMessage: dto.message,
+      chatHistory,
+    };
+
+    const systemPrompt = buildSocraticSystemPrompt(socraticContext);
+
+    let fullResponse = '';
+    const aiResult = await this.aiOrchestrator.streamSocraticChat(
+      tutorSession.interviewId,
+      socraticContext,
+      systemPrompt,
+      token => {
+        fullResponse += token;
+        res.write(`data: ${JSON.stringify({ type: 'token', content: token })}\n\n`);
+      },
     );
 
-    const tokens = socraticGuidance.split(' ');
-    let fullResponse = '';
-
-    for (let i = 0; i < tokens.length; i++) {
-      const token = tokens[i] + (i < tokens.length - 1 ? ' ' : '');
-      fullResponse += token;
-      res.write(`data: ${JSON.stringify({ type: 'token', content: token })}\n\n`);
-      // Short delay for natural typing feel
-      await new Promise(r => setTimeout(r, 15));
-    }
-
-    const docReferences = [
+    const docReferences = aiResult.data.references || [
       {
         title: 'System Architecture & Best Practices Guide',
         url: 'https://docs.microsoft.com/azure/architecture/',
@@ -210,7 +246,7 @@ export class TutorService {
       data: {
         sessionId,
         role: TutorRole.AI_TUTOR,
-        content: fullResponse,
+        content: fullResponse || aiResult.data.fullText,
         references: docReferences as any,
       },
     });
@@ -225,45 +261,15 @@ export class TutorService {
     res.end();
   }
 
-  private generateSocraticResponse(userMessage: string, messageIndex: number): string {
-    const msg = userMessage.toLowerCase();
-
-    if (
-      msg.includes('đáp án') ||
-      msg.includes('answer') ||
-      msg.includes('code') ||
-      msg.includes('solution')
-    ) {
-      return `That is an interesting question! Before looking at direct code, let's break down the mechanics: What data structure or pattern would best isolate this responsibility while keeping memory complexity within O(1)?`;
-    }
-
-    if (msg.includes('cache') || msg.includes('redis') || msg.includes('memory')) {
-      return `Good intuition about caching! However, consider the edge cases: What happens if two concurrent requests attempt to update the same cache key simultaneously (Cache Stampede / Race Condition)? How would you guard against that?`;
-    }
-
-    if (
-      msg.includes('database') ||
-      msg.includes('sql') ||
-      msg.includes('index') ||
-      msg.includes('query')
-    ) {
-      return `Spot on. When indexing these columns, what trade-off occurs between read acceleration vs write/insert throughput? How would you verify the execution plan using EXPLAIN ANALYZE?`;
-    }
-
-    if (messageIndex <= 2) {
-      return `Great perspective. Notice how this aligns with the principle of separation of concerns. If this component suddenly experienced a 10x traffic spike, which specific bottleneck would fail first?`;
-    }
-
-    return `Excellent progress! You have identified the core trade-off. To solidify this concept, try summarizing the step-by-step invariant or retry the question to test your improved understanding!`;
-  }
-
   /**
-   * Submits a retry answer for an interview turn, calculates score improvement, and persists QuestionRetry.
+   * Submits a retry answer for an interview turn, calculates score improvement using AI evaluation rubric, and persists QuestionRetry.
    */
   async submitRetry(userId: string, dto: QuestionRetryDto): Promise<QuestionRetryResponse> {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: dto.interviewId },
       include: {
+        jobRole: true,
+        seniorityLevel: true,
         turns: {
           where: { turnNumber: dto.turnNumber },
           include: {
@@ -291,27 +297,26 @@ export class TutorService {
     const originalAnswer = turn.answer.content;
     const originalScore = turn.answer.evaluation.score;
 
-    // Fast AI retry scoring evaluation (lightweight rubric)
-    const retryLengthBonus = Math.min(
-      1.5,
-      dto.retryAnswer.length - originalAnswer.length > 50 ? 1.5 : 0.5,
-    );
-    const retryScore = Math.min(
-      10.0,
-      Number(Math.max(originalScore + 1.0, 7.5 + retryLengthBonus).toFixed(1)),
-    );
+    // Genuine AI evaluation based on standard technical rubric (Technical Accuracy, Depth, Clarity)
+    const evalResult = await this.aiOrchestrator.evaluateAnswer(session.id, {
+      role: session.jobRole?.name || 'Software Engineer',
+      level: session.seniorityLevel?.name || 'Mid-Level',
+      question: turn.question?.content || '',
+      keyFocus: turn.question?.keyFocus || undefined,
+      expectedPoints: (turn.question?.expectedPoints as string[]) || undefined,
+      answer: dto.retryAnswer,
+    });
+
+    const retryScore = Number(evalResult.score.toFixed(1));
     const improvement = Number((retryScore - originalScore).toFixed(1));
 
     const feedback = {
-      summary: `Your retry effectively addressed the previous gaps with clearer technical terminology, concrete architectural trade-offs, and edge case awareness.`,
-      keyStrengths: [
-        'Demonstrated deeper understanding of failure modes and fault isolation',
-        'Structured the answer with clear cause-and-effect reasoning',
-      ],
-      remainingGaps: [
-        'Consider elaborating on automated telemetry/metrics for continuous verification',
-      ],
-      modelComparison: `Original Score: ${originalScore}/10 -> Retry Score: ${retryScore}/10 (+${improvement} pts)`,
+      summary:
+        evalResult.conciseFeedback ||
+        `Your retry effectively addressed previous gaps with clear technical reasoning and architectural considerations.`,
+      keyStrengths: evalResult.strengths || [],
+      remainingGaps: evalResult.improvements || [],
+      modelComparison: `Original Score: ${originalScore}/10 -> Retry Score: ${retryScore}/10 (${improvement >= 0 ? '+' : ''}${improvement} pts)`,
     };
 
     const retryRecord = await this.prisma.questionRetry.upsert({

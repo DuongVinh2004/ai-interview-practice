@@ -127,4 +127,62 @@ describe('Epic 4 Voice Mode & AudioAnswerRecorder', () => {
       'In event-driven architecture, services communicate asynchronously via event streams.',
     );
   });
+
+  it('handles state recovery and retry upload when transcription fails due to network error', async () => {
+    // Mock failure first
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: () =>
+        Promise.resolve(JSON.stringify({ message: 'Network timeout during transcription' })),
+    });
+
+    const mockOnAnswerReady = vi.fn();
+    render(
+      <AudioAnswerRecorder onAnswerReady={mockOnAnswerReady} sessionId="test-session-recovery" />,
+    );
+
+    // Start recording
+    fireEvent.click(screen.getByTestId('record-toggle-btn'));
+    await waitFor(() => {
+      expect(screen.getByText(/Dừng ghi âm|Stop Recording/i)).toBeInTheDocument();
+    });
+
+    // Stop recording -> triggers transcription failure
+    fireEvent.click(screen.getByTestId('record-toggle-btn'));
+
+    // State recovery bar should appear with Retry Upload button
+    await waitFor(() => {
+      expect(screen.getByTestId('state-recovery-bar')).toBeInTheDocument();
+      expect(screen.getByTestId('retry-upload-btn')).toBeInTheDocument();
+    });
+
+    // Mock success for retry
+    (global.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({
+            data: {
+              text: 'Recovered audio transcript successfully uploaded without re-speaking.',
+              confidence: 0.99,
+              durationSeconds: 10,
+              provider: 'mock',
+            },
+          }),
+        ),
+    });
+
+    // Click Retry Upload button
+    fireEvent.click(screen.getByTestId('retry-upload-btn'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByDisplayValue(
+          'Recovered audio transcript successfully uploaded without re-speaking.',
+        ),
+      ).toBeInTheDocument();
+    });
+  });
 });

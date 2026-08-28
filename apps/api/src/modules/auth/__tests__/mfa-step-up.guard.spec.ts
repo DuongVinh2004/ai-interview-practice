@@ -46,6 +46,25 @@ describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
     });
   });
 
+  it('MUST reject an unenrolled Admin even when production mock providers are enabled', async () => {
+    const previousNodeEnv = process.env.NODE_ENV;
+    const previousAllowMock = process.env.ALLOW_MOCK_PROVIDERS;
+    process.env.NODE_ENV = 'production';
+    process.env.ALLOW_MOCK_PROVIDERS = 'true';
+    const context = createMockContext({ sub: 'admin-1', role: UserRole.ADMIN, mfaVerified: true });
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: false });
+    try {
+      await expect(guard.canActivate(context)).rejects.toMatchObject({
+        code: ErrorCode.MFA_STEP_UP_REQUIRED,
+      });
+    } finally {
+      if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previousNodeEnv;
+      if (previousAllowMock === undefined) delete process.env.ALLOW_MOCK_PROVIDERS;
+      else process.env.ALLOW_MOCK_PROVIDERS = previousAllowMock;
+    }
+  });
+
   it('MUST reject user with MFA enabled when session is not verified (mfaVerified === false)', async () => {
     const context = createMockContext({
       sub: 'user-1',
@@ -84,12 +103,14 @@ describe('MfaStepUpGuard (F-001, F-002 Negative Matrix)', () => {
 describe('RolesGuard (Admin MFA Enforcement - AG-PACKET-003 / SEC-003)', () => {
   let rolesGuard: any;
   let mockReflector: any;
+  let mockPrisma: any;
 
   beforeEach(() => {
     mockReflector = {
       getAllAndOverride: jest.fn(),
     };
-    rolesGuard = new RolesGuard(mockReflector);
+    mockPrisma = { user: { findUnique: jest.fn() } };
+    rolesGuard = new RolesGuard(mockReflector, mockPrisma);
   });
 
   const createMockContext = (user?: any): ExecutionContext =>
@@ -103,7 +124,7 @@ describe('RolesGuard (Admin MFA Enforcement - AG-PACKET-003 / SEC-003)', () => {
       getClass: () => ({}),
     }) as any;
 
-  it('MUST reject single-factor Admin on admin routes (mfaVerified === false) (fails closed)', () => {
+  it('MUST reject single-factor Admin on admin routes (mfaVerified === false) (fails closed)', async () => {
     mockReflector.getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
     const context = createMockContext({
       sub: 'admin-1',
@@ -111,16 +132,14 @@ describe('RolesGuard (Admin MFA Enforcement - AG-PACKET-003 / SEC-003)', () => {
       mfaVerified: false,
     });
 
-    expect(() => rolesGuard.canActivate(context)).toThrow(DomainException);
-    try {
-      rolesGuard.canActivate(context);
-    } catch (err: any) {
-      expect(err.status).toBe(HttpStatus.FORBIDDEN);
-      expect(err.code).toBe(ErrorCode.MFA_STEP_UP_REQUIRED);
-    }
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: true });
+    await expect(rolesGuard.canActivate(context)).rejects.toMatchObject({
+      status: HttpStatus.FORBIDDEN,
+      code: ErrorCode.MFA_STEP_UP_REQUIRED,
+    });
   });
 
-  it('MUST allow Admin with verified MFA on admin routes (mfaVerified === true)', () => {
+  it('MUST allow Admin with verified MFA on admin routes (mfaVerified === true)', async () => {
     mockReflector.getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
     const context = createMockContext({
       sub: 'admin-1',
@@ -128,11 +147,25 @@ describe('RolesGuard (Admin MFA Enforcement - AG-PACKET-003 / SEC-003)', () => {
       mfaVerified: true,
     });
 
-    const result = rolesGuard.canActivate(context);
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: true });
+    const result = await rolesGuard.canActivate(context);
     expect(result).toBe(true);
   });
 
-  it('MUST allow Candidate on candidate routes regardless of MFA (non-admin unaffected)', () => {
+  it('MUST reject an MFA-verified claim when the Admin is not MFA-enabled in the database', async () => {
+    mockReflector.getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
+    mockPrisma.user.findUnique.mockResolvedValue({ mfaEnabled: false });
+    const context = createMockContext({
+      sub: 'admin-1',
+      role: UserRole.ADMIN,
+      mfaVerified: true,
+    });
+    await expect(rolesGuard.canActivate(context)).rejects.toMatchObject({
+      code: ErrorCode.MFA_STEP_UP_REQUIRED,
+    });
+  });
+
+  it('MUST allow Candidate on candidate routes regardless of MFA (non-admin unaffected)', async () => {
     mockReflector.getAllAndOverride.mockReturnValue([UserRole.CANDIDATE]);
     const context = createMockContext({
       sub: 'candidate-1',
@@ -140,11 +173,11 @@ describe('RolesGuard (Admin MFA Enforcement - AG-PACKET-003 / SEC-003)', () => {
       mfaVerified: false,
     });
 
-    const result = rolesGuard.canActivate(context);
+    const result = await rolesGuard.canActivate(context);
     expect(result).toBe(true);
   });
 
-  it('MUST reject user with insufficient role on admin routes', () => {
+  it('MUST reject user with insufficient role on admin routes', async () => {
     mockReflector.getAllAndOverride.mockReturnValue([UserRole.ADMIN]);
     const context = createMockContext({
       sub: 'candidate-1',
@@ -152,6 +185,6 @@ describe('RolesGuard (Admin MFA Enforcement - AG-PACKET-003 / SEC-003)', () => {
       mfaVerified: false,
     });
 
-    expect(() => rolesGuard.canActivate(context)).toThrow();
+    await expect(rolesGuard.canActivate(context)).rejects.toThrow();
   });
 });

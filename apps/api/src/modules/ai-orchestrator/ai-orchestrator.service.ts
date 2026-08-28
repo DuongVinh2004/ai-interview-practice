@@ -8,6 +8,9 @@ import {
   QuestionPromptContext,
   EvaluationPromptContext,
   LearningPathPromptContext,
+  SocraticChatContext,
+  SocraticChatResult,
+  AiExecutionResult,
 } from './interfaces/ai-provider.interface';
 import {
   GeneratedQuestionAi,
@@ -213,6 +216,46 @@ export class AiOrchestratorService {
       await this.auditRun({
         sessionId,
         promptVersionId: promptRecord.id,
+        provider: 'router',
+        model: 'unknown',
+        latencyMs: Date.now() - startTime,
+        status: AiRunStatus.FAILED,
+        errorCode: error.code || ErrorCode.AI_GENERATION_FAILED,
+        metadata: { message: error.message },
+      });
+      throw error;
+    }
+  }
+
+  async streamSocraticChat(
+    sessionId: string,
+    context: SocraticChatContext,
+    systemPrompt: string,
+    onToken?: (token: string) => void,
+  ): Promise<AiExecutionResult<SocraticChatResult>> {
+    const startTime = Date.now();
+    try {
+      const result = await this.routerService.streamSocraticChat(context, systemPrompt, onToken);
+
+      await this.auditRun({
+        sessionId,
+        promptVersionId: 'socratic-v1',
+        provider: result.provider,
+        model: result.model,
+        promptTokens: result.promptTokens,
+        completionTokens: result.completionTokens,
+        totalTokens: result.totalTokens,
+        latencyMs: result.latencyMs || Date.now() - startTime,
+        costEstimate: result.costEstimate,
+        status: AiRunStatus.SUCCESS,
+      });
+
+      return result;
+    } catch (error: any) {
+      this.logger.error(`Socratic chat stream failed for session ${sessionId}: ${error.message}`);
+      await this.auditRun({
+        sessionId,
+        promptVersionId: 'socratic-v1',
         provider: 'router',
         model: 'unknown',
         latencyMs: Date.now() - startTime,

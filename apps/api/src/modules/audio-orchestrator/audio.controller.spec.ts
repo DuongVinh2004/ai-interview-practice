@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AudioController } from './audio.controller';
 import { AudioOrchestratorService } from './audio-orchestrator.service';
-import { UsageMeterService } from '../billing/usage-meter.service';
 import { AudioVoice } from '@ai-interview/contracts';
 
 describe('AudioController', () => {
@@ -27,13 +26,7 @@ describe('AudioController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AudioController],
-      providers: [
-        { provide: AudioOrchestratorService, useValue: mockAudioService },
-        {
-          provide: UsageMeterService,
-          useValue: { checkQuota: jest.fn().mockResolvedValue({ allowed: true }) },
-        },
-      ],
+      providers: [{ provide: AudioOrchestratorService, useValue: mockAudioService }],
     }).compile();
 
     controller = module.get<AudioController>(AudioController);
@@ -54,7 +47,13 @@ describe('AudioController', () => {
         path: '',
       };
 
-      const result = await controller.transcribeAudio('user-1', mockFile, 'en', 'session-1');
+      const result = await controller.transcribeAudio(
+        'user-1',
+        mockFile,
+        'en',
+        'session-1',
+        'audio-transcribe-1',
+      );
 
       expect(result).toBeDefined();
       expect(result.text).toBe('This is a test answer about Node.js event loops.');
@@ -65,6 +64,7 @@ describe('AudioController', () => {
         'answer.webm',
         'en',
         'session-1',
+        'audio-transcribe-1',
       );
     });
 
@@ -96,11 +96,16 @@ describe('AudioController', () => {
 
   describe('synthesizeSpeech', () => {
     it('synthesizes text to base64 audio response', async () => {
-      const result = await controller.synthesizeSpeech('user-1', {
-        text: 'What is database sharding?',
-        voice: AudioVoice.ALLOY,
-        speed: 1.0,
-      });
+      const result = await controller.synthesizeSpeech(
+        'user-1',
+        {
+          text: 'What is database sharding?',
+          voice: AudioVoice.ALLOY,
+          speed: 1.0,
+        },
+        undefined,
+        'audio-synthesize-1',
+      );
 
       expect(result).toBeDefined();
       expect(result.audioBase64).toBeDefined();
@@ -111,6 +116,7 @@ describe('AudioController', () => {
         AudioVoice.ALLOY,
         1.0,
         undefined,
+        'audio-synthesize-1',
       );
     });
   });

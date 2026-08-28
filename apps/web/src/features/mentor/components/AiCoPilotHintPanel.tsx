@@ -4,6 +4,7 @@ import { apiClient } from '../../../lib/api-client';
 import { CopilotHintsResponseDto, CopilotHintDto } from '@ai-interview/contracts';
 import { Sparkles, HelpCircle, CheckCircle, RefreshCw, Send, Zap } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface AiCoPilotHintPanelProps {
   sessionId: string;
@@ -14,6 +15,8 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
   sessionId,
   onSelectHint,
 }) => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const [usedHints, setUsedHints] = useState<Set<string>>(new Set());
 
   const { data, isLoading, refetch, isFetching } = useQuery<CopilotHintsResponseDto>({
@@ -58,7 +61,9 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
           </div>
           <div>
             <h3 className="font-bold text-sm">AI Mentor Co-Pilot</h3>
-            <p className="text-[11px] text-emerald-100">Live probing questions feed</p>
+            <p className="text-[11px] text-emerald-100">
+              {isVi ? 'Gợi ý câu hỏi đào sâu trực tiếp' : 'Live probing questions feed'}
+            </p>
           </div>
         </div>
 
@@ -66,7 +71,7 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
           onClick={() => refetch()}
           disabled={isFetching}
           className="p-1.5 hover:bg-white/20 rounded-lg text-white transition-colors"
-          title="Refresh Suggestions"
+          title={isVi ? 'Làm mới gợi ý' : 'Refresh Suggestions'}
         >
           <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
         </button>
@@ -76,7 +81,7 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
       {data?.currentTurnTopic && (
         <div className="px-4 py-2 bg-slate-50 border-b border-slate-200/80 flex items-center gap-1.5 text-xs text-slate-600">
           <Zap className="h-3.5 w-3.5 text-amber-500 flex-shrink-0" />
-          <span className="font-medium">Active Focus:</span>
+          <span className="font-medium">{isVi ? 'Chủ đề hiện tại:' : 'Active Focus:'}</span>
           <span className="font-semibold text-slate-800 truncate">{data.currentTurnTopic}</span>
         </div>
       )}
@@ -113,7 +118,7 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
                   </div>
                   {isUsed && (
                     <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
-                      <CheckCircle className="h-3 w-3" /> Asked
+                      <CheckCircle className="h-3 w-3" /> {isVi ? 'Đã hỏi' : 'Asked'}
                     </span>
                   )}
                 </div>
@@ -123,14 +128,16 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
                 </p>
 
                 <p className="text-xs text-slate-500 mt-1 italic">
-                  Intent: {hint.intentDescription}
+                  {isVi ? 'Mục đích:' : 'Intent:'} {hint.intentDescription}
                 </p>
 
                 {/* Key Signals */}
                 {hint.expectedKeySignals && hint.expectedKeySignals.length > 0 && (
                   <div className="mt-2 p-2 bg-slate-50 rounded-lg border border-slate-200/60 text-[11px]">
                     <span className="font-bold text-slate-700 block mb-1">
-                      Expected Signals to listen for:
+                      {isVi
+                        ? 'Các tín hiệu kỹ thuật cần lắng nghe:'
+                        : 'Expected Signals to listen for:'}
                     </span>
                     <ul className="list-disc list-inside space-y-0.5 text-slate-600">
                       {hint.expectedKeySignals.map((signal, idx) => (
@@ -148,7 +155,16 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
                     className="gap-1.5 text-xs py-1"
                     data-testid="use-hint-btn"
                   >
-                    <Send className="h-3 w-3" /> {isUsed ? 'Ask Again' : 'Use Question'}
+                    <Send className="h-3 w-3" />
+                    <span>
+                      {isUsed
+                        ? isVi
+                          ? 'Hỏi lại'
+                          : 'Ask Again'
+                        : isVi
+                          ? 'Sử dụng câu hỏi này'
+                          : 'Use Question'}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -157,7 +173,9 @@ export const AiCoPilotHintPanel: React.FC<AiCoPilotHintPanelProps> = ({
         ) : (
           <div className="py-8 text-center text-xs text-slate-400">
             <HelpCircle className="h-8 w-8 mx-auto text-slate-300 mb-2" />
-            No probing hints generated yet. Hints update as the interview progresses.
+            {isVi
+              ? 'Chưa có gợi ý đào sâu nào. Gợi ý sẽ tự động cập nhật trong quá trình phỏng vấn.'
+              : 'No probing hints generated yet. Hints update as the interview progresses.'}
           </div>
         )}
       </div>

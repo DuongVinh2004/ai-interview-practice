@@ -153,14 +153,14 @@ export class ReadinessService {
     }
 
     const currentScores: Record<CompetencyArea, number> = {
-      [CompetencyArea.SYSTEM_DESIGN]: 7.5,
-      [CompetencyArea.LANGUAGE_CORE]: 7.8,
-      [CompetencyArea.DATABASE_CONCURRENCY]: 7.0,
-      [CompetencyArea.ARCHITECTURE_PATTERNS]: 7.2,
-      [CompetencyArea.RESILIENCE_SECURITY]: 6.8,
+      [CompetencyArea.SYSTEM_DESIGN]: 0,
+      [CompetencyArea.LANGUAGE_CORE]: 0,
+      [CompetencyArea.DATABASE_CONCURRENCY]: 0,
+      [CompetencyArea.ARCHITECTURE_PATTERNS]: 0,
+      [CompetencyArea.RESILIENCE_SECURITY]: 0,
     };
 
-    // Calculate real averages if evidence exists
+    // Calculate real averages strictly from user turns
     for (const area of Object.keys(areaScoresMap) as CompetencyArea[]) {
       if (areaScoresMap[area].length > 0) {
         const sum = areaScoresMap[area].reduce((acc, v) => acc + v, 0);
@@ -177,48 +177,49 @@ export class ReadinessService {
     };
 
     // 2. Core Readiness Calculation
-    const readinessScore = this.computeCompositeReadiness(currentScores, weights, targetScores);
-    const confidenceInterval = this.computeConfidenceInterval(
-      readinessScore,
-      Math.max(3, evidenceCount),
-    );
+    const readinessScore =
+      evidenceCount > 0
+        ? this.computeCompositeReadiness(currentScores, weights, targetScores)
+        : 0.0;
+
+    const confidenceInterval = this.computeConfidenceInterval(readinessScore, evidenceCount);
     const tier = this.tierClassificationService.classifyTier(readinessScore);
     const velocity = this.velocityService.calculateVelocity(
       readinessScore,
       Math.max(0, readinessScore - 4.5),
-      4,
+      evidenceCount > 0 ? 4 : 0,
     );
 
     // 3. Competency Breakdown Items
-    const areaNames: Record<CompetencyArea, string> = {
-      [CompetencyArea.SYSTEM_DESIGN]: 'System Design & Scalability',
-      [CompetencyArea.LANGUAGE_CORE]: 'Language Core & Internals',
-      [CompetencyArea.DATABASE_CONCURRENCY]: 'Database & Concurrency',
-      [CompetencyArea.ARCHITECTURE_PATTERNS]: 'Architecture & Design Patterns',
-      [CompetencyArea.RESILIENCE_SECURITY]: 'Resilience & Security',
+    const areaNamesVi: Record<CompetencyArea, string> = {
+      [CompetencyArea.SYSTEM_DESIGN]: 'Thiết Kế Hệ Thống & Khả Năng Mở Rộng',
+      [CompetencyArea.LANGUAGE_CORE]: 'Ngôn Ngữ Lập Trình Chuyên Sâu',
+      [CompetencyArea.DATABASE_CONCURRENCY]: 'Cơ Sở Dữ Liệu & Xử Lý Đồng Thời',
+      [CompetencyArea.ARCHITECTURE_PATTERNS]: 'Kiến Trúc & Mẫu Thiết Kế',
+      [CompetencyArea.RESILIENCE_SECURITY]: 'Bảo Mật & Khả Năng Chịu Lỗi',
     };
 
     const breakdown = (Object.keys(weights) as CompetencyArea[]).map(area => {
       const current = currentScores[area];
       const target = targetScores[area];
       const weight = weights[area];
-      const fulfillment = Number((Math.min(current / target, 1.0) * 100).toFixed(1));
+      const fulfillment =
+        target > 0 ? Number((Math.min(current / target, 1.0) * 100).toFixed(1)) : 0;
       const status =
         fulfillment >= 95
           ? ('TARGET_MET' as const)
           : fulfillment >= 80
             ? ('APPROACHING' as const)
             : ('BELOW_TARGET' as const);
-      const areaVelocity = 0.25;
-      const estimatedWeeksToTarget = this.velocityService.calculateWeeksToTarget(
-        current,
-        target,
-        areaVelocity,
-      );
+      const areaVelocity = evidenceCount > 0 ? 0.25 : 0;
+      const estimatedWeeksToTarget =
+        evidenceCount > 0
+          ? this.velocityService.calculateWeeksToTarget(current, target, areaVelocity)
+          : null;
 
       return {
         area,
-        name: areaNames[area],
+        name: areaNamesVi[area] || area,
         currentScore: current,
         targetScore: target,
         weight,
@@ -230,51 +231,110 @@ export class ReadinessService {
     });
 
     // 4. Milestones
+    const firstTurnDate = turns[0]?.createdAt
+      ? turns[0].createdAt.toISOString().split('T')[0]
+      : null;
+
     const milestones = [
-      { type: '25%', targetScore: 25, achieved: readinessScore >= 25, achievedAt: '2026-06-01' },
-      { type: '50%', targetScore: 50, achieved: readinessScore >= 50, achievedAt: '2026-07-15' },
+      {
+        type: '25%',
+        targetScore: 25,
+        achieved: readinessScore >= 25,
+        achievedAt: readinessScore >= 25 ? firstTurnDate : null,
+      },
+      {
+        type: '50%',
+        targetScore: 50,
+        achieved: readinessScore >= 50,
+        achievedAt: readinessScore >= 50 ? firstTurnDate : null,
+      },
       {
         type: '75%',
         targetScore: 75,
         achieved: readinessScore >= 75,
-        achievedAt: readinessScore >= 75 ? '2026-08-10' : null,
+        achievedAt: readinessScore >= 75 ? firstTurnDate : null,
       },
       {
         type: '85%',
         targetScore: 85,
         achieved: readinessScore >= 85,
-        achievedAt: readinessScore >= 85 ? '2026-08-20' : null,
+        achievedAt: readinessScore >= 85 ? firstTurnDate : null,
       },
-      { type: '100%', targetScore: 100, achieved: readinessScore >= 100, achievedAt: null },
+      {
+        type: '100%',
+        targetScore: 100,
+        achieved: readinessScore >= 100,
+        achievedAt: readinessScore >= 100 ? firstTurnDate : null,
+      },
     ];
 
-    // 5. Prioritized Roadmap Action Items
-    const sortedByPriority = breakdown
-      .filter(b => b.currentScore < b.targetScore)
-      .sort((a, b) => {
-        const pA = this.velocityService.calculatePriorityScore(
-          a.currentScore,
-          a.targetScore,
-          a.weight,
-        );
-        const pB = this.velocityService.calculatePriorityScore(
-          b.currentScore,
-          b.targetScore,
-          b.weight,
-        );
-        return pB - pA;
-      });
+    // 5. Prioritized Roadmap & Advanced Suggestions
+    let roadmap;
+    if (readinessScore >= 75) {
+      // High readiness -> Suggest Advanced Topics
+      roadmap = [
+        {
+          priority: 1,
+          area: CompetencyArea.SYSTEM_DESIGN,
+          areaName: 'Thiết Kế Hệ Thống Chuyên Sâu',
+          impactScore: 5.0,
+          gapScore: 0.5,
+          actionTitle: 'Chuyên sâu Kiến trúc Phân tán & Đồng thuận (Raft/Paxos)',
+          actionDescription:
+            'Nâng cao khả năng thiết kế hệ thống chịu tải hàng triệu QPS và xử lý phân vùng mạng.',
+          recommendedMode: 'FOCUSED_REMEDIATION',
+        },
+        {
+          priority: 2,
+          area: CompetencyArea.DATABASE_CONCURRENCY,
+          areaName: 'Cơ Sở Dữ Liệu Nâng Cao',
+          impactScore: 4.5,
+          gapScore: 0.5,
+          actionTitle: 'Tối ưu Sharding, Partitioning & Transaction Isolation Levels',
+          actionDescription:
+            'Luyện tập giải quyết xung đột dữ liệu, deadlock và tối ưu truy vấn quy mô lớn.',
+          recommendedMode: 'FOCUSED_REMEDIATION',
+        },
+        {
+          priority: 3,
+          area: CompetencyArea.RESILIENCE_SECURITY,
+          areaName: 'Bảo Mật & Khả Năng Chịu Lỗi',
+          impactScore: 4.0,
+          gapScore: 0.5,
+          actionTitle: 'Kiểm thử Hỗn loạn (Chaos Engineering) & Zero-Trust Architecture',
+          actionDescription:
+            'Thực hành phòng chống sụp đổ dây chuyền (cascading failure) và thiết kế hệ thống tự phục hồi.',
+          recommendedMode: 'FOCUSED_REMEDIATION',
+        },
+      ];
+    } else {
+      const sortedByPriority = breakdown
+        .filter(b => b.currentScore < b.targetScore)
+        .sort((a, b) => {
+          const pA = this.velocityService.calculatePriorityScore(
+            a.currentScore,
+            a.targetScore,
+            a.weight,
+          );
+          const pB = this.velocityService.calculatePriorityScore(
+            b.currentScore,
+            b.targetScore,
+            b.weight,
+          );
+          return pB - pA;
+        });
 
-    const roadmap = sortedByPriority.slice(0, 3).map((item, idx) => ({
-      priority: idx + 1,
-      area: item.area,
-      areaName: item.name,
-      impactScore: Number(((item.targetScore - item.currentScore) * item.weight * 10).toFixed(1)),
-      gapScore: Number((item.targetScore - item.currentScore).toFixed(1)),
-      actionTitle: `Targeted practice in ${item.name}`,
-      actionDescription: `Increase fulfillment from ${item.fulfillmentPercentage}% to 100% to boost overall readiness by ~${(item.weight * 10).toFixed(0)}%.`,
-      recommendedMode: 'FOCUSED_REMEDIATION',
-    }));
+      roadmap = sortedByPriority.slice(0, 3).map((item, idx) => ({
+        priority: idx + 1,
+        area: item.area,
+        areaName: item.name,
+        impactScore: Number(((item.targetScore - item.currentScore) * item.weight * 10).toFixed(1)),
+        gapScore: Number((item.targetScore - item.currentScore).toFixed(1)),
+        actionTitle: `Luyện tập trọng tâm: ${item.name}`,
+        actionDescription: `Tăng mức độ đạt từ ${item.fulfillmentPercentage}% lên 100% để nâng chỉ số sẵn sàng thêm ~${(item.weight * 10).toFixed(0)}%.`,
+        recommendedMode: 'FOCUSED_REMEDIATION',
+      }));
+    }
 
     // Record snapshot
     try {

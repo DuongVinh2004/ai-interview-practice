@@ -40,7 +40,9 @@ describe('Track F012: Mentor Co-Pilot Frontend Components', () => {
     );
 
     expect(screen.getByTestId('score-override-modal')).toBeInTheDocument();
-    expect(screen.getByText('Override AI Evaluation Score')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Override AI Evaluation Score|Điều Chỉnh Điểm Đánh Giá AI/i),
+    ).toBeInTheDocument();
     expect(screen.getByText('6.5 / 10.0')).toBeInTheDocument();
     expect(screen.getByTestId('override-score-input')).toBeInTheDocument();
     expect(screen.getByTestId('override-justification-input')).toBeInTheDocument();
@@ -51,7 +53,9 @@ describe('Track F012: Mentor Co-Pilot Frontend Components', () => {
     render(<MentorAvailabilityPage />, { wrapper: createWrapper() });
 
     expect(screen.getByTestId('mentor-availability-page')).toBeInTheDocument();
-    expect(screen.getByText(/Mentor Profile & Weekly Availability/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Mentor Profile & Weekly Availability|Hồ Sơ Mentor & Lịch Rảnh Hàng Tuần/i),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('add-slot-btn')).toBeInTheDocument();
     expect(screen.getByTestId('save-availability-btn')).toBeInTheDocument();
   });

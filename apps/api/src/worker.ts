@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { MetricsService } from './modules/platform/metrics/metrics.service';
+import { serveAuthenticatedMetrics } from './modules/platform/metrics/metrics-exporter.service';
 import { PrismaService } from './modules/platform/prisma/prisma.service';
 import { RedisService } from './modules/platform/redis/redis.service';
 import * as http from 'http';
@@ -25,6 +26,8 @@ async function bootstrapWorker() {
     process.env.WORKER_PORT || process.env.WORKER_METRICS_PORT || '9090',
     10,
   );
+  const metricsEnabled = process.env.METRICS_EXPORTER_ENABLED === 'true';
+  const metricsAuthToken = process.env.METRICS_AUTH_TOKEN || '';
 
   const server = http.createServer(async (req, res) => {
     const url = req.url || '';
@@ -83,19 +86,13 @@ async function bootstrapWorker() {
     }
 
     if (url === '/metrics') {
-      if (metricsService) {
-        try {
-          const contentType = await metricsService.getMetricsContentType();
-          const metrics = await metricsService.getMetrics();
-          res.writeHead(200, { 'Content-Type': contentType });
-          res.end(metrics);
-          return;
-        } catch (err: any) {
-          res.writeHead(500, { 'Content-Type': 'text/plain' });
-          res.end(`Error generating metrics: ${err.message}`);
-          return;
-        }
+      if (!metricsEnabled || !metricsService) {
+        res.writeHead(404, { 'Content-Type': 'text/plain' });
+        res.end('Not Found');
+        return;
       }
+      await serveAuthenticatedMetrics(req, res, metricsService, metricsAuthToken);
+      return;
     }
 
     res.writeHead(404, { 'Content-Type': 'text/plain' });

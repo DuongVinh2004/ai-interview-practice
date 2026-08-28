@@ -8,8 +8,12 @@ import { GapAnalysisCard } from './GapAnalysisCard';
 import { Spinner } from '../../components/ui/Spinner';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import { Award, Zap, GitBranch, TrendingUp, Layers } from 'lucide-react';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export function SkillGraphPage() {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const [targetRole, setTargetRole] = useState('backend');
   const [targetLevel, setTargetLevel] = useState('senior');
   const [period, setPeriod] = useState<'7d' | '30d' | '90d' | '180d' | '365d'>('30d');
@@ -26,7 +30,11 @@ export function SkillGraphPage() {
         data-testid="skills-loading"
       >
         <Spinner size="lg" />
-        <p className="text-sm text-slate-500">Loading Skill Graph & Benchmarks...</p>
+        <p className="text-sm text-slate-500">
+          {isVi
+            ? 'Đang tải cây kỹ năng & đối chiếu chuẩn ngành...'
+            : 'Loading Skill Graph & Benchmarks...'}
+        </p>
       </div>
     );
   }
@@ -45,45 +53,50 @@ export function SkillGraphPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto" data-testid="skill-graph-page">
       {/* Top Banner & Profile Overview */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="bg-gradient-to-r from-emerald-50/70 via-white to-indigo-50/40 text-slate-900 p-6 sm:p-8 rounded-2xl shadow-xs border border-emerald-100/90 flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-500/30 flex items-center gap-1.5">
-              <Zap className="w-3.5 h-3.5 text-emerald-400" />
-              Exponential Decay Aggregation (λ = 0.01)
+            <span className="bg-emerald-100/80 text-emerald-800 text-xs font-bold px-2.5 py-1 rounded-full border border-emerald-200 flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5 text-emerald-600" />
+              {isVi
+                ? 'Tổng hợp độ suy giảm theo thời gian (λ = 0.01)'
+                : 'Exponential Decay Aggregation (λ = 0.01)'}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Multi-Dimensional Skill Graph
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900">
+            {isVi
+              ? 'Ma Trận Kỹ Năng & Lỗ Hổng Năng Lực (Skill Graph)'
+              : 'Skill Graph & Competency Matrix'}
           </h1>
-          <p className="text-slate-300 text-xs sm:text-sm max-w-xl">
-            Continuous competency scoring tracking your technical depth across system design,
-            language internals, databases, and architectural patterns.
+          <p className="text-slate-600 text-xs sm:text-sm max-w-xl">
+            {isVi
+              ? 'Theo dõi liên tục chiều sâu kiến thức kỹ thuật qua các mảng Thiết kế hệ thống, Ngôn ngữ lập trình, Cơ sở dữ liệu và Mẫu kiến trúc.'
+              : 'Track technical depth continuously across System Design, Core Languages, Databases, and Architecture Patterns.'}
           </p>
         </div>
 
         {/* Big Score Cards */}
-        <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md p-4 rounded-xl border border-white/10">
-          <div className="text-center px-3 border-r border-white/10">
-            <span className="text-[11px] uppercase tracking-wider text-slate-300 block font-medium">
-              Overall Score
+        <div className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
+          <div className="text-center px-3 border-r border-slate-100">
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 block font-bold">
+              {isVi ? 'Điểm Tổng Kết' : 'Overall Score'}
             </span>
-            <div className="text-3xl font-extrabold text-emerald-400 mt-0.5">
+            <div className="text-3xl font-extrabold text-emerald-700 font-mono mt-0.5">
               {graph?.overallScore.toFixed(1) || '0.0'}
-              <span className="text-xs text-slate-400 font-normal"> / 10</span>
+              <span className="text-xs text-slate-400 font-normal font-sans"> / 10</span>
             </div>
           </div>
 
           <div className="text-center px-3">
-            <span className="text-[11px] uppercase tracking-wider text-slate-300 block font-medium">
-              Cohort Rank
+            <span className="text-[11px] uppercase tracking-wider text-slate-500 block font-bold">
+              {isVi ? 'Xếp Hạng Nhóm' : 'Cohort Rank'}
             </span>
-            <div className="text-2xl font-extrabold text-indigo-300 mt-0.5 flex items-center justify-center gap-1">
-              <Award className="w-5 h-5 text-amber-400" />
+            <div className="text-2xl font-extrabold text-indigo-700 font-mono mt-0.5 flex items-center justify-center gap-1">
+              <Award className="w-5 h-5 text-amber-500" />
               <span>Top {100 - (benchmark?.percentileRank || 50)}%</span>
             </div>
             <span className="text-[10px] text-slate-400 block mt-0.5">
-              {benchmark?.cohortSize || 45} candidates
+              {benchmark?.cohortSize || 45} {isVi ? 'ứng viên' : 'candidates'}
             </span>
           </div>
         </div>
@@ -94,7 +107,7 @@ export function SkillGraphPage() {
         <div className="flex items-center gap-3">
           <Layers className="w-4 h-4 text-emerald-600" />
           <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
-            Benchmark Cohort:
+            {isVi ? 'Nhóm Đối Chiếu Chuẩn Ngành:' : 'Benchmark Cohort:'}
           </span>
           <div className="flex items-center gap-2">
             <select
@@ -113,6 +126,7 @@ export function SkillGraphPage() {
               onChange={e => setTargetLevel(e.target.value)}
               className="text-xs font-semibold bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
             >
+              <option value="fresher">Fresher (L2)</option>
               <option value="junior">Junior (L3)</option>
               <option value="mid">Mid-Level (L4)</option>
               <option value="senior">Senior (L5)</option>
@@ -122,7 +136,8 @@ export function SkillGraphPage() {
         </div>
 
         <span className="text-xs text-slate-400 italic">
-          Last recalculated: {new Date(graph?.lastUpdated || Date.now()).toLocaleDateString()}
+          {isVi ? 'Cập nhật lần cuối: ' : 'Last recalculated: '}
+          {new Date(graph?.lastUpdated || Date.now()).toLocaleDateString(isVi ? 'vi-VN' : 'en-US')}
         </span>
       </div>
 
@@ -134,9 +149,12 @@ export function SkillGraphPage() {
           <Card className="shadow-sm">
             <CardHeader className="border-b border-slate-100 pb-3">
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Competency Radar vs Benchmark</span>
+                <span>
+                  {isVi ? 'Biểu Đồ Radar Năng Lực Đối Chiếu' : 'Competency Radar vs Benchmark'}
+                </span>
                 <span className="text-xs font-normal text-slate-500">
-                  Target: {targetRole.toUpperCase()} ({targetLevel.toUpperCase()})
+                  {isVi ? 'Mục tiêu: ' : 'Target: '}
+                  {targetRole.toUpperCase()} ({targetLevel.toUpperCase()})
                 </span>
               </CardTitle>
             </CardHeader>
@@ -154,7 +172,9 @@ export function SkillGraphPage() {
             <CardHeader className="border-b border-slate-100 pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <GitBranch className="w-4 h-4 text-emerald-600" />
-                <span>3-Tier Skill Taxonomy Breakdown</span>
+                <span>
+                  {isVi ? 'Phân Rã Cây Kỹ Năng 3 Cấp Độ' : '3-Tier Skill Taxonomy Breakdown'}
+                </span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
@@ -170,7 +190,7 @@ export function SkillGraphPage() {
             <CardHeader className="border-b border-slate-100 pb-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <TrendingUp className="w-4 h-4 text-indigo-600" />
-                <span>Score Trajectory Trend</span>
+                <span>{isVi ? 'Xu Hướng Tiến Bộ Điểm Số' : 'Score Trajectory Trend'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-4">
@@ -190,9 +210,9 @@ export function SkillGraphPage() {
           <Card className="shadow-sm">
             <CardHeader className="border-b border-slate-100 pb-3">
               <CardTitle className="text-base flex items-center justify-between">
-                <span>Top Improvement Gaps</span>
+                <span>{isVi ? 'Lỗ Hổng Kỹ Năng Cần Ưu Tiên Bù Đắp' : 'Top Improvement Gaps'}</span>
                 <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
-                  {gaps?.topGaps?.length || 0} detected
+                  {gaps?.topGaps?.length || 0} {isVi ? 'lỗ hổng' : 'detected'}
                 </span>
               </CardTitle>
             </CardHeader>
@@ -205,7 +225,9 @@ export function SkillGraphPage() {
                 gaps.topGaps.map(g => <GapAnalysisCard key={g.skillNodeId} gap={g} />)
               ) : (
                 <p className="text-xs text-slate-500 text-center py-4">
-                  No critical competency gaps detected. Keep up the great work!
+                  {isVi
+                    ? 'Không phát hiện lỗ hổng năng lực nghiêm trọng nào. Hãy tiếp tục phát huy!'
+                    : 'No critical competency gaps detected. Keep up the great work!'}
                 </p>
               )}
             </CardContent>

@@ -41,7 +41,7 @@ describe('Track F010: Portfolio & Certificate Components', () => {
     expect(screen.getByTestId('badge-card')).toBeInTheDocument();
     expect(screen.getByText('System Design & Scalability')).toBeInTheDocument();
     expect(screen.getByText('GOLD')).toBeInTheDocument();
-    expect(screen.getByText('8.5 / 10 (10 tests)')).toBeInTheDocument();
+    expect(screen.getByText(/8\.5 \/ 10 \(10 (tests|lượt)\)/i)).toBeInTheDocument();
     expect(screen.getByText('85%')).toBeInTheDocument();
   });
 
@@ -105,9 +105,9 @@ describe('Track F010: Portfolio & Certificate Components', () => {
 
     expect(screen.getByTestId('certificate-canvas')).toBeInTheDocument();
     expect(screen.getByText('Alex Rivera')).toBeInTheDocument();
-    expect(screen.getByText('CERTIFICATE OF EXCELLENCE')).toBeInTheDocument();
+    expect(screen.getByText(/CHỨNG CHỈ XUẤT SẮC|CERTIFICATE OF EXCELLENCE/i)).toBeInTheDocument();
     expect(screen.getByText('8.8 / 10.0')).toBeInTheDocument();
-    expect(screen.getByText(/Download PDF/i)).toBeInTheDocument();
+    expect(screen.getByText(/Tải Chứng Chỉ PDF|Download PDF/i)).toBeInTheDocument();
   });
 
   it('renders CertificateModal dialog when open', () => {

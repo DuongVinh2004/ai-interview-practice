@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException, ForbiddenException, Inject } fro
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { VisionProvider } from '../interfaces/vision-provider.interface';
 import { VisionAnalysisResultDto } from '@ai-interview/contracts';
+import { VisionEntitlementService } from './vision-entitlement.service';
 
 @Injectable()
 export class DesignAnalyzerService {
@@ -10,6 +11,7 @@ export class DesignAnalyzerService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('VISION_PROVIDER') private readonly visionProvider: VisionProvider,
+    private readonly visionEntitlements: VisionEntitlementService,
   ) {}
 
   /**
@@ -20,6 +22,7 @@ export class DesignAnalyzerService {
     interviewId: string,
     imageUrl?: string,
     canvasStateJson?: any,
+    idempotencyKey?: string,
   ): Promise<VisionAnalysisResultDto> {
     const interview = await this.prisma.interviewSession.findUnique({
       where: { id: interviewId },
@@ -47,10 +50,17 @@ export class DesignAnalyzerService {
       imageUrl || session?.snapshots[0]?.imageUrl || 'data:image/png;base64,mock';
     const targetState = canvasStateJson || session?.snapshots[0]?.canvasStateJson;
 
-    const visionResult = await this.visionProvider.evaluateDiagram({
-      imageBase64: targetImageUrl,
-      canvasData: targetState,
-      problemTitle: session?.initialPrompt || undefined,
+    const visionResult = await this.visionEntitlements.evaluate({
+      userId,
+      idempotencyKey,
+      operationType: 'system-design.analyze',
+      interviewId,
+      provider: this.visionProvider,
+      options: {
+        imageBase64: targetImageUrl,
+        canvasData: targetState,
+        problemTitle: session?.initialPrompt || undefined,
+      },
     });
     const analysis: VisionAnalysisResultDto = {
       summary: visionResult.summary,

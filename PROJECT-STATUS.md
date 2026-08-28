@@ -159,22 +159,27 @@ Tài liệu này là **single source of truth** cho trạng thái triển khai d
 
 ## 🧪 Test Integrity & Verification Matrix (Verified 100% Green)
 
-| Package                            | Test Suites   | Tests Count   | Status             |
-| ---------------------------------- | ------------- | ------------- | ------------------ |
-| `@ai-interview/api` (Backend)      | 48 suites     | 216 tests     | ✅ PASS (100%)     |
-| `@ai-interview/web` (Frontend)     | 28 suites     | 73 tests      | ✅ PASS (100%)     |
-| `@ai-interview/contracts` (Shared) | 1 suite       | 10 tests      | ✅ PASS (100%)     |
-| **Monorepo Total**                 | **77 suites** | **299 tests** | **✅ PASS (100%)** |
-| Typecheck (`pnpm type-check`)      | 5 packages    | 0 errors      | ✅ PASS (100%)     |
+| Package                            | Test Suites    | Tests Count   | Status             |
+| ---------------------------------- | -------------- | ------------- | ------------------ |
+| `@ai-interview/api` (Backend)      | 107 suites     | 573 tests     | ✅ PASS (100%)     |
+| `@ai-interview/web` (Frontend)     | 44 suites      | 141 tests     | ✅ PASS (100%)     |
+| `@ai-interview/contracts` (Shared) | 1 suite        | 10 tests      | ✅ PASS (100%)     |
+| **Monorepo Total**                 | **151 suites** | **714 tests** | **✅ PASS (100%)** |
+| Typecheck (`pnpm type-check`)      | 5 packages     | 0 errors      | ✅ PASS (100%)     |
 
 ---
 
-## 🗄️ Tổng quan Tài liệu
+## 🗄️ Tổng quan Hệ thống Tài liệu
 
-| Thư mục                             | Mô tả                                           | Trạng thái                                   |
-| ----------------------------------- | ----------------------------------------------- | -------------------------------------------- |
-| `docs/features/`                    | 14 feature specs + roadmap index                | ✅ Active — 14/14 hoàn thành (Waves 1–4)     |
-| `docs/adr/`                         | Architecture Decision Records 0001–0008         | ✅ Active (Thêm ADR 0005, 0006, 0007, 0008)  |
-| `docs/architecture.md`              | Kiến trúc tổng thể + sequence diagrams          | ✅ Active                                    |
-| `docs/api-conventions.md`           | API error handling & envelope standards         | ✅ Active                                    |
-| `ai-it-interview-project-kit/00-15` | Đặc tả domain, requirements, architecture (MVP) | ✅ Active — source-of-truth cho domain rules |
+| Thư mục / File                                                 | Mô tả                                                      | Trạng thái                   |
+| :------------------------------------------------------------- | :--------------------------------------------------------- | :--------------------------- |
+| [`docs/INDEX.md`](docs/INDEX.md)                               | **Master Catalog & Search Index** cho toàn bộ dự án        | ✅ Active                    |
+| [`docs/features/`](docs/features/)                             | 16 feature specs (F001–F016) + Feature Index               | ✅ Active — 16/16 hoàn thành |
+| [`docs/adr/`](docs/adr/)                                       | Architecture Decision Records 0001–0009                    | ✅ Active                    |
+| [`docs/roadmap/`](docs/roadmap/)                               | Kế hoạch phát triển tương lai (Plan B, Plan C)             | 📋 Ready for execution       |
+| [`docs/archive/`](docs/archive/)                               | **Kho lưu trữ tổng hợp bugfixes, audit & completed waves** | 🗃️ Master Archive            |
+| [`docs/archive/scorecards/`](docs/archive/scorecards/)         | Báo cáo nghiệm thu & Release Gates (151 suites green)      | ✅ Certified                 |
+| [`docs/verification-roadmap.md`](docs/verification-roadmap.md) | Quy trình kiểm định 7 tầng & 12 Release Gates              | ✅ Active                    |
+| [`docs/architecture.md`](docs/architecture.md)                 | Kiến trúc tổng thể + sequence diagrams                     | ✅ Active                    |
+| [`docs/api-conventions.md`](docs/api-conventions.md)           | API error handling & envelope standards                    | ✅ Active                    |
+| `ai-it-interview-project-kit/00-15`                            | Đặc tả domain, requirements, architecture (MVP)            | ✅ Active                    |

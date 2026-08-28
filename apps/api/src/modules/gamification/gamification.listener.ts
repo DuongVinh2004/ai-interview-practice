@@ -23,6 +23,7 @@ export class GamificationEventListener {
     sessionId: string;
     overallScore: number;
     sessionMode?: string;
+    timezone?: string;
   }) {
     try {
       this.logger.log(
@@ -42,7 +43,7 @@ export class GamificationEventListener {
       await this.xpService.awardXp(payload.userId, totalAmount, XpSource.INTERVIEW_COMPLETE, desc);
 
       // 2. Update Streak
-      await this.streakService.recordActivity(payload.userId);
+      await this.streakService.recordActivity(payload.userId, payload.timezone);
 
       // 3. Check Badge criteria
       const count = await this.prisma.interviewSession.count({
@@ -65,6 +66,7 @@ export class GamificationEventListener {
     turnNumber: number;
     score: number;
     sessionMode?: string;
+    timezone?: string;
   }) {
     try {
       if (payload.score >= 10.0) {
@@ -89,7 +91,12 @@ export class GamificationEventListener {
   }
 
   @OnEvent('flashcard.reviewed')
-  async handleFlashcardReviewed(payload: { userId: string; cardId: string; rating: number }) {
+  async handleFlashcardReviewed(payload: {
+    userId: string;
+    cardId: string;
+    rating: number;
+    timezone?: string;
+  }) {
     try {
       // Award 2 XP per review (max 200 XP per day handled via daily logic)
       await this.xpService.awardXp(
@@ -99,7 +106,10 @@ export class GamificationEventListener {
         'Ôn tập Flashcard Active Recall',
       );
 
-      const streakResult = await this.streakService.recordActivity(payload.userId);
+      const streakResult = await this.streakService.recordActivity(
+        payload.userId,
+        payload.timezone,
+      );
 
       // Count total reviews
       const totalReviews = await this.prisma.reviewLog.count({
@@ -127,6 +137,7 @@ export class GamificationEventListener {
     userId: string;
     allTestsPassed: boolean;
     language?: string;
+    timezone?: string;
   }) {
     try {
       if (payload.allTestsPassed) {
@@ -139,7 +150,7 @@ export class GamificationEventListener {
 
         await this.badgeService.checkAndUnlockBadges(payload.userId, 'code_all_tests_passed', true);
 
-        await this.streakService.recordActivity(payload.userId);
+        await this.streakService.recordActivity(payload.userId, payload.timezone);
       }
     } catch (err: any) {
       this.logger.error(`Error processing code.executed gamification: ${err.message}`);

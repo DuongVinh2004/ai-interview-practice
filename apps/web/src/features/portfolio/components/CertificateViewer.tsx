@@ -2,6 +2,7 @@ import React from 'react';
 import { CertificateDto } from '@ai-interview/contracts';
 import { Download, Share2, Award, ExternalLink, CheckCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface CertificateViewerProps {
   certificate: CertificateDto & { recipientName?: string; verificationUrl?: string };
@@ -14,6 +15,9 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
   onDownload,
   onShare,
 }) => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const verifyUrl =
     certificate.verificationUrl || `${window.location.origin}/verify/${certificate.id}`;
 
@@ -35,35 +39,55 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
             <Award className="h-9 w-9" />
           </div>
           <p className="text-xs tracking-[0.3em] uppercase text-amber-700 font-bold">
-            Verified Digital Credential
+            {isVi ? 'Chứng Chỉ Kỹ Thuật Số Xác Thực' : 'Verified Digital Credential'}
           </p>
           <h1 className="font-serif text-2xl sm:text-3xl font-extrabold text-slate-900 mt-2">
-            CERTIFICATE OF EXCELLENCE
+            {isVi ? 'CHỨNG CHỈ XUẤT SẮC' : 'CERTIFICATE OF EXCELLENCE'}
           </h1>
-          <p className="text-sm text-slate-500 mt-1 italic">This is to officially certify that</p>
+          <p className="text-sm text-slate-500 mt-1 italic">
+            {isVi ? 'Chứng nhận chính thức cho ứng viên' : 'This is to officially certify that'}
+          </p>
         </div>
 
         {/* Recipient Name */}
         <div className="text-center my-6 relative z-10">
           <h2 className="font-serif text-3xl sm:text-4xl font-bold text-emerald-800 border-b-2 border-amber-500/40 inline-block px-8 pb-2">
-            {certificate.recipientName || 'Candidate'}
+            {certificate.recipientName || (isVi ? 'Ứng viên' : 'Candidate')}
           </h2>
         </div>
 
         {/* Description & Competency */}
         <div className="text-center text-sm text-slate-700 max-w-md mx-auto relative z-10 leading-relaxed">
           <p>
-            has demonstrated exceptional technical competence and interview proficiency in{' '}
-            <strong className="text-slate-900 font-bold">
-              {certificate.competencyArea
-                ? certificate.competencyArea.replace(/_/g, ' ')
-                : 'Full-Stack Architecture'}
-            </strong>{' '}
-            with an evaluated mastery score of{' '}
-            <strong className="text-emerald-700 font-bold text-base">
-              {certificate.score.toFixed(1)} / 10.0
-            </strong>
-            .
+            {isVi ? (
+              <>
+                đã xuất sắc thể hiện năng lực chuyên môn và kỹ năng phỏng vấn kỹ thuật trong mảng{' '}
+                <strong className="text-slate-900 font-bold">
+                  {certificate.competencyArea
+                    ? certificate.competencyArea.replace(/_/g, ' ')
+                    : 'Full-Stack Architecture'}
+                </strong>{' '}
+                với điểm số đánh giá chuẩn mực đạt{' '}
+                <strong className="text-emerald-700 font-bold text-base">
+                  {certificate.score.toFixed(1)} / 10.0
+                </strong>
+                .
+              </>
+            ) : (
+              <>
+                has demonstrated exceptional technical competence and interview proficiency in{' '}
+                <strong className="text-slate-900 font-bold">
+                  {certificate.competencyArea
+                    ? certificate.competencyArea.replace(/_/g, ' ')
+                    : 'Full-Stack Architecture'}
+                </strong>{' '}
+                with an evaluated mastery score of{' '}
+                <strong className="text-emerald-700 font-bold text-base">
+                  {certificate.score.toFixed(1)} / 10.0
+                </strong>
+                .
+              </>
+            )}
           </p>
         </div>
 
@@ -72,7 +96,7 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
           {/* Issue Details */}
           <div className="text-left">
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-              Issue Date
+              {isVi ? 'Ngày Cấp' : 'Issue Date'}
             </p>
             <p className="text-xs font-bold text-slate-800 mt-0.5">
               {certificate.issuedAt
@@ -80,7 +104,8 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
                 : new Date().toLocaleDateString()}
             </p>
             <p className="text-[10px] text-slate-400 mt-1">
-              Certificate ID: {certificate.id.slice(0, 8)}...
+              {isVi ? 'Mã chứng chỉ: ' : 'Certificate ID: '}
+              {certificate.id.slice(0, 8)}...
             </p>
           </div>
 
@@ -94,18 +119,19 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
               />
             ) : (
               <div className="w-20 h-20 bg-slate-100 border border-slate-300 rounded flex items-center justify-center text-[10px] text-slate-400 text-center p-1">
-                Scan to Verify
+                {isVi ? 'Quét để xác thực' : 'Scan to Verify'}
               </div>
             )}
             <span className="text-[10px] font-semibold text-emerald-700 mt-1 flex items-center gap-1">
-              <CheckCircle className="h-3 w-3" /> Cryptographically Signed
+              <CheckCircle className="h-3 w-3" />{' '}
+              {isVi ? 'Chữ ký điện tử bảo mật' : 'Cryptographically Signed'}
             </span>
           </div>
 
           {/* Authority Seal */}
           <div className="text-right">
             <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold">
-              Issuing Authority
+              {isVi ? 'Cơ Quan Cấp' : 'Issuing Authority'}
             </p>
             <p className="text-xs font-bold text-slate-800 mt-0.5">AI Interview Practice CA</p>
             <p className="text-[10px] text-emerald-600 font-mono mt-1 break-all">
@@ -119,12 +145,12 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
       <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
         {onDownload && (
           <Button variant="primary" size="md" onClick={onDownload} className="gap-2">
-            <Download className="h-4 w-4" /> Download PDF
+            <Download className="h-4 w-4" /> {isVi ? 'Tải Chứng Chỉ PDF' : 'Download PDF'}
           </Button>
         )}
         {onShare && (
           <Button variant="outline" size="md" onClick={onShare} className="gap-2">
-            <Share2 className="h-4 w-4" /> Share Credential
+            <Share2 className="h-4 w-4" /> {isVi ? 'Chia Sẻ Liên Kết' : 'Share Credential'}
           </Button>
         )}
         <a
@@ -133,7 +159,7 @@ export const CertificateViewer: React.FC<CertificateViewerProps> = ({
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
         >
-          <ExternalLink className="h-4 w-4" /> Verify Publicly
+          <ExternalLink className="h-4 w-4" /> {isVi ? 'Xác Thực Trực Tuyến' : 'Verify Publicly'}
         </a>
       </div>
     </div>

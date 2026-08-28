@@ -6,12 +6,16 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  IsEnum,
+  IsUUID,
+  MinLength,
   Max,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { MentorAuthorityState } from '@ai-interview/contracts';
 
 export class AvailabilitySlotDto {
   @ApiProperty({ example: 1, description: '0 (Sun) to 6 (Sat)' })
@@ -73,6 +77,11 @@ export class BookSessionDto {
   @IsString()
   @IsNotEmpty()
   scheduledAt!: string;
+
+  @ApiPropertyOptional({ example: 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11' })
+  @IsOptional()
+  @IsUUID()
+  interviewId?: string;
 }
 
 export class MentorNotesDto {
@@ -111,4 +120,15 @@ export class CandidateRatingDto {
   @IsOptional()
   @IsString()
   feedback?: string;
+}
+
+export class MentorAuthorityTransitionDto {
+  @ApiProperty({ enum: MentorAuthorityState })
+  @IsEnum(MentorAuthorityState)
+  state!: MentorAuthorityState;
+
+  @ApiProperty({ example: 'Identity and expertise verified by platform operations.' })
+  @IsString()
+  @MinLength(5)
+  reason!: string;
 }

@@ -100,4 +100,17 @@ describe('Resilience & Accessibility (Phase 6)', () => {
     });
     expect(useI18nStore.getState().language).toBe('vi');
   });
+
+  it('Skeleton component supports flicker-free multi-line layout and dark mode classes (NEW-FE-04)', async () => {
+    const { Skeleton } = await import('../components/ui/Skeleton');
+    const { container } = render(<Skeleton variant="text" lines={3} width="100%" height={20} />);
+
+    const statusRegion = screen.getByRole('status');
+    expect(statusRegion).toHaveAttribute('aria-busy', 'true');
+    expect(statusRegion).toHaveAttribute('aria-label', 'Đang tải nội dung...');
+
+    const skeletonBars = container.querySelectorAll('.animate-pulse');
+    expect(skeletonBars.length).toBe(3);
+    expect(skeletonBars[0]).toHaveClass('dark:bg-slate-800/80');
+  });
 });

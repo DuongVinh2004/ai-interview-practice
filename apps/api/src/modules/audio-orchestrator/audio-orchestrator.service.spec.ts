@@ -5,6 +5,7 @@ import { OpenAiAudioProvider } from './providers/openai-audio.provider';
 import { MockAudioProvider } from './providers/mock-audio.provider';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { AudioVoice, AiRunStatus, ErrorCode } from '@ai-interview/contracts';
+import { EntitlementReservationService } from '../billing/entitlement-reservation.service';
 
 describe('AudioOrchestratorService', () => {
   let service: AudioOrchestratorService;
@@ -12,6 +13,7 @@ describe('AudioOrchestratorService', () => {
   let mockConfigService: any;
   let mockOpenAiProvider: any;
   let mockAudioProvider: any;
+  let mockReservations: any;
 
   beforeEach(async () => {
     mockPrisma = {
@@ -39,6 +41,13 @@ describe('AudioOrchestratorService', () => {
     };
 
     mockAudioProvider = new MockAudioProvider();
+    mockReservations = {
+      reserve: jest.fn(),
+      markProviderDispatchStarted: jest.fn().mockResolvedValue(undefined),
+      commit: jest.fn(),
+      release: jest.fn(),
+      markForReconciliation: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -47,6 +56,7 @@ describe('AudioOrchestratorService', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: OpenAiAudioProvider, useValue: mockOpenAiProvider },
         { provide: MockAudioProvider, useValue: mockAudioProvider },
+        { provide: EntitlementReservationService, useValue: mockReservations },
       ],
     }).compile();
 
@@ -63,6 +73,7 @@ describe('AudioOrchestratorService', () => {
         'test.webm',
         'en',
         'session-123',
+        'audio-transcribe-1',
       );
 
       expect(result).toBeDefined();
@@ -89,6 +100,11 @@ describe('AudioOrchestratorService', () => {
 
       // Re-init with router priority
       mockOpenAiProvider.transcribe.mockRejectedValue(new Error('OpenAI Rate Limited'));
+      mockReservations.reserve.mockResolvedValue({
+        id: 'reservation_openai_1',
+        state: 'RESERVED',
+        isNewReservation: true,
+      });
 
       const dummyBuffer = Buffer.alloc(16000, 2);
       const result = await service.transcribeAudio(
@@ -97,6 +113,8 @@ describe('AudioOrchestratorService', () => {
         'audio/wav',
         'test.wav',
         'vi',
+        undefined,
+        'audio-transcribe-2',
       );
 
       expect(result).toBeDefined();
@@ -113,6 +131,7 @@ describe('AudioOrchestratorService', () => {
         AudioVoice.ALLOY,
         1.0,
         'session-456',
+        'audio-synthesize-1',
       );
 
       expect(result).toBeDefined();
@@ -124,7 +143,59 @@ describe('AudioOrchestratorService', () => {
     });
 
     it('throws validation error when text is empty', async () => {
-      await expect(service.synthesizeSpeech('user-1', '', AudioVoice.NOVA, 1.0)).rejects.toThrow();
+      await expect(
+        service.synthesizeSpeech(
+          'user-1',
+          '',
+          AudioVoice.NOVA,
+          1.0,
+          undefined,
+          'audio-synthesize-2',
+        ),
+      ).rejects.toThrow();
+    });
+  });
+
+  describe('paid provider entitlement boundary', () => {
+    it('reserves before OpenAI synthesis and commits the measured duration exactly once', async () => {
+      mockConfigService.get.mockImplementation((key: string, defaultVal: any) => {
+        if (key === 'ai.provider') return 'openai';
+        if (key === 'ai.dailyBudgetUsd') return 50.0;
+        return defaultVal;
+      });
+      mockReservations.reserve.mockResolvedValue({
+        id: 'reservation_paid_audio',
+        state: 'RESERVED',
+        isNewReservation: true,
+      });
+      mockOpenAiProvider.synthesize.mockResolvedValue({
+        audioBuffer: Buffer.from('audio'),
+        mimeType: 'audio/mpeg',
+        durationSeconds: 42,
+        provider: 'openai',
+        model: 'tts-1',
+        latencyMs: 10,
+        costEstimate: 0.01,
+      });
+
+      await service.synthesizeSpeech(
+        'user-1',
+        'A paid operation must reserve first.',
+        AudioVoice.ALLOY,
+        1,
+        undefined,
+        'audio-paid-1',
+      );
+
+      expect(mockReservations.reserve.mock.invocationCallOrder[0]).toBeLessThan(
+        mockOpenAiProvider.synthesize.mock.invocationCallOrder[0],
+      );
+      expect(mockReservations.commit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          reservationId: 'reservation_paid_audio',
+          actualQuantity: 1,
+        }),
+      );
     });
   });
 

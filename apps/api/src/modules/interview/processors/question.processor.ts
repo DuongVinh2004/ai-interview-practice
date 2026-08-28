@@ -62,6 +62,42 @@ export class QuestionProcessor extends WorkerHost {
       return;
     }
 
+    const targetTurn = await this.prisma.interviewTurn.findUnique({
+      where: { id: turnId },
+      include: { question: true },
+    });
+    if (!targetTurn) {
+      this.logger.error(`Turn ${turnId} not found in session ${sessionId}`);
+      return;
+    }
+
+    // Guard: If question already exists or turn is already ready/submitted/evaluated, skip replay
+    if (targetTurn.question || targetTurn.status !== 'PENDING') {
+      this.logger.warn(
+        `Turn ${turnNumber} in session ${sessionId} already has question or is not in PENDING state (status=${targetTurn.status}). Skipping replay.`,
+      );
+      return;
+    }
+
+    // Atomic CAS claim: change status from PENDING to GENERATING_QUESTION
+    const claimResult = await this.prisma.interviewTurn.updateMany({
+      where: {
+        id: turnId,
+        sessionId,
+        status: 'PENDING',
+      },
+      data: {
+        status: 'GENERATING_QUESTION',
+      },
+    });
+
+    if (claimResult.count === 0) {
+      this.logger.warn(
+        `Turn ${turnNumber} for session ${sessionId} could not be claimed for generation. Skipping duplicate execution.`,
+      );
+      return;
+    }
+
     // Determine previous score if any
     let previousScore: number | undefined;
     if (turnNumber > 1) {
@@ -81,26 +117,23 @@ export class QuestionProcessor extends WorkerHost {
         previousScore,
         competencyArea: session.competencyArea || undefined,
         sessionMode: session.sessionMode,
+        language: (session as any).language || 'vi',
       });
 
-      // Persist question and activate session
+      // Persist question and activate session without overwriting existing question
       const { question, isTerminal } = await this.prisma.$transaction(async tx => {
-        const q = await tx.question.upsert({
-          where: { turnId },
-          update: {
-            content: generatedQuestion.content,
-            keyFocus: generatedQuestion.keyFocus,
-            expectedPoints: generatedQuestion.expectedKeyPoints,
-            difficulty: generatedQuestion.suggestedDifficulty || difficulty,
-          },
-          create: {
-            turnId,
-            content: generatedQuestion.content,
-            keyFocus: generatedQuestion.keyFocus,
-            expectedPoints: generatedQuestion.expectedKeyPoints,
-            difficulty: generatedQuestion.suggestedDifficulty || difficulty,
-          },
-        });
+        let q = await tx.question.findUnique({ where: { turnId } });
+        if (!q) {
+          q = await tx.question.create({
+            data: {
+              turnId,
+              content: generatedQuestion.content,
+              keyFocus: generatedQuestion.keyFocus,
+              expectedPoints: generatedQuestion.expectedKeyPoints,
+              difficulty: generatedQuestion.suggestedDifficulty || difficulty,
+            },
+          });
+        }
 
         await tx.interviewTurn.update({
           where: { id: turnId },
@@ -113,7 +146,9 @@ export class QuestionProcessor extends WorkerHost {
         const sessionUpdateResult = await tx.interviewSession.updateMany({
           where: {
             id: sessionId,
-            state: { notIn: [SessionState.CANCELLED, SessionState.COMPLETED, SessionState.FAILED] },
+            state: {
+              in: [SessionState.CREATED, SessionState.ACTIVE],
+            },
           },
           data: {
             state: SessionState.ACTIVE,
@@ -166,6 +201,14 @@ export class QuestionProcessor extends WorkerHost {
         `Error generating question for session ${sessionId}: ${error.message}`,
         error.stack,
       );
+      try {
+        await this.prisma.interviewTurn.updateMany({
+          where: { id: turnId, status: 'GENERATING_QUESTION' },
+          data: { status: 'PENDING' },
+        });
+      } catch {
+        // Ignore secondary rollback error
+      }
       if (job.attemptsMade >= (job.opts.attempts || 3) - 1) {
         const failResult = await this.prisma.interviewSession.updateMany({
           where: {

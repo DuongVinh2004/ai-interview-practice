@@ -64,4 +64,19 @@ describe('CompetencyRadarChart Component', () => {
     expect(screen.getByText(/System Design & Scalability:/i)).toBeInTheDocument();
     expect(screen.getByText(/8.5 \/ 10/i)).toBeInTheDocument();
   });
+
+  it('supports keyboard focus and ARIA accessibility roles (NEW-FE-02)', () => {
+    render(<CompetencyRadarChart competencies={mockCompetencies} />);
+    const radar = screen.getByRole('img', { name: /Biểu đồ radar đánh giá năng lực/i });
+    expect(radar).toBeInTheDocument();
+
+    const buttons = screen.getAllByRole('button');
+    expect(buttons.length).toBeGreaterThan(0);
+
+    // Focus on first competency button
+    fireEvent.focus(buttons[0]);
+    const tooltip = screen.getByRole('tooltip');
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveClass('dark:bg-slate-800');
+  });
 });

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TutorService } from './tutor.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
+import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 import { TutorRole } from '@ai-interview/contracts';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 
@@ -26,9 +27,31 @@ describe('TutorService (F006)', () => {
     },
   };
 
+  const mockAiOrchestrator = {
+    streamSocraticChat: jest.fn().mockImplementation(async (sessionId, ctx, prompt, onToken) => {
+      onToken?.('Socratic guidance token ');
+      return {
+        data: {
+          fullText: 'Socratic guidance token',
+          references: [{ title: 'MDN', url: 'https://developer.mozilla.org' }],
+        },
+      };
+    }),
+    evaluateAnswer: jest.fn().mockResolvedValue({
+      score: 8.5,
+      conciseFeedback: 'Good understanding of distributed locks.',
+      strengths: ['Mentioned Redlock and UUID token ownership.'],
+      improvements: ['Consider clock drift edge case.'],
+    }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TutorService, { provide: PrismaService, useValue: mockPrisma }],
+      providers: [
+        TutorService,
+        { provide: PrismaService, useValue: mockPrisma },
+        { provide: AiOrchestratorService, useValue: mockAiOrchestrator },
+      ],
     }).compile();
 
     tutorService = module.get<TutorService>(TutorService);

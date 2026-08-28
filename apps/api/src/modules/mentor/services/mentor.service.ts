@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CreateMentorProfileDto, SetAvailabilityDto } from '../dto/mentor.dto';
+import { MentorAuthorityState } from '@ai-interview/contracts';
 
 @Injectable()
 export class MentorService {
@@ -21,7 +22,8 @@ export class MentorService {
           userId,
           expertiseAreas: ['System Design', 'Backend Architecture'],
           bio: 'Experienced engineering mentor ready to help you succeed in tech interviews.',
-          isActive: true,
+          isActive: false,
+          authorityState: MentorAuthorityState.PENDING,
         },
         include: {
           availabilities: true,
@@ -39,6 +41,8 @@ export class MentorService {
       totalSessions: profile.totalSessions,
       bio: profile.bio,
       isActive: profile.isActive,
+      authorityState: profile.authorityState,
+      approvedAt: profile.approvedAt,
       availabilities: profile.availabilities,
       createdAt: profile.createdAt,
       updatedAt: profile.updatedAt,
@@ -65,7 +69,8 @@ export class MentorService {
         userId,
         expertiseAreas: dto.expertiseAreas,
         bio: dto.bio || null,
-        isActive: true,
+        isActive: false,
+        authorityState: MentorAuthorityState.PENDING,
       },
       include: {
         availabilities: true,
@@ -112,12 +117,21 @@ export class MentorService {
       });
     }
 
-    return this.getMentorAvailability(profile.id);
+    return this.getMentorAvailability(profile.id, userId);
   }
 
-  async getMentorAvailability(mentorId: string) {
-    const mentor = await this.prisma.mentorProfile.findUnique({
-      where: { id: mentorId },
+  async getMentorAvailability(mentorId: string, requesterUserId?: string) {
+    const mentor = await this.prisma.mentorProfile.findFirst({
+      where: {
+        id: mentorId,
+        OR: [
+          ...(requesterUserId ? [{ userId: requesterUserId }] : []),
+          {
+            authorityState: MentorAuthorityState.APPROVED,
+            isActive: true,
+          },
+        ],
+      },
       include: {
         availabilities: { where: { isActive: true } },
         user: { include: { profile: true } },
@@ -143,6 +157,7 @@ export class MentorService {
     const mentors = await this.prisma.mentorProfile.findMany({
       where: {
         isActive: true,
+        authorityState: MentorAuthorityState.APPROVED,
         ...(expertise && {
           expertiseAreas: {
             has: expertise,
@@ -167,5 +182,133 @@ export class MentorService {
       availabilities: m.availabilities,
       createdAt: m.createdAt,
     }));
+  }
+
+  async listAuthorityRequests(state?: MentorAuthorityState) {
+    return this.prisma.mentorProfile.findMany({
+      where: state ? { authorityState: state } : undefined,
+      select: {
+        id: true,
+        userId: true,
+        expertiseAreas: true,
+        rating: true,
+        totalSessions: true,
+        bio: true,
+        isActive: true,
+        authorityState: true,
+        approvedAt: true,
+        approvedByUserId: true,
+        authorityChangedAt: true,
+        authorityChangedByUserId: true,
+        authorityReason: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            profile: {
+              select: { id: true, fullName: true, targetRole: true, targetLevel: true },
+            },
+          },
+        },
+      },
+      orderBy: { authorityChangedAt: 'desc' },
+    });
+  }
+
+  async transitionAuthority(
+    mentorProfileId: string,
+    adminUserId: string,
+    targetState: MentorAuthorityState,
+    reason: string,
+  ) {
+    const allowed: Record<MentorAuthorityState, MentorAuthorityState[]> = {
+      [MentorAuthorityState.PENDING]: [MentorAuthorityState.APPROVED, MentorAuthorityState.REVOKED],
+      [MentorAuthorityState.APPROVED]: [
+        MentorAuthorityState.SUSPENDED,
+        MentorAuthorityState.REVOKED,
+      ],
+      [MentorAuthorityState.SUSPENDED]: [
+        MentorAuthorityState.APPROVED,
+        MentorAuthorityState.REVOKED,
+      ],
+      [MentorAuthorityState.REVOKED]: [],
+    };
+
+    return this.prisma.$transaction(async tx => {
+      const current = await tx.mentorProfile.findUnique({ where: { id: mentorProfileId } });
+      if (!current) {
+        throw new NotFoundException('Mentor profile not found');
+      }
+      if (!allowed[current.authorityState as MentorAuthorityState].includes(targetState)) {
+        throw new ConflictException(
+          `Invalid mentor authority transition ${current.authorityState} -> ${targetState}`,
+        );
+      }
+
+      const changedAt = new Date();
+      const updateResult = await tx.mentorProfile.updateMany({
+        where: { id: mentorProfileId, authorityState: current.authorityState },
+        data: {
+          authorityState: targetState,
+          isActive: targetState === MentorAuthorityState.APPROVED,
+          authorityChangedAt: changedAt,
+          authorityChangedByUserId: adminUserId,
+          authorityReason: reason.trim(),
+          ...(targetState === MentorAuthorityState.APPROVED && {
+            approvedAt: changedAt,
+            approvedByUserId: adminUserId,
+          }),
+        },
+      });
+      if (updateResult.count !== 1) {
+        throw new ConflictException('Mentor authority changed concurrently; retry the review');
+      }
+
+      await tx.auditLog.create({
+        data: {
+          userId: adminUserId,
+          action: 'MENTOR_AUTHORITY_CHANGED',
+          resource: 'mentor_profile',
+          resourceId: mentorProfileId,
+          details: {
+            previousState: current.authorityState,
+            newState: targetState,
+            reason: reason.trim(),
+          },
+        },
+      });
+
+      return tx.mentorProfile.findUnique({
+        where: { id: mentorProfileId },
+        select: {
+          id: true,
+          userId: true,
+          expertiseAreas: true,
+          rating: true,
+          totalSessions: true,
+          bio: true,
+          isActive: true,
+          authorityState: true,
+          approvedAt: true,
+          approvedByUserId: true,
+          authorityChangedAt: true,
+          authorityChangedByUserId: true,
+          authorityReason: true,
+          createdAt: true,
+          updatedAt: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              profile: {
+                select: { id: true, fullName: true, targetRole: true, targetLevel: true },
+              },
+            },
+          },
+        },
+      });
+    });
   }
 }

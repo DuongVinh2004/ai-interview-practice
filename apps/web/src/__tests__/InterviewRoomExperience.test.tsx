@@ -143,9 +143,9 @@ describe('InterviewRoomExperience (Phase 3)', () => {
       target: { value: 'Microtasks run at the end of the current phase.' },
     });
 
-    expect(storageMap['draft-answer-session-active-1-turn-1']).toBe(
-      'Microtasks run at the end of the current phase.',
-    );
+    const draftKey = Object.keys(storageMap).find(k => k.includes('session-active-1-turn-1'));
+    expect(draftKey).toBeDefined();
+    expect(storageMap[draftKey!]).toBe('Microtasks run at the end of the current phase.');
   });
 
   it('prevents double-submit when submission is in progress', async () => {

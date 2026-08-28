@@ -1,27 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../lib/api-client';
+import { useAuthStore } from '../stores/auth.store';
 import {
-  ParsedProfileDto,
   JdAnalysisDto,
   InterviewBlueprintDto,
   ParseCvRequest,
   AnalyzeJdRequest,
   GenerateBlueprintRequest,
+  CvParseResponse,
 } from '@ai-interview/contracts';
 
 export function useDocumentParser() {
   const queryClient = useQueryClient();
+  const accessToken = useAuthStore(state => state.accessToken);
 
   const parseCvMutation = useMutation({
     mutationFn: async (data: { file?: File; text?: string; fileName?: string }) => {
       if (data.file) {
         const formData = new FormData();
         formData.append('file', data.file);
-        const res = await apiClient.post<{ document: any; parsedProfile: ParsedProfileDto }>(
-          '/documents/parse-cv',
-          formData,
-          { headers: { 'Content-Type': 'multipart/form-data' } },
-        );
+        const res = await apiClient.post<CvParseResponse>('/documents/parse-cv', formData);
         return res.data;
       } else {
         const payload: ParseCvRequest = {
@@ -29,10 +27,7 @@ export function useDocumentParser() {
           fileType: 'text',
           rawText: data.text || '',
         };
-        const res = await apiClient.post<{ document: any; parsedProfile: ParsedProfileDto }>(
-          '/documents/parse-cv',
-          payload,
-        );
+        const res = await apiClient.post<CvParseResponse>('/documents/parse-cv', payload);
         return res.data;
       }
     },
@@ -67,6 +62,8 @@ export function useDocumentParser() {
       const res = await apiClient.get<any[]>('/documents/my-profiles');
       return res.data;
     },
+    enabled: !!accessToken,
+    retry: false,
   });
 
   const { data: blueprints, isLoading: isLoadingBlueprints } = useQuery({
@@ -75,6 +72,8 @@ export function useDocumentParser() {
       const res = await apiClient.get<InterviewBlueprintDto[]>('/documents/my-blueprints');
       return res.data;
     },
+    enabled: !!accessToken,
+    retry: false,
   });
 
   return {

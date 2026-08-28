@@ -7,6 +7,9 @@ interface CvUploadZoneProps {
   isParsing: boolean;
   onParseText: (text: string) => Promise<any>;
   onParseFile: (file: File) => Promise<any>;
+  title?: string;
+  description?: string;
+  onAutoFillReady?: (parsedResult: any) => void;
 }
 
 export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
@@ -14,6 +17,9 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
   isParsing,
   onParseText,
   onParseFile,
+  title = '1. Resume / CV Upload (Hồ sơ ứng viên)',
+  description = 'Kéo thả CV (PDF, DOCX, TXT) vào đây hoặc',
+  onAutoFillReady,
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -63,6 +69,7 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
     try {
       const res = await onParseFile(file);
       onParsed(res);
+      onAutoFillReady?.(res);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Failed to parse resume');
     }
@@ -77,6 +84,7 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
     try {
       const res = await onParseText(rawText);
       onParsed(res);
+      onAutoFillReady?.(res);
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Failed to parse resume text');
     }
@@ -90,9 +98,7 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
       <div className="flex items-center justify-between border-b border-slate-100 pb-3">
         <div className="flex items-center space-x-2">
           <FileText className="w-5 h-5 text-primary-600" />
-          <h3 className="text-sm font-bold text-slate-800">
-            1. Resume / CV Upload (Hồ sơ ứng viên)
-          </h3>
+          <h3 className="text-sm font-bold text-slate-800">{title}</h3>
         </div>
         <div className="flex bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
           <button
@@ -168,8 +174,7 @@ export const CvUploadZone: React.FC<CvUploadZoneProps> = ({
             ) : (
               <div>
                 <p className="text-sm font-medium text-slate-700">
-                  Kéo thả CV (PDF, DOCX, TXT) vào đây hoặc{' '}
-                  <span className="text-primary-600 font-bold">Chọn tệp</span>
+                  {description} <span className="text-primary-600 font-bold">Chọn tệp</span>
                 </p>
                 <p className="text-xs text-slate-400 mt-1">
                   Tối đa 5MB • Tự động mã hóa & bảo vệ PII

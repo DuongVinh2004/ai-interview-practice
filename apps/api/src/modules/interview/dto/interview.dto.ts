@@ -56,10 +56,43 @@ export class CreateInterviewRequestDto {
   @IsOptional()
   isSandbox?: boolean;
 
+  @ApiProperty({
+    example: 'vi',
+    default: 'vi',
+    required: false,
+    description: 'Language code (e.g. vi, en)',
+  })
+  @IsString()
+  @IsOptional()
+  language?: string;
+
   @ApiProperty({ example: 'd0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', required: false })
   @IsUUID('4')
   @IsOptional()
   blueprintId?: string;
+
+  @ApiProperty({ example: 'e0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', required: false })
+  @IsUUID('4')
+  @IsOptional()
+  presetId?: string;
+
+  @ApiProperty({ example: 'f0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', required: false })
+  @IsUUID('4')
+  @IsOptional()
+  draftId?: string;
+
+  @ApiProperty({
+    example: 'MANUAL',
+    enum: ['MANUAL', 'PRESET', 'RECENT', 'BLUEPRINT', 'CV'],
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  configurationSource?: string;
+
+  @ApiProperty({ type: Object, required: false })
+  @IsOptional()
+  fieldSources?: Record<string, any>;
 }
 
 export class SubmitAnswerRequestDto {

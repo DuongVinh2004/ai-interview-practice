@@ -34,10 +34,14 @@ export class JdAnalyzerService {
     // 2. Detect seniority
     let seniorityLevel = 'SENIOR';
     if (
-      lowerText.includes('junior') ||
+      lowerText.includes('fresher') ||
+      lowerText.includes('intern') ||
+      lowerText.includes('internship') ||
       lowerText.includes('entry level') ||
-      lowerText.includes('fresher')
+      lowerText.includes('fresh graduate')
     ) {
+      seniorityLevel = 'FRESHER';
+    } else if (lowerText.includes('junior')) {
       seniorityLevel = 'JUNIOR';
     } else if (
       lowerText.includes('mid') ||

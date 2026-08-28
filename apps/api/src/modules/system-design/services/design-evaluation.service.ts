@@ -6,6 +6,7 @@ import {
   EvaluateDiagramDto,
   DesignEvaluationResultDto,
 } from '@ai-interview/contracts';
+import { VisionEntitlementService } from './vision-entitlement.service';
 
 @Injectable()
 export class DesignEvaluationService {
@@ -14,12 +15,17 @@ export class DesignEvaluationService {
   constructor(
     private readonly prisma: PrismaService,
     @Inject('VISION_PROVIDER') private readonly visionProvider: VisionProvider,
+    private readonly visionEntitlements: VisionEntitlementService,
   ) {}
 
   /**
    * Evaluate full system design whiteboard session
    */
-  async evaluateSession(userId: string, interviewId: string): Promise<DesignEvaluationDto> {
+  async evaluateSession(
+    userId: string,
+    interviewId: string,
+    idempotencyKey?: string,
+  ): Promise<DesignEvaluationDto> {
     const interview = await this.prisma.interviewSession.findUnique({
       where: { id: interviewId },
     });
@@ -47,10 +53,17 @@ export class DesignEvaluationService {
     }
 
     const latestSnapshot = session.snapshots[0];
-    const visionResult = await this.visionProvider.evaluateDiagram({
-      imageBase64: latestSnapshot?.imageUrl || 'data:image/png;base64,mock',
-      canvasData: latestSnapshot?.canvasStateJson,
-      problemTitle: session.initialPrompt || undefined,
+    const visionResult = await this.visionEntitlements.evaluate({
+      userId,
+      idempotencyKey,
+      operationType: 'system-design.evaluate',
+      interviewId,
+      provider: this.visionProvider,
+      options: {
+        imageBase64: latestSnapshot?.imageUrl || 'data:image/png;base64,mock',
+        canvasData: latestSnapshot?.canvasStateJson,
+        problemTitle: session.initialPrompt || undefined,
+      },
     });
 
     const rubric = {
@@ -129,6 +142,7 @@ export class DesignEvaluationService {
     userId: string,
     interviewId: string,
     dto: EvaluateDiagramDto,
+    idempotencyKey?: string,
   ): Promise<DesignEvaluationResultDto> {
     const interview = await this.prisma.interviewSession.findUnique({
       where: { id: interviewId },
@@ -150,7 +164,22 @@ export class DesignEvaluationService {
       throw new NotFoundException(`System design session for interview ${interviewId} not found`);
     }
 
-    // Save snapshot with FileAsset link if fileAssetId provided
+    const visionResult = await this.visionEntitlements.evaluate({
+      userId,
+      idempotencyKey,
+      operationType: 'system-design.evaluate-diagram',
+      interviewId,
+      provider: this.visionProvider,
+      options: {
+        imageBase64: dto.imageUrl,
+        canvasData: dto.canvasData,
+        problemTitle: session.initialPrompt || 'Distributed System Design',
+        language: dto.language || 'vi',
+      },
+    });
+
+    // Store input only after the paid provider operation has committed. This
+    // prevents an exhausted quota from becoming a write-amplification vector.
     if (dto.imageUrl) {
       await this.prisma.canvasSnapshot.create({
         data: {
@@ -162,13 +191,6 @@ export class DesignEvaluationService {
         },
       });
     }
-
-    const visionResult = await this.visionProvider.evaluateDiagram({
-      imageBase64: dto.imageUrl,
-      canvasData: dto.canvasData,
-      problemTitle: session.initialPrompt || 'Distributed System Design',
-      language: dto.language || 'vi',
-    });
 
     const providerName = this.visionProvider.name || 'mock';
     const isMockProvider = providerName.toLowerCase().includes('mock');

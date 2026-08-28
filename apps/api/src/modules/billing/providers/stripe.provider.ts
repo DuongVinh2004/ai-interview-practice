@@ -1,5 +1,6 @@
 import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import * as crypto from 'crypto';
 import { BillingProvider } from '../interfaces/billing-provider.interface';
@@ -15,6 +16,7 @@ export class StripeProvider implements BillingProvider {
   constructor(
     private readonly configService: ConfigService,
     @Optional() private readonly prisma?: PrismaService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {
     this.apiKey = this.configService.get<string>('STRIPE_SECRET_KEY', '');
     this.webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET', '');
@@ -330,6 +332,27 @@ export class StripeProvider implements BillingProvider {
                     });
                   }
                 });
+
+                // Emit billing.payment_succeeded event (NEW-BILLING-01)
+                const user = this.prisma?.user?.findUnique
+                  ? await this.prisma.user.findUnique({
+                      where: { id: userId },
+                      include: { profile: true },
+                    })
+                  : null;
+                this.eventEmitter?.emit('billing.payment_succeeded', {
+                  userId,
+                  email: user?.email || data.customer_email || '',
+                  userName: user?.profile?.fullName || 'Valued Member',
+                  planName: plan.name,
+                  amount: data.amount_total
+                    ? data.amount_total / 100
+                    : Number(billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly),
+                  currency: data.currency?.toUpperCase() || 'USD',
+                  paymentMethod: 'Credit Card (Stripe)',
+                  invoiceId: data.invoice || eventId || `INV-STRIPE-${Date.now()}`,
+                  paidAt: now.toISOString().split('T')[0],
+                });
               }
             }
             break;
@@ -340,6 +363,7 @@ export class StripeProvider implements BillingProvider {
             if (providerSubId) {
               const sub = await this.prisma.subscription.findFirst({
                 where: { providerSubId },
+                include: { plan: true },
               });
 
               if (sub) {
@@ -372,6 +396,25 @@ export class StripeProvider implements BillingProvider {
                       create: { id: eventId, eventType, processed: true },
                     });
                   }
+                });
+
+                // Emit billing.payment_succeeded event (NEW-BILLING-01)
+                const user = this.prisma?.user?.findUnique
+                  ? await this.prisma.user.findUnique({
+                      where: { id: sub.userId },
+                      include: { profile: true },
+                    })
+                  : null;
+                this.eventEmitter?.emit('billing.payment_succeeded', {
+                  userId: sub.userId,
+                  email: user?.email || data.customer_email || '',
+                  userName: user?.profile?.fullName || 'Valued Member',
+                  planName: sub.plan?.name || 'Pro Plan',
+                  amount: data.amount_paid ? data.amount_paid / 100 : 0,
+                  currency: data.currency?.toUpperCase() || 'USD',
+                  paymentMethod: 'Credit Card (Stripe)',
+                  invoiceId: data.id || `INV-STRIPE-${Date.now()}`,
+                  paidAt: now.toISOString().split('T')[0],
                 });
               }
             }

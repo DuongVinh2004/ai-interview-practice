@@ -22,6 +22,11 @@ output "app_security_group_id" {
   value = aws_security_group.app.id
 }
 
+output "monitoring_security_group_id" {
+  description = "Attach this security group only to approved private metrics collectors"
+  value       = aws_security_group.monitoring.id
+}
+
 output "db_security_group_id" {
   value = aws_security_group.db.id
 }

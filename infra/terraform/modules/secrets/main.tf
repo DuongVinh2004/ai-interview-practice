@@ -18,6 +18,11 @@ resource "random_password" "certificate_secret" {
   special = false
 }
 
+resource "random_password" "metrics_auth_token" {
+  length  = 48
+  special = false
+}
+
 resource "aws_kms_key" "app_secrets" {
   description             = "Customer-managed encryption key for AI Interview application secrets"
   enable_key_rotation     = true
@@ -50,10 +55,16 @@ resource "aws_secretsmanager_secret_version" "app_secrets_val" {
     JWT_REFRESH_SECRET = random_password.jwt_refresh_secret.result
     MFA_ENCRYPTION_KEY = random_password.mfa_encryption_key.result
     CERTIFICATE_SECRET = random_password.certificate_secret.result
-    DATABASE_URL       = "postgresql://${var.db_username}:${urlencode(var.db_password)}@${var.db_endpoint}/${var.db_name}?schema=public&sslmode=require"
-    REDIS_PASSWORD     = var.redis_auth_token
-    OPENAI_API_KEY     = ""
-    ANTHROPIC_API_KEY  = ""
-    GEMINI_API_KEY     = ""
+    METRICS_AUTH_TOKEN = random_password.metrics_auth_token.result
+    DATABASE_URL          = "postgresql://${var.db_username}:${urlencode(var.db_password)}@${var.db_endpoint}/${var.db_name}?schema=public&sslmode=require"
+    REDIS_PASSWORD        = var.redis_auth_token
+    OPENAI_API_KEY        = ""
+    ANTHROPIC_API_KEY     = ""
+    GEMINI_API_KEY        = ""
+    PAYOS_CLIENT_ID       = ""
+    PAYOS_API_KEY         = ""
+    PAYOS_CHECKSUM_KEY    = ""
+    STRIPE_SECRET_KEY     = ""
+    STRIPE_WEBHOOK_SECRET = ""
   })
 }

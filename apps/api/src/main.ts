@@ -34,7 +34,20 @@ async function bootstrap() {
     origin: corsOrigin.split(','),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Request-Id', 'Idempotency-Key'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-Request-Id',
+      'Idempotency-Key',
+      'x-timezone',
+      'X-Timezone',
+      'x-tenant-id',
+      'X-Tenant-Id',
+      'If-Match',
+      'if-match',
+      'Accept',
+      'traceparent',
+    ],
   });
 
   app.setGlobalPrefix(apiPrefix.replace(/^\//, ''));

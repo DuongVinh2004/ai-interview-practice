@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   JobRoleDto,
@@ -8,17 +8,13 @@ import {
   SessionMode,
   CompetencyArea,
   InterviewBlueprintDto,
+  InterviewConfigurationPresetDto,
+  ErrorCode,
 } from '@ai-interview/contracts';
 import { apiClient } from '../../lib/api-client';
 import { useI18nStore } from '../../stores/i18n.store';
 import { Button } from '../../components/ui/Button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '../../components/ui/Card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Alert } from '../../components/ui/Alert';
 import { Badge } from '../../components/ui/Badge';
 import { Skeleton } from '../../components/ui/Skeleton';
@@ -33,26 +29,65 @@ import {
   GraduationCap,
   Zap,
   Mic,
-  Clock,
-  ShieldCheck,
-  ChevronDown,
-  ChevronUp,
-  FileText,
   AlertCircle,
-  Play,
   RotateCcw,
+  Crown,
+  ArrowUpRight,
+  Search,
+  Bookmark,
+  X,
 } from 'lucide-react';
-import { CvUploadZone } from '../../components/setup/CvUploadZone';
-import { JdInputCard } from '../../components/setup/JdInputCard';
-import { GapAnalysisPreview } from '../../components/setup/GapAnalysisPreview';
+import { CvHeroSection, ExtractedProfileData } from '../../components/setup/CvHeroSection';
+import { SavedConfigurationsSection } from '../../components/setup/SavedConfigurationsSection';
+import { PresetConflictModal, ConflictDiffItem } from '../../components/setup/PresetConflictModal';
+import { StickySetupSummary, FieldSourceTracking } from '../../components/setup/StickySetupSummary';
+import { JdInputModal } from '../../components/setup/JdInputModal';
+import { ExistingProfilesModal } from '../../components/setup/ExistingProfilesModal';
 import { useDocumentParser } from '../../hooks/useDocumentParser';
+import { useBilling } from '../../hooks/useBilling';
+import { useAuthStore } from '../../stores/auth.store';
+import { getNextUpgradePlan } from '../../lib/plan-tier.utils';
 
 const COMPETENCY_OPTIONS = [
-  { area: CompetencyArea.SYSTEM_DESIGN, label: 'System Design & Scalability' },
-  { area: CompetencyArea.LANGUAGE_CORE, label: 'Core Language & Fundamentals' },
-  { area: CompetencyArea.DATABASE_CONCURRENCY, label: 'Databases & Concurrency' },
-  { area: CompetencyArea.ARCHITECTURE_PATTERNS, label: 'Architecture & Patterns' },
-  { area: CompetencyArea.RESILIENCE_SECURITY, label: 'Resilience & Security' },
+  {
+    area: CompetencyArea.SYSTEM_DESIGN,
+    label: 'Thiết Kế Hệ Thống & Khả Năng Mở Rộng',
+    labelEn: 'System Design & Scalability',
+  },
+  {
+    area: CompetencyArea.LANGUAGE_CORE,
+    label: 'Nền Tảng Ngôn Ngữ & Cốt Lõi',
+    labelEn: 'Core Language & Fundamentals',
+  },
+  {
+    area: CompetencyArea.DATABASE_CONCURRENCY,
+    label: 'Cơ Sở Dữ Liệu & Xử Lý Đồng Thời',
+    labelEn: 'Databases & Concurrency',
+  },
+  {
+    area: CompetencyArea.ARCHITECTURE_PATTERNS,
+    label: 'Kiến Trúc & Mẫu Thiết Kế',
+    labelEn: 'Architecture & Patterns',
+  },
+  {
+    area: CompetencyArea.RESILIENCE_SECURITY,
+    label: 'Độ Tin Cậy & Bảo Mật',
+    labelEn: 'Resilience & Security',
+  },
+];
+
+const TECH_CATEGORIES = [
+  { key: 'ALL', labelVi: 'Tất cả', labelEn: 'All' },
+  { key: 'Language', labelVi: 'Ngôn ngữ', labelEn: 'Languages' },
+  { key: 'Frontend', labelVi: 'Frontend', labelEn: 'Frontend' },
+  { key: 'Mobile', labelVi: 'Mobile', labelEn: 'Mobile' },
+  { key: 'Backend', labelVi: 'Backend', labelEn: 'Backend' },
+  { key: 'Database', labelVi: 'Database & Cache', labelEn: 'Databases' },
+  { key: 'API', labelVi: 'API & Streaming', labelEn: 'API & Streaming' },
+  { key: 'DevOps', labelVi: 'Cloud & DevOps', labelEn: 'Cloud & DevOps' },
+  { key: 'AI/Data', labelVi: 'AI & Data', labelEn: 'AI & Data' },
+  { key: 'Testing', labelVi: 'Kiểm thử', labelEn: 'Testing' },
+  { key: 'Security', labelVi: 'Bảo mật', labelEn: 'Security' },
 ];
 
 export function SetupInterviewPage() {
@@ -67,6 +102,12 @@ export function SetupInterviewPage() {
     if (modeParam === 'voice') return SessionMode.VOICE_LIVE;
     if (modeParam === 'coding') return SessionMode.CODING;
     if (modeParam === 'behavioral') return SessionMode.BEHAVIORAL;
+    if (
+      modeParam === 'system_design' ||
+      modeParam === 'system-design' ||
+      modeParam === 'systemdesign'
+    )
+      return SessionMode.SYSTEM_DESIGN;
     return SessionMode.STANDARD;
   });
 
@@ -84,31 +125,71 @@ export function SetupInterviewPage() {
     return sessionMode === SessionMode.STANDARD ? 5 : 3;
   });
 
+  const [interviewLanguage, setInterviewLanguage] = useState<string>(() => language || 'vi');
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [selectedLevel, setSelectedLevel] = useState<string>('');
   const [selectedTechs, setSelectedTechs] = useState<string[]>([]);
+  const [techSearchQuery, setTechSearchQuery] = useState<string>('');
+  const [selectedTechCategory, setSelectedTechCategory] = useState<string>('ALL');
+
+  // Provenance & Reusable Presets Tracking
+  const [presetId, setPresetId] = useState<string | undefined>(undefined);
+  const [configurationSource, setConfigurationSource] = useState<
+    'MANUAL' | 'PRESET' | 'RECENT' | 'BLUEPRINT'
+  >('MANUAL');
+  const [appliedPresetName, setAppliedPresetName] = useState<string | undefined>(undefined);
+  const [fieldSources, setFieldSources] = useState<FieldSourceTracking>({
+    role: 'default',
+    level: 'default',
+    techs: 'default',
+    mode: 'default',
+    language: 'default',
+  });
+
+  // Conflict Diff Modal State
+  const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
+  const [pendingPreset, setPendingPreset] = useState<InterviewConfigurationPresetDto | null>(null);
+  const [conflictDiffs, setConflictDiffs] = useState<ConflictDiffItem[]>([]);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorInfo, setErrorInfo] = useState<{
+    message: string;
+    isQuotaExceeded?: boolean;
+  } | null>(null);
   const [validationErrors, setValidationErrors] = useState<{
     role?: string;
     level?: string;
     techs?: string;
   }>({});
 
-  // Progressive Disclosure for Tailored CV / JD Blueprint
+  // Synchronize default interview language when global UI language switches
+  useEffect(() => {
+    if (language) {
+      setInterviewLanguage(language);
+    }
+  }, [language]);
+
+  // CV / JD Profile State
+  const [extractedCvProfile, setExtractedCvProfile] = useState<ExtractedProfileData | null>(null);
+  const [_parsedCvProfile, setParsedCvProfile] = useState<any>(null);
   const [isTailoredExpanded, setIsTailoredExpanded] = useState(false);
-  const [parsedCvProfile, setParsedCvProfile] = useState<any>(null);
-  const [analyzedJd, setAnalyzedJd] = useState<any>(null);
   const [activeBlueprint, setActiveBlueprint] = useState<InterviewBlueprintDto | null>(null);
+  const [isJdModalOpen, setIsJdModalOpen] = useState(false);
+  const [isExistingProfilesModalOpen, setIsExistingProfilesModalOpen] = useState(false);
 
   const {
     parseCv,
     isParsingCv,
     analyzeJd,
     isAnalyzingJd,
-    generateBlueprint,
-    isGeneratingBlueprint,
+    profiles = [],
+    isLoadingProfiles,
   } = useDocumentParser();
+  const { user } = useAuthStore();
+  const { subscription } = useBilling();
+  const isAdmin = user?.role === 'ADMIN';
+  const planSlug = subscription?.plan?.slug?.toLowerCase() || 'free';
+  const upgradeSuggestion = getNextUpgradePlan(planSlug, isAdmin, language === 'vi');
 
   const { data: roles = [], isLoading: loadingRoles } = useQuery<JobRoleDto[]>({
     queryKey: ['taxonomies', 'roles'],
@@ -138,8 +219,383 @@ export function SetupInterviewPage() {
     }
   }, [levels, selectedLevel]);
 
+  const handleCvParsedSuccess = (res: any) => {
+    const profile = res?.parsedProfile;
+    const match = res?.taxonomyMatch;
+    setParsedCvProfile(profile);
+
+    if (match) {
+      if (match.jobRoleId) setSelectedRole(match.jobRoleId);
+      if (match.seniorityLevelId) setSelectedLevel(match.seniorityLevelId);
+      if (match.technologyIds && match.technologyIds.length > 0) {
+        setSelectedTechs(match.technologyIds.slice(0, 5));
+      }
+
+      setExtractedCvProfile({
+        documentId: profile?.documentId,
+        fullName: profile?.fullName,
+        targetRole: profile?.targetRole || 'Software Engineer',
+        seniorityLevel: profile?.seniorityLevel || 'Mid-Level',
+        skills: profile?.skills || [],
+        matchedJobRoleId: match.jobRoleId,
+        matchedSeniorityLevelId: match.seniorityLevelId,
+        matchedTechnologyIds: match.technologyIds || [],
+        unmatchedSkills: match.unmatchedSkills || [],
+      });
+
+      setFieldSources({
+        role: 'cv',
+        level: 'cv',
+        techs: 'cv',
+        mode: 'default',
+        language: 'default',
+      });
+
+      setValidationErrors({});
+    }
+  };
+
+  const handleUploadCvFile = async (file: File) => {
+    const res = await parseCv({ file });
+    handleCvParsedSuccess(res);
+  };
+
+  const handleAnalyzeJd = async (jdText: string, roleTitle?: string) => {
+    const res = await analyzeJd({ jdText, roleTitle });
+    const requiredSkills = Array.isArray(res?.requiredSkills) ? res.requiredSkills : [];
+    const preferredSkills = Array.isArray(res?.preferredSkills) ? res.preferredSkills : [];
+    const allSkills = [...requiredSkills, ...preferredSkills];
+
+    // Find best matching role
+    let matchedRoleId = selectedRole;
+    if (res?.roleTitle) {
+      const normalizedRole = res.roleTitle.toLowerCase();
+      const matchedRole = roles.find(
+        r =>
+          normalizedRole.includes(r.name.toLowerCase()) ||
+          r.name.toLowerCase().includes(normalizedRole),
+      );
+      if (matchedRole) {
+        matchedRoleId = matchedRole.id;
+        setSelectedRole(matchedRole.id);
+      }
+    }
+
+    // Match technologies from skills
+    const matchedTechIds: string[] = [];
+    technologies.forEach(tech => {
+      const techName = tech.name.toLowerCase();
+      if (
+        allSkills.some(
+          skill => skill.toLowerCase().includes(techName) || techName.includes(skill.toLowerCase()),
+        )
+      ) {
+        if (!matchedTechIds.includes(tech.id)) {
+          matchedTechIds.push(tech.id);
+        }
+      }
+    });
+
+    if (matchedTechIds.length > 0) {
+      setSelectedTechs(matchedTechIds.slice(0, 5));
+    }
+
+    setExtractedCvProfile({
+      fullName: 'Job Description (JD)',
+      targetRole: res?.roleTitle || 'Target Role',
+      seniorityLevel: 'Mid-Level',
+      skills: allSkills.slice(0, 8),
+      matchedJobRoleId: matchedRoleId,
+      matchedSeniorityLevelId: selectedLevel,
+      matchedTechnologyIds: matchedTechIds,
+      unmatchedSkills: [],
+    });
+
+    setFieldSources({
+      role: 'cv',
+      level: 'cv',
+      techs: 'cv',
+      mode: 'default',
+      language: 'default',
+    });
+
+    setValidationErrors({});
+  };
+
+  const handleSelectExistingProfile = (p: any) => {
+    const skills = Array.isArray(p.skills) ? p.skills : [];
+    let matchedRoleId = selectedRole;
+    let matchedLevelId = selectedLevel;
+
+    // Match role
+    if (p.targetRole) {
+      const matchedRole = roles.find(
+        r =>
+          r.name.toLowerCase().includes(p.targetRole.toLowerCase()) ||
+          p.targetRole.toLowerCase().includes(r.name.toLowerCase()),
+      );
+      if (matchedRole) {
+        matchedRoleId = matchedRole.id;
+        setSelectedRole(matchedRole.id);
+      }
+    }
+
+    // Match level
+    if (p.seniorityLevel) {
+      const matchedLevel = levels.find(
+        l =>
+          l.name.toLowerCase().includes(p.seniorityLevel.toLowerCase()) ||
+          p.seniorityLevel.toLowerCase().includes(l.name.toLowerCase()),
+      );
+      if (matchedLevel) {
+        matchedLevelId = matchedLevel.id;
+        setSelectedLevel(matchedLevel.id);
+      }
+    }
+
+    // Match technologies
+    const matchedTechIds: string[] = [];
+    technologies.forEach(tech => {
+      const techName = tech.name.toLowerCase();
+      if (
+        skills.some(
+          (skill: string) =>
+            skill.toLowerCase().includes(techName) || techName.includes(skill.toLowerCase()),
+        )
+      ) {
+        if (!matchedTechIds.includes(tech.id)) {
+          matchedTechIds.push(tech.id);
+        }
+      }
+    });
+
+    if (matchedTechIds.length > 0) {
+      setSelectedTechs(matchedTechIds.slice(0, 5));
+    }
+
+    setExtractedCvProfile({
+      documentId: p.documentId,
+      fullName: p.fullName || p.document?.fileName || 'Hồ sơ đã lưu',
+      targetRole: p.targetRole || 'Software Engineer',
+      seniorityLevel: p.seniorityLevel || 'Mid-Level',
+      skills: skills,
+      matchedJobRoleId: matchedRoleId,
+      matchedSeniorityLevelId: matchedLevelId,
+      matchedTechnologyIds: matchedTechIds,
+      unmatchedSkills: [],
+    });
+
+    setFieldSources({
+      role: 'cv',
+      level: 'cv',
+      techs: 'cv',
+      mode: 'default',
+      language: 'default',
+    });
+
+    setValidationErrors({});
+  };
+
+  const handleResetCv = () => {
+    setExtractedCvProfile(null);
+    setParsedCvProfile(null);
+    setFieldSources(prev => ({ ...prev, role: 'manual', level: 'manual', techs: 'manual' }));
+  };
+
+  // Conflict Checking when selecting a Preset
+  const handleSelectPreset = (preset: InterviewConfigurationPresetDto) => {
+    if (extractedCvProfile) {
+      const diffs: ConflictDiffItem[] = [];
+
+      const roleMap = new Map(roles.map(r => [r.id, r]));
+      const levelMap = new Map(levels.map(l => [l.id, l]));
+      const techMap = new Map(technologies.map(t => [t.id, t]));
+
+      // 1. Role Check
+      const cvRoleObj = extractedCvProfile.matchedJobRoleId
+        ? roleMap.get(extractedCvProfile.matchedJobRoleId)
+        : null;
+      const presetRoleObj = roleMap.get(preset.jobRoleId);
+      if (
+        extractedCvProfile.matchedJobRoleId &&
+        extractedCvProfile.matchedJobRoleId !== preset.jobRoleId
+      ) {
+        diffs.push({
+          field: 'jobRoleId',
+          label: 'Vị trí công việc (Role)',
+          cvValue: cvRoleObj?.name || extractedCvProfile.targetRole || 'CV Role',
+          presetValue: presetRoleObj?.name || preset.jobRole?.name || 'Preset Role',
+          resolvedValue: preset.jobRoleId,
+          action: 'apply_preset',
+          requiresConfirmation: true,
+        });
+      }
+
+      // 2. Level Check
+      const cvLevelObj = extractedCvProfile.matchedSeniorityLevelId
+        ? levelMap.get(extractedCvProfile.matchedSeniorityLevelId)
+        : null;
+      const presetLevelObj = levelMap.get(preset.seniorityLevelId);
+      if (
+        extractedCvProfile.matchedSeniorityLevelId &&
+        extractedCvProfile.matchedSeniorityLevelId !== preset.seniorityLevelId
+      ) {
+        diffs.push({
+          field: 'seniorityLevelId',
+          label: 'Cấp bậc (Seniority)',
+          cvValue: cvLevelObj?.name || extractedCvProfile.seniorityLevel || 'CV Level',
+          presetValue: presetLevelObj?.name || preset.seniorityLevel?.name || 'Preset Level',
+          resolvedValue: preset.seniorityLevelId,
+          action: 'apply_preset',
+          requiresConfirmation: true,
+        });
+      }
+
+      // 3. Techs Check
+      const cvTechNames = extractedCvProfile.matchedTechnologyIds.map(
+        id => techMap.get(id)?.name || id,
+      );
+      const presetTechNames = preset.technologyIds.map(id => techMap.get(id)?.name || id);
+      const isTechDifferent =
+        extractedCvProfile.matchedTechnologyIds.length !== preset.technologyIds.length ||
+        !extractedCvProfile.matchedTechnologyIds.every(id => preset.technologyIds.includes(id));
+
+      if (isTechDifferent && extractedCvProfile.matchedTechnologyIds.length > 0) {
+        diffs.push({
+          field: 'technologyIds',
+          label: 'Kỹ năng công nghệ',
+          cvValue: cvTechNames,
+          presetValue: presetTechNames,
+          resolvedValue: Array.from(
+            new Set([...preset.technologyIds, ...extractedCvProfile.matchedTechnologyIds]),
+          ).slice(0, 5),
+          action: 'merge',
+          requiresConfirmation: true,
+        });
+      }
+
+      if (diffs.length > 0) {
+        setPendingPreset(preset);
+        setConflictDiffs(diffs);
+        setIsConflictModalOpen(true);
+        return;
+      }
+    }
+
+    // Direct apply if no conflict
+    applyPresetDirectly(preset);
+  };
+
+  const applyPresetDirectly = (preset: InterviewConfigurationPresetDto) => {
+    setSelectedRole(preset.jobRoleId);
+    setSelectedLevel(preset.seniorityLevelId);
+    setSelectedTechs(preset.technologyIds || []);
+    if (preset.sessionMode) setSessionMode(preset.sessionMode);
+    if (preset.competencyArea) setCompetencyArea(preset.competencyArea);
+    if (preset.language) setInterviewLanguage(preset.language);
+    if (preset.totalTurns) setTotalTurns(preset.totalTurns);
+    if (preset.blueprintId) setActiveBlueprint({ id: preset.blueprintId } as any);
+
+    setPresetId(preset.id);
+    setConfigurationSource('PRESET');
+    setAppliedPresetName(preset.name);
+    setFieldSources({
+      role: 'preset',
+      level: 'preset',
+      techs: 'preset',
+      mode: 'preset',
+      language: 'preset',
+    });
+    setValidationErrors({});
+    setErrorInfo(null);
+  };
+
+  // Conflict Modal Handlers
+  const handleConflictUseCv = () => {
+    if (!pendingPreset || !extractedCvProfile) return;
+    if (extractedCvProfile.matchedJobRoleId) setSelectedRole(extractedCvProfile.matchedJobRoleId);
+    if (extractedCvProfile.matchedSeniorityLevelId)
+      setSelectedLevel(extractedCvProfile.matchedSeniorityLevelId);
+    if (extractedCvProfile.matchedTechnologyIds.length > 0) {
+      setSelectedTechs(extractedCvProfile.matchedTechnologyIds.slice(0, 5));
+    }
+    if (pendingPreset.sessionMode) setSessionMode(pendingPreset.sessionMode);
+    if (pendingPreset.language) setInterviewLanguage(pendingPreset.language);
+    if (pendingPreset.totalTurns) setTotalTurns(pendingPreset.totalTurns);
+
+    setPresetId(pendingPreset.id);
+    setConfigurationSource('PRESET');
+    setAppliedPresetName(`${pendingPreset.name} (Ưu tiên CV)`);
+    setFieldSources({
+      role: 'cv',
+      level: 'cv',
+      techs: 'cv',
+      mode: 'preset',
+      language: 'preset',
+    });
+    setIsConflictModalOpen(false);
+  };
+
+  const handleConflictApplyPreset = () => {
+    if (!pendingPreset) return;
+    applyPresetDirectly(pendingPreset);
+    setIsConflictModalOpen(false);
+  };
+
+  const handleConflictSmartMerge = () => {
+    if (!pendingPreset || !extractedCvProfile) return;
+    setSelectedRole(pendingPreset.jobRoleId);
+    setSelectedLevel(pendingPreset.seniorityLevelId);
+
+    const mergedTechs = Array.from(
+      new Set([...pendingPreset.technologyIds, ...extractedCvProfile.matchedTechnologyIds]),
+    ).slice(0, 5);
+    setSelectedTechs(mergedTechs);
+
+    if (pendingPreset.sessionMode) setSessionMode(pendingPreset.sessionMode);
+    if (pendingPreset.language) setInterviewLanguage(pendingPreset.language);
+    if (pendingPreset.totalTurns) setTotalTurns(pendingPreset.totalTurns);
+
+    setPresetId(pendingPreset.id);
+    setConfigurationSource('PRESET');
+    setAppliedPresetName(`${pendingPreset.name} (Đã hợp nhất)`);
+    setFieldSources({
+      role: 'preset',
+      level: 'preset',
+      techs: 'manual',
+      mode: 'preset',
+      language: 'preset',
+    });
+    setIsConflictModalOpen(false);
+  };
+
+  const handleApplyRecentConfig = (cfg: any) => {
+    if (cfg.jobRoleId) setSelectedRole(cfg.jobRoleId);
+    if (cfg.seniorityLevelId) setSelectedLevel(cfg.seniorityLevelId);
+    if (cfg.technologyIds && Array.isArray(cfg.technologyIds)) setSelectedTechs(cfg.technologyIds);
+    if (cfg.sessionMode) setSessionMode(cfg.sessionMode);
+    if (cfg.competencyArea) setCompetencyArea(cfg.competencyArea);
+    if (cfg.language) setInterviewLanguage(cfg.language);
+    if (cfg.totalTurns) setTotalTurns(cfg.totalTurns);
+    if (cfg.blueprintId) setActiveBlueprint({ id: cfg.blueprintId } as any);
+
+    setPresetId(undefined);
+    setConfigurationSource('RECENT');
+    setAppliedPresetName('Cấu hình gần đây');
+    setFieldSources({
+      role: 'preset',
+      level: 'preset',
+      techs: 'preset',
+      mode: 'preset',
+      language: 'preset',
+    });
+    setValidationErrors({});
+    setErrorInfo(null);
+  };
+
   const toggleTechnology = (techId: string) => {
     setValidationErrors(prev => ({ ...prev, techs: undefined }));
+    setFieldSources(prev => ({ ...prev, techs: 'manual' }));
     setSelectedTechs(prev => {
       if (prev.includes(techId)) {
         return prev.filter(id => id !== techId);
@@ -153,20 +609,21 @@ export function SetupInterviewPage() {
 
   const handleModeChange = (mode: SessionMode) => {
     setSessionMode(mode);
+    setFieldSources(prev => ({ ...prev, mode: 'manual' }));
     if (mode === SessionMode.STANDARD) {
       setTotalTurns(5);
-    } else {
+    } else if (mode === SessionMode.QUICK_PRACTICE || mode === SessionMode.FOCUSED_REMEDIATION) {
       setTotalTurns(3);
     }
   };
 
-  const validateForm = (): boolean => {
-    const errors: { role?: string; level?: string; techs?: string } = {};
+  const validateForm = () => {
     let isValid = true;
+    const errors: { role?: string; level?: string; techs?: string } = {};
 
     if (!selectedRole) {
       errors.role =
-        language === 'vi' ? 'Vui lòng chọn vị trí mục tiêu.' : 'Please select a job role.';
+        language === 'vi' ? 'Vui lòng chọn vị trí công việc.' : 'Please select a target job role.';
       isValid = false;
     }
     if (!selectedLevel) {
@@ -188,24 +645,55 @@ export function SetupInterviewPage() {
     return isValid;
   };
 
+  const formatInterviewError = (err: any): { message: string; isQuotaExceeded?: boolean } => {
+    const isQuota =
+      err?.status === 403 ||
+      err?.code === ErrorCode.QUOTA_EXCEEDED ||
+      err?.code === 'QUOTA_EXCEEDED' ||
+      (typeof err?.message === 'string' && err.message.toLowerCase().includes('quota'));
+
+    if (isQuota) {
+      return {
+        message:
+          language === 'vi'
+            ? 'Bạn đã dùng hết giới hạn số lượt phỏng vấn miễn phí trong tháng (3/3 phiên). Vui lòng nâng cấp gói cước để tiếp tục luyện tập không giới hạn.'
+            : 'You have reached your monthly interview quota limit (3/3 sessions). Please upgrade your plan for unlimited practice sessions.',
+        isQuotaExceeded: true,
+      };
+    }
+
+    return {
+      message:
+        err?.message ||
+        (language === 'vi'
+          ? 'Không thể khởi tạo phiên phỏng vấn. Vui lòng thử lại.'
+          : 'Failed to initialize interview session. Please try again.'),
+      isQuotaExceeded: false,
+    };
+  };
+
   const handleStartInterview = async () => {
     if (isSubmitting) return;
 
     if (!validateForm()) {
-      setErrorMessage(
-        language === 'vi'
-          ? 'Vui lòng hoàn tất các thông tin bắt buộc trước khi bắt đầu.'
-          : 'Please complete all required fields before starting.',
-      );
+      setErrorInfo({
+        message:
+          language === 'vi'
+            ? 'Vui lòng hoàn tất các thông tin bắt buộc trước khi bắt đầu.'
+            : 'Please complete all required fields before starting.',
+        isQuotaExceeded: false,
+      });
       return;
     }
 
-    setErrorMessage(null);
+    setErrorInfo(null);
     setIsSubmitting(true);
 
+    const idempotencyKey = `create-interview-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
     try {
       const session = await apiClient('/interviews', {
         method: 'POST',
+        idempotencyKey,
         body: JSON.stringify({
           jobRoleId: selectedRole,
           seniorityLevelId: selectedLevel,
@@ -213,100 +701,70 @@ export function SetupInterviewPage() {
           sessionMode,
           competencyArea:
             sessionMode === SessionMode.FOCUSED_REMEDIATION ? competencyArea : undefined,
+          language: interviewLanguage,
           totalTurns: sessionMode === SessionMode.STANDARD ? 5 : totalTurns,
           isSandbox: sessionMode === SessionMode.QUICK_PRACTICE,
+          presetId,
+          configurationSource,
+          fieldSources,
         }),
       });
 
       // Navigate exactly once upon success
       navigate(`/interviews/${session.id}`);
     } catch (err: any) {
-      setErrorMessage(
-        err.message ||
-          (language === 'vi'
-            ? 'Không thể khởi tạo phiên phỏng vấn. Vui lòng thử lại.'
-            : 'Failed to initialize interview session. Please try again.'),
-      );
+      setErrorInfo(formatInterviewError(err));
       setIsSubmitting(false);
     }
   };
 
-  const handleStartBlueprintInterview = async (blueprintId: string) => {
-    const roleId = selectedRole || (roles.length > 0 ? roles[0].id : '');
-    const levelId = selectedLevel || (levels.length > 0 ? levels[0].id : '');
-    const techIds =
-      selectedTechs.length > 0 ? selectedTechs : technologies.slice(0, 2).map(t => t.id);
-
-    setIsSubmitting(true);
-    setErrorMessage(null);
-
-    try {
-      const session = await apiClient('/interviews', {
-        method: 'POST',
-        body: JSON.stringify({
-          jobRoleId: roleId,
-          seniorityLevelId: levelId,
-          technologyIds: techIds,
-          sessionMode: SessionMode.STANDARD,
-          totalTurns: 5,
-          blueprintId,
-        }),
-      });
-      navigate(`/interviews/${session.id}`);
-    } catch (err: any) {
-      setErrorMessage(
-        err.message ||
-          (language === 'vi'
-            ? 'Không thể bắt đầu phỏng vấn theo kịch bản may đo.'
-            : 'Failed to start tailored interview.'),
-      );
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleCreateBlueprint = async () => {
-    if (!parsedCvProfile?.id || !analyzedJd?.id) return;
-    try {
-      const bp = await generateBlueprint({
-        parsedProfileId: parsedCvProfile.id,
-        jdAnalysisId: analyzedJd.id,
-      });
-      setActiveBlueprint(bp);
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to generate tailored blueprint');
-    }
-  };
-
-  const isLoadingData = loadingRoles || loadingLevels || loadingTechs;
+  const filteredTechnologies = technologies.filter(tech => {
+    const matchesSearch =
+      !techSearchQuery ||
+      tech.name.toLowerCase().includes(techSearchQuery.toLowerCase()) ||
+      tech.slug.toLowerCase().includes(techSearchQuery.toLowerCase());
+    const matchesCategory =
+      selectedTechCategory === 'ALL' ||
+      (selectedTechCategory === 'Database' &&
+        (tech.category === 'Database' || tech.category === 'Cache')) ||
+      (selectedTechCategory === 'DevOps' &&
+        (tech.category === 'DevOps' || tech.category === 'Cloud')) ||
+      (selectedTechCategory === 'AI/Data' &&
+        (tech.category === 'AI' || tech.category === 'Data')) ||
+      tech.category === selectedTechCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   const currentRoleObj = roles.find(r => r.id === selectedRole);
   const currentLevelObj = levels.find(l => l.id === selectedLevel);
-  const currentTechNames = technologies.filter(t => selectedTechs.includes(t.id)).map(t => t.name);
+  const selectedTechObjects = technologies.filter(t => selectedTechs.includes(t.id));
 
-  const estimatedMinutes = sessionMode === SessionMode.STANDARD ? 15 : totalTurns * 3;
-
-  if (isLoadingData) {
+  if (loadingRoles || loadingLevels || loadingTechs) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <Skeleton variant="rectangular" height={80} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Skeleton variant="card" height={220} />
-          <Skeleton variant="card" height={220} />
+      <div className="max-w-6xl mx-auto space-y-8 animate-pulse p-4">
+        <Skeleton variant="rectangular" height={90} className="rounded-2xl" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-8 space-y-6">
+            <Skeleton variant="card" height={220} />
+            <Skeleton variant="card" height={240} />
+          </div>
+          <div className="lg:col-span-4">
+            <Skeleton variant="card" height={360} />
+          </div>
         </div>
-        <Skeleton variant="card" height={160} />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 mb-2">
             <Sparkles className="h-3.5 w-3.5" />
             <span>
-              {language === 'vi' ? 'Thiết lập Phiên Luyện tập' : 'Adaptive Practice Setup'}
+              {language === 'vi' ? 'Thiết lập Phiên Luyện tập CV-First' : 'Adaptive Practice Setup'}
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
@@ -314,593 +772,659 @@ export function SetupInterviewPage() {
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-1">
             {language === 'vi'
-              ? 'Chọn vị trí, cấp bậc và công nghệ để AI điều chỉnh độ khó câu hỏi thích ứng theo thời gian thực.'
-              : 'Select your target role, seniority, and stack. Questions dynamically adapt based on your answer quality.'}
+              ? 'Tải CV để AI đề xuất, hoặc dùng lại Preset cấu hình đã lưu chỉ với một click.'
+              : 'Upload CV for AI suggestions or reuse saved presets with one click.'}
           </p>
         </div>
+
+        {upgradeSuggestion.hasHigherPlan && (
+          <Link
+            to={`/pricing?plan=${upgradeSuggestion.targetPlanSlug}`}
+            className="shrink-0 inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-950 bg-gradient-to-r from-amber-100 via-amber-50 to-emerald-50 border border-amber-300/80 hover:border-amber-400 hover:shadow-xs transition-all active:scale-[0.98] group"
+          >
+            <Crown className="w-4 h-4 text-amber-600 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
+            <div className="text-left">
+              <span className="block text-[10px] text-amber-700 font-semibold leading-none">
+                {language === 'vi' ? 'Mở khóa toàn bộ quyền lợi' : 'Unlock Full Access'}
+              </span>
+              <span className="text-xs font-extrabold">{upgradeSuggestion.buttonLabel}</span>
+            </div>
+            <ArrowUpRight className="w-3.5 h-3.5 text-amber-700" />
+          </Link>
+        )}
       </div>
 
-      {errorMessage && (
-        <Alert variant="error" className="animate-fade-in">
-          <div className="flex items-center justify-between gap-2 w-full">
-            <span>{errorMessage}</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleStartInterview}
-              leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
-              className="text-xs text-rose-800 hover:bg-rose-100"
-            >
-              {language === 'vi' ? 'Thử lại' : 'Retry'}
-            </Button>
+      {errorInfo && (
+        <Alert
+          variant={errorInfo.isQuotaExceeded ? 'warning' : 'error'}
+          title={
+            errorInfo.isQuotaExceeded
+              ? language === 'vi'
+                ? 'Đã đạt giới hạn hạn mức (Monthly Quota Exceeded)'
+                : 'Monthly Interview Quota Reached'
+              : undefined
+          }
+          className="animate-fade-in"
+        >
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 w-full">
+            <span>{errorInfo.message}</span>
+            {errorInfo.isQuotaExceeded ? (
+              <Link to="/pricing" className="shrink-0">
+                <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
+                  <Zap className="h-3.5 w-3.5 mr-1" />
+                  <span>{language === 'vi' ? 'Xem bảng giá nâng cấp' : 'Upgrade Plan'}</span>
+                </Button>
+              </Link>
+            ) : (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleStartInterview}
+                leftIcon={<RotateCcw className="h-3.5 w-3.5" />}
+                className="text-xs text-rose-800 hover:bg-rose-100 shrink-0"
+              >
+                {language === 'vi' ? 'Thử lại' : 'Retry'}
+              </Button>
+            )}
           </div>
         </Alert>
       )}
 
-      {/* STEP 1: Goal & Target Specification */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-            1
-          </div>
-          <h2 className="text-base font-bold text-slate-900">
-            {language === 'vi' ? 'Mục Tiêu Kỹ Thuật (Goal & Target)' : 'Goal & Technical Focus'}
-          </h2>
+      {/* ROW 1: BƯỚC 1 (CV/JD) & BƯỚC 2 (PRESETS & RECENT) TRÊN CÙNG MỘT HÀNG */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 items-stretch mb-2">
+        <div className="flex flex-col h-full">
+          <CvHeroSection
+            extractedProfile={extractedCvProfile}
+            isParsing={isParsingCv}
+            onUploadCvFile={handleUploadCvFile}
+            onOpenJdInput={() => setIsJdModalOpen(true)}
+            onSelectExistingProfile={() => setIsExistingProfilesModalOpen(true)}
+            onSkipCv={() => {
+              setExtractedCvProfile(null);
+              const step3El = document.getElementById('step-3-config');
+              step3El?.scrollIntoView({ behavior: 'smooth' });
+            }}
+            onResetCv={handleResetCv}
+            onViewDetails={() => setIsTailoredExpanded(!isTailoredExpanded)}
+            onProceedToPresets={() => {
+              const step2El = document.getElementById('step-2-presets');
+              step2El?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Role Selection */}
-          <Card className={validationErrors.role ? 'border-rose-400' : 'border-slate-200'}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Briefcase className="h-4 w-4 text-emerald-600" />
-                <CardTitle className="text-sm font-bold">
-                  {language === 'vi' ? 'Vị Trí Công Việc' : 'Target Job Role'}
-                </CardTitle>
-              </div>
-              <CardDescription>
-                {language === 'vi'
-                  ? 'Định hình bối cảnh phỏng vấn kỹ thuật'
-                  : 'Defines the interview context'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {roles.map(role => {
-                const isSelected = selectedRole === role.id;
-                return (
-                  <button
-                    key={role.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedRole(role.id);
-                      setValidationErrors(prev => ({ ...prev, role: undefined }));
-                    }}
-                    className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                      isSelected
-                        ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-semibold text-xs text-slate-900">{role.name}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
-                        {role.description}
-                      </p>
-                    </div>
-                    {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
-                  </button>
-                );
-              })}
-              {validationErrors.role && (
-                <p className="text-xs text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span>{validationErrors.role}</span>
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Level Selection */}
-          <Card className={validationErrors.level ? 'border-rose-400' : 'border-slate-200'}>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Layers className="h-4 w-4 text-emerald-600" />
-                <CardTitle className="text-sm font-bold">
-                  {language === 'vi' ? 'Cấp Bậc Kinh Nghiệm' : 'Seniority Level'}
-                </CardTitle>
-              </div>
-              <CardDescription>
-                {language === 'vi'
-                  ? 'Quyết định độ sâu và tiêu chí chấm điểm rubric'
-                  : 'Sets baseline question difficulty'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {levels.map(level => {
-                const isSelected = selectedLevel === level.id;
-                return (
-                  <button
-                    key={level.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedLevel(level.id);
-                      setValidationErrors(prev => ({ ...prev, level: undefined }));
-                    }}
-                    className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                      isSelected
-                        ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
-                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div>
-                      <h4 className="font-semibold text-xs text-slate-900">{level.name}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
-                        {level.description}
-                      </p>
-                    </div>
-                    {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
-                  </button>
-                );
-              })}
-              {validationErrors.level && (
-                <p className="text-xs text-rose-600 flex items-center gap-1 mt-1">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span>{validationErrors.level}</span>
-                </p>
-              )}
-            </CardContent>
-          </Card>
+        <div id="step-2-presets" className="flex flex-col h-full">
+          <SavedConfigurationsSection
+            currentConfig={{
+              jobRoleId: selectedRole,
+              seniorityLevelId: selectedLevel,
+              technologyIds: selectedTechs,
+              sessionMode,
+              competencyArea:
+                sessionMode === SessionMode.FOCUSED_REMEDIATION ? competencyArea : undefined,
+              language: interviewLanguage,
+              totalTurns: sessionMode === SessionMode.STANDARD ? 5 : totalTurns,
+              isSandbox: sessionMode === SessionMode.QUICK_PRACTICE,
+              blueprintId: activeBlueprint?.id,
+            }}
+            onApplyConfig={handleApplyRecentConfig}
+            onSelectPreset={handleSelectPreset}
+          />
         </div>
-
-        {/* Technology Selection */}
-        <Card className={validationErrors.techs ? 'border-rose-400' : 'border-slate-200'}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Code className="h-4 w-4 text-emerald-600" />
-                <CardTitle className="text-sm font-bold">
-                  {language === 'vi' ? 'Công Nghệ Cốt Lõi (1 đến 5)' : 'Core Technologies (1 to 5)'}
-                </CardTitle>
-              </div>
-              <Badge variant={selectedTechs.length > 0 ? 'success' : 'default'} className="text-xs">
-                {selectedTechs.length}/5 {language === 'vi' ? 'Đã chọn' : 'Selected'}
-              </Badge>
-            </div>
-            <CardDescription>
-              {language === 'vi'
-                ? 'AI sẽ tạo các kịch bản thực tế dựa trên công nghệ bạn chọn'
-                : 'Questions will test your practical problem-solving in these technologies'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {technologies.map(tech => {
-                const isSelected = selectedTechs.includes(tech.id);
-                return (
-                  <button
-                    key={tech.id}
-                    type="button"
-                    onClick={() => toggleTechnology(tech.id)}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                      isSelected
-                        ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    {isSelected && <Check className="h-3 w-3" />}
-                    <span>{tech.name}</span>
-                  </button>
-                );
-              })}
-            </div>
-            {validationErrors.techs && (
-              <p className="text-xs text-rose-600 flex items-center gap-1 mt-2">
-                <AlertCircle className="h-3.5 w-3.5" />
-                <span>{validationErrors.techs}</span>
-              </p>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
-      {/* STEP 2: Practice Configuration */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-            2
+      {appliedPresetName && (
+        <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs dark:bg-emerald-950/40 dark:border-emerald-900/60 dark:text-emerald-300 animate-fade-in mb-4">
+          <div className="flex items-center gap-2">
+            <Bookmark className="h-4 w-4 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
+            <span>
+              Đang áp dụng cấu hình từ: <strong>"{appliedPresetName}"</strong>. Bạn có thể chỉnh sửa
+              các trường bên dưới trước khi bắt đầu.
+            </span>
           </div>
-          <h2 className="text-base font-bold text-slate-900">
-            {language === 'vi' ? 'Cấu Hình Buổi Luyện Tập' : 'Practice Configuration'}
-          </h2>
-        </div>
-
-        <Card className="border-slate-200 shadow-sm">
-          <CardHeader className="pb-3">
-            <div className="flex items-center gap-2">
-              <Zap className="h-4 w-4 text-emerald-600" />
-              <CardTitle className="text-sm font-bold">{t.practice.modeLabel}</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Standard Mode */}
-              <button
-                type="button"
-                onClick={() => handleModeChange(SessionMode.STANDARD)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  sessionMode === SessionMode.STANDARD
-                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                    <GraduationCap className="h-4 w-4 text-emerald-600" />
-                    <span>{t.practice.standard}</span>
-                  </div>
-                  <Badge variant="success" className="text-[10px]">
-                    {language === 'vi' ? 'Khuyên dùng' : 'Recommended'}
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi'
-                    ? '5 câu hỏi thích ứng kiểm tra toàn diện'
-                    : '5-turn full adaptive interview'}
-                </p>
-              </button>
-
-              {/* Live Coding Mode */}
-              <button
-                type="button"
-                onClick={() => handleModeChange(SessionMode.CODING)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  sessionMode === SessionMode.CODING
-                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                  <Code className="h-4 w-4 text-sky-600" />
-                  <span>Live Coding Sandbox</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi'
-                    ? 'Trình soạn thảo mã, thực thi và phân tích độ phức tạp'
-                    : 'In-browser sandbox & complexity analysis'}
-                </p>
-              </button>
-
-              {/* STAR Behavioral */}
-              <button
-                type="button"
-                onClick={() => handleModeChange(SessionMode.BEHAVIORAL)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  sessionMode === SessionMode.BEHAVIORAL
-                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                  <Briefcase className="h-4 w-4 text-purple-600" />
-                  <span>STAR Behavioral</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi'
-                    ? 'Đánh giá kỹ năng mềm và hành vi chuẩn STAR'
-                    : 'STAR behavioral scenario evaluation'}
-                </p>
-              </button>
-
-              {/* Live Voice */}
-              <button
-                type="button"
-                onClick={() => handleModeChange(SessionMode.VOICE_LIVE)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  sessionMode === SessionMode.VOICE_LIVE
-                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                  <Mic className="h-4 w-4 text-rose-600" />
-                  <span>Live Voice</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {language === 'vi'
-                    ? 'Hội thoại trực tiếp bằng giọng nói 2 chiều'
-                    : 'Full-duplex real-time voice streaming'}
-                </p>
-              </button>
-
-              {/* Focused Remediation */}
-              <button
-                type="button"
-                onClick={() => handleModeChange(SessionMode.FOCUSED_REMEDIATION)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  sessionMode === SessionMode.FOCUSED_REMEDIATION
-                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                  <Target className="h-4 w-4 text-indigo-600" />
-                  <span>{t.practice.remediation}</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {t.practice.remediationDesc}
-                </p>
-              </button>
-
-              {/* Quick Sandbox */}
-              <button
-                type="button"
-                onClick={() => handleModeChange(SessionMode.QUICK_PRACTICE)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
-                  sessionMode === SessionMode.QUICK_PRACTICE
-                    ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
-                  <FlaskConical className="h-4 w-4 text-amber-600" />
-                  <span>{t.practice.sandbox}</span>
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  {t.practice.sandboxDesc}
-                </p>
-              </button>
-            </div>
-
-            {/* Focused Remediation Area Picker */}
-            {sessionMode === SessionMode.FOCUSED_REMEDIATION && (
-              <div className="pt-4 border-t border-slate-100 space-y-2">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  {t.practice.targetCompetency}
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {COMPETENCY_OPTIONS.map(opt => (
-                    <button
-                      key={opt.area}
-                      type="button"
-                      onClick={() => setCompetencyArea(opt.area)}
-                      className={`p-2.5 rounded-lg border text-xs font-medium text-left transition-all flex items-center justify-between ${
-                        competencyArea === opt.area
-                          ? 'bg-indigo-50 border-indigo-500 text-indigo-900 font-semibold'
-                          : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                      }`}
-                    >
-                      <span>{opt.label}</span>
-                      {competencyArea === opt.area && <Check className="h-4 w-4 text-indigo-600" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Turn Count Selector */}
-            {sessionMode !== SessionMode.STANDARD && (
-              <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  {t.practice.questionCount}
-                </label>
-                <div className="flex gap-2">
-                  {[1, 2, 3, 5].map(count => (
-                    <button
-                      key={count}
-                      type="button"
-                      onClick={() => setTotalTurns(count)}
-                      className={`px-3 py-1 rounded-md text-xs font-semibold border transition-all ${
-                        totalTurns === count
-                          ? 'bg-slate-900 text-white border-slate-900'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                      }`}
-                    >
-                      {count} {count === 1 ? 'Question' : 'Questions'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Progressive Disclosure: Advanced CV / JD Tailored Blueprint */}
-        <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden shadow-xs">
           <button
             type="button"
-            onClick={() => setIsTailoredExpanded(!isTailoredExpanded)}
-            className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors"
+            onClick={() => {
+              setAppliedPresetName(undefined);
+              setPresetId(undefined);
+              setConfigurationSource('MANUAL');
+            }}
+            className="text-xs text-emerald-700 hover:text-emerald-900 font-medium underline dark:text-emerald-300 dark:hover:text-emerald-100"
           >
-            <div className="flex items-center gap-2.5">
-              <FileText className="h-4 w-4 text-indigo-600" />
-              <div>
-                <span className="font-bold text-xs text-slate-900 block">
-                  {language === 'vi'
-                    ? 'Tùy Chọn Nâng Cao: Kịch bản May Đo theo CV & JD'
-                    : 'Advanced Option: CV & JD Tailored Blueprint'}
-                </span>
-                <span className="text-[11px] text-slate-500">
-                  {language === 'vi'
-                    ? 'Tải lên CV hoặc mô tả công việc (JD) để tạo câu hỏi sát với hồ sơ cá nhân'
-                    : 'Upload your CV or JD to synthesize specialized interview probes'}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {activeBlueprint && (
-                <Badge variant="purple" className="text-[10px]">
-                  {language === 'vi' ? 'Đã tạo Blueprint' : 'Blueprint Ready'}
-                </Badge>
-              )}
-              {isTailoredExpanded ? (
-                <ChevronUp className="h-4 w-4 text-slate-400" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-slate-400" />
-              )}
-            </div>
+            Bỏ chọn
           </button>
+        </div>
+      )}
 
-          {isTailoredExpanded && (
-            <div className="p-5 border-t border-slate-100 bg-slate-50/40 space-y-6 animate-slide-up">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <CvUploadZone
-                  isParsing={isParsingCv}
-                  onParseFile={async file => {
-                    const res = await parseCv({ file });
-                    setParsedCvProfile(res.parsedProfile);
-                    return res;
-                  }}
-                  onParseText={async text => {
-                    const res = await parseCv({ text });
-                    setParsedCvProfile(res.parsedProfile);
-                    return res;
-                  }}
-                  onParsed={res => setParsedCvProfile(res.parsedProfile)}
-                />
+      {/* TWO-COLUMN DESKTOP LAYOUT (Steps 3 & 4 + Sticky Summary) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        {/* Left Column: Form Details (8 Cols) */}
+        <div className="lg:col-span-8 space-y-8">
+          {/* STEP 3: Technical Goal Specification */}
+          <div id="step-3-config" className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">
+                Bước 3
+              </span>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {language === 'vi' ? 'Vị Trí, Cấp Bậc & Kỹ Năng' : 'Role, Level & Stack'}
+              </h2>
+            </div>
 
-                <JdInputCard
-                  isAnalyzing={isAnalyzingJd}
-                  onAnalyzeJd={async (jdText, roleTitle) => {
-                    const res = await analyzeJd({ jdText, roleTitle });
-                    setAnalyzedJd(res);
-                    return res;
-                  }}
-                  onAnalyzed={res => setAnalyzedJd(res)}
-                />
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Role Selection */}
+              <Card className={validationErrors.role ? 'border-rose-400' : 'border-slate-200'}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-emerald-600" />
+                      <CardTitle className="text-sm font-bold">
+                        {language === 'vi' ? 'Vị Trí Công Việc' : 'Target Job Role'}
+                      </CardTitle>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                  {roles.map(role => {
+                    const isSelected = selectedRole === role.id;
+                    return (
+                      <button
+                        key={role.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedRole(role.id);
+                          setFieldSources(prev => ({ ...prev, role: 'manual' }));
+                          setValidationErrors(prev => ({ ...prev, role: undefined }));
+                        }}
+                        className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                          isSelected
+                            ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div>
+                          <h4 className="font-semibold text-xs text-slate-900">{role.name}</h4>
+                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+                            {role.description}
+                          </p>
+                        </div>
+                        {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                  {validationErrors.role && (
+                    <p className="text-xs text-rose-600 flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span>{validationErrors.role}</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
 
-              {parsedCvProfile && analyzedJd && !activeBlueprint && (
-                <div className="flex justify-center p-4 bg-indigo-50/60 rounded-xl border border-indigo-100">
-                  <Button
-                    size="md"
-                    onClick={handleCreateBlueprint}
-                    isLoading={isGeneratingBlueprint}
-                    className="shadow-sm"
+              {/* Level Selection */}
+              <Card className={validationErrors.level ? 'border-rose-400' : 'border-slate-200'}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Layers className="h-4 w-4 text-emerald-600" />
+                      <CardTitle className="text-sm font-bold">
+                        {language === 'vi' ? 'Cấp Bậc Kinh Nghiệm' : 'Seniority Level'}
+                      </CardTitle>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-2">
+                  {levels.map(level => {
+                    const isSelected = selectedLevel === level.id;
+                    return (
+                      <button
+                        key={level.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedLevel(level.id);
+                          setFieldSources(prev => ({ ...prev, level: 'manual' }));
+                          setValidationErrors(prev => ({ ...prev, level: undefined }));
+                        }}
+                        className={`w-full p-3 rounded-xl border text-left transition-all flex items-center justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                          isSelected
+                            ? 'border-emerald-600 bg-emerald-50/60 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div>
+                          <h4 className="font-semibold text-xs text-slate-900">{level.name}</h4>
+                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
+                            {level.description}
+                          </p>
+                        </div>
+                        {isSelected && <Check className="h-4 w-4 text-emerald-600 shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                  {validationErrors.level && (
+                    <p className="text-xs text-rose-600 flex items-center gap-1 mt-1">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span>{validationErrors.level}</span>
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Technology Selection */}
+            <Card className={validationErrors.techs ? 'border-rose-400' : 'border-slate-200'}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Code className="h-4 w-4 text-emerald-600" />
+                    <CardTitle className="text-sm font-bold">
+                      {language === 'vi'
+                        ? 'Công Nghệ Cốt Lõi (1 đến 5)'
+                        : 'Core Technologies (1 to 5)'}
+                    </CardTitle>
+                  </div>
+                  <Badge
+                    variant={selectedTechs.length > 0 ? 'success' : 'default'}
+                    className="text-xs"
                   >
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    <span>
-                      {language === 'vi' ? 'Tạo Kịch Bản Phỏng Vấn' : 'Generate Blueprint'}
-                    </span>
-                  </Button>
+                    {selectedTechs.length}/5 {language === 'vi' ? 'Đã chọn' : 'Selected'}
+                  </Badge>
                 </div>
-              )}
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Search & Category Filter */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                    <input
+                      type="text"
+                      value={techSearchQuery}
+                      onChange={e => setTechSearchQuery(e.target.value)}
+                      placeholder={
+                        language === 'vi'
+                          ? 'Tìm nhanh công nghệ (ví dụ: Python, Docker, React, Kafka, Go...)'
+                          : 'Search tech stack (e.g. Python, Docker, React, Kafka, Go...)'
+                      }
+                      className="w-full pl-9 pr-8 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                    />
+                    {techSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setTechSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
 
-              {activeBlueprint && (
-                <GapAnalysisPreview
-                  blueprint={activeBlueprint}
-                  onProceed={handleStartBlueprintInterview}
-                  isLoading={isSubmitting}
-                />
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+                  {/* Category Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                    {TECH_CATEGORIES.map(cat => {
+                      const isCatActive = selectedTechCategory === cat.key;
+                      return (
+                        <button
+                          key={cat.key}
+                          type="button"
+                          onClick={() => setSelectedTechCategory(cat.key)}
+                          className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-all ${
+                            isCatActive
+                              ? 'bg-slate-900 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {language === 'vi' ? cat.labelVi : cat.labelEn}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-      {/* STEP 3: Review & Single Primary CTA */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-            3
+                {/* Filtered Technology Buttons */}
+                <div className="flex flex-wrap gap-2 max-h-60 overflow-y-auto pr-1">
+                  {filteredTechnologies.map(tech => {
+                    const isSelected = selectedTechs.includes(tech.id);
+                    return (
+                      <button
+                        key={tech.id}
+                        type="button"
+                        onClick={() => toggleTechnology(tech.id)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                          isSelected
+                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        {isSelected && <Check className="h-3 w-3" />}
+                        <span>{tech.name}</span>
+                        {tech.category && (
+                          <span
+                            className={`text-[9px] px-1.5 py-0.5 rounded font-normal ${
+                              isSelected
+                                ? 'bg-emerald-700 text-emerald-100'
+                                : 'bg-slate-100 text-slate-500'
+                            }`}
+                          >
+                            {tech.category}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {validationErrors.techs && (
+                  <p className="text-xs text-rose-600 flex items-center gap-1 mt-2">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>{validationErrors.techs}</span>
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </div>
-          <h2 className="text-base font-bold text-slate-900">
-            {language === 'vi' ? 'Xác Nhận & Bắt Đầu' : 'Review & Launch'}
-          </h2>
+
+          {/* STEP 4: Practice Configuration */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 bg-emerald-100/70 dark:bg-emerald-950/80 px-2 py-0.5 rounded-full">
+                Bước 4
+              </span>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {language === 'vi' ? 'Chế Độ Luyện Tập & Tùy Chọn' : 'Practice Modes & Options'}
+              </h2>
+            </div>
+
+            <Card className="border-slate-200 shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-emerald-600" />
+                  <CardTitle className="text-sm font-bold">{t.practice.modeLabel}</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {/* Standard Mode */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.STANDARD)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.STANDARD
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                        <GraduationCap className="h-4 w-4 text-emerald-600" />
+                        <span>{t.practice.standard}</span>
+                      </div>
+                      <Badge variant="success" className="text-[10px]">
+                        {language === 'vi' ? 'Khuyên dùng' : 'Recommended'}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? '5 câu hỏi thích ứng kiểm tra toàn diện'
+                        : '5-turn full adaptive interview'}
+                    </p>
+                  </button>
+
+                  {/* Focused Remediation Mode */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.FOCUSED_REMEDIATION)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.FOCUSED_REMEDIATION
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                      <Target className="h-4 w-4 text-emerald-600" />
+                      <span>{t.practice.remediation || 'Luyện tập Trọng tâm'}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? 'Bài luyện tập chuyên sâu nhắm thẳng vào các điểm thiếu sót'
+                        : 'Targeted drills focused on specific skill gaps'}
+                    </p>
+                  </button>
+
+                  {/* Live Coding Mode */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.CODING)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.CODING
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                      <Code className="h-4 w-4 text-sky-600" />
+                      <span>Live Coding Sandbox</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? 'Trình soạn thảo mã, thực thi và phân tích độ phức tạp'
+                        : 'In-browser sandbox & complexity analysis'}
+                    </p>
+                  </button>
+
+                  {/* System Design Whiteboard */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.SYSTEM_DESIGN)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.SYSTEM_DESIGN
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                      <Layers className="h-4 w-4 text-amber-600" />
+                      <span>System Design</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? 'Vẽ sơ đồ kiến trúc bảng trắng và AI chấm điểm'
+                        : 'Interactive architecture whiteboard'}
+                    </p>
+                  </button>
+
+                  {/* STAR Behavioral */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.BEHAVIORAL)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.BEHAVIORAL
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                      <Briefcase className="h-4 w-4 text-purple-600" />
+                      <span>STAR Behavioral</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? 'Đánh giá kỹ năng mềm và hành vi chuẩn STAR'
+                        : 'STAR behavioral scenario evaluation'}
+                    </p>
+                  </button>
+
+                  {/* Live Voice */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.VOICE_LIVE)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.VOICE_LIVE
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                      <Mic className="h-4 w-4 text-rose-600" />
+                      <span>Voice AI Live</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? 'Giao tiếp giọng nói hai chiều trực tiếp với AI'
+                        : 'Full-duplex real-time voice interview'}
+                    </p>
+                  </button>
+
+                  {/* Quick Sandbox */}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange(SessionMode.QUICK_PRACTICE)}
+                    className={`p-3.5 rounded-xl border text-left transition-all relative focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                      sessionMode === SessionMode.QUICK_PRACTICE
+                        ? 'border-emerald-600 bg-emerald-50/70 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs text-slate-900">
+                      <FlaskConical className="h-4 w-4 text-teal-600" />
+                      <span>{t.practice.sandbox}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      {language === 'vi'
+                        ? '3 câu hỏi thử nghiệm không ảnh hưởng xếp hạng'
+                        : '3-turn unranked practice session'}
+                    </p>
+                  </button>
+                </div>
+
+                {/* Focused Remediation Competency Area Picker */}
+                {sessionMode === SessionMode.FOCUSED_REMEDIATION && (
+                  <div className="pt-4 border-t border-slate-100 space-y-3 animate-fade-in">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-emerald-600" />
+                      <h3 className="text-xs font-bold text-slate-900">
+                        {t.practice.targetCompetency || 'Năng lực Kỹ thuật Trọng tâm'}
+                      </h3>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {COMPETENCY_OPTIONS.map(opt => {
+                        const isSelected = competencyArea === opt.area;
+                        return (
+                          <button
+                            key={opt.area}
+                            type="button"
+                            onClick={() => setCompetencyArea(opt.area)}
+                            className={`p-2.5 rounded-lg border text-left text-xs font-medium transition-all ${
+                              isSelected
+                                ? 'border-emerald-600 bg-emerald-50 text-emerald-900 font-semibold'
+                                : 'border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {language === 'vi' ? opt.label : opt.labelEn}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Language & Turns Selector */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-100">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      {language === 'vi' ? 'Ngôn ngữ Phỏng vấn' : 'Interview Language'}
+                    </label>
+                    <select
+                      value={interviewLanguage}
+                      onChange={e => {
+                        setInterviewLanguage(e.target.value);
+                        setFieldSources(prev => ({ ...prev, language: 'manual' }));
+                      }}
+                      className="w-full p-2.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      <option value="vi">Tiếng Việt (Vietnamese)</option>
+                      <option value="en">English (Toàn cầu)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      {language === 'vi' ? 'Số lượng Câu hỏi' : 'Question Turns'}
+                    </label>
+                    <div className="flex items-center gap-2">
+                      {[3, 5].map(turns => (
+                        <button
+                          key={turns}
+                          type="button"
+                          onClick={() => setTotalTurns(turns)}
+                          className={`flex-1 py-2 text-xs font-semibold rounded-lg border transition-all ${
+                            totalTurns === turns
+                              ? 'bg-slate-900 text-white border-slate-900'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          }`}
+                        >
+                          {turns} {language === 'vi' ? 'câu hỏi' : 'questions'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        <Card className="bg-slate-900 text-white border-slate-800 shadow-lg">
-          <CardContent className="p-6 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-slate-800 text-xs">
-              <div>
-                <span className="text-slate-400 block text-[11px]">
-                  {language === 'vi' ? 'Vị trí & Cấp bậc' : 'Role & Level'}
-                </span>
-                <span className="font-bold text-white text-sm">
-                  {currentRoleObj?.name || 'Fullstack Engineer'} •{' '}
-                  {currentLevelObj?.name || 'Senior'}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block text-[11px]">
-                  {language === 'vi' ? 'Công nghệ trọng tâm' : 'Selected Technologies'}
-                </span>
-                <span className="font-semibold text-emerald-400 truncate block">
-                  {currentTechNames.join(', ') ||
-                    (language === 'vi' ? 'Chưa chọn' : 'None selected')}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-slate-400 block text-[11px]">
-                  {language === 'vi' ? 'Thời lượng ước tính' : 'Estimated Duration'}
-                </span>
-                <span className="font-bold text-white flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5 text-amber-400" />
-                  <span>
-                    {sessionMode === SessionMode.STANDARD ? 5 : totalTurns}{' '}
-                    {language === 'vi' ? 'câu hỏi' : 'questions'} (~{estimatedMinutes} mins)
-                  </span>
-                </span>
-              </div>
-            </div>
-
-            {/* Reassuring Practice Disclaimers */}
-            <div className="bg-slate-800/80 p-4 rounded-xl border border-slate-700/80 space-y-2 text-xs text-slate-300">
-              <div className="flex items-start gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-                <p>
-                  {language === 'vi'
-                    ? 'Bạn sẽ trả lời các câu hỏi thích ứng theo thời gian thực. AI dùng câu trả lời của bạn để đưa ra phản hồi luyện tập theo rubric chuẩn.'
-                    : 'You will answer adaptive questions in real time. AI uses your responses to produce formative rubric feedback and skill gap recommendations.'}
-                </p>
-              </div>
-              <div className="flex items-start gap-2 text-[11px] text-slate-400 pl-6">
-                <span>•</span>
-                <p>
-                  {language === 'vi'
-                    ? 'Kết quả chỉ nhằm mục đích luyện tập và tự học, không phải quyết định tuyển dụng chính thức.'
-                    : 'All scores are strictly for practice and self-improvement, not employment hiring decisions.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Single Dominant Primary Action */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-              <div className="text-xs text-slate-400 text-center sm:text-left">
-                {selectedTechs.length === 0
-                  ? language === 'vi'
-                    ? '⚠️ Hãy chọn ít nhất 1 công nghệ ở Bước 1'
-                    : '⚠️ Please select at least 1 technology in Step 1'
-                  : language === 'vi'
-                    ? 'Sẵn sàng bắt đầu phiên luyện tập kỹ thuật'
-                    : 'Ready to launch technical practice session'}
-              </div>
-
-              <Button
-                size="lg"
-                onClick={handleStartInterview}
-                isLoading={isSubmitting}
-                disabled={
-                  isSubmitting || !selectedRole || !selectedLevel || selectedTechs.length === 0
-                }
-                leftIcon={<Play className="h-4 w-4" />}
-                className="w-full sm:w-auto px-8 bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold shadow-md focus-visible:ring-emerald-400"
-              >
-                <span>
-                  {isSubmitting
-                    ? language === 'vi'
-                      ? 'Đang khởi tạo...'
-                      : 'Initializing...'
-                    : language === 'vi'
-                      ? 'Bắt đầu Phỏng vấn'
-                      : 'Start Practice Session'}
-                </span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Right Column: Sticky Summary (4 Cols) */}
+        <div className="lg:col-span-4 lg:sticky lg:top-20 self-start z-10">
+          <StickySetupSummary
+            selectedRole={currentRoleObj}
+            selectedLevel={currentLevelObj}
+            selectedTechObjects={selectedTechObjects}
+            sessionMode={sessionMode}
+            competencyArea={competencyArea}
+            interviewLanguage={interviewLanguage}
+            totalTurns={sessionMode === SessionMode.STANDARD ? 5 : totalTurns}
+            fieldSources={fieldSources}
+            activePresetName={appliedPresetName}
+            hasCvProfile={!!extractedCvProfile}
+            isSubmitting={isSubmitting}
+            validationErrors={validationErrors}
+            onStartInterview={handleStartInterview}
+          />
+        </div>
       </div>
+
+      {/* Preset Conflict Resolution Modal */}
+      <PresetConflictModal
+        isOpen={isConflictModalOpen}
+        onClose={() => setIsConflictModalOpen(false)}
+        presetName={pendingPreset?.name || 'Preset'}
+        diffs={conflictDiffs}
+        onUseCv={handleConflictUseCv}
+        onApplyPreset={handleConflictApplyPreset}
+        onSmartMerge={handleConflictSmartMerge}
+      />
+
+      {/* JD Input Modal */}
+      <JdInputModal
+        isOpen={isJdModalOpen}
+        onClose={() => setIsJdModalOpen(false)}
+        onAnalyzeJd={handleAnalyzeJd}
+        isAnalyzing={isAnalyzingJd}
+      />
+
+      {/* Existing Profiles Modal */}
+      <ExistingProfilesModal
+        isOpen={isExistingProfilesModalOpen}
+        onClose={() => setIsExistingProfilesModalOpen(false)}
+        profiles={profiles || []}
+        isLoading={isLoadingProfiles}
+        onSelectProfile={handleSelectExistingProfile}
+        onUploadNew={() => {
+          setIsExistingProfilesModalOpen(false);
+          const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+          fileInput?.click();
+        }}
+      />
     </div>
   );
 }

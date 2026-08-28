@@ -18,9 +18,13 @@ import {
   Layers,
 } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export const PublicPortfolioPage: React.FC = () => {
   const { username } = useParams<{ username: string }>();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const [selectedCert, setSelectedCert] = useState<
     (CertificateDto & { recipientName?: string }) | null
   >(null);
@@ -73,14 +77,25 @@ export const PublicPortfolioPage: React.FC = () => {
           <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="h-8 w-8" />
           </div>
-          <h2 className="text-xl font-bold text-slate-900 mb-2">Portfolio Not Found or Private</h2>
+          <h2 className="text-xl font-bold text-slate-900 mb-2">
+            {isVi ? 'Hồ Sơ Không Tồn Tại Hoặc Đang Ẩn' : 'Portfolio Not Found or Private'}
+          </h2>
           <p className="text-sm text-slate-600 mb-6">
-            The profile for <span className="font-semibold">@{username}</span> either does not exist
-            or has been made private by the owner.
+            {isVi ? (
+              <>
+                Hồ sơ của <span className="font-semibold">@{username}</span> không tồn tại hoặc đã
+                được cài đặt chế độ riêng tư.
+              </>
+            ) : (
+              <>
+                The profile for <span className="font-semibold">@{username}</span> either does not
+                exist or has been made private by the owner.
+              </>
+            )}
           </p>
           <Link to="/">
             <Button variant="primary" size="md">
-              Return Home
+              {isVi ? 'Về Trang Chủ' : 'Return Home'}
             </Button>
           </Link>
         </div>
@@ -109,7 +124,7 @@ export const PublicPortfolioPage: React.FC = () => {
                     {profile.displayName || profile.realName || profile.username}
                   </h1>
                   <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Verified
+                    <ShieldCheck className="h-3.5 w-3.5" /> {isVi ? 'Đã Xác Thực' : 'Verified'}
                   </span>
                 </div>
                 <p className="text-sm font-medium text-slate-500 mt-0.5">@{profile.username}</p>
@@ -117,11 +132,13 @@ export const PublicPortfolioPage: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-4 mt-3 text-xs text-slate-500">
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    Member since {new Date(profile.memberSince).getFullYear()}
+                    {isVi
+                      ? `Thành viên từ năm ${new Date(profile.memberSince).getFullYear()}`
+                      : `Member since ${new Date(profile.memberSince).getFullYear()}`}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Eye className="h-3.5 w-3.5 text-slate-400" />
-                    {profile.viewCount} views
+                    {profile.viewCount} {isVi ? 'lượt xem' : 'views'}
                   </span>
                 </div>
               </div>
@@ -141,14 +158,22 @@ export const PublicPortfolioPage: React.FC = () => {
                 ) : (
                   <Share2 className="h-4 w-4" />
                 )}
-                {copied ? 'Link Copied!' : 'Share Portfolio'}
+                {copied
+                  ? isVi
+                    ? 'Đã sao chép link!'
+                    : 'Link Copied!'
+                  : isVi
+                    ? 'Chia Sẻ Hồ Sơ'
+                    : 'Share Portfolio'}
               </Button>
 
               {profile.readinessSummary && (
                 <div className="flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl px-3.5 py-2">
                   <Sparkles className="h-4 w-4 text-emerald-600" />
                   <div className="text-xs">
-                    <span className="text-slate-600 font-medium">Interview Readiness: </span>
+                    <span className="text-slate-600 font-medium">
+                      {isVi ? 'Độ sẵn sàng: ' : 'Interview Readiness: '}
+                    </span>
                     <strong className="text-emerald-800 font-bold">
                       {profile.readinessSummary.readinessScore}% (
                       {profile.readinessSummary.tierName})
@@ -179,9 +204,13 @@ export const PublicPortfolioPage: React.FC = () => {
                   <Layers className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Evaluated Competency Graph</h3>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    {isVi ? 'Ma Trận Năng Lực Đã Đánh Giá' : 'Evaluated Competency Graph'}
+                  </h3>
                   <p className="text-xs text-slate-500">
-                    Benchmark skill performance validated through technical interview simulations
+                    {isVi
+                      ? 'Điểm chuẩn hóa các mảng kỹ thuật được xác thực qua phỏng vấn thử'
+                      : 'Benchmark skill performance validated through technical interview simulations'}
                   </p>
                 </div>
               </div>
@@ -207,7 +236,8 @@ export const PublicPortfolioPage: React.FC = () => {
                     />
                   </div>
                   <p className="text-[11px] text-slate-400 mt-1.5">
-                    {skill.evidenceCount} verified evaluation samples
+                    {skill.evidenceCount}{' '}
+                    {isVi ? 'bằng chứng đánh giá xác thực' : 'verified evaluation samples'}
                   </p>
                 </div>
               ))}
@@ -226,9 +256,13 @@ export const PublicPortfolioPage: React.FC = () => {
                 <Award className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Verified Technical Badges</h3>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {isVi ? 'Huy Hiệu Kỹ Thuật Đã Đạt' : 'Verified Technical Badges'}
+                </h3>
                 <p className="text-xs text-slate-500">
-                  Earned through continuous evaluation benchmarks across interview dimensions
+                  {isVi
+                    ? 'Tích lũy từ điểm chuẩn rubric qua các đợt luyện tập'
+                    : 'Earned through continuous evaluation benchmarks across interview dimensions'}
                 </p>
               </div>
             </div>
@@ -271,9 +305,13 @@ export const PublicPortfolioPage: React.FC = () => {
                 <ShieldCheck className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-900">Verified Certificates</h3>
+                <h3 className="text-lg font-bold text-slate-900">
+                  {isVi ? 'Chứng Chỉ Số Xác Thực' : 'Verified Certificates'}
+                </h3>
                 <p className="text-xs text-slate-500">
-                  Cryptographically signed credentials verifiable by employers & recruiters
+                  {isVi
+                    ? 'Chứng chỉ ký điện tử HMAC-SHA256, có thể xác minh trực tiếp bởi nhà tuyển dụng'
+                    : 'Cryptographically signed credentials verifiable by employers & recruiters'}
                 </p>
               </div>
             </div>
@@ -294,7 +332,7 @@ export const PublicPortfolioPage: React.FC = () => {
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="text-[10px] uppercase font-bold tracking-widest text-amber-700 bg-amber-100 px-2 py-0.5 rounded">
-                        Verified Credential
+                        {isVi ? 'Chứng Chỉ Hợp Lệ' : 'Verified Credential'}
                       </span>
                       <h4 className="font-serif font-bold text-base text-slate-900 mt-2">
                         {cert.competencyArea
@@ -302,7 +340,7 @@ export const PublicPortfolioPage: React.FC = () => {
                           : 'Architecture Mastery'}
                       </h4>
                       <p className="text-xs text-slate-600 mt-0.5">
-                        Score:{' '}
+                        {isVi ? 'Điểm số: ' : 'Score: '}
                         <strong className="text-emerald-700 font-bold">
                           {cert.score.toFixed(1)}/10.0
                         </strong>
@@ -313,10 +351,12 @@ export const PublicPortfolioPage: React.FC = () => {
 
                   <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
                     <span>
-                      Issued: {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : 'N/A'}
+                      {isVi ? 'Ngày cấp: ' : 'Issued: '}
+                      {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString() : 'N/A'}
                     </span>
                     <span className="text-emerald-700 font-semibold flex items-center gap-1 hover:underline">
-                      View Certificate <ExternalLink className="h-3.5 w-3.5" />
+                      {isVi ? 'Xem Chứng Chỉ' : 'View Certificate'}{' '}
+                      <ExternalLink className="h-3.5 w-3.5" />
                     </span>
                   </div>
                 </div>
@@ -332,7 +372,7 @@ export const PublicPortfolioPage: React.FC = () => {
             data-testid="portfolio-history"
           >
             <h3 className="text-lg font-bold text-slate-900 mb-4">
-              Completed Interview Highlights
+              {isVi ? 'Điểm Nổi Bật Lịch Sử Phỏng Vấn' : 'Completed Interview Highlights'}
             </h3>
             <div className="divide-y divide-slate-100">
               {profile.historyHighlights.map(h => (

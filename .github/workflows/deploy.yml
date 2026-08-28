@@ -1,0 +1,48 @@
+name: CD Deploy to AWS EC2
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
+
+      - name: Deploy via SSH to EC2
+        uses: appleboy/ssh-action@7eaf76671a0d7e35d6892e4b73192329195327c5 # v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER || 'ubuntu' }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT || 22 }}
+          script_stop: true
+          script: |
+            echo "🚀 Starting Automated Deployment on EC2..."
+
+            # 1. Navigate to project directory
+            cd /home/ubuntu/ai-interview-practice || { echo "Directory not found"; exit 1; }
+
+            # 2. Fetch latest changes from repository
+            echo "📦 Pulling latest commits..."
+            git fetch --all
+            git reset --hard origin/${{ github.ref_name }}
+
+            # 3. Build & Recreate containers
+            echo "🔨 Building and launching Docker containers..."
+            docker compose up -d --build
+
+            # 4. Run database migrations safely
+            echo "🗄️ Executing Prisma database migrations..."
+            docker compose exec -T api npx prisma migrate deploy
+
+            # 5. Clean up unused old Docker images to preserve disk space
+            echo "🧹 Cleaning up dangling images..."
+            docker image prune -f
+
+            echo "✅ Deployment completed successfully!"

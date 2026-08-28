@@ -57,10 +57,14 @@ export class CvAnalyzerService {
     ) {
       seniorityLevel = 'SENIOR';
     } else if (
-      lowerText.includes('junior') ||
+      lowerText.includes('fresher') ||
       lowerText.includes('intern') ||
-      lowerText.includes('fresher')
+      lowerText.includes('internship') ||
+      lowerText.includes('fresh graduate') ||
+      lowerText.includes('entry level')
     ) {
+      seniorityLevel = 'FRESHER';
+    } else if (lowerText.includes('junior')) {
       seniorityLevel = 'JUNIOR';
     } else if (lowerText.includes('staff') || lowerText.includes('architect')) {
       seniorityLevel = 'STAFF';

@@ -21,6 +21,12 @@ import { ShareSessionModal } from '../../components/share/ShareSessionModal';
 import { StarRadarChart } from '../../components/analytics/StarRadarChart';
 import { SocraticTutorDrawer } from '../../components/tutor/SocraticTutorDrawer';
 import { InstantRetryModal } from '../../components/tutor/InstantRetryModal';
+import { TimelineReplayPlayer } from './TimelineReplayPlayer';
+import { ExecutiveReportModal } from './ExecutiveReportModal';
+import {
+  ScoreExplanationPopover,
+  ScoreExplanationData,
+} from '../evaluation/ScoreExplanationPopover';
 import { useTutor } from '../../hooks/useTutor';
 import {
   Award,
@@ -37,10 +43,11 @@ import {
   Circle,
   Target,
   Bot,
-  ShieldCheck,
   Layers,
   ChevronDown,
   ChevronUp,
+  ShieldCheck,
+  HelpCircle,
 } from 'lucide-react';
 
 export function ResultDetailPage() {
@@ -50,6 +57,10 @@ export function ResultDetailPage() {
   const { t, language } = useI18nStore();
 
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isExecutiveModalOpen, setIsExecutiveModalOpen] = useState(false);
+  const [scoreExplanationData, setScoreExplanationData] = useState<ScoreExplanationData | null>(
+    null,
+  );
   const [isReEvaluating, setIsReEvaluating] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -182,19 +193,20 @@ export function ResultDetailPage() {
   const totalLpItems = result.learningPath?.items?.length || 0;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-6 sm:space-y-8">
       {/* Top Action Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate('/history')}
           leftIcon={<ArrowLeft className="h-4 w-4" />}
+          className="text-slate-600 hover:text-slate-900 font-medium"
         >
           <span>{language === 'vi' ? 'Quay lại Lịch sử' : 'Back to History'}</span>
         </Button>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
           <Button
             variant="outline"
             size="sm"
@@ -208,7 +220,7 @@ export function ResultDetailPage() {
               }
             }}
             leftIcon={<BookOpen className="h-4 w-4" />}
-            className="text-indigo-700 hover:text-indigo-800 border-indigo-300 hover:bg-indigo-50"
+            className="text-indigo-700 hover:text-indigo-800 border-indigo-200 hover:bg-indigo-50 font-medium"
           >
             <span>{language === 'vi' ? 'Tạo Flashcards Ôn tập' : 'Generate Flashcards'}</span>
           </Button>
@@ -216,9 +228,19 @@ export function ResultDetailPage() {
           <Button
             variant="outline"
             size="sm"
+            onClick={() => setIsExecutiveModalOpen(true)}
+            leftIcon={<ShieldCheck className="h-4 w-4" />}
+            className="text-indigo-700 hover:text-indigo-800 border-indigo-200 hover:bg-indigo-50 font-medium"
+          >
+            <span>{language === 'vi' ? 'Báo Cáo Tuyển Dụng' : 'Executive Dossier'}</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setIsShareModalOpen(true)}
             leftIcon={<Share2 className="h-4 w-4" />}
-            className="text-emerald-700 hover:text-emerald-800 border-emerald-300 hover:bg-emerald-50"
+            className="text-emerald-700 hover:text-emerald-800 border-emerald-200 hover:bg-emerald-50 font-medium"
           >
             <span>{t.share.shareTitle}</span>
           </Button>
@@ -228,6 +250,7 @@ export function ResultDetailPage() {
             size="sm"
             onClick={handleExportJson}
             leftIcon={<Download className="h-4 w-4" />}
+            className="text-slate-700 border-slate-200 hover:bg-slate-50 font-medium"
           >
             <span>{t.share.exportJson}</span>
           </Button>
@@ -237,29 +260,10 @@ export function ResultDetailPage() {
             size="sm"
             onClick={() => window.print()}
             leftIcon={<Printer className="h-4 w-4" />}
-            className="print:hidden"
+            className="print:hidden font-medium"
           >
             <span>{t.share.printPdf}</span>
           </Button>
-
-          <Badge variant="success">{t.practice.completedBadge}</Badge>
-        </div>
-      </div>
-
-      {/* Formative Practice Disclaimer Alert */}
-      <div className="bg-emerald-50/70 border border-emerald-200 p-4 rounded-2xl flex items-start gap-3 text-xs text-emerald-900 shadow-xs">
-        <ShieldCheck className="h-5 w-5 text-emerald-700 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-bold block text-emerald-950 text-sm">
-            {language === 'vi'
-              ? 'Báo Cáo Phân Tích Kỹ Thuật Luyện Tập (Formative Report)'
-              : 'Formative Technical Practice Diagnostic Report'}
-          </span>
-          <p className="mt-0.5 text-emerald-800 leading-relaxed">
-            {language === 'vi'
-              ? 'Báo cáo này tổng hợp dữ liệu phản hồi đa chiều nhằm giúp bạn nhận diện chính xác các lỗ hổng kiến thức và nâng cao năng lực trước các kỳ phỏng vấn thực tế. Kết quả không cấu thành quyết định tuyển dụng chính thức.'
-              : 'This assessment synthesizes multi-dimensional feedback to help you identify knowledge gaps and master technical competencies. All scores are strictly formative and do not represent formal employment decisions.'}
-          </p>
         </div>
       </div>
 
@@ -267,23 +271,26 @@ export function ResultDetailPage() {
       {successMessage && <Alert variant="success">{successMessage}</Alert>}
 
       {/* Header Score Overview Card */}
-      <Card className="bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-lg overflow-hidden border-slate-700">
-        <CardContent className="p-6 sm:p-8">
+      <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden rounded-2xl">
+        <CardContent className="p-6 sm:p-8 space-y-6 sm:space-y-8">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-800">
-                <Sparkles className="h-3.5 w-3.5" />
-                <span>{language === 'vi' ? 'Kết Quả Tổng Kết' : 'Final Evaluation Report'}</span>
+            <div className="space-y-2.5">
+              <div className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-emerald-800 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200/80">
+                <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                <span>{language === 'vi' ? 'Kết Quả Đánh Giá' : 'Evaluation Report'}</span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                {result.jobRole?.name} ({result.seniorityLevel?.name})
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
+                {result.jobRole?.name}{' '}
+                <span className="text-slate-500 font-semibold text-xl sm:text-2xl">
+                  ({result.seniorityLevel?.name})
+                </span>
               </h1>
-              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-300">
-                <span className="text-slate-400">Tech Stack:</span>
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Tech Stack:</span>
                 {result.technologies?.map((tech: any, idx: number) => (
                   <span
                     key={tech.id || tech.name || idx}
-                    className="px-2 py-0.5 bg-slate-800 text-emerald-400 rounded border border-slate-700 font-mono text-[11px]"
+                    className="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-md border border-slate-200 font-mono text-xs font-medium"
                   >
                     {tech.name}
                   </span>
@@ -291,41 +298,134 @@ export function ResultDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-4 bg-slate-800/90 p-5 rounded-2xl border border-slate-700 shadow-inner self-stretch md:self-auto justify-center">
-              <Award className="h-12 w-12 text-emerald-400 shrink-0" />
+            <div className="flex items-center gap-4 bg-emerald-50/70 border border-emerald-200/80 p-5 rounded-2xl shadow-xs self-stretch md:self-auto justify-center">
+              <div className="p-3 bg-white text-emerald-600 rounded-xl shadow-xs border border-emerald-100 flex items-center justify-center">
+                <Award className="h-8 w-8 text-emerald-600 shrink-0" />
+              </div>
               <div>
-                <span className="text-xs text-slate-400 block font-medium">
+                <span className="text-xs text-emerald-900 block font-bold uppercase tracking-wide">
                   {language === 'vi' ? 'Điểm Tổng Kết' : 'Overall Score'}
                 </span>
-                <span className="text-3xl sm:text-4xl font-extrabold text-emerald-400 font-mono">
+                <span className="text-3xl sm:text-4xl font-extrabold text-emerald-700 font-mono">
                   {formatScore(result.overallScore)}
-                  <span className="text-sm text-slate-400 font-normal font-sans"> / 10</span>
+                  <span className="text-sm text-slate-500 font-normal font-sans"> / 10</span>
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Rubric Dimension Averages */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 pt-6 border-t border-slate-700/70 text-center">
-            <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <span className="text-xs text-slate-400 block mb-1">
-                {t.interview.technicalAccuracy} (40%)
-              </span>
-              <span className="text-xl font-bold text-white font-mono">
+          {/* Rubric Dimension Averages (M6 fix: specific data per dimension) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-6 border-t border-slate-100 text-center">
+            <div
+              onClick={() => {
+                const firstAnswer =
+                  result.turns?.[0]?.answer?.answerText || result.turns?.[0]?.answerText;
+                setScoreExplanationData({
+                  criterionName: 'Technical Accuracy',
+                  criterionNameVi: 'Độ chính xác kỹ thuật',
+                  score: result.rubricAverages?.technicalAccuracy || result.overallScore || 0,
+                  weight: 0.4,
+                  candidateQuote: firstAnswer ? firstAnswer.substring(0, 180) : undefined,
+                  industryStandard:
+                    language === 'vi'
+                      ? 'Đối chiếu theo các nguyên lý thiết kế hệ thống, RFC 7519, chuẩn RESTful, và tài liệu chính thức của cơ sở dữ liệu.'
+                      : 'Benchmarked against official system architecture patterns, RFC specifications, and official database engine docs.',
+                  positives: (result.strengths || []).slice(0, 3),
+                  penalties: (result.improvements || [])
+                    .filter((s: string) => !/giao tiếp|trình bày|structure|clarity/i.test(s))
+                    .slice(0, 3),
+                  recommendation:
+                    language === 'vi'
+                      ? 'Nêu rõ ràng các trade-off, độ phức tạp Big-O và cơ chế xử lý lỗi biên (Edge cases).'
+                      : 'Explicitly state architectural tradeoffs, Big-O bounds, and error boundaries.',
+                });
+              }}
+              className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all group"
+            >
+              <div className="flex items-center justify-center gap-1 mb-1.5">
+                <span className="text-xs text-slate-500 font-medium group-hover:text-indigo-600">
+                  {t.interview.technicalAccuracy} (40%)
+                </span>
+                <HelpCircle className="w-3 h-3 text-slate-400 group-hover:text-indigo-600" />
+              </div>
+              <span className="text-2xl font-bold text-slate-900 font-mono">
                 {formatScore(result.rubricAverages?.technicalAccuracy)}
                 <span className="text-xs text-slate-400 font-sans"> / 10</span>
               </span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <span className="text-xs text-slate-400 block mb-1">{t.interview.depth} (30%)</span>
-              <span className="text-xl font-bold text-white font-mono">
+
+            <div
+              onClick={() => {
+                const midAnswer =
+                  result.turns?.[1]?.answer?.answerText || result.turns?.[0]?.answer?.answerText;
+                setScoreExplanationData({
+                  criterionName: 'Depth & Tradeoffs',
+                  criterionNameVi: 'Độ sâu kiến trúc & Tradeoffs',
+                  score: result.rubricAverages?.depth || result.overallScore || 0,
+                  weight: 0.3,
+                  candidateQuote: midAnswer ? midAnswer.substring(0, 180) : undefined,
+                  industryStandard:
+                    language === 'vi'
+                      ? 'Đánh giá khả năng phân tích đa chiều: Latency vs Throughput, Consistency vs Availability (CAP Theorem), Caching eviction strategies.'
+                      : 'Evaluates multi-dimensional trade-off analysis: Latency vs Throughput, CAP theorem, Cache eviction policies.',
+                  positives: (result.strengths || []).slice(0, 2),
+                  penalties: (result.improvements || []).slice(0, 2),
+                  recommendation:
+                    language === 'vi'
+                      ? 'Phân tích các kịch bản chịu tải cao và cơ chế failover dự phòng.'
+                      : 'Analyze high concurrency scenarios and fallback mitigation mechanisms.',
+                });
+              }}
+              className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all group"
+            >
+              <div className="flex items-center justify-center gap-1 mb-1.5">
+                <span className="text-xs text-slate-500 font-medium group-hover:text-indigo-600">
+                  {t.interview.depth} (30%)
+                </span>
+                <HelpCircle className="w-3 h-3 text-slate-400 group-hover:text-indigo-600" />
+              </div>
+              <span className="text-2xl font-bold text-slate-900 font-mono">
                 {formatScore(result.rubricAverages?.depth)}
                 <span className="text-xs text-slate-400 font-sans"> / 10</span>
               </span>
             </div>
-            <div className="p-3 rounded-xl bg-slate-800/50 border border-slate-700/50">
-              <span className="text-xs text-slate-400 block mb-1">{t.interview.clarity} (30%)</span>
-              <span className="text-xl font-bold text-white font-mono">
+
+            <div
+              onClick={() => {
+                const lastAnswer =
+                  result.turns?.[result.turns.length - 1]?.answer?.answerText ||
+                  result.turns?.[0]?.answer?.answerText;
+                setScoreExplanationData({
+                  criterionName: 'Clarity & Structure',
+                  criterionNameVi: 'Khả năng diễn đạt & Cấu trúc',
+                  score: result.rubricAverages?.clarity || result.overallScore || 0,
+                  weight: 0.3,
+                  candidateQuote: lastAnswer ? lastAnswer.substring(0, 180) : undefined,
+                  industryStandard:
+                    language === 'vi'
+                      ? 'Cấu trúc câu trả lời theo phương pháp Top-Down, STAR (Situation-Task-Action-Result) hoặc Pyramid Principle.'
+                      : 'Structured delivery following Top-Down pyramid communication and STAR frameworks.',
+                  positives: (result.strengths || []).filter((s: string) =>
+                    /giao tiếp|trình bày|structure|clarity|clear/i.test(s),
+                  ),
+                  penalties: (result.improvements || []).filter((s: string) =>
+                    /giao tiếp|trình bày|structure|clarity|clear/i.test(s),
+                  ),
+                  recommendation:
+                    language === 'vi'
+                      ? 'Mở đầu bằng tóm tắt giải pháp (Executive Summary) trước khi đi vào chi tiết kỹ thuật.'
+                      : 'Lead with an executive summary before delving into technical implementation.',
+                });
+              }}
+              className="p-4 rounded-xl bg-slate-50 border border-slate-100 hover:border-indigo-300 hover:bg-indigo-50/20 cursor-pointer transition-all group"
+            >
+              <div className="flex items-center justify-center gap-1 mb-1.5">
+                <span className="text-xs text-slate-500 font-medium group-hover:text-indigo-600">
+                  {t.interview.clarity} (30%)
+                </span>
+                <HelpCircle className="w-3 h-3 text-slate-400 group-hover:text-indigo-600" />
+              </div>
+              <span className="text-2xl font-bold text-slate-900 font-mono">
                 {formatScore(result.rubricAverages?.clarity)}
                 <span className="text-xs text-slate-400 font-sans"> / 10</span>
               </span>
@@ -333,6 +433,32 @@ export function ResultDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Interactive Timeline Replay Studio */}
+      {result.turns && result.turns.length > 0 && (
+        <TimelineReplayPlayer
+          turns={(result.turns || []).map((tItem: any, idx: number) => ({
+            turnNumber: tItem.turnNumber || idx + 1,
+            questionContent: tItem.question?.content || tItem.questionContent || '',
+            answerText: tItem.answer?.answerText || tItem.answerText || '',
+            score: tItem.answer?.evaluation?.score ?? tItem.score,
+            technicalScore:
+              tItem.answer?.evaluation?.rubricScores?.technicalAccuracy ??
+              tItem.rubricScores?.technicalAccuracy,
+            depthScore: tItem.answer?.evaluation?.rubricScores?.depth ?? tItem.rubricScores?.depth,
+            clarityScore:
+              tItem.answer?.evaluation?.rubricScores?.clarity ?? tItem.rubricScores?.clarity,
+            evidence: tItem.answer?.evaluation?.evidence || [],
+            strengths: tItem.answer?.evaluation?.strengths || tItem.strengths || [],
+            improvements: tItem.answer?.evaluation?.improvements || tItem.improvements || [],
+            modelAnswer: tItem.question?.sampleAnswer || tItem.modelAnswer,
+            timestampStartSec: idx * 45,
+            timestampEndSec: (idx + 1) * 45,
+          }))}
+          overallScore={result.overallScore}
+          roleTitle={result.jobRole?.name}
+        />
+      )}
 
       {/* STAR Assessment Radar Breakdown (When Behavioral Mode) */}
       {result.sessionMode === 'BEHAVIORAL' && (
@@ -407,10 +533,10 @@ export function ResultDetailPage() {
         </CardHeader>
         <CardContent className="p-6 space-y-6">
           {totalLpItems > 0 && (
-            <div className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div className="space-y-2.5 bg-slate-50/80 p-4 rounded-xl border border-slate-200/80">
               <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
                 <span>{t.practice.goalProgress}</span>
-                <span>
+                <span className="font-mono text-emerald-700 font-bold">
                   {completedLpItems} / {totalLpItems} (
                   {Math.round((completedLpItems / totalLpItems) * 100)}%)
                 </span>
@@ -418,7 +544,6 @@ export function ResultDetailPage() {
               <ProgressBar
                 value={completedLpItems}
                 max={totalLpItems}
-                label="Learning roadmap progress"
                 variant="emerald"
                 size="sm"
               />
@@ -468,7 +593,10 @@ export function ResultDetailPage() {
                               {item.topic}
                             </h4>
                             <p className="text-xs text-rose-700 font-medium mt-0.5">
-                              Gap: {item.gap}
+                              <span className="font-bold">
+                                {language === 'vi' ? 'Lỗ hổng kiến thức: ' : 'Gap: '}
+                              </span>
+                              {item.gap}
                             </p>
                           </div>
                         </div>
@@ -486,7 +614,13 @@ export function ResultDetailPage() {
                                     : 'default'
                               }
                             >
-                              {item.priority} PRIORITY
+                              {language === 'vi'
+                                ? item.priority === 'HIGH'
+                                  ? 'ƯU TIÊN CAO'
+                                  : item.priority === 'MEDIUM'
+                                    ? 'ƯU TIÊN TRUNG BÌNH'
+                                    : 'ƯU TIÊN THẤP'
+                                : `${item.priority} PRIORITY`}
                             </Badge>
                           )}
                         </div>
@@ -806,6 +940,21 @@ export function ResultDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Executive Candidate Assessment Dossier Modal */}
+      <ExecutiveReportModal
+        isOpen={isExecutiveModalOpen}
+        onClose={() => setIsExecutiveModalOpen(false)}
+        result={result}
+        roleTitle={result.jobRole?.name}
+      />
+
+      {/* Explainable Scoring Inspector Popover */}
+      <ScoreExplanationPopover
+        isOpen={scoreExplanationData !== null}
+        onClose={() => setScoreExplanationData(null)}
+        data={scoreExplanationData}
+      />
     </div>
   );
 }

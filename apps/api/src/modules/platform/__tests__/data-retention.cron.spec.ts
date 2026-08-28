@@ -9,11 +9,20 @@ describe('DataRetentionCron (PRIV-002)', () => {
   beforeEach(() => {
     mockPrisma = {
       userDocument: {
-        findMany: jest.fn(),
-        deleteMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      voiceTranscript: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      voiceSessionMetric: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      },
+      voiceSession: {
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
       auditLog: {
-        create: jest.fn(),
+        create: jest.fn().mockResolvedValue({ id: 'audit-1' }),
       },
     };
 

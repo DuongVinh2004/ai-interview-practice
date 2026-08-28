@@ -99,6 +99,7 @@ Output strict JSON:
     const parsed = JSON.parse(text);
 
     return {
+      usageTokens: response.usageMetadata?.totalTokenCount,
       overallScore: Number(parsed.overallScore) || 8.2,
       requirementsScore: Number(parsed.requirementsScore) || 8.0,
       highLevelScore: Number(parsed.highLevelScore) || 8.5,

@@ -141,10 +141,22 @@ describe('XpService (Plan C Gamification)', () => {
       const userId = '11111111-1111-1111-1111-111111111111';
       prismaMock.xpTransaction.findFirst.mockResolvedValue(null);
       prismaMock.userXp.findUnique.mockResolvedValue({ totalXp: 10, currentLevel: 1 });
+      prismaMock.userXp.upsert.mockResolvedValue({ totalXp: 20, currentLevel: 1 });
 
-      const res = await service.claimDailyLogin(userId);
+      const res = await service.claimDailyLogin(userId, 'Asia/Ho_Chi_Minh');
       expect(res.claimed).toBe(true);
       expect(res.xpAwarded).toBe(10);
+      expect(prismaMock.xpTransaction.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId,
+            createdAt: expect.objectContaining({
+              gte: expect.any(Date),
+              lte: expect.any(Date),
+            }),
+          }),
+        }),
+      );
     });
 
     it('should not award duplicate daily login XP on the same day', async () => {
@@ -152,7 +164,7 @@ describe('XpService (Plan C Gamification)', () => {
       prismaMock.xpTransaction.findFirst.mockResolvedValue({ id: 'tx-today' });
       prismaMock.userXp.findUnique.mockResolvedValue({ totalXp: 10, currentLevel: 1 });
 
-      const res = await service.claimDailyLogin(userId);
+      const res = await service.claimDailyLogin(userId, 'America/New_York');
       expect(res.claimed).toBe(false);
       expect(res.xpAwarded).toBe(0);
     });

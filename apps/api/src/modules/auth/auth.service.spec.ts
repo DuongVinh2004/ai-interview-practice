@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthService } from './auth.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
-import { UserRole, UserStatus, AuditAction } from '@ai-interview/contracts';
+import { UserRole, UserStatus, AuditAction, ErrorCode } from '@ai-interview/contracts';
 import * as bcrypt from 'bcrypt';
 
 describe('AuthService (Unit)', () => {
@@ -93,6 +93,9 @@ describe('AuthService (Unit)', () => {
       expect(res.accessToken).toBe('mock-jwt-access-token');
       expect(res.refreshToken).toBeDefined();
       expect(prisma.refreshToken.create).toHaveBeenCalled();
+      expect(prisma.refreshToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ mfaVerified: false }),
+      });
       expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
         where: { id: mockStoredToken.id, isRevoked: false },
         data: { isRevoked: true },
@@ -144,6 +147,80 @@ describe('AuthService (Unit)', () => {
 
       await expect(service.refreshTokens('non-existent-token')).rejects.toThrow(DomainException);
     });
+
+    it('revokes an admin refresh family that has no verified MFA provenance', async () => {
+      const admin = {
+        id: 'admin-uuid-1',
+        email: 'admin@example.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        mfaEnabled: false,
+        tokenVersion: 0,
+        profile: null,
+      };
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'legacy-token',
+        userId: admin.id,
+        familyId: 'legacy-family',
+        isRevoked: false,
+        mfaVerified: false,
+        expiresAt: new Date(Date.now() + 60_000),
+        user: admin,
+      });
+      prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+      prisma.user.update.mockResolvedValue({ ...admin, tokenVersion: 1 });
+
+      await expect(service.refreshTokens('legacy-admin-token')).rejects.toMatchObject({
+        code: ErrorCode.MFA_REQUIRED,
+      });
+      expect(prisma.refreshToken.updateMany).toHaveBeenCalledWith({
+        where: { familyId: 'legacy-family', isRevoked: false },
+        data: { isRevoked: true },
+      });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: admin.id },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    });
+
+    it('preserves verified MFA provenance when an enrolled admin rotates a refresh token', async () => {
+      const admin = {
+        id: 'admin-uuid-verified',
+        email: 'verified-admin@example.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        mfaEnabled: true,
+        tokenVersion: 3,
+        createdAt: new Date(),
+        profile: null,
+      };
+      prisma.refreshToken.findUnique.mockResolvedValue({
+        id: 'verified-token',
+        userId: admin.id,
+        familyId: 'verified-family',
+        isRevoked: false,
+        mfaVerified: true,
+        expiresAt: new Date(Date.now() + 60_000),
+        user: admin,
+      });
+      prisma.refreshToken.updateMany.mockResolvedValue({ count: 1 });
+      prisma.refreshToken.create.mockResolvedValue({ id: 'rotated-token' });
+
+      const result = await service.refreshTokens('verified-admin-token');
+
+      expect(result.accessToken).toBe('mock-jwt-access-token');
+      expect(prisma.refreshToken.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          familyId: 'verified-family',
+          mfaVerified: true,
+        }),
+      });
+      expect(jwtService.sign).toHaveBeenCalledWith(
+        expect.objectContaining({ mfaVerified: true }),
+        expect.any(Object),
+      );
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
   });
 
   describe('login (Admin MFA Enrollment & Challenge - AG-PACKET-003 / SEC-003)', () => {
@@ -186,6 +263,51 @@ describe('AuthService (Unit)', () => {
         }),
         expect.anything(),
       );
+    });
+
+    it.each([
+      ['ALLOW_MOCK_PROVIDERS', 'true'],
+      ['AI_ALLOW_MOCK', 'true'],
+      ['AI_PROVIDER', 'mock'],
+    ])('never treats %s=%s as administrator MFA proof', async (name, value) => {
+      const previousNodeEnv = process.env.NODE_ENV;
+      const previousValue = process.env[name];
+      process.env.NODE_ENV = 'production';
+      process.env[name] = value;
+      configService.get.mockImplementation((key: string, defaultVal?: string) =>
+        key === 'ai.allowMock' ? 'true' : defaultVal || 'mock-secret',
+      );
+      const passwordHash = await bcrypt.hash('AdminSecret123!', 10);
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'admin-uuid-1',
+        email: 'admin@ai-interview.dev',
+        passwordHash,
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        mfaEnabled: false,
+        tokenVersion: 0,
+        createdAt: new Date(),
+        profile: { id: 'prof-1', fullName: 'System Admin' },
+      });
+
+      try {
+        const response = await service.login({
+          email: 'admin@ai-interview.dev',
+          password: 'AdminSecret123!',
+        });
+        expect(response.forceMfaSetup).toBe(true);
+        expect(response.refreshToken).toBeUndefined();
+        expect(prisma.refreshToken.create).not.toHaveBeenCalled();
+        expect(jwtService.sign).toHaveBeenCalledWith(
+          expect.objectContaining({ tokenType: 'mfa_enrollment', mfaVerified: false }),
+          expect.anything(),
+        );
+      } finally {
+        if (previousNodeEnv === undefined) delete process.env.NODE_ENV;
+        else process.env.NODE_ENV = previousNodeEnv;
+        if (previousValue === undefined) delete process.env[name];
+        else process.env[name] = previousValue;
+      }
     });
 
     it('requires MFA challenge on admin login when MFA is already enrolled (mfaRequired === true)', async () => {
@@ -291,6 +413,84 @@ describe('AuthService (Unit)', () => {
         expect(err.code).toBe('UNAUTHORIZED');
         expect(err.message).toContain('Session invalidated');
       }
+    });
+  });
+
+  describe('validateAccessToken MFA boundary', () => {
+    it('rejects enrollment tokens before generic channel authentication', async () => {
+      jwtService.verify = jest.fn().mockReturnValue({
+        sub: 'admin-enrolling',
+        role: UserRole.ADMIN,
+        tokenType: 'mfa_enrollment',
+        mfaVerified: false,
+      });
+
+      await expect(service.validateAccessToken('enrollment-token')).rejects.toMatchObject({
+        code: ErrorCode.MFA_REQUIRED,
+      });
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it.each(['mfa_challenge', 'VOICE_TICKET', 'unexpected'])(
+      'rejects non-access token type %s before generic channel authentication',
+      async tokenType => {
+        jwtService.verify = jest.fn().mockReturnValue({
+          sub: 'candidate-1',
+          role: UserRole.CANDIDATE,
+          tokenType,
+        });
+
+        await expect(service.validateAccessToken(`${tokenType}-token`)).rejects.toMatchObject({
+          code: ErrorCode.MFA_REQUIRED,
+        });
+        expect(prisma.user.findUnique).not.toHaveBeenCalled();
+      },
+    );
+
+    it('rejects a legacy admin access token unless both DB state and signed claim prove MFA', async () => {
+      jwtService.verify = jest.fn().mockReturnValue({
+        sub: 'legacy-admin',
+        role: UserRole.ADMIN,
+        tokenType: 'access',
+        tokenVersion: 0,
+        mfaVerified: true,
+      });
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'legacy-admin',
+        email: 'legacy-admin@example.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        tokenVersion: 0,
+        mfaEnabled: false,
+      });
+
+      await expect(service.validateAccessToken('legacy-admin-token')).rejects.toMatchObject({
+        code: ErrorCode.MFA_REQUIRED,
+      });
+    });
+
+    it('accepts a current admin access token only after verified MFA', async () => {
+      jwtService.verify = jest.fn().mockReturnValue({
+        sub: 'verified-admin',
+        role: UserRole.ADMIN,
+        tokenType: 'access',
+        tokenVersion: 2,
+        mfaVerified: true,
+      });
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'verified-admin',
+        email: 'verified-admin@example.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        tokenVersion: 2,
+        mfaEnabled: true,
+      });
+
+      await expect(service.validateAccessToken('verified-admin-token')).resolves.toMatchObject({
+        role: UserRole.ADMIN,
+        tokenType: 'access',
+        mfaVerified: true,
+      });
     });
   });
 });

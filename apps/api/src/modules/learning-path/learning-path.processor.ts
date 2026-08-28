@@ -65,6 +65,7 @@ export class LearningPathProcessor extends WorkerHost {
         level: session.seniorityLevel.name,
         turns: turnsSummary,
         overallScore: session.overallScore || 0,
+        language: (session as any).language || 'vi',
       });
 
       const learningPath = await this.prisma.$transaction(async tx => {
@@ -132,6 +133,13 @@ export class LearningPathProcessor extends WorkerHost {
             status: LearningPathStatus.FAILED,
             errorMessage: error.message,
           },
+        });
+
+        // Notify client via SSE of failure (NEW-ASYNC-02)
+        this.sseService.emitSessionEvent(sessionId, SseEventType.LEARNING_PATH_FAILED, {
+          sessionId,
+          status: LearningPathStatus.FAILED,
+          errorMessage: error.message,
         });
       }
       throw error;

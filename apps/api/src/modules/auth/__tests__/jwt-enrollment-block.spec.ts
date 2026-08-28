@@ -1,6 +1,6 @@
 import { JwtStrategy } from '../strategies/jwt.strategy';
 import { UnauthorizedException } from '@nestjs/common';
-import { JwtPayload, UserStatus } from '@ai-interview/contracts';
+import { JwtPayload, UserRole, UserStatus } from '@ai-interview/contracts';
 
 describe('JWT Enrollment Token Block (SEC-003)', () => {
   let strategy: JwtStrategy;
@@ -51,6 +51,7 @@ describe('JWT Enrollment Token Block (SEC-003)', () => {
         role: 'ADMIN',
         status: UserStatus.ACTIVE,
         tokenVersion: 0,
+        mfaEnabled: false,
       });
       const result = await strategy.validate(request(path, 'POST'), {
         sub: 'user-123',
@@ -81,6 +82,23 @@ describe('JWT Enrollment Token Block (SEC-003)', () => {
     expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
   });
 
+  it.each(['VOICE_TICKET', 'unexpected'])(
+    'rejects token type %s when it is presented as an HTTP bearer token',
+    async tokenType => {
+      await expect(
+        strategy.validate(request(), {
+          sub: 'user-voice',
+          email: 'user@test.com',
+          role: UserRole.CANDIDATE,
+          status: UserStatus.ACTIVE,
+          tokenType: tokenType as any,
+          mfaVerified: false,
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    },
+  );
+
   it('should allow normal access tokens to pass through to DB lookup', async () => {
     const accessPayload: JwtPayload = {
       sub: 'user-789',
@@ -96,15 +114,23 @@ describe('JWT Enrollment Token Block (SEC-003)', () => {
       email: 'user@test.com',
       role: 'CANDIDATE',
       status: UserStatus.ACTIVE,
-      tokenVersion: 1,
+      tokenVersion: 0,
+      mfaEnabled: false,
     });
 
     const result = await strategy.validate(request(), accessPayload);
-    expect(result.sub).toBe('user-789');
-    expect(result.tokenType).toBe('access');
+    expect(result).toBeDefined();
+    expect(result.id).toBe('user-789');
     expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'user-789' },
-      select: { id: true, email: true, role: true, status: true, tokenVersion: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        tokenVersion: true,
+        mfaEnabled: true,
+      },
     });
   });
 
@@ -123,9 +149,56 @@ describe('JWT Enrollment Token Block (SEC-003)', () => {
       role: 'CANDIDATE',
       status: UserStatus.ACTIVE,
       tokenVersion: 1,
+      mfaEnabled: false,
     });
 
     const result = await strategy.validate(request(), noTypePayload);
     expect(result.tokenType).toBe('access');
+  });
+
+  it('rejects an admin access claim when MFA is not currently enabled in the database', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'admin-legacy',
+      email: 'admin@test.com',
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      tokenVersion: 0,
+      mfaEnabled: false,
+    });
+
+    await expect(
+      strategy.validate(request('/api/v1/admin/users'), {
+        sub: 'admin-legacy',
+        email: 'admin@test.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        tokenType: 'access',
+        tokenVersion: 0,
+        mfaVerified: true,
+      }),
+    ).rejects.toThrow('Administrator session requires verified multi-factor authentication');
+  });
+
+  it('rejects a stale enrollment token after MFA has been enabled', async () => {
+    mockPrisma.user.findUnique.mockResolvedValue({
+      id: 'admin-enrolled',
+      email: 'admin@test.com',
+      role: UserRole.ADMIN,
+      status: UserStatus.ACTIVE,
+      tokenVersion: 0,
+      mfaEnabled: true,
+    });
+
+    await expect(
+      strategy.validate(request('/api/v1/auth/mfa/setup', 'POST'), {
+        sub: 'admin-enrolled',
+        email: 'admin@test.com',
+        role: UserRole.ADMIN,
+        status: UserStatus.ACTIVE,
+        tokenType: 'mfa_enrollment',
+        tokenVersion: 0,
+        mfaVerified: false,
+      }),
+    ).rejects.toThrow('Administrator session requires verified multi-factor authentication');
   });
 });

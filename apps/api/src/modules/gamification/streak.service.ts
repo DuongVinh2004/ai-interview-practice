@@ -3,6 +3,7 @@ import { PrismaService } from '../platform/prisma/prisma.service';
 import { XpService } from './xp.service';
 import { BadgeService } from './badge.service';
 import { XpSource } from '@ai-interview/contracts';
+import { getLocalDateComponents, calculateDayDifference } from './timezone.util';
 
 @Injectable()
 export class StreakService {
@@ -14,181 +15,216 @@ export class StreakService {
     private readonly badgeService: BadgeService,
   ) {}
 
-  async recordActivity(userId: string): Promise<{
+  async recordActivity(
+    userId: string,
+    timezone?: string,
+  ): Promise<{
     currentStreak: number;
     longestStreak: number;
     streakIncreased: boolean;
     freezeUsed: boolean;
   }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayComponents = getLocalDateComponents(new Date(), timezone);
+    const todayDateObj = new Date(`${todayComponents.dateStr}T00:00:00.000Z`);
 
-    const existingStreak = await this.prisma.userStreak.findUnique({
-      where: { userId },
-    });
-
-    if (!existingStreak) {
-      const created = await this.prisma.userStreak.create({
-        data: {
-          userId,
-          currentStreak: 1,
-          longestStreak: 1,
-          lastReviewDate: today,
-          totalReviews: 1,
-          streakFreezeCount: 1, // Welcome 1 freeze shield
-        },
+    const result = await this.prisma.$transaction(async tx => {
+      const existingStreak = await tx.userStreak.findUnique({
+        where: { userId },
       });
 
-      await this.badgeService.checkAndUnlockBadges(userId, 'current_streak', 1);
-
-      return {
-        currentStreak: 1,
-        longestStreak: 1,
-        streakIncreased: true,
-        freezeUsed: false,
-      };
-    }
-
-    if (existingStreak.lastReviewDate) {
-      const lastDate = new Date(existingStreak.lastReviewDate);
-      lastDate.setHours(0, 0, 0, 0);
-
-      const diffTime = today.getTime() - lastDate.getTime();
-      const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays === 0) {
-        // Already practiced today
-        const updated = await this.prisma.userStreak.update({
-          where: { userId },
+      if (!existingStreak) {
+        const created = await tx.userStreak.create({
           data: {
-            totalReviews: { increment: 1 },
+            userId,
+            currentStreak: 1,
+            longestStreak: 1,
+            lastReviewDate: todayDateObj,
+            totalReviews: 1,
+            streakFreezeCount: 1, // Welcome 1 freeze shield
           },
         });
+
         return {
-          currentStreak: updated.currentStreak,
-          longestStreak: updated.longestStreak,
-          streakIncreased: false,
+          currentStreak: created.currentStreak,
+          longestStreak: created.longestStreak,
+          streakIncreased: true,
           freezeUsed: false,
+          isNewRecord: true,
+          newStreakForBadges: 1,
         };
       }
 
-      if (diffDays === 1) {
-        // Consecutive day streak increase!
-        const newStreak = existingStreak.currentStreak + 1;
-        const newLongest = Math.max(existingStreak.longestStreak, newStreak);
+      if (existingStreak.lastReviewDate) {
+        const diffDays = calculateDayDifference(
+          todayComponents.dateStr,
+          existingStreak.lastReviewDate,
+          timezone,
+        );
 
-        const updated = await this.prisma.userStreak.update({
+        if (diffDays === 0) {
+          // Already practiced today in candidate's local timezone
+          const updated = await tx.userStreak.update({
+            where: { userId },
+            data: {
+              totalReviews: { increment: 1 },
+            },
+          });
+          return {
+            currentStreak: updated.currentStreak,
+            longestStreak: updated.longestStreak,
+            streakIncreased: false,
+            freezeUsed: false,
+            isNewRecord: false,
+            newStreakForBadges: 0,
+          };
+        }
+
+        if (diffDays === 1) {
+          // Consecutive day streak increase in candidate's local timezone!
+          const newStreak = existingStreak.currentStreak + 1;
+          const newLongest = Math.max(existingStreak.longestStreak, newStreak);
+
+          const updated = await tx.userStreak.update({
+            where: { userId },
+            data: {
+              currentStreak: newStreak,
+              longestStreak: newLongest,
+              lastReviewDate: todayDateObj,
+              totalReviews: { increment: 1 },
+              streakFreezeUsedToday: false,
+            },
+          });
+
+          return {
+            currentStreak: updated.currentStreak,
+            longestStreak: updated.longestStreak,
+            streakIncreased: true,
+            freezeUsed: false,
+            isNewRecord: false,
+            newStreakForBadges: newStreak,
+          };
+        }
+
+        if (diffDays === 2 && existingStreak.streakFreezeCount > 0) {
+          // Missed yesterday in local timezone but had a Streak Freeze!
+          const newStreak = existingStreak.currentStreak + 1;
+          const newLongest = Math.max(existingStreak.longestStreak, newStreak);
+
+          const updated = await tx.userStreak.update({
+            where: { userId },
+            data: {
+              currentStreak: newStreak,
+              longestStreak: newLongest,
+              lastReviewDate: todayDateObj,
+              totalReviews: { increment: 1 },
+              streakFreezeCount: { decrement: 1 },
+              streakFreezeUsedToday: true,
+              freezeLastUsedAt: new Date(),
+            },
+          });
+
+          return {
+            currentStreak: updated.currentStreak,
+            longestStreak: updated.longestStreak,
+            streakIncreased: true,
+            freezeUsed: true,
+            isNewRecord: false,
+            newStreakForBadges: newStreak,
+          };
+        }
+
+        // Missed more than allowed in local timezone -> Reset streak
+        const updated = await tx.userStreak.update({
           where: { userId },
           data: {
-            currentStreak: newStreak,
-            longestStreak: newLongest,
-            lastReviewDate: today,
+            currentStreak: 1,
+            lastReviewDate: todayDateObj,
             totalReviews: { increment: 1 },
             streakFreezeUsedToday: false,
           },
         });
 
-        // Weekly streak bonus
-        if (newStreak % 7 === 0) {
-          await this.xpService.awardXp(
-            userId,
-            100,
-            XpSource.STREAK_BONUS,
-            `Thưởng chuỗi học tập ${newStreak} ngày / ${newStreak}-Day Streak Bonus!`,
-          );
-        }
-
-        await this.badgeService.checkAndUnlockBadges(userId, 'current_streak', newStreak);
-
         return {
-          currentStreak: newStreak,
-          longestStreak: newLongest,
-          streakIncreased: true,
+          currentStreak: 1,
+          longestStreak: updated.longestStreak,
+          streakIncreased: false,
           freezeUsed: false,
+          isNewRecord: false,
+          newStreakForBadges: 0,
         };
       }
 
-      if (diffDays === 2 && existingStreak.streakFreezeCount > 0) {
-        // Missed yesterday but had a Streak Freeze!
-        const newStreak = existingStreak.currentStreak + 1;
-        const newLongest = Math.max(existingStreak.longestStreak, newStreak);
-
-        const updated = await this.prisma.userStreak.update({
-          where: { userId },
-          data: {
-            currentStreak: newStreak,
-            longestStreak: newLongest,
-            lastReviewDate: today,
-            totalReviews: { increment: 1 },
-            streakFreezeCount: { decrement: 1 },
-            streakFreezeUsedToday: true,
-            freezeLastUsedAt: new Date(),
-          },
-        });
-
-        this.logger.log(`Streak freeze protected streak for user ${userId}`);
-
-        return {
-          currentStreak: newStreak,
-          longestStreak: newLongest,
-          streakIncreased: true,
-          freezeUsed: true,
-        };
-      }
-
-      // Missed more than allowed -> Reset streak
-      const updated = await this.prisma.userStreak.update({
+      // First time lastReviewDate set
+      const updated = await tx.userStreak.update({
         where: { userId },
         data: {
           currentStreak: 1,
-          lastReviewDate: today,
+          longestStreak: Math.max(existingStreak.longestStreak, 1),
+          lastReviewDate: todayDateObj,
           totalReviews: { increment: 1 },
-          streakFreezeUsedToday: false,
         },
       });
 
       return {
         currentStreak: 1,
         longestStreak: updated.longestStreak,
-        streakIncreased: false,
+        streakIncreased: true,
         freezeUsed: false,
+        isNewRecord: false,
+        newStreakForBadges: 1,
       };
-    }
-
-    // First time lastReviewDate set
-    const updated = await this.prisma.userStreak.update({
-      where: { userId },
-      data: {
-        currentStreak: 1,
-        longestStreak: Math.max(existingStreak.longestStreak, 1),
-        lastReviewDate: today,
-        totalReviews: { increment: 1 },
-      },
     });
 
+    if (result.freezeUsed) {
+      this.logger.log(`Streak freeze protected streak for user ${userId}`);
+    }
+
+    if (result.newStreakForBadges > 0) {
+      // Weekly streak bonus
+      if (result.newStreakForBadges % 7 === 0) {
+        await this.xpService.awardXp(
+          userId,
+          100,
+          XpSource.STREAK_BONUS,
+          `Thưởng chuỗi học tập ${result.newStreakForBadges} ngày / ${result.newStreakForBadges}-Day Streak Bonus!`,
+        );
+      }
+
+      await this.badgeService.checkAndUnlockBadges(
+        userId,
+        'current_streak',
+        result.newStreakForBadges,
+      );
+    }
+
     return {
-      currentStreak: 1,
-      longestStreak: updated.longestStreak,
-      streakIncreased: true,
-      freezeUsed: false,
+      currentStreak: result.currentStreak,
+      longestStreak: result.longestStreak,
+      streakIncreased: result.streakIncreased,
+      freezeUsed: result.freezeUsed,
     };
   }
 
-  async useStreakFreeze(userId: string): Promise<{ success: boolean; remainingFreezes: number }> {
-    const streak = await this.prisma.userStreak.findUnique({ where: { userId } });
-    if (!streak || streak.streakFreezeCount <= 0) {
-      return { success: false, remainingFreezes: streak?.streakFreezeCount || 0 };
-    }
+  async useStreakFreeze(
+    userId: string,
+    timezone?: string,
+  ): Promise<{ success: boolean; remainingFreezes: number }> {
+    return this.prisma.$transaction(async tx => {
+      const streak = await tx.userStreak.findUnique({ where: { userId } });
+      if (!streak || streak.streakFreezeCount <= 0 || streak.streakFreezeUsedToday) {
+        return { success: false, remainingFreezes: streak?.streakFreezeCount || 0 };
+      }
 
-    const updated = await this.prisma.userStreak.update({
-      where: { userId },
-      data: {
-        streakFreezeCount: { decrement: 1 },
-        streakFreezeUsedToday: true,
-        freezeLastUsedAt: new Date(),
-      },
+      const updated = await tx.userStreak.update({
+        where: { userId },
+        data: {
+          streakFreezeCount: { decrement: 1 },
+          streakFreezeUsedToday: true,
+          freezeLastUsedAt: new Date(),
+        },
+      });
+
+      return { success: true, remainingFreezes: updated.streakFreezeCount };
     });
-
-    return { success: true, remainingFreezes: updated.streakFreezeCount };
   }
 }

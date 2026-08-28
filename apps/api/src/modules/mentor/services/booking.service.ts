@@ -7,12 +7,21 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { LiveSessionStatus } from '@ai-interview/contracts';
+import { MentorAuthorityPolicy } from '../policies/mentor-authority.policy';
 
 @Injectable()
 export class BookingService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mentorAuthorityPolicy: MentorAuthorityPolicy,
+  ) {}
 
-  async bookSession(candidateId: string, mentorId: string, scheduledAt: Date | string) {
+  async bookSession(
+    candidateId: string,
+    mentorId: string,
+    scheduledAt: Date | string,
+    interviewId?: string,
+  ) {
     const bookingDate = new Date(scheduledAt);
     if (isNaN(bookingDate.getTime())) {
       throw new BadRequestException('Invalid scheduled date');
@@ -23,17 +32,28 @@ export class BookingService {
     }
 
     // 1. Verify mentor exists & is active
+    await this.mentorAuthorityPolicy.requireApprovedById(mentorId);
     const mentor = await this.prisma.mentorProfile.findUnique({
       where: { id: mentorId },
       include: { user: { include: { profile: true } } },
     });
 
-    if (!mentor || !mentor.isActive) {
+    if (!mentor) {
       throw new NotFoundException('Mentor profile not found or inactive');
     }
 
     if (mentor.userId === candidateId) {
       throw new BadRequestException('You cannot book a mentoring session with yourself');
+    }
+
+    if (interviewId) {
+      const interview = await this.prisma.interviewSession.findFirst({
+        where: { id: interviewId, userId: candidateId },
+        select: { id: true },
+      });
+      if (!interview) {
+        throw new BadRequestException('Interview must exist and belong to the booking candidate');
+      }
     }
 
     // 2. Collision Detection: 45-minute window before and after
@@ -80,6 +100,7 @@ export class BookingService {
       data: {
         mentorId,
         candidateId,
+        interviewId: interviewId || null,
         scheduledAt: bookingDate,
         status: LiveSessionStatus.SCHEDULED,
       },
@@ -113,22 +134,24 @@ export class BookingService {
       orderBy: { scheduledAt: 'desc' },
     });
 
-    return sessions.map(s => ({
-      id: s.id,
-      mentorId: s.mentorId,
-      mentorName: s.mentor.user.profile?.fullName || s.mentor.user.email.split('@')[0],
-      candidateId: s.candidateId,
-      candidateName: s.candidate.profile?.fullName || s.candidate.email.split('@')[0],
-      scheduledAt: s.scheduledAt,
-      status: s.status,
-      roomToken: s.roomToken,
-      mentorNotes: s.mentorNotes,
-      candidateRating: s.candidateRating,
-      startedAt: s.startedAt,
-      endedAt: s.endedAt,
-      createdAt: s.createdAt,
-      isMentor: s.mentor.userId === userId,
-    }));
+    return sessions.map(s => {
+      const isMentor = s.mentor.userId === userId;
+      return {
+        id: s.id,
+        mentorId: s.mentorId,
+        mentorName: s.mentor.user.profile?.fullName || s.mentor.user.email.split('@')[0],
+        candidateId: s.candidateId,
+        candidateName: s.candidate.profile?.fullName || s.candidate.email.split('@')[0],
+        scheduledAt: s.scheduledAt,
+        status: s.status,
+        mentorNotes: isMentor ? s.mentorNotes : undefined,
+        candidateRating: s.candidateRating,
+        startedAt: s.startedAt,
+        endedAt: s.endedAt,
+        createdAt: s.createdAt,
+        isMentor,
+      };
+    });
   }
 
   async cancelSession(sessionId: string, userId: string) {

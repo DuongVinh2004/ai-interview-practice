@@ -14,6 +14,7 @@ import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { VietQrCheckoutModal } from '../../components/billing/VietQrCheckoutModal';
 import { Check, Sparkles, Zap, Shield, Rocket, QrCode } from 'lucide-react';
+import { PLAN_TIERS, PlanTierSlug } from '../../lib/plan-tier.utils';
 
 export function PricingPage() {
   const {
@@ -131,7 +132,7 @@ export function PricingPage() {
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <span>Monthly Billing</span>
+              <span>{language === 'vi' ? 'Hàng tháng (Monthly)' : 'Monthly Billing'}</span>
             </button>
             <button
               type="button"
@@ -142,9 +143,9 @@ export function PricingPage() {
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <span>Annual Billing</span>
+              <span>{language === 'vi' ? 'Hàng năm (Annual Billing)' : 'Annual Billing'}</span>
               <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
-                Save ~17%
+                {language === 'vi' ? 'Tiết kiệm ~17%' : 'Save ~17%'}
               </span>
             </button>
           </div>
@@ -155,7 +156,13 @@ export function PricingPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {plans.map(plan => {
           const isCurrent = isAuthenticated && currentPlanSlug === plan.slug;
-          const isPopular = plan.slug === 'pro';
+          const currentRank =
+            PLAN_TIERS[(currentPlanSlug?.toLowerCase() as PlanTierSlug) || 'free']?.rank ?? 0;
+          const cardRank =
+            PLAN_TIERS[(plan.slug?.toLowerCase() as PlanTierSlug) || 'free']?.rank ?? 0;
+          const isLower = isAuthenticated && cardRank < currentRank;
+          const isNextHigher = isAuthenticated && cardRank === currentRank + 1;
+          const isPopular = isNextHigher || (currentRank === 0 && plan.slug === 'pro');
           const price =
             billingCycle === 'yearly' && plan.priceYearly > 0
               ? Math.round(plan.priceYearly / 12)
@@ -175,7 +182,15 @@ export function PricingPage() {
                 <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
                   <span className="bg-emerald-600 text-white text-[11px] font-bold px-3.5 py-1 rounded-full shadow-md flex items-center gap-1">
                     <Sparkles className="h-3 w-3" />
-                    <span>Most Popular</span>
+                    <span>
+                      {isNextHigher
+                        ? language === 'vi'
+                          ? 'Gợi ý nâng cấp tiếp theo'
+                          : 'Recommended Next Upgrade'
+                        : language === 'vi'
+                          ? 'Phổ biến nhất (Most Popular)'
+                          : 'Most Popular'}
+                    </span>
                   </span>
                 </div>
               )}
@@ -191,7 +206,12 @@ export function PricingPage() {
 
                   {isCurrent && (
                     <Badge variant="success" className="text-[10px]">
-                      Current Plan
+                      {language === 'vi' ? 'Gói hiện tại' : 'Current Plan'}
+                    </Badge>
+                  )}
+                  {isLower && (
+                    <Badge variant="default" className="text-[10px] bg-slate-100 text-slate-600">
+                      {language === 'vi' ? 'Đã bao gồm' : 'Included'}
                     </Badge>
                   )}
                 </div>
@@ -199,44 +219,72 @@ export function PricingPage() {
                 <CardTitle className="text-xl font-bold text-slate-900">
                   {plan.nameVi || plan.name}
                 </CardTitle>
-                <CardDescription className="min-h-[36px]">{plan.description || ''}</CardDescription>
+                <CardDescription className="text-xs text-slate-500 min-h-[36px]">
+                  {(plan as any).descriptionVi || plan.description}
+                </CardDescription>
 
-                <div className="mt-4 flex items-baseline">
-                  <span className="text-4xl font-extrabold text-slate-900">${price}</span>
-                  <span className="text-xs font-semibold text-slate-500 ml-1.5">/ month</span>
+                <div className="pt-4 flex items-baseline">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">
+                    {price === 0
+                      ? language === 'vi'
+                        ? 'Miễn phí'
+                        : 'Free'
+                      : `${price.toLocaleString('vi-VN')}đ`}
+                  </span>
+                  {price > 0 && (
+                    <span className="text-xs text-slate-500 font-semibold ml-1.5">
+                      {language === 'vi' ? '/tháng' : '/mo'}
+                    </span>
+                  )}
                 </div>
                 {billingCycle === 'yearly' && plan.priceYearly > 0 && (
                   <span className="text-[11px] text-emerald-600 font-semibold block mt-1">
-                    Billed annually (${plan.priceYearly}/yr)
+                    {language === 'vi'
+                      ? `Billed annually (${plan.priceYearly.toLocaleString('vi-VN')}đ/năm)`
+                      : `Billed annually ($${plan.priceYearly}/yr)`}
                   </span>
                 )}
               </CardHeader>
 
-              <CardContent className="space-y-6 flex-1 flex flex-col justify-between pt-2">
-                {/* Feature Bullets */}
-                <div className="space-y-3 pt-3 border-t border-slate-100">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block">
-                    What's included:
-                  </span>
-                  <ul className="space-y-2.5 text-xs text-slate-700">
+              <CardContent className="space-y-6 flex-1 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    {language === 'vi' ? 'Quyền lợi & Tính năng' : 'Features Included'}
+                  </div>
+
+                  <ul className="space-y-2.5 text-xs text-slate-600">
                     <li className="flex items-start space-x-2">
                       <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                      <span>
-                        <strong>{plan.limits.sessionsPerMonth}</strong> mock interview sessions /
-                        month
+                      <span className="font-semibold text-slate-800">
+                        {plan.limits.sessionsPerMonth >= 999
+                          ? language === 'vi'
+                            ? 'Không giới hạn lượt phỏng vấn'
+                            : 'Unlimited mock sessions'
+                          : `${plan.limits.sessionsPerMonth} ${
+                              language === 'vi' ? 'buổi phỏng vấn/tháng' : 'interviews/mo'
+                            }`}
                       </span>
                     </li>
-                    <li className="flex items-start space-x-2">
-                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                      <span>
-                        <strong>{plan.limits.voiceMinutesPerMonth}</strong> voice & audio streaming
-                        minutes
-                      </span>
-                    </li>
+                    {plan.limits.voiceMinutesPerMonth > 0 && (
+                      <li className="flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <span>
+                          {language === 'vi'
+                            ? `${plan.limits.voiceMinutesPerMonth} phút Mock Voice AI giọng nói`
+                            : `${plan.limits.voiceMinutesPerMonth} min AI Voice streaming`}
+                        </span>
+                      </li>
+                    )}
                     {plan.limits.allowLiveCoding && (
                       <li className="flex items-start space-x-2">
                         <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
-                        <span>Live Coding execution sandbox</span>
+                        <span>Live Coding sandbox</span>
+                      </li>
+                    )}
+                    {plan.limits.allowSystemDesign && (
+                      <li className="flex items-start space-x-2">
+                        <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                        <span>Whiteboard System Design</span>
                       </li>
                     )}
                     {plan.features.map((feat, idx) => (
@@ -254,19 +302,31 @@ export function PricingPage() {
                     variant={isPopular ? 'primary' : 'outline'}
                     size="md"
                     onClick={() => handleSelectPlan(plan.slug)}
-                    disabled={isCurrent || (isCreatingCheckout && selectedPlanSlug === plan.slug)}
+                    disabled={
+                      isCurrent || isLower || (isCreatingCheckout && selectedPlanSlug === plan.slug)
+                    }
                     isLoading={isCreatingCheckout && selectedPlanSlug === plan.slug}
                     className="w-full font-bold shadow-xs"
                     data-testid={`select-plan-${plan.slug}`}
                   >
                     {isCurrent
-                      ? 'Active Plan'
-                      : plan.slug === 'free'
-                        ? 'Free Forever'
-                        : `Upgrade to ${plan.name}`}
+                      ? language === 'vi'
+                        ? 'Gói hiện tại'
+                        : 'Active Plan'
+                      : isLower
+                        ? language === 'vi'
+                          ? 'Đã bao gồm trong gói của bạn'
+                          : 'Included in Current Plan'
+                        : plan.slug === 'free'
+                          ? language === 'vi'
+                            ? 'Miễn phí vĩnh viễn'
+                            : 'Free Forever'
+                          : language === 'vi'
+                            ? `Nâng cấp lên ${plan.nameVi || plan.name}`
+                            : `Upgrade to ${plan.name}`}
                   </Button>
 
-                  {plan.slug !== 'free' && !isCurrent && (
+                  {plan.slug !== 'free' && !isCurrent && !isLower && (
                     <Button
                       variant="outline"
                       size="sm"

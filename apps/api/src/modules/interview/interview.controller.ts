@@ -48,33 +48,60 @@ export class InterviewController {
   @UseGuards(QuotaGuard)
   @RequireQuota(BillingMetric.SESSION_COUNT)
   @ApiOperation({ summary: 'Create a new 5-turn interview session' })
+  @ApiHeader({
+    name: 'Idempotency-Key',
+    required: false,
+    description: 'Unique client-provided key to guarantee exactly-once session creation',
+  })
   async createInterview(
     @CurrentUser('sub') userId: string,
     @Body() dto: CreateInterviewRequestDto,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.interviewService.createSession(userId, dto);
+    if (idempotencyKey) {
+      const reservation = await this.idempotencyService.reserveKey(
+        idempotencyKey,
+        userId,
+        'interview-create',
+        dto,
+      );
+      if (reservation.isCached) {
+        return reservation.cachedResponse;
+      }
+    }
+
+    try {
+      const result = await this.interviewService.createSession(userId, dto);
+      if (idempotencyKey) {
+        await this.idempotencyService.completeKey(idempotencyKey, HttpStatus.CREATED, result);
+      }
+      return result;
+    } catch (err: any) {
+      if (idempotencyKey) {
+        await this.idempotencyService.releaseKey(idempotencyKey);
+      }
+      throw err;
+    }
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get full interview session by ID' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async getInterview(
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('role') userRole: UserRole,
+    @CurrentUser() user: any,
     @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND })) id: string,
   ) {
-    return this.interviewService.getSession(userId, userRole, id);
+    return this.interviewService.getSession(user.sub, user.role, id, user.mfaVerified);
   }
 
   @Get(':id/status')
   @ApiOperation({ summary: 'Get lightweight interview session status (REST polling fallback)' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async getInterviewStatus(
-    @CurrentUser('sub') userId: string,
-    @CurrentUser('role') userRole: UserRole,
+    @CurrentUser() user: any,
     @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND })) id: string,
   ) {
-    return this.interviewService.getSessionStatus(userId, userRole, id);
+    return this.interviewService.getSessionStatus(user.sub, user.role, id, user.mfaVerified);
   }
 
   @Post(':id/answers')
@@ -126,6 +153,7 @@ export class InterviewController {
   async reEvaluateTurn(
     @CurrentUser('sub') userId: string,
     @CurrentUser('role') userRole: UserRole,
+    @CurrentUser('mfaVerified') mfaVerified: boolean | undefined,
     @Param('id') sessionId: string,
     @Param('turnNumber') turnNumber: string,
     @Body() dto: ReEvaluateTurnRequestDto,
@@ -136,6 +164,7 @@ export class InterviewController {
       sessionId,
       parseInt(turnNumber, 10),
       dto,
+      mfaVerified,
     );
   }
 
@@ -166,6 +195,7 @@ export class InterviewController {
       payload.sub,
       payload.role as UserRole,
       sessionId,
+      payload.mfaVerified,
     );
     return this.sseService.getSessionEventStream(sessionId);
   }

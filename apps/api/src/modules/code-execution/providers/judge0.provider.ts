@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SandboxProvider } from '../interfaces/sandbox-provider.interface';
 import { ExecuteCodeResponse, TestCaseDto, SubmissionStatus } from '@ai-interview/contracts';
+import { SANDBOX_LIMITS, SandboxSecurityValidator } from '../utils/sandbox-security.validator';
 
 const LANGUAGE_ID_MAP: Record<string, number> = {
   javascript: 63, // Node.js
@@ -29,6 +30,7 @@ export class Judge0Provider implements SandboxProvider {
     sourceCode: string,
     testCases?: TestCaseDto[],
     customInput?: string,
+    compilerOptions?: string,
   ): Promise<ExecuteCodeResponse> {
     const langId = LANGUAGE_ID_MAP[language.toLowerCase()];
     if (!langId) {
@@ -49,6 +51,38 @@ export class Judge0Provider implements SandboxProvider {
           executionTimeMs: 0,
           memoryUsageKb: 0,
           errorMsg: `Unsupported language: '${language}'`,
+        })),
+        allPassed: false,
+      };
+    }
+
+    // Security & Constraints Validation before remote calls
+    try {
+      SandboxSecurityValidator.validateCompilerOptions(language, compilerOptions);
+      SandboxSecurityValidator.validateStdin(customInput);
+      if (testCases) {
+        for (const tc of testCases) {
+          SandboxSecurityValidator.validateStdin(tc.input);
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Security constraint violation: ${err.message}`);
+      return {
+        status: SubmissionStatus.COMPILE_ERROR,
+        stdout: '',
+        stderr: err.message,
+        compileError: err.message,
+        executionTimeMs: 0,
+        memoryUsageKb: 0,
+        testResults: (testCases || []).map(tc => ({
+          testCaseId: tc.id,
+          input: tc.input,
+          expectedOutput: tc.expectedOutput,
+          actualOutput: '',
+          passed: false,
+          executionTimeMs: 0,
+          memoryUsageKb: 0,
+          errorMsg: err.message,
         })),
         allPassed: false,
       };
@@ -77,7 +111,7 @@ export class Judge0Provider implements SandboxProvider {
       };
     }
 
-    const MAX_TEST_CASES = 20;
+    const MAX_TEST_CASES = SANDBOX_LIMITS.MAX_TEST_CASES;
     if (testCases && testCases.length > MAX_TEST_CASES) {
       this.logger.error(
         `Test case batch size (${testCases.length}) exceeds maximum limit of ${MAX_TEST_CASES}`,
@@ -94,12 +128,14 @@ export class Judge0Provider implements SandboxProvider {
       };
     }
 
-    if (sourceCode && sourceCode.length > 50000) {
-      this.logger.error(`Source code size (${sourceCode.length}) exceeds limit of 50000 chars`);
+    if (sourceCode && sourceCode.length > SANDBOX_LIMITS.MAX_SOURCE_CODE_LENGTH) {
+      this.logger.error(
+        `Source code size (${sourceCode.length}) exceeds limit of ${SANDBOX_LIMITS.MAX_SOURCE_CODE_LENGTH} chars`,
+      );
       return {
         status: SubmissionStatus.FAILED,
         stdout: '',
-        stderr: 'Source code exceeds maximum allowed size (50,000 characters)',
+        stderr: `Source code exceeds maximum allowed size (${SANDBOX_LIMITS.MAX_SOURCE_CODE_LENGTH.toLocaleString()} characters)`,
         executionTimeMs: 0,
         memoryUsageKb: 0,
         compileError: null,
@@ -119,20 +155,29 @@ export class Judge0Provider implements SandboxProvider {
 
       for (const tc of testCases) {
         try {
+          const submissionPayload: Record<string, any> = {
+            source_code: Buffer.from(sourceCode).toString('base64'),
+            language_id: langId,
+            stdin: Buffer.from(tc.input || '').toString('base64'),
+            cpu_time_limit: SANDBOX_LIMITS.CPU_TIME_LIMIT_SECONDS,
+            wall_time_limit: SANDBOX_LIMITS.WALL_TIME_LIMIT_SECONDS,
+            memory_limit: SANDBOX_LIMITS.MEMORY_LIMIT_KB,
+            stack_limit: SANDBOX_LIMITS.STACK_LIMIT_KB,
+            max_file_size: SANDBOX_LIMITS.MAX_FILE_SIZE_KB,
+          };
+
+          if (compilerOptions) {
+            submissionPayload.compiler_options = compilerOptions;
+          }
+
           const response = await fetch(`${this.apiUrl}/submissions?wait=true`, {
             method: 'POST',
-            signal: AbortSignal.timeout(10000), // Bounded request deadline (H-012)
+            signal: AbortSignal.timeout(SANDBOX_LIMITS.WALL_TIME_LIMIT_SECONDS * 1000),
             headers: {
               'Content-Type': 'application/json',
               ...(this.apiKey ? { 'X-Auth-Token': this.apiKey } : {}),
             },
-            body: JSON.stringify({
-              source_code: Buffer.from(sourceCode).toString('base64'),
-              language_id: langId,
-              stdin: Buffer.from(tc.input || '').toString('base64'),
-              cpu_time_limit: 5,
-              memory_limit: 256000,
-            }),
+            body: JSON.stringify(submissionPayload),
           });
 
           if (!response.ok) {
@@ -212,20 +257,29 @@ export class Judge0Provider implements SandboxProvider {
     }
 
     try {
+      const singlePayload: Record<string, any> = {
+        source_code: Buffer.from(sourceCode).toString('base64'),
+        language_id: langId,
+        stdin: Buffer.from(customInput || '').toString('base64'),
+        cpu_time_limit: SANDBOX_LIMITS.CPU_TIME_LIMIT_SECONDS,
+        wall_time_limit: SANDBOX_LIMITS.WALL_TIME_LIMIT_SECONDS,
+        memory_limit: SANDBOX_LIMITS.MEMORY_LIMIT_KB,
+        stack_limit: SANDBOX_LIMITS.STACK_LIMIT_KB,
+        max_file_size: SANDBOX_LIMITS.MAX_FILE_SIZE_KB,
+      };
+
+      if (compilerOptions) {
+        singlePayload.compiler_options = compilerOptions;
+      }
+
       const response = await fetch(`${this.apiUrl}/submissions?wait=true`, {
         method: 'POST',
-        signal: AbortSignal.timeout(10000), // Bounded request deadline (H-012)
+        signal: AbortSignal.timeout(SANDBOX_LIMITS.WALL_TIME_LIMIT_SECONDS * 1000),
         headers: {
           'Content-Type': 'application/json',
           ...(this.apiKey ? { 'X-Auth-Token': this.apiKey } : {}),
         },
-        body: JSON.stringify({
-          source_code: Buffer.from(sourceCode).toString('base64'),
-          language_id: langId,
-          stdin: Buffer.from(customInput || '').toString('base64'),
-          cpu_time_limit: 5,
-          memory_limit: 256000,
-        }),
+        body: JSON.stringify(singlePayload),
       });
 
       if (!response.ok) {

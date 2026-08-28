@@ -36,6 +36,7 @@ export function clearClientCaches(): void {
           (key.startsWith('auth_') ||
             key.startsWith('user_') ||
             key.startsWith('interview_') ||
+            key.startsWith('draft-answer-') ||
             key.startsWith('transcript_') ||
             key.startsWith('whiteboard_') ||
             key.startsWith('analytics_') ||

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { RefreshCw, BookOpen, Code, HelpCircle } from 'lucide-react';
 import { CardType } from '@ai-interview/contracts';
+import { useI18nStore } from '../../stores/i18n.store';
 
 interface FlashcardItemProps {
   front: string;
@@ -17,6 +18,8 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
   isFlipped: controlledFlipped,
   onFlip,
 }) => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const [internalFlipped, setInternalFlipped] = useState(false);
   const isFlipped = controlledFlipped !== undefined ? controlledFlipped : internalFlipped;
 
@@ -54,7 +57,15 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
 
         <div className="flex items-center space-x-1.5 text-xs text-slate-400 group-hover:text-primary-600 transition-colors">
           <RefreshCw className="w-3.5 h-3.5" />
-          <span>{isFlipped ? 'Mặt sau (Đáp án)' : 'Mặt trước (Câu hỏi)'}</span>
+          <span>
+            {isFlipped
+              ? isVi
+                ? 'Mặt sau (Đáp án)'
+                : 'Back (Answer)'
+              : isVi
+                ? 'Mặt trước (Câu hỏi)'
+                : 'Front (Question)'}
+          </span>
         </div>
       </div>
 
@@ -63,7 +74,7 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
         {!isFlipped ? (
           <div className="space-y-3">
             <span className="text-[11px] font-bold uppercase tracking-wider text-primary-600">
-              Question / Prompt:
+              {isVi ? 'Câu Hỏi / Đề Bài:' : 'Question / Prompt:'}
             </span>
             <div className="text-base sm:text-lg font-medium text-slate-900 whitespace-pre-wrap leading-relaxed">
               {front}
@@ -72,7 +83,7 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
         ) : (
           <div className="space-y-3 animate-in fade-in zoom-in-95 duration-150">
             <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-600">
-              Key Answer / Invariant:
+              {isVi ? 'Đáp Án Cốt Lõi / Nguyên Lý:' : 'Key Answer / Invariant:'}
             </span>
             <div className="text-sm sm:text-base font-normal text-slate-800 whitespace-pre-wrap leading-relaxed bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
               {back}
@@ -84,14 +95,14 @@ export const FlashcardItem: React.FC<FlashcardItemProps> = ({
       {/* Bottom Hint */}
       <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-400">
         <span>
-          Bấm vào thẻ hoặc nhấn{' '}
+          {isVi ? 'Bấm vào thẻ hoặc nhấn ' : 'Click card or press '}
           <kbd className="px-1.5 py-0.5 bg-slate-100 rounded border border-slate-300 font-mono text-[10px]">
             Space
           </kbd>{' '}
-          để lật
+          {isVi ? 'để lật' : 'to flip'}
         </span>
         <span className="text-[11px] font-semibold text-slate-500">
-          {isFlipped ? 'Đã lật' : 'Chưa lật'}
+          {isFlipped ? (isVi ? 'Đã lật' : 'Flipped') : isVi ? 'Chưa lật' : 'Unflipped'}
         </span>
       </div>
     </div>

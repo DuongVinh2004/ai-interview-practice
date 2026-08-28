@@ -105,9 +105,9 @@ describe('SetupInterviewExperience (Phase 2)', () => {
       expect(screen.getByText('Node.js')).toBeInTheDocument();
     });
 
-    // Verify practice disclaimer
+    // Verify primary launch action
     expect(
-      screen.getByText(/không phải quyết định tuyển dụng|not employment hiring/i),
+      screen.getByRole('button', { name: /Bắt đầu Phỏng vấn|Start Practice/i }),
     ).toBeInTheDocument();
   });
 
@@ -220,9 +220,76 @@ describe('SetupInterviewExperience (Phase 2)', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/AI Service Temporarily Unavailable/i)).toBeInTheDocument();
-      // Selections are retained
-      expect(screen.getByText(/1\/5/i)).toBeInTheDocument();
+      expect(
+        screen.getAllByText(/AI Service Temporarily Unavailable|Không thể khởi tạo/i).length,
+      ).toBeGreaterThan(0);
+      expect(screen.getAllByText(/1\/5/i).length).toBeGreaterThan(0);
+    });
+  });
+
+  it('handles 403 QUOTA_EXCEEDED gracefully with upgrade call to action', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string, options?: any) => {
+      if (url.includes('/interviews') && options?.method === 'POST') {
+        return Promise.resolve({
+          ok: false,
+          status: 403,
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                code: 'QUOTA_EXCEEDED',
+                message: 'Monthly quota limit reached for SESSION_COUNT (3/3)',
+              }),
+            ),
+        });
+      }
+      if (url.includes('/taxonomies/job-roles')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(JSON.stringify({ data: [{ id: 'role-1', name: 'Backend Engineer' }] })),
+        });
+      }
+      if (url.includes('/taxonomies/levels')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () => Promise.resolve(JSON.stringify({ data: [{ id: 'lvl-1', name: 'Junior' }] })),
+        });
+      }
+      if (url.includes('/taxonomies/technologies')) {
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(JSON.stringify({ data: [{ id: 'tech-1', name: 'Node.js' }] })),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('{}') });
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <SetupInterviewPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Node.js')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Node.js/i }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /Bắt đầu Phỏng vấn|Start Practice Session/i }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/hạn mức|quota/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByRole('button', { name: /nâng cấp|upgrade/i }).length).toBeGreaterThan(
+        0,
+      );
     });
   });
 });

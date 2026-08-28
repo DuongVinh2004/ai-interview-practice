@@ -4,6 +4,7 @@ import { DesignAnalyzerService } from './services/design-analyzer.service';
 import { DesignEvaluationService } from './services/design-evaluation.service';
 import { MockVisionProvider } from './providers/mock-vision.provider';
 import { PrismaService } from '../platform/prisma/prisma.service';
+import { VisionEntitlementService } from './services/vision-entitlement.service';
 
 describe('SystemDesign Services (F003)', () => {
   let canvasService: CanvasService;
@@ -40,6 +41,10 @@ describe('SystemDesign Services (F003)', () => {
         MockVisionProvider,
         { provide: 'VISION_PROVIDER', useClass: MockVisionProvider },
         { provide: PrismaService, useValue: mockPrisma },
+        {
+          provide: VisionEntitlementService,
+          useValue: { evaluate: jest.fn(input => input.provider.evaluateDiagram(input.options)) },
+        },
       ],
     }).compile();
 
@@ -131,6 +136,8 @@ describe('SystemDesign Services (F003)', () => {
         userId,
         interviewId,
         'data:image/png;base64,test',
+        undefined,
+        'vision-analyze-1',
       );
       expect(
         analysis.detectedComponents.some(component => component.includes('Load Balancer')),
@@ -171,7 +178,11 @@ describe('SystemDesign Services (F003)', () => {
         createdAt: new Date(),
       });
 
-      const result = await evaluationService.evaluateSession(userId, interviewId);
+      const result = await evaluationService.evaluateSession(
+        userId,
+        interviewId,
+        'vision-evaluate-1',
+      );
       expect(result.id).toBe('eval-1');
       expect(result.overallScore).toBe(8.3);
       expect(result.rubricBreakdown).toBeDefined();

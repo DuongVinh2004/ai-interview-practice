@@ -101,6 +101,21 @@ model User {
   pushSubscriptions PushSubscription[]
   notificationPreference NotificationPreference?
   fileAssets        FileAsset[]
+  voiceConsentRecords VoiceConsentRecord[]
+  entitlementBuckets EntitlementBucket[]
+  entitlementReservations EntitlementReservation[]
+  createdQuestions   QuestionBankQuestion[]        @relation("CreatedQuestions")
+  reviewedAnswers    QuestionBankAnswer[]          @relation("ReviewedAnswers")
+  questionAccessGrants QuestionAnswerAccessGrant[]
+  questionUsageLedgers QuestionBankUsageLedger[]
+  questionBookmarks   QuestionBookmark[]
+  questionFeedbacks   QuestionFeedback[]
+  configurationPresets InterviewConfigurationPreset[]
+  recentConfigurations RecentInterviewConfiguration[]
+  interviewSetupDrafts InterviewSetupDraft[]
+  arenaChallengesCreated EngineeringChallenge[]        @relation("ArenaCreatedChallenges")
+  arenaSessions       ArenaSession[]
+  arenaSkillEvidences ArenaSkillEvidence[]
 
   @@index([status])
   @@index([role])
@@ -123,15 +138,16 @@ model UserProfile {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id") @db.Uuid
-  familyId  String   @default(uuid()) @map("family_id") @db.Uuid
-  tokenHash String   @unique @map("token_hash") @db.VarChar(255)
-  isRevoked Boolean  @default(false) @map("is_revoked")
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  familyId    String   @default(uuid()) @map("family_id") @db.Uuid
+  tokenHash   String   @unique @map("token_hash") @db.VarChar(255)
+  isRevoked   Boolean  @default(false) @map("is_revoked")
+  mfaVerified Boolean  @default(false) @map("mfa_verified")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([familyId])
@@ -147,7 +163,10 @@ model JobRole {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  sessions    InterviewSession[]
+  sessions              InterviewSession[]
+  questionBankQuestions QuestionBankQuestion[]
+  configurationPresets  InterviewConfigurationPreset[]
+  recentConfigurations  RecentInterviewConfiguration[]
 
   @@map("job_roles")
 }
@@ -162,7 +181,10 @@ model SeniorityLevel {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  sessions    InterviewSession[]
+  sessions              InterviewSession[]
+  questionBankQuestions QuestionBankQuestion[]
+  configurationPresets  InterviewConfigurationPreset[]
+  recentConfigurations  RecentInterviewConfiguration[]
 
   @@map("seniority_levels")
 }
@@ -176,7 +198,8 @@ model Technology {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  sessionTechnologies SessionTechnology[]
+  sessionTechnologies     SessionTechnology[]
+  questionBankTechnologies QuestionBankTechnology[]
 
   @@map("technologies")
 }
@@ -189,6 +212,7 @@ model InterviewSession {
   state            SessionState      @default(CREATED)
   sessionMode      SessionMode       @default(STANDARD) @map("session_mode")
   competencyArea   CompetencyArea?   @map("competency_area")
+  language         String            @default("vi") @db.VarChar(10)
   tenantId         String?           @map("tenant_id") @db.Uuid
   assignmentId     String?           @map("assignment_id") @db.Uuid
   isSandbox        Boolean           @default(false) @map("is_sandbox")
@@ -196,6 +220,11 @@ model InterviewSession {
   totalTurns       Int               @default(5) @map("total_turns")
   targetDifficulty Int               @default(1) @map("target_difficulty") // 1: Easy, 2: Medium, 3: Hard
   overallScore     Float?            @map("overall_score")
+  configurationSnapshot Json?        @map("configuration_snapshot")
+  configurationSource String?        @map("configuration_source") @db.VarChar(50)
+  fieldSources     Json?             @map("field_sources")
+  draftId          String?           @map("draft_id") @db.Uuid
+  presetId         String?           @map("preset_id") @db.Uuid
   completedAt      DateTime?         @map("completed_at")
   createdAt        DateTime          @default(now()) @map("created_at")
   updatedAt        DateTime          @updatedAt @map("updated_at")
@@ -213,7 +242,9 @@ model InterviewSession {
   codeSubmissions  CodeSubmission[]
   codeTestCases    CodeTestCase[]
   voiceSession     VoiceSession?
+  voiceConsentRecords VoiceConsentRecord[]
   systemDesignSession SystemDesignSession?
+  liveMentorSessions LiveSession[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([tenantId])
@@ -221,6 +252,83 @@ model InterviewSession {
   @@index([state])
   @@index([sessionMode])
   @@map("interview_sessions")
+}
+
+model InterviewConfigurationPreset {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @map("user_id") @db.Uuid
+  name             String          @db.VarChar(100)
+  description      String?         @db.Text
+  fingerprint      String          @db.VarChar(64)
+  jobRoleId        String          @map("job_role_id") @db.Uuid
+  seniorityLevelId String          @map("seniority_level_id") @db.Uuid
+  technologyIds    String[]        @map("technology_ids")
+  sessionMode      SessionMode     @default(STANDARD) @map("session_mode")
+  competencyArea   CompetencyArea? @map("competency_area")
+  language         String          @default("vi") @db.VarChar(10)
+  totalTurns       Int             @default(5) @map("total_turns")
+  isSandbox        Boolean         @default(false) @map("is_sandbox")
+  isPinned         Boolean         @default(false) @map("is_pinned")
+  blueprintId      String?         @map("blueprint_id") @db.Uuid
+  useCount         Int             @default(0) @map("use_count")
+  lastUsedAt       DateTime?       @map("last_used_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobRole          JobRole         @relation(fields: [jobRoleId], references: [id], onDelete: Restrict)
+  seniorityLevel   SeniorityLevel  @relation(fields: [seniorityLevelId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("interview_configuration_presets")
+}
+
+model RecentInterviewConfiguration {
+  id               String          @id @default(uuid()) @db.Uuid
+  userId           String          @map("user_id") @db.Uuid
+  fingerprint      String          @db.VarChar(64)
+  jobRoleId        String          @map("job_role_id") @db.Uuid
+  seniorityLevelId String          @map("seniority_level_id") @db.Uuid
+  technologyIds    String[]        @map("technology_ids")
+  sessionMode      SessionMode     @default(STANDARD) @map("session_mode")
+  competencyArea   CompetencyArea? @map("competency_area")
+  language         String          @default("vi") @db.VarChar(10)
+  totalTurns       Int             @default(5) @map("total_turns")
+  isSandbox        Boolean         @default(false) @map("is_sandbox")
+  blueprintId      String?         @map("blueprint_id") @db.Uuid
+  useCount         Int             @default(1) @map("use_count")
+  lastUsedAt       DateTime        @default(now()) @map("last_used_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobRole          JobRole         @relation(fields: [jobRoleId], references: [id], onDelete: Restrict)
+  seniorityLevel   SeniorityLevel  @relation(fields: [seniorityLevelId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, fingerprint])
+  @@index([userId, lastUsedAt(sort: Desc)])
+  @@map("recent_interview_configurations")
+}
+
+model InterviewSetupDraft {
+  id                 String          @id @default(uuid()) @db.Uuid
+  userId             String          @map("user_id") @db.Uuid
+  cvProfileId        String?         @map("cv_profile_id") @db.Uuid
+  jdProfileId        String?         @map("jd_profile_id") @db.Uuid
+  selectedPresetId   String?         @map("selected_preset_id") @db.Uuid
+  extractedProfile   Json?           @map("extracted_profile")
+  configurationDraft Json            @map("configuration_draft")
+  fieldSources       Json            @map("field_sources")
+  status             String          @default("ACTIVE") @db.VarChar(30)
+  expiresAt          DateTime?       @map("expires_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("interview_setup_drafts")
 }
 
 model SessionTechnology {
@@ -706,6 +814,13 @@ enum BillingMetric {
   SESSION_COUNT
 }
 
+enum EntitlementReservationState {
+  RESERVED
+  COMMITTED
+  RELEASED
+  RECONCILIATION_REQUIRED
+}
+
 model SubscriptionPlan {
   id                   String         @id @default(uuid()) @db.Uuid
   slug                 String         @unique @db.VarChar(50) // free, pro, team, enterprise
@@ -760,6 +875,7 @@ model Invoice {
   status          InvoiceStatus @default(PAID)
   stripeInvoiceId String?       @map("stripe_invoice_id") @db.VarChar(100)
   pdfUrl          String?       @map("pdf_url") @db.Text
+  metadata        Json?
   issuedAt        DateTime      @default(now()) @map("issued_at")
   paidAt          DateTime?     @map("paid_at")
 
@@ -772,16 +888,72 @@ model Invoice {
 }
 
 model UsageRecord {
-  id         String        @id @default(uuid()) @db.Uuid
-  userId     String        @map("user_id") @db.Uuid
-  metric     BillingMetric
-  quantity   Int           @default(1)
-  recordedAt DateTime      @default(now()) @map("recorded_at")
+  id            String        @id @default(uuid()) @db.Uuid
+  userId        String        @map("user_id") @db.Uuid
+  metric        BillingMetric
+  quantity      Int           @default(1)
+  reservationId String?       @unique @map("reservation_id") @db.Uuid
+  recordedAt    DateTime      @default(now()) @map("recorded_at")
 
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservation EntitlementReservation? @relation("ReservationUsageRecord", fields: [reservationId], references: [id], onDelete: SetNull)
 
   @@index([userId, metric, recordedAt])
   @@map("usage_records")
+}
+
+model EntitlementBucket {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  metric          String   @db.VarChar(100)
+  accessPeriodKey String   @map("access_period_key") @db.VarChar(100)
+  limit           Int?
+  consumed        Int      @default(0)
+  reserved        Int      @default(0)
+  version         Int      @default(0)
+  resetsAt        DateTime @map("resets_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user         User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reservations EntitlementReservation[]
+
+  @@unique([userId, metric, accessPeriodKey])
+  @@index([resetsAt])
+  @@map("entitlement_buckets")
+}
+
+model EntitlementReservation {
+  id                  String                    @id @default(uuid()) @db.Uuid
+  bucketId            String                    @map("bucket_id") @db.Uuid
+  userId              String                    @map("user_id") @db.Uuid
+  metric              String                    @db.VarChar(100)
+  accessPeriodKey     String                    @map("access_period_key") @db.VarChar(100)
+  idempotencyKey      String                    @map("idempotency_key") @db.VarChar(255)
+  requestFingerprint  String                    @map("request_fingerprint") @db.VarChar(64)
+  operationType       String                    @map("operation_type") @db.VarChar(100)
+  operationId         String?                   @map("operation_id") @db.VarChar(255)
+  estimatedQuantity   Int                       @map("estimated_quantity")
+  actualQuantity      Int?                      @map("actual_quantity")
+  state               EntitlementReservationState @default(RESERVED)
+  expiresAt           DateTime                  @map("expires_at")
+  providerDispatchStartedAt DateTime?           @map("provider_dispatch_started_at")
+  provider            String?                   @db.VarChar(100)
+  providerOperationId String?                   @map("provider_operation_id") @db.VarChar(255)
+  resolutionReason    String?                   @map("resolution_reason") @db.VarChar(500)
+  reconciliationData  Json?                     @map("reconciliation_data")
+  reconciledAt        DateTime?                 @map("reconciled_at")
+  createdAt           DateTime                  @default(now()) @map("created_at")
+  updatedAt           DateTime                  @updatedAt @map("updated_at")
+
+  bucket EntitlementBucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
+  user   User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageRecord UsageRecord? @relation("ReservationUsageRecord")
+
+  @@unique([userId, metric, accessPeriodKey, idempotencyKey])
+  @@index([state, expiresAt])
+  @@index([operationType, operationId])
+  @@map("entitlement_reservations")
 }
 
 model PromoCode {
@@ -1055,6 +1227,21 @@ enum VoiceSessionStatus {
 enum SpeakerRole {
   USER
   AI
+}
+
+model VoiceConsentRecord {
+  id            String    @id @default(uuid()) @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  interviewId   String    @map("interview_id") @db.Uuid
+  policyVersion String    @map("policy_version") @db.VarChar(50)
+  consentedAt   DateTime  @default(now()) @map("consented_at")
+  revokedAt     DateTime? @map("revoked_at")
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  interviewSession InterviewSession @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, interviewId])
+  @@map("voice_consent_records")
 }
 
 model VoiceSession {
@@ -1420,6 +1607,13 @@ enum LiveSessionStatus {
   CANCELED
 }
 
+enum MentorAuthorityState {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REVOKED
+}
+
 model MentorProfile {
   id             String               @id @default(uuid()) @db.Uuid
   userId         String               @unique @map("user_id") @db.Uuid
@@ -1427,7 +1621,13 @@ model MentorProfile {
   rating         Float                @default(0.0)
   totalSessions  Int                  @default(0) @map("total_sessions")
   bio            String?              @db.Text
-  isActive       Boolean              @default(true) @map("is_active")
+  isActive       Boolean              @default(false) @map("is_active")
+  authorityState MentorAuthorityState @default(PENDING) @map("authority_state")
+  approvedAt     DateTime?            @map("approved_at")
+  approvedByUserId String?            @map("approved_by_user_id") @db.Uuid
+  authorityChangedAt DateTime         @default(now()) @map("authority_changed_at")
+  authorityChangedByUserId String?    @map("authority_changed_by_user_id") @db.Uuid
+  authorityReason String?             @map("authority_reason") @db.VarChar(500)
   createdAt      DateTime             @default(now()) @map("created_at")
   updatedAt      DateTime             @updatedAt @map("updated_at")
 
@@ -1456,6 +1656,7 @@ model LiveSession {
   id              String            @id @default(uuid()) @db.Uuid
   mentorId        String            @map("mentor_id") @db.Uuid
   candidateId     String            @map("candidate_id") @db.Uuid
+  interviewId     String?           @map("interview_id") @db.Uuid
   scheduledAt     DateTime          @map("scheduled_at")
   status          LiveSessionStatus @default(SCHEDULED)
   roomToken       String?           @map("room_token") @db.VarChar(500)
@@ -1470,9 +1671,11 @@ model LiveSession {
 
   mentor          MentorProfile     @relation(fields: [mentorId], references: [id], onDelete: Cascade)
   candidate       User              @relation("CandidateUserSessions", fields: [candidateId], references: [id], onDelete: Cascade)
+  interview       InterviewSession? @relation(fields: [interviewId], references: [id], onDelete: SetNull)
 
   @@index([mentorId, scheduledAt])
   @@index([candidateId])
+  @@index([interviewId])
   @@index([status])
   @@map("live_sessions")
 }
@@ -1724,3 +1927,425 @@ model NotificationPreference {
   @@map("notification_preferences")
 }
 
+// ----------------------------------------------------
+// QUESTION BANK MODELS & ENUMS
+// ----------------------------------------------------
+
+enum QuestionPublicationStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum QuestionAnswerAuthority {
+  CANONICAL
+  REFERENCE
+  FRAMEWORK
+}
+
+enum QuestionFeedbackReason {
+  TYPO_ERROR
+  INCORRECT_ANSWER
+  POOR_EXPLANATION
+  OUTDATED_CONTENT
+  OTHER
+}
+
+enum QuestionFeedbackStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+model QuestionBankQuestion {
+  id                 String                    @id @default(uuid()) @db.Uuid
+  slug               String                    @unique @db.VarChar(120)
+  title              String                    @db.VarChar(255)
+  questionBody       String                    @map("question_body") @db.Text
+  questionType       String                    @map("question_type") @db.VarChar(50)
+  difficulty         Int                       @default(3)
+  language           String                    @default("vi") @db.VarChar(10)
+  status             QuestionPublicationStatus @default(DRAFT)
+  minimumEntitlement String?                   @map("minimum_entitlement") @db.VarChar(50)
+  currentAnswerId    String?                   @map("current_answer_id") @db.Uuid
+  publishedAt        DateTime?                 @map("published_at")
+  archivedAt         DateTime?                 @map("archived_at")
+  createdById        String                    @map("created_by_id") @db.Uuid
+  jobRoleId          String?                   @map("job_role_id") @db.Uuid
+  seniorityLevelId   String?                   @map("seniority_level_id") @db.Uuid
+  createdAt          DateTime                  @default(now()) @map("created_at")
+  updatedAt          DateTime                  @updatedAt @map("updated_at")
+
+  createdBy          User                      @relation("CreatedQuestions", fields: [createdById], references: [id], onDelete: Restrict)
+  jobRole            JobRole?                  @relation(fields: [jobRoleId], references: [id], onDelete: SetNull)
+  seniorityLevel     SeniorityLevel?           @relation(fields: [seniorityLevelId], references: [id], onDelete: SetNull)
+  technologies       QuestionBankTechnology[]
+  answers            QuestionBankAnswer[]
+  accessGrants       QuestionAnswerAccessGrant[]
+  bookmarks          QuestionBookmark[]
+  feedbacks          QuestionFeedback[]
+
+  @@index([status, publishedAt])
+  @@index([questionType, difficulty, language])
+  @@index([jobRoleId])
+  @@index([seniorityLevelId])
+  @@map("question_bank_questions")
+}
+
+model QuestionBankTechnology {
+  questionId   String               @map("question_id") @db.Uuid
+  technologyId String               @map("technology_id") @db.Uuid
+  createdAt    DateTime             @default(now()) @map("created_at")
+
+  question     QuestionBankQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  technology   Technology           @relation(fields: [technologyId], references: [id], onDelete: Restrict)
+
+  @@id([questionId, technologyId])
+  @@map("question_bank_technologies")
+}
+
+model QuestionBankAnswer {
+  id              String                  @id @default(uuid()) @db.Uuid
+  questionId      String                  @map("question_id") @db.Uuid
+  version         Int                     @default(1)
+  authority       QuestionAnswerAuthority @default(REFERENCE)
+  answerBody      String                  @map("answer_body") @db.Text
+  explanationBody String?                 @map("explanation_body") @db.Text
+  rubric          Json?
+  commonMistakes  Json?                   @map("common_mistakes")
+  sourceType      String                  @default("curated") @map("source_type") @db.VarChar(50)
+  reviewedById    String?                 @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?               @map("reviewed_at")
+  reviewNotes     String?                 @map("review_notes") @db.Text
+  isPublished     Boolean                 @default(false) @map("is_published")
+  createdAt       DateTime                @default(now()) @map("created_at")
+  updatedAt       DateTime                @updatedAt @map("updated_at")
+
+  question        QuestionBankQuestion    @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  reviewedBy      User?                   @relation("ReviewedAnswers", fields: [reviewedById], references: [id], onDelete: SetNull)
+  accessGrants    QuestionAnswerAccessGrant[]
+
+  @@unique([questionId, version])
+  @@index([questionId, isPublished])
+  @@map("question_bank_answers")
+}
+
+model QuestionAnswerAccessGrant {
+  id              String               @id @default(uuid()) @db.Uuid
+  userId          String               @map("user_id") @db.Uuid
+  questionId      String               @map("question_id") @db.Uuid
+  answerId        String               @map("answer_id") @db.Uuid
+  accessPeriodKey String               @map("access_period_key") @db.VarChar(100)
+  idempotencyKey  String?              @map("idempotency_key") @db.VarChar(100)
+  entitlementKey  String               @default("question_bank.answer_reveals") @map("entitlement_key") @db.VarChar(50)
+  policyVersion   String               @default("v1") @map("policy_version") @db.VarChar(20)
+  grantedAt       DateTime             @default(now()) @map("granted_at")
+  lastAccessedAt  DateTime             @default(now()) @map("last_accessed_at")
+
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question        QuestionBankQuestion @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  answer          QuestionBankAnswer   @relation(fields: [answerId], references: [id], onDelete: Restrict)
+  usageLedger     QuestionBankUsageLedger?
+
+  @@unique([userId, questionId, answerId, accessPeriodKey])
+  @@unique([userId, idempotencyKey])
+  @@index([userId, accessPeriodKey])
+  @@map("question_answer_access_grants")
+}
+
+model QuestionBankUsageLedger {
+  id              String                    @id @default(uuid()) @db.Uuid
+  userId          String                    @map("user_id") @db.Uuid
+  entitlementKey  String                    @default("question_bank.answer_reveals") @map("entitlement_key") @db.VarChar(50)
+  accessPeriodKey String                    @map("access_period_key") @db.VarChar(100)
+  quantity        Int                       @default(1)
+  grantId         String                    @unique @map("grant_id") @db.Uuid
+  recordedAt      DateTime                  @default(now()) @map("recorded_at")
+
+  user            User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grant           QuestionAnswerAccessGrant @relation(fields: [grantId], references: [id], onDelete: Restrict)
+
+  @@index([userId, entitlementKey, accessPeriodKey])
+  @@map("question_bank_usage_ledgers")
+}
+
+model QuestionBookmark {
+  userId     String               @map("user_id") @db.Uuid
+  questionId String               @map("question_id") @db.Uuid
+  createdAt  DateTime             @default(now()) @map("created_at")
+
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   QuestionBankQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@id([userId, questionId])
+  @@index([userId])
+  @@map("question_bookmarks")
+}
+model QuestionFeedback {
+  id         String                 @id @default(uuid()) @db.Uuid
+  userId     String                 @map("user_id") @db.Uuid
+  questionId String                 @map("question_id") @db.Uuid
+  reason     QuestionFeedbackReason @default(OTHER)
+  details    String?                @db.Text
+  status     QuestionFeedbackStatus @default(PENDING)
+  createdAt  DateTime               @default(now()) @map("created_at")
+  updatedAt  DateTime               @updatedAt @map("updated_at")
+
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   QuestionBankQuestion   @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([questionId])
+  @@index([status])
+  @@map("question_feedbacks")
+}
+
+// ============================================================================
+// Feature 017 — AnyF Engineering Arena Persistence Models
+// ============================================================================
+
+enum ArenaChallengeStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ArenaChallengeDomain {
+  BACKEND
+  FRONTEND
+  FULLSTACK
+  DEVOPS
+  SECURITY
+  DATA_ENGINEERING
+}
+
+enum ArenaChallengeCategory {
+  BUG_FIX
+  REFACTORING
+  FEATURE_IMPLEMENTATION
+  PERFORMANCE_OPTIMIZATION
+  SECURITY_REMEDIATION
+}
+
+enum ArenaSessionLifecycleState {
+  CREATED
+  PROVISIONING
+  READY
+  ACTIVE
+  SUBMITTING
+  EVALUATING
+  COMPLETED
+  CANCELLED
+  FAILED
+  EXPIRED
+}
+
+enum ArenaRunStatusEnum {
+  QUEUED
+  RUNNING
+  PASSED
+  FAILED
+  TIMED_OUT
+  SYSTEM_ERROR
+}
+
+enum ArenaActionEventTypeEnum {
+  CHALLENGE_OPENED
+  COMMAND_REQUESTED
+  TEST_RUN_COMPLETED
+  FILE_CHANGED
+  AI_QUESTION_SENT
+  AI_RESPONSE_RECEIVED
+  FINAL_SUBMISSION_CREATED
+}
+
+enum ArenaAiAssistanceModeEnum {
+  DISABLED
+  HINTS_ONLY
+  EXPLANATION
+  PAIR_PROGRAMMING
+}
+
+enum ArenaSandboxModeEnum {
+  STAGE_A_MOCK
+  STAGE_B_CONTAINER
+  STAGE_C_MICROVM
+}
+
+model EngineeringChallenge {
+  id               String                 @id @default(uuid()) @db.Uuid
+  slug             String                 @unique @db.VarChar(100)
+  title            String                 @db.VarChar(200)
+  domain           ArenaChallengeDomain   @default(BACKEND)
+  category         ArenaChallengeCategory @default(BUG_FIX)
+  difficulty       Int                    @default(3)
+  estimatedMinutes Int                    @default(45) @map("estimated_minutes")
+  status           ArenaChallengeStatus   @default(DRAFT)
+  createdById      String?                @map("created_by_id") @db.Uuid
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  createdBy        User?                  @relation("ArenaCreatedChallenges", fields: [createdById], references: [id], onDelete: SetNull)
+  versions         EngineeringChallengeVersion[]
+
+  @@index([status])
+  @@index([domain])
+  @@index([category])
+  @@map("engineering_challenges")
+}
+
+model EngineeringChallengeVersion {
+  id                   String               @id @default(uuid()) @db.Uuid
+  challengeId          String               @map("challenge_id") @db.Uuid
+  versionNumber        Int                  @default(1) @map("version_number")
+  manifestJson         Json                 @map("manifest_json")
+  manifestSchemaVersion String              @default("1.0") @map("manifest_schema_version") @db.VarChar(20)
+  sourceArchiveRef     String?              @map("source_archive_ref") @db.VarChar(500)
+  sourceArchiveHash    String?              @map("source_archive_hash") @db.VarChar(128)
+  runtimeImageDigest   String?              @map("runtime_image_digest") @db.VarChar(255)
+  rubricVersion        String               @default("1.0") @map("rubric_version") @db.VarChar(20)
+  scorePolicyVersion   String               @default("1.0") @map("score_policy_version") @db.VarChar(20)
+  validatorStatus      String               @default("VALID") @map("validator_status") @db.VarChar(50)
+  validationSummary    String?              @map("validation_summary") @db.Text
+  activatedAt          DateTime?            @map("activated_at")
+  deprecatedAt         DateTime?            @map("deprecated_at")
+  createdAt            DateTime             @default(now()) @map("created_at")
+
+  challenge            EngineeringChallenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  sessions             ArenaSession[]
+
+  @@unique([challengeId, versionNumber])
+  @@index([challengeId])
+  @@map("engineering_challenge_versions")
+}
+
+model ArenaSession {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  userId             String                     @map("user_id") @db.Uuid
+  challengeVersionId String                     @map("challenge_version_id") @db.Uuid
+  state              ArenaSessionLifecycleState @default(CREATED)
+  workspaceHandle    String                     @unique @map("workspace_handle") @db.VarChar(255)
+  sandboxMode        ArenaSandboxModeEnum       @default(STAGE_A_MOCK) @map("sandbox_mode")
+  aiAssistanceMode   ArenaAiAssistanceModeEnum  @default(HINTS_ONLY) @map("ai_assistance_mode")
+  startedAt          DateTime                   @default(now()) @map("started_at")
+  submittedAt        DateTime?                  @map("submitted_at")
+  completedAt        DateTime?                  @map("completed_at")
+  expiresAt          DateTime?                  @map("expires_at")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+
+  user               User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeVersion   EngineeringChallengeVersion @relation(fields: [challengeVersionId], references: [id], onDelete: Restrict)
+  actionEvents       ArenaActionEvent[]
+  executionRuns      ArenaExecutionRun[]
+  submissions        ArenaSubmission[]
+
+  @@index([userId])
+  @@index([state])
+  @@index([challengeVersionId])
+  @@map("arena_sessions")
+}
+
+model ArenaActionEvent {
+  id          String                   @id @default(uuid()) @db.Uuid
+  sessionId   String                   @map("session_id") @db.Uuid
+  eventType   ArenaActionEventTypeEnum @map("event_type")
+  occurredAt  DateTime                 @default(now()) @map("occurred_at")
+  sequence    Int                      @default(0)
+  metadata    Json                     @default("{}")
+  artifactRef String?                  @map("artifact_ref") @db.VarChar(500)
+  traceId     String?                  @map("trace_id") @db.VarChar(100)
+
+  session     ArenaSession             @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, sequence])
+  @@map("arena_action_events")
+}
+
+model ArenaExecutionRun {
+  id                   String             @id @default(uuid()) @db.Uuid
+  sessionId            String             @map("session_id") @db.Uuid
+  idempotencyKey       String?            @unique @map("idempotency_key") @db.VarChar(100)
+  commandId            String             @map("command_id") @db.VarChar(50)
+  status               ArenaRunStatusEnum @default(QUEUED)
+  exitCode             Int?               @map("exit_code")
+  stdout               String             @default("") @db.Text
+  stderr               String             @default("") @db.Text
+  durationMs           Int                @default(0) @map("duration_ms")
+  testsTotal           Int                @default(0) @map("tests_total")
+  testsPassed          Int                @default(0) @map("tests_passed")
+  testsFailed          Int                @default(0) @map("tests_failed")
+  testResultsJson      Json               @default("[]") @map("test_results_json")
+  workspaceSnapshotHash String?           @map("workspace_snapshot_hash") @db.VarChar(128)
+  createdAt            DateTime           @default(now()) @map("created_at")
+
+  session              ArenaSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@map("arena_execution_runs")
+}
+
+model ArenaSubmission {
+  id              String            @id @default(uuid()) @db.Uuid
+  sessionId       String            @map("session_id") @db.Uuid
+  snapshotHash    String            @map("snapshot_hash") @db.VarChar(128)
+  diffArtifactRef String?           @map("diff_artifact_ref") @db.VarChar(500)
+  explanation     String?           @db.Text
+  version         Int               @default(1)
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  session         ArenaSession      @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  evaluations     ArenaEvaluation[]
+
+  @@index([sessionId])
+  @@map("arena_submissions")
+}
+
+model ArenaEvaluation {
+  id                     String               @id @default(uuid()) @db.Uuid
+  submissionId           String               @map("submission_id") @db.Uuid
+  objectiveScore         Float                @default(0) @map("objective_score")
+  rubricScore            Float                @default(0) @map("rubric_score")
+  finalScore             Float                @default(0) @map("final_score")
+  scoreCapApplied        Boolean              @default(false) @map("score_cap_applied")
+  scoreCapReason         String?              @map("score_cap_reason") @db.VarChar(255)
+  scoreBreakdownJson     Json                 @map("score_breakdown_json")
+  aiFeedbackSummary      String               @default("") @map("ai_feedback_summary") @db.Text
+  rubricFeedbackJson     Json                 @default("[]") @map("rubric_feedback_json")
+  rubricVersion          String               @default("1.0") @map("rubric_version") @db.VarChar(20)
+  evaluatorPromptVersion String               @default("1.0") @map("evaluator_prompt_version") @db.VarChar(50)
+  aiModel                String?              @map("ai_model") @db.VarChar(100)
+  confidence             Float                @default(1.0)
+  supersedesEvaluationId String?              @map("supersedes_evaluation_id") @db.Uuid
+  createdAt              DateTime             @default(now()) @map("created_at")
+
+  submission             ArenaSubmission      @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  skillEvidences         ArenaSkillEvidence[]
+
+  @@index([submissionId])
+  @@map("arena_evaluations")
+}
+
+model ArenaSkillEvidence {
+  id                   String          @id @default(uuid()) @db.Uuid
+  evaluationId         String          @map("evaluation_id") @db.Uuid
+  userId               String          @map("user_id") @db.Uuid
+  taxonomyKey          String          @map("taxonomy_key") @db.VarChar(100)
+  evidenceType         String          @map("evidence_type") @db.VarChar(50)
+  scoreContribution    Float           @map("score_contribution")
+  confidence           Float           @default(1.0)
+  sourceSummary        String          @map("source_summary") @db.VarChar(500)
+  appliedToSkillGraphAt DateTime?      @map("applied_to_skill_graph_at")
+  createdAt            DateTime        @default(now()) @map("created_at")
+
+  evaluation           ArenaEvaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([evaluationId])
+  @@index([taxonomyKey])
+  @@map("arena_skill_evidences")
+}

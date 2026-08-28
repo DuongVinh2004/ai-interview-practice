@@ -13,5 +13,8 @@ description = "Allow mock secrets in spec and test files"
 paths = [
   '''(?:^|/)apps/api/src/modules/billing/billing\.service\.spec\.ts$''',
   '''(?:^|/)apps/api/src/modules/billing/__tests__/stripe-webhook\.spec\.ts$''',
-  '''(?:^|/)apps/api/src/modules/notifications/push-notification\.service\.ts$'''
+  '''(?:^|/)apps/api/src/modules/notifications/push-notification\.service\.ts$''',
+  '''(?:^|/)apps/api/src/modules/platform/config/env\.validation\.spec\.ts$''',
+  '''(?:^|/)apps/api/src/modules/engineering-arena/validator/challenge-validator\.service\.spec\.ts$''',
+  '''(?:^|/)docs/features/F015-QUESTION-BANK\.md$'''
 ]

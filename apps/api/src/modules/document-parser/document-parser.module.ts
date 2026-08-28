@@ -6,9 +6,10 @@ import { CvAnalyzerService } from './services/cv-analyzer.service';
 import { JdAnalyzerService } from './services/jd-analyzer.service';
 import { BlueprintGeneratorService } from './services/blueprint-generator.service';
 import { PlatformModule } from '../platform/platform.module';
+import { TaxonomyModule } from '../taxonomy/taxonomy.module';
 
 @Module({
-  imports: [PlatformModule],
+  imports: [PlatformModule, TaxonomyModule],
   controllers: [DocumentParserController],
   providers: [
     DocumentParserService,

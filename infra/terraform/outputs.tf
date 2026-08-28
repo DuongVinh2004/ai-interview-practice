@@ -29,3 +29,7 @@ output "secrets_manager_arn" {
   description = "AWS Secrets Manager ARN for application secrets"
   value       = module.secrets.secrets_arn
 }
+output "monitoring_security_group_id" {
+  description = "Security group identity for approved private metrics collectors"
+  value       = module.network.monitoring_security_group_id
+}

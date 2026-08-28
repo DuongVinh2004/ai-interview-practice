@@ -14,7 +14,7 @@ export interface CacheLookupResult<T> {
 @Injectable()
 export class SemanticCacheService {
   private readonly logger = new Logger(SemanticCacheService.name);
-  private readonly defaultThreshold = 0.95;
+  private readonly defaultThreshold = 0.92;
   private readonly isEnabled: boolean;
   private cacheHitsTotal = 0;
   private cacheMissesTotal = 0;
@@ -26,6 +26,10 @@ export class SemanticCacheService {
     @Optional() private readonly metricsService?: MetricsService,
   ) {
     this.isEnabled = this.configService.get<boolean>('features.semanticCache', false);
+  }
+
+  getDefaultThreshold(): number {
+    return this.defaultThreshold;
   }
 
   isCacheEnabled(): boolean {

@@ -97,6 +97,31 @@ export const UserDataExportSchema = z.object({
     )
     .optional()
     .default([]),
+  voiceSessions: z
+    .array(
+      z.object({
+        id: z.string(),
+        interviewId: z.string(),
+        status: z.string(),
+        startedAt: z.string(),
+        endedAt: z.string().nullable(),
+        totalDuration: z.number().nullable().optional(),
+        transcripts: z.array(
+          z.object({
+            id: z.string(),
+            speaker: z.string(),
+            text: z.string(),
+            startTimeMs: z.number(),
+            endTimeMs: z.number(),
+            isFinal: z.boolean(),
+            turnNumber: z.number().nullable(),
+            createdAt: z.string(),
+          }),
+        ),
+      }),
+    )
+    .optional()
+    .default([]),
   summary: z.object({
     totalSessionsCount: z.number().int().min(0),
     completedSessionsCount: z.number().int().min(0),
