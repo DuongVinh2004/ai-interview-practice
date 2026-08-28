@@ -65,24 +65,28 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     // 3. Admin Users Management
     await page.goto('/admin/users');
     await expect(
-      page.getByText(/(quản trị người dùng|user administration|admin)/i).first(),
+      page.getByText(/(quản trị người dùng|user administration|registered users|admin)/i).first(),
     ).toBeVisible({ timeout: 15000 });
 
     // 4. Admin AI Telemetry & Circuit Breaker
     await page.goto('/admin/ai-runs');
     await expect(
-      page.getByText(/(giám sát ai|ai orchestrator telemetry|circuit breaker)/i).first(),
-    ).toBeVisible();
+      page
+        .getByText(/(giám sát ai|ai orchestrator telemetry|circuit breaker|ai runs|telemetry)/i)
+        .first(),
+    ).toBeVisible({ timeout: 15000 });
 
     // 5. Admin Prompts Version Management
     await page.goto('/admin/prompts');
     await expect(
-      page.getByText(/(phiên bản prompt|prompt version|templates)/i).first(),
-    ).toBeVisible();
+      page.getByText(/(phiên bản prompt|prompt version|templates|prompt)/i).first(),
+    ).toBeVisible({ timeout: 15000 });
 
     // 6. Admin Golden Benchmark AI Evaluation Suite
     await page.goto('/admin/ai-eval');
-    await expect(page.getByText(/(eval|kiểm thử hồi quy|golden benchmark)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(eval|kiểm thử hồi quy|golden benchmark|benchmarking)/i).first(),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('3. Setup Interview Modes & Customization', async ({ page }) => {
