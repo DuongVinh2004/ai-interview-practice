@@ -1,6 +1,14 @@
 import { test, expect } from '@playwright/test';
 
 test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/login');
+    await page.evaluate(() => {
+      localStorage.clear();
+      sessionStorage.clear();
+    });
+  });
+
   test('1. Candidate Auth, Navigation & Core Modules Walkthrough', async ({ page }) => {
     // 1. Visit Login
     await page.goto('/login');
@@ -114,7 +122,7 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     await page.click(
       'button:has-text("Phỏng vấn Toàn diện"), button:has-text("Full Mock Interview")',
     );
-    await page.click('button:has-text("TypeScript"), button:has-text("React")');
+    await page.click('button:has-text("TypeScript")');
     await page.click(
       'button:has-text("Bắt Đầu Phỏng Vấn Ngay"), button:has-text("Begin 5-Question Interview"), button:has-text("Bắt đầu")',
     );
