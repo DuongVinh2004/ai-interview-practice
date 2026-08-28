@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { LiveSessionStatus, CompetencyArea } from '../enums';
+import { LiveSessionStatus, CompetencyArea, MentorAuthorityState } from '../enums';
 
 export const MentorAvailabilitySlotSchema = z.object({
   dayOfWeek: z.number().int().min(0).max(6), // 0=Sun, 6=Sat
@@ -18,7 +18,9 @@ export const MentorProfileSchema = z.object({
   rating: z.number().min(0).max(5),
   totalSessions: z.number().int().min(0),
   bio: z.string().nullable().optional(),
-  isActive: z.boolean().default(true),
+  isActive: z.boolean().default(false),
+  authorityState: z.nativeEnum(MentorAuthorityState).default(MentorAuthorityState.PENDING),
+  approvedAt: z.string().or(z.date()).nullable().optional(),
   availabilities: z.array(MentorAvailabilitySlotSchema).optional(),
   createdAt: z.string().or(z.date()),
   updatedAt: z.string().or(z.date()),
@@ -43,6 +45,7 @@ export type SetAvailabilityDto = z.infer<typeof SetAvailabilitySchema>;
 export const BookSessionSchema = z.object({
   mentorId: z.string().uuid(),
   scheduledAt: z.string().or(z.date()),
+  interviewId: z.string().uuid().optional(),
 });
 
 export type BookSessionDto = z.infer<typeof BookSessionSchema>;
@@ -52,6 +55,7 @@ export const LiveSessionSchema = z.object({
   mentorId: z.string().uuid(),
   mentorName: z.string().optional(),
   candidateId: z.string().uuid(),
+  interviewId: z.string().uuid().nullable().optional(),
   candidateName: z.string().optional(),
   scheduledAt: z.string().or(z.date()),
   status: z.nativeEnum(LiveSessionStatus),

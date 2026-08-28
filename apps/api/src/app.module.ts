@@ -30,6 +30,9 @@ import { GamificationModule } from './modules/gamification/gamification.module';
 import { NotificationModule } from './modules/notifications/notification.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { EmailModule } from './modules/email/email.module';
+import { InterviewConfigurationModule } from './modules/interview-configuration/interview-configuration.module';
+import { QuestionBankModule } from './modules/question-bank/question-bank.module';
+import { EngineeringArenaModule } from './modules/engineering-arena/engineering-arena.module';
 import { AllExceptionsFilter } from './modules/platform/filters/all-exceptions.filter';
 import { TransformInterceptor } from './modules/platform/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './modules/platform/interceptors/logging.interceptor';
@@ -57,6 +60,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AudioOrchestratorModule,
     HistoryReportModule,
     InterviewModule,
+    InterviewConfigurationModule,
     EvaluationModule,
     LearningPathModule,
     ShareModule,
@@ -78,6 +82,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     NotificationModule,
     StorageModule,
     EmailModule,
+    QuestionBankModule,
+    EngineeringArenaModule,
   ],
   providers: [
     {

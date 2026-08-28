@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { CardType } from '@ai-interview/contracts';
 import { playSFX } from '../../lib/sfx-engine';
+import { useI18nStore } from '../../stores/i18n.store';
 import { Sparkles, RotateCcw, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export interface SwipeCardProps {
@@ -23,6 +24,8 @@ export function SwipeCard({
   onSwipeRight,
   onSwipeLeft,
 }: SwipeCardProps) {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-12, 12]);
   const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0.6, 0.9, 1, 0.9, 0.6]);
@@ -68,7 +71,7 @@ export function SwipeCard({
           style={{ opacity: rightIndicatorOpacity }}
           className="absolute top-4 right-4 bg-emerald-500 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md flex items-center gap-1 pointer-events-none z-20"
         >
-          <span>Nhớ tốt (Good)</span>
+          <span>{isVi ? 'Nhớ tốt (Good)' : 'Good (Remembered)'}</span>
           <ArrowRight className="w-4 h-4" />
         </motion.div>
 
@@ -77,7 +80,7 @@ export function SwipeCard({
           className="absolute top-4 left-4 bg-rose-500 text-white px-3 py-1.5 rounded-full font-bold text-xs shadow-md flex items-center gap-1 pointer-events-none z-20"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Chưa nhớ (Again)</span>
+          <span>{isVi ? 'Chưa nhớ (Again)' : 'Again (Review)'}</span>
         </motion.div>
 
         {/* Top Meta */}
@@ -87,7 +90,15 @@ export function SwipeCard({
           </span>
           <span className="text-[11px] font-medium text-slate-400 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-amber-500" />
-            <span>{isFlipped ? 'Đáp án (Mặt sau)' : 'Câu hỏi (Mặt trước)'}</span>
+            <span>
+              {isFlipped
+                ? isVi
+                  ? 'Đáp án (Mặt sau)'
+                  : 'Back (Answer)'
+                : isVi
+                  ? 'Câu hỏi (Mặt trước)'
+                  : 'Front (Question)'}
+            </span>
           </span>
         </div>
 
@@ -111,8 +122,12 @@ export function SwipeCard({
           <RotateCcw className="w-3.5 h-3.5" />
           <span>
             {isFlipped
-              ? 'Chạm để xem lại câu hỏi • Vuốt trái / phải để chấm điểm'
-              : 'Chạm để lật đáp án • Vuốt trái (Chưa nhớ) / Vuốt phải (Nhớ tốt)'}
+              ? isVi
+                ? 'Chạm để xem lại câu hỏi • Vuốt trái / phải để chấm điểm'
+                : 'Tap to see question • Swipe left / right to rate'
+              : isVi
+                ? 'Chạm để lật đáp án • Vuốt trái (Chưa nhớ) / Vuốt phải (Nhớ tốt)'
+                : 'Tap to flip answer • Swipe left (Again) / right (Good)'}
           </span>
         </div>
       </motion.div>

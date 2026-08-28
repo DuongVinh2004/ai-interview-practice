@@ -97,9 +97,9 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
 
       const [iv, tag, ciphertext] = encrypted.split(':');
       const tamperedTag = `${tag.slice(0, -2)}${tag.slice(-2) === '00' ? '01' : '00'}`;
-      expect(
+      expect(() =>
         TotpUtil.decryptSecret(`${iv}:${tamperedTag}:${ciphertext}`, 'unit-test-encryption-key'),
-      ).not.toBe(secret);
+      ).toThrow();
     });
   });
 
@@ -134,11 +134,12 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
     it('enables MFA and generates 8 hashed recovery codes on valid TOTP code', async () => {
       const secret = TotpUtil.generateSecret(20);
       const validToken = TotpUtil.generateToken(secret);
+      const encryptedSecret = TotpUtil.encryptSecret(secret, 'test-secret');
 
       const user = {
         id: 'user-1',
         email: 'candidate@example.com',
-        mfaSecret: secret,
+        mfaSecret: encryptedSecret,
         mfaEnabled: false,
         tokenVersion: 0,
         role: UserRole.CANDIDATE,
@@ -171,11 +172,12 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
 
     it('rejects invalid TOTP verification code', async () => {
       const secret = TotpUtil.generateSecret(20);
+      const encryptedSecret = TotpUtil.encryptSecret(secret, 'test-secret');
 
       prisma.user.findUnique.mockResolvedValue({
         id: 'user-1',
         email: 'candidate@example.com',
-        mfaSecret: secret,
+        mfaSecret: encryptedSecret,
         mfaEnabled: false,
       });
 
@@ -211,6 +213,7 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
     it('completes login with valid TOTP code', async () => {
       const secret = TotpUtil.generateSecret(20);
       const validCode = TotpUtil.generateToken(secret);
+      const encryptedSecret = TotpUtil.encryptSecret(secret, 'test-secret');
 
       jwtService.verify.mockReturnValue({
         sub: 'user-1',
@@ -223,7 +226,7 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
         role: UserRole.ADMIN,
         status: UserStatus.ACTIVE,
         mfaEnabled: true,
-        mfaSecret: secret,
+        mfaSecret: encryptedSecret,
         createdAt: new Date('2026-08-01T00:00:00Z'),
         profile: { fullName: 'Admin' },
       });
@@ -299,12 +302,13 @@ describe('AuthService MFA & Recovery Codes (Epic 8)', () => {
       const passwordHash = await bcrypt.hash('Password123', 10);
       const secret = TotpUtil.generateSecret(20);
       const validCode = TotpUtil.generateToken(secret);
+      const encryptedSecret = TotpUtil.encryptSecret(secret, 'test-secret');
 
       prisma.user.findUnique.mockResolvedValue({
         id: 'user-1',
         passwordHash,
         mfaEnabled: true,
-        mfaSecret: secret,
+        mfaSecret: encryptedSecret,
         recoveryCodes: [],
       });
 

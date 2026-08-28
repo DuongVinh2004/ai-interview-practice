@@ -28,7 +28,8 @@ export function MentorFeedbackList({
   feedbackList,
   onFeedbackAdded,
 }: MentorFeedbackListProps) {
-  const { t } = useI18nStore();
+  const { language, t } = useI18nStore();
+  const isVi = language === 'vi';
   const [mentorName, setMentorName] = useState('');
   const [comment, setComment] = useState('');
   const [turnNumber, setTurnNumber] = useState<number | ''>('');
@@ -59,23 +60,13 @@ export function MentorFeedbackList({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage(null);
-    setSuccessMessage(null);
-
-    if (!mentorName.trim()) {
-      setErrorMessage('Please enter your mentor name or title.');
-      return;
-    }
-    if (!comment.trim() || comment.trim().length < 5) {
-      setErrorMessage('Comment must be at least 5 characters long.');
-      return;
-    }
-
+    if (!mentorName.trim() || !comment.trim()) return;
     addFeedbackMutation.mutate();
   };
 
   return (
     <div className="space-y-6" data-testid="mentor-feedback-list">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
           <UserCheck className="h-5 w-5 text-emerald-600" />
@@ -91,7 +82,9 @@ export function MentorFeedbackList({
       {/* Existing Feedbacks */}
       {feedbackList.length === 0 ? (
         <div className="p-6 text-center bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-500">
-          No mentor notes submitted yet. Use the review form below to leave professional feedback!
+          {isVi
+            ? 'Chưa có nhận xét nào từ chuyên gia. Hãy để lại đánh giá chuyên môn vào biểu mẫu bên dưới!'
+            : 'No mentor notes submitted yet. Use the review form below to leave professional feedback!'}
         </div>
       ) : (
         <div className="space-y-3">
@@ -105,7 +98,7 @@ export function MentorFeedbackList({
                   <span className="font-bold text-xs text-slate-900">{item.mentorName}</span>
                   {item.turnNumber && (
                     <span className="bg-emerald-50 text-emerald-700 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-emerald-200">
-                      Turn #{item.turnNumber}
+                      {isVi ? `Câu hỏi #${item.turnNumber}` : `Turn #${item.turnNumber}`}
                     </span>
                   )}
                 </div>
@@ -139,7 +132,11 @@ export function MentorFeedbackList({
             <Input
               value={mentorName}
               onChange={e => setMentorName(e.target.value)}
-              placeholder="e.g. Alex Nguyen (Staff Backend Engineer)"
+              placeholder={
+                isVi
+                  ? 'VD: Alex Nguyen (Staff Backend Engineer)'
+                  : 'e.g. Alex Nguyen (Staff Backend Engineer)'
+              }
               required
             />
           </div>
@@ -153,12 +150,14 @@ export function MentorFeedbackList({
               onChange={e => setTurnNumber(e.target.value === '' ? '' : Number(e.target.value))}
               className="w-full text-xs bg-white border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 outline-none"
             >
-              <option value="">General Session Feedback</option>
-              <option value="1">Question 1</option>
-              <option value="2">Question 2</option>
-              <option value="3">Question 3</option>
-              <option value="4">Question 4</option>
-              <option value="5">Question 5</option>
+              <option value="">
+                {isVi ? 'Đánh giá chung toàn bộ phiên' : 'General Session Feedback'}
+              </option>
+              <option value="1">{isVi ? 'Câu hỏi 1' : 'Question 1'}</option>
+              <option value="2">{isVi ? 'Câu hỏi 2' : 'Question 2'}</option>
+              <option value="3">{isVi ? 'Câu hỏi 3' : 'Question 3'}</option>
+              <option value="4">{isVi ? 'Câu hỏi 4' : 'Question 4'}</option>
+              <option value="5">{isVi ? 'Câu hỏi 5' : 'Question 5'}</option>
             </select>
           </div>
         </div>
@@ -171,7 +170,11 @@ export function MentorFeedbackList({
             value={comment}
             onChange={e => setComment(e.target.value)}
             rows={3}
-            placeholder="Share technical insights, system design suggestions, or code trade-offs..."
+            placeholder={
+              isVi
+                ? 'Chia sẻ góc nhìn kỹ thuật, gợi ý thiết kế hệ thống hoặc đánh đổi mã nguồn...'
+                : 'Share technical insights, system design suggestions, or code trade-offs...'
+            }
             required
           />
         </div>

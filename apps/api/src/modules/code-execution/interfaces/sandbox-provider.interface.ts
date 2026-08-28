@@ -7,5 +7,6 @@ export interface SandboxProvider {
     sourceCode: string,
     testCases?: TestCaseDto[],
     customInput?: string,
+    compilerOptions?: string,
   ): Promise<ExecuteCodeResponse>;
 }

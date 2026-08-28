@@ -16,8 +16,11 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Alert } from '../../components/ui/Alert';
 import { useNavigate } from 'react-router-dom';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export const MentorBookingPage: React.FC = () => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selectedExpertise, setSelectedExpertise] = useState<string>('');
@@ -65,7 +68,9 @@ export const MentorBookingPage: React.FC = () => {
       setErrorMessage(null);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to book session');
+      setErrorMessage(
+        err.message || (isVi ? 'Không thể đặt lịch phiên phỏng vấn' : 'Failed to book session'),
+      );
     },
   });
 
@@ -77,7 +82,9 @@ export const MentorBookingPage: React.FC = () => {
     return matchesKeyword;
   });
 
-  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const DAYS = isVi
+    ? ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7']
+    : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8" data-testid="mentor-booking-page">
@@ -86,16 +93,17 @@ export const MentorBookingPage: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-              Human-in-the-Loop
+              {isVi ? 'Đồng hành cùng Chuyên gia' : 'Human-in-the-Loop'}
             </span>
             <span className="text-xs text-slate-400">Track F012</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 mt-1">
-            Book 1-on-1 Mentor Mock Interviews
+            {isVi ? 'Đặt Lịch Phỏng Vấn 1-kèm-1 với Mentor' : 'Book 1-on-1 Mentor Mock Interviews'}
           </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Connect with seasoned tech leads & hiring managers powered by real-time AI Co-Pilot
-            hints.
+            {isVi
+              ? 'Kết nối với các Tech Lead & Trưởng nhóm tuyển dụng dày dặn kinh nghiệm, hỗ trợ gợi ý AI Co-Pilot theo thời gian thực.'
+              : 'Connect with seasoned tech leads & hiring managers powered by real-time AI Co-Pilot hints.'}
           </p>
         </div>
 
@@ -106,7 +114,8 @@ export const MentorBookingPage: React.FC = () => {
             onClick={() => navigate('/mentor/availability')}
             className="gap-1.5"
           >
-            <Clock className="h-4 w-4" /> Mentor Availability Settings
+            <Clock className="h-4 w-4" />
+            <span>{isVi ? 'Cài đặt Lịch Rảnh Mentor' : 'Mentor Availability Settings'}</span>
           </Button>
         </div>
       </div>
@@ -116,7 +125,7 @@ export const MentorBookingPage: React.FC = () => {
           <div className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-emerald-600" />
             <span>
-              Session successfully booked for{' '}
+              {isVi ? 'Đặt lịch thành công vào ' : 'Session successfully booked for '}
               <strong>{new Date(bookedSession.scheduledAt).toLocaleString()}</strong>!
             </span>
           </div>
@@ -126,7 +135,8 @@ export const MentorBookingPage: React.FC = () => {
             onClick={() => navigate(`/mentors/room/${bookedSession.id}`)}
             className="gap-1.5 ml-4"
           >
-            <Video className="h-4 w-4" /> Enter Live Room
+            <Video className="h-4 w-4" />
+            <span>{isVi ? 'Vào phòng phỏng vấn' : 'Enter Live Room'}</span>
           </Button>
         </Alert>
       )}
@@ -141,7 +151,10 @@ export const MentorBookingPage: React.FC = () => {
       {mySessions && mySessions.length > 0 && (
         <div className="bg-gradient-to-r from-slate-900 to-slate-800 text-white rounded-3xl p-6 shadow-md">
           <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Video className="h-5 w-5 text-emerald-400" /> Your Scheduled Live Sessions
+            <Video className="h-5 w-5 text-emerald-400" />
+            <span>
+              {isVi ? 'Các Phiên Phỏng Vấn Trực Tuyến Đã Đặt' : 'Your Scheduled Live Sessions'}
+            </span>
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {mySessions.slice(0, 2).map(s => (
@@ -166,7 +179,8 @@ export const MentorBookingPage: React.FC = () => {
                   className="gap-1.5"
                   data-testid="join-live-room-btn"
                 >
-                  <Video className="h-4 w-4" /> Enter Room
+                  <Video className="h-4 w-4" />
+                  <span>{isVi ? 'Vào phòng' : 'Enter Room'}</span>
                 </Button>
               </div>
             ))}
@@ -180,7 +194,11 @@ export const MentorBookingPage: React.FC = () => {
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
           <Input
             type="text"
-            placeholder="Search by mentor name, skill, or company..."
+            placeholder={
+              isVi
+                ? 'Tìm kiếm theo tên mentor, kỹ năng hoặc công ty...'
+                : 'Search by mentor name, skill, or company...'
+            }
             value={searchKeyword}
             onChange={e => setSearchKeyword(e.target.value)}
             className="pl-10"
@@ -199,7 +217,7 @@ export const MentorBookingPage: React.FC = () => {
                   : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              {exp || 'All Mentors'}
+              {exp || (isVi ? 'Tất cả Mentor' : 'All Mentors')}
             </button>
           ))}
         </div>
@@ -236,7 +254,7 @@ export const MentorBookingPage: React.FC = () => {
                         <Star className="h-3.5 w-3.5 fill-amber-400" />
                         <span>{mentor.rating > 0 ? mentor.rating.toFixed(1) : '5.0'}</span>
                         <span className="text-slate-400 font-normal">
-                          ({mentor.totalSessions} sessions)
+                          ({mentor.totalSessions} {isVi ? 'buổi' : 'sessions'})
                         </span>
                       </div>
                     </div>
@@ -244,7 +262,8 @@ export const MentorBookingPage: React.FC = () => {
                 </div>
 
                 <p className="text-xs text-slate-600 line-clamp-3 mb-4">
-                  {mentor.bio || 'Verified Tech Mentor'}
+                  {mentor.bio ||
+                    (isVi ? 'Chuyên gia Công nghệ Đã Xác Thực' : 'Verified Tech Mentor')}
                 </p>
 
                 {/* Expertise Badges */}
@@ -262,7 +281,9 @@ export const MentorBookingPage: React.FC = () => {
                 {/* Availability Preview */}
                 {mentor.availabilities && mentor.availabilities.length > 0 && (
                   <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-[11px] text-slate-600 space-y-1 mb-4">
-                    <span className="font-bold text-slate-700 block">Weekly Availability:</span>
+                    <span className="font-bold text-slate-700 block">
+                      {isVi ? 'Lịch rảnh hàng tuần:' : 'Weekly Availability:'}
+                    </span>
                     {mentor.availabilities.slice(0, 2).map((slot, idx) => (
                       <div key={idx} className="flex justify-between">
                         <span>{DAYS[slot.dayOfWeek]}</span>
@@ -282,14 +303,17 @@ export const MentorBookingPage: React.FC = () => {
                 className="w-full gap-2 mt-2"
                 data-testid="book-slot-btn"
               >
-                <Calendar className="h-4 w-4" /> Book Session
+                <Calendar className="h-4 w-4" />
+                <span>{isVi ? 'Đặt Lịch Phỏng Vấn' : 'Book Session'}</span>
               </Button>
             </div>
           ))
         ) : (
           <div className="col-span-full py-12 text-center text-slate-400">
             <Users className="h-10 w-10 mx-auto text-slate-300 mb-2" />
-            No mentors found matching your criteria.
+            {isVi
+              ? 'Không tìm thấy mentor phù hợp tiêu chí.'
+              : 'No mentors found matching your criteria.'}
           </div>
         )}
       </div>
@@ -304,9 +328,13 @@ export const MentorBookingPage: React.FC = () => {
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-slate-900">
-                  Book Session with {selectedMentor.fullName}
+                  {isVi
+                    ? `Đặt Lịch cùng ${selectedMentor.fullName}`
+                    : `Book Session with ${selectedMentor.fullName}`}
                 </h3>
-                <p className="text-xs text-slate-500">Select date and time slot</p>
+                <p className="text-xs text-slate-500">
+                  {isVi ? 'Chọn ngày và khung giờ phỏng vấn' : 'Select date and time slot'}
+                </p>
               </div>
               <button
                 onClick={() => setSelectedMentor(null)}
@@ -319,7 +347,7 @@ export const MentorBookingPage: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Select Date
+                  {isVi ? 'Chọn Ngày' : 'Select Date'}
                 </label>
                 <Input
                   type="date"
@@ -332,7 +360,7 @@ export const MentorBookingPage: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-                  Select Time Slot
+                  {isVi ? 'Chọn Khung Giờ' : 'Select Time Slot'}
                 </label>
                 <select
                   value={selectedTime}
@@ -351,7 +379,7 @@ export const MentorBookingPage: React.FC = () => {
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
               <Button variant="ghost" size="md" onClick={() => setSelectedMentor(null)}>
-                Cancel
+                {isVi ? 'Hủy' : 'Cancel'}
               </Button>
               <Button
                 variant="primary"
@@ -360,7 +388,13 @@ export const MentorBookingPage: React.FC = () => {
                 disabled={bookMutation.isPending}
                 data-testid="confirm-booking-btn"
               >
-                {bookMutation.isPending ? 'Confirming...' : 'Confirm Booking'}
+                {bookMutation.isPending
+                  ? isVi
+                    ? 'Đang xác nhận...'
+                    : 'Confirming...'
+                  : isVi
+                    ? 'Xác Nhận Đặt Lịch'
+                    : 'Confirm Booking'}
               </Button>
             </div>
           </div>

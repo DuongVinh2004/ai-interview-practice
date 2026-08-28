@@ -9,6 +9,7 @@ import {
   StarEvaluationReport,
 } from '@ai-interview/contracts';
 import { StarRubric } from '../../evaluation/rubrics/star-rubric';
+import { MentorAuthorityPolicy } from '../../mentor/policies/mentor-authority.policy';
 
 export interface AnalyzeStarInput {
   sessionId: string;
@@ -22,60 +23,58 @@ export interface AnalyzeStarInput {
 export class BehavioralService {
   private readonly logger = new Logger(BehavioralService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly mentorAuthorityPolicy: MentorAuthorityPolicy,
+  ) {}
 
   async analyzeStar(
     input: AnalyzeStarInput,
-    userId?: string,
-    userRole?: UserRole,
+    userId: string,
+    userRole: UserRole,
   ): Promise<AnalyzeStarResponse> {
-    if (userId && input.sessionId) {
-      const session = await this.prisma.interviewSession.findUnique({
-        where: { id: input.sessionId },
-        select: { id: true, userId: true },
-      });
+    const session = await this.prisma.interviewSession.findUnique({
+      where: { id: input.sessionId },
+      select: { id: true, userId: true },
+    });
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        'Interview session not found',
+        HttpStatus.NOT_FOUND,
+      );
+    }
 
-      if (session) {
-        const isOwner = session.userId === userId;
-        const isAdmin = userRole === UserRole.ADMIN;
-        let isAuthorized = isOwner || isAdmin;
+    const isOwner = session.userId === userId;
+    const isAdmin = userRole === UserRole.ADMIN;
+    let isAuthorized = isOwner || isAdmin;
 
-        if (!isAuthorized) {
-          const mentorProfile = await this.prisma.mentorProfile.findUnique({
-            where: { userId },
-            select: { id: true },
-          });
-
-          if (mentorProfile) {
-            const liveSession = await this.prisma.liveSession.findFirst({
-              where: {
-                mentorId: mentorProfile.id,
-                candidateId: session.userId,
-                status: {
-                  in: [
-                    LiveSessionStatus.SCHEDULED,
-                    LiveSessionStatus.IN_PROGRESS,
-                    LiveSessionStatus.COMPLETED,
-                  ],
-                },
+    if (!isAuthorized) {
+      const mentorProfile = await this.mentorAuthorityPolicy
+        .requireApprovedByUser(userId)
+        .catch(() => null);
+      const liveSession = mentorProfile
+        ? await this.prisma.liveSession.findFirst({
+            where: {
+              mentorId: mentorProfile.id,
+              candidateId: session.userId,
+              interviewId: session.id,
+              status: {
+                in: [LiveSessionStatus.IN_PROGRESS, LiveSessionStatus.COMPLETED],
               },
-              select: { id: true },
-            });
+            },
+            select: { id: true },
+          })
+        : null;
+      isAuthorized = Boolean(liveSession);
+    }
 
-            if (liveSession) {
-              isAuthorized = true;
-            }
-          }
-        }
-
-        if (!isAuthorized) {
-          throw new DomainException(
-            ErrorCode.FORBIDDEN,
-            'You do not have permission to analyze this interview session',
-            HttpStatus.FORBIDDEN,
-          );
-        }
-      }
+    if (!isAuthorized) {
+      throw new DomainException(
+        ErrorCode.FORBIDDEN,
+        'You do not have permission to analyze this interview session',
+        HttpStatus.FORBIDDEN,
+      );
     }
 
     const { candidateAnswer } = input;
@@ -165,31 +164,23 @@ export class BehavioralService {
     let isAuthorized = isOwner || isAdmin;
 
     if (!isAuthorized && sessionUserId) {
-      const mentorProfile = await this.prisma.mentorProfile.findUnique({
-        where: { userId },
-        select: { id: true },
-      });
-
-      if (mentorProfile) {
-        const liveSession = await this.prisma.liveSession.findFirst({
-          where: {
-            mentorId: mentorProfile.id,
-            candidateId: sessionUserId,
-            status: {
-              in: [
-                LiveSessionStatus.SCHEDULED,
-                LiveSessionStatus.IN_PROGRESS,
-                LiveSessionStatus.COMPLETED,
-              ],
+      const mentorProfile = await this.mentorAuthorityPolicy
+        .requireApprovedByUser(userId)
+        .catch(() => null);
+      const liveSession = mentorProfile
+        ? await this.prisma.liveSession.findFirst({
+            where: {
+              mentorId: mentorProfile.id,
+              candidateId: sessionUserId,
+              interviewId: answer.turn?.session?.id,
+              status: {
+                in: [LiveSessionStatus.IN_PROGRESS, LiveSessionStatus.COMPLETED],
+              },
             },
-          },
-          select: { id: true },
-        });
-
-        if (liveSession) {
-          isAuthorized = true;
-        }
-      }
+            select: { id: true },
+          })
+        : null;
+      isAuthorized = Boolean(liveSession);
     }
 
     if (!isAuthorized) {

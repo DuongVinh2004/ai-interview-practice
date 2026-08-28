@@ -88,6 +88,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const currentRefreshToken = get().refreshToken;
     const currentAccessToken = get().accessToken;
 
+    // Clear local auth state before best-effort server revocation. This immediately
+    // stops protected queries from retrying with an expired or incomplete session.
+    clearClientCaches();
+    safeRemoveItem('access_token');
+    safeRemoveItem('refresh_token');
+    safeRemoveItem('auth_user');
+    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+
     if (currentRefreshToken || currentAccessToken) {
       try {
         const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
@@ -103,12 +111,5 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         console.warn('Backend logout revocation error:', err);
       }
     }
-
-    // Purge query cache, user storage, and service worker caches (PRIV-001)
-    clearClientCaches();
-    safeRemoveItem('access_token');
-    safeRemoveItem('refresh_token');
-    safeRemoveItem('auth_user');
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
   },
 }));

@@ -419,7 +419,7 @@ export class BillingService {
       ],
     });
 
-    // Create durable pending invoice record for reconciliation (F-004 fix)
+    // Create durable pending invoice record for reconciliation (F-004 fix, NEW-ARCH-01)
     await this.prisma.invoice.create({
       data: {
         userId,
@@ -427,7 +427,8 @@ export class BillingService {
         currency: 'VND',
         status: 'OPEN',
         stripeInvoiceId: `PAYOS_${orderCode}`,
-        pdfUrl: JSON.stringify({ planSlug: plan.slug, billingCycle: req.billingCycle }),
+        pdfUrl: null,
+        metadata: { planSlug: plan.slug, billingCycle: req.billingCycle },
       },
     });
 
@@ -528,7 +529,11 @@ export class BillingService {
     let targetPlanSlug = 'pro';
     let isYearly = false;
 
-    if (existingInvoice.pdfUrl) {
+    const invoiceMeta = (existingInvoice as any).metadata;
+    if (invoiceMeta && typeof invoiceMeta === 'object') {
+      targetPlanSlug = invoiceMeta.planSlug || 'pro';
+      isYearly = invoiceMeta.billingCycle === 'yearly';
+    } else if (existingInvoice.pdfUrl) {
       try {
         const meta = JSON.parse(existingInvoice.pdfUrl);
         targetPlanSlug = meta.planSlug || 'pro';

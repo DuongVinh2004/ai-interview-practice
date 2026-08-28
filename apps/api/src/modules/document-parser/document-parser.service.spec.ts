@@ -5,6 +5,7 @@ import { CvAnalyzerService } from './services/cv-analyzer.service';
 import { JdAnalyzerService } from './services/jd-analyzer.service';
 import { BlueprintGeneratorService } from './services/blueprint-generator.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
+import { TaxonomyService } from '../taxonomy/taxonomy.service';
 import { BadRequestException } from '@nestjs/common';
 
 describe('DocumentParser Module (F004)', () => {
@@ -13,6 +14,19 @@ describe('DocumentParser Module (F004)', () => {
   let cvAnalyzer: CvAnalyzerService;
   let jdAnalyzer: JdAnalyzerService;
   let blueprintGen: BlueprintGeneratorService;
+
+  const mockTaxonomyService = {
+    getJobRoles: jest.fn().mockResolvedValue([]),
+    getSeniorityLevels: jest.fn().mockResolvedValue([]),
+    getTechnologies: jest.fn().mockResolvedValue([]),
+    matchCvProfile: jest.fn().mockResolvedValue({
+      jobRoleId: 'role-1',
+      seniorityLevelId: 'level-1',
+      technologyIds: ['tech-1'],
+      suggestedMode: 'STANDARD',
+      unmatchedSkills: [],
+    }),
+  };
 
   const mockPrisma = {
     userDocument: {
@@ -56,6 +70,7 @@ describe('DocumentParser Module (F004)', () => {
         JdAnalyzerService,
         BlueprintGeneratorService,
         { provide: PrismaService, useValue: mockPrisma },
+        { provide: TaxonomyService, useValue: mockTaxonomyService },
       ],
     }).compile();
 

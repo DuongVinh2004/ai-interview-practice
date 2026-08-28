@@ -40,21 +40,24 @@ describe('GamificationController', () => {
     jest.clearAllMocks();
   });
 
-  it('correctly passes userId from CurrentUser decorator to getProfile', async () => {
-    const result = await controller.getProfile('user-uuid-999');
-    expect(mockXpService.getGamificationProfile).toHaveBeenCalledWith('user-uuid-999');
+  it('correctly passes userId and timezone header to getProfile', async () => {
+    const result = await controller.getProfile('user-uuid-999', 'Asia/Ho_Chi_Minh');
+    expect(mockXpService.getGamificationProfile).toHaveBeenCalledWith(
+      'user-uuid-999',
+      'Asia/Ho_Chi_Minh',
+    );
     expect(result).toEqual({ totalXp: 120, level: 2 });
   });
 
-  it('correctly passes userId to claimDailyLogin', async () => {
-    const result = await controller.claimDailyLogin('user-uuid-999');
-    expect(mockXpService.claimDailyLogin).toHaveBeenCalledWith('user-uuid-999');
+  it('correctly passes userId and timezone header to claimDailyLogin', async () => {
+    const result = await controller.claimDailyLogin('user-uuid-999', 'America/New_York');
+    expect(mockXpService.claimDailyLogin).toHaveBeenCalledWith('user-uuid-999', 'America/New_York');
     expect(result).toEqual({ xpEarned: 10 });
   });
 
-  it('correctly passes userId to useFreeze', async () => {
-    const result = await controller.useFreeze('user-uuid-999');
-    expect(mockStreakService.useStreakFreeze).toHaveBeenCalledWith('user-uuid-999');
+  it('correctly passes userId and timezone header to useFreeze', async () => {
+    const result = await controller.useFreeze('user-uuid-999', 'UTC');
+    expect(mockStreakService.useStreakFreeze).toHaveBeenCalledWith('user-uuid-999', 'UTC');
     expect(result).toEqual({ success: true, remainingFreezes: 1 });
   });
 });

@@ -10,12 +10,14 @@ import { TextExtractorService } from './services/text-extractor.service';
 import { CvAnalyzerService } from './services/cv-analyzer.service';
 import { JdAnalyzerService } from './services/jd-analyzer.service';
 import { BlueprintGeneratorService } from './services/blueprint-generator.service';
+import { TaxonomyService } from '../taxonomy/taxonomy.service';
 import {
   ParseCvRequest,
   AnalyzeJdRequest,
   GenerateBlueprintRequest,
   ParsedProfileDto,
   JdAnalysisDto,
+  CvParseResponse,
 } from '@ai-interview/contracts';
 
 @Injectable()
@@ -28,12 +30,13 @@ export class DocumentParserService {
     private readonly cvAnalyzer: CvAnalyzerService,
     private readonly jdAnalyzer: JdAnalyzerService,
     private readonly blueprintGenerator: BlueprintGeneratorService,
+    private readonly taxonomyService: TaxonomyService,
   ) {}
 
   /**
    * Uploads and parses CV text / document, saving UserDocument and ParsedProfile with 30-day TTL.
    */
-  async parseCv(userId: string, req: ParseCvRequest, buffer?: Buffer) {
+  async parseCv(userId: string, req: ParseCvRequest, buffer?: Buffer): Promise<CvParseResponse> {
     let rawText = req.rawText;
     if (buffer) {
       rawText = await this.textExtractor.extractText(buffer, req.fileType, req.fileName);
@@ -75,12 +78,33 @@ export class DocumentParserService {
       },
     });
 
+    let taxonomyMatch;
+    try {
+      taxonomyMatch = await this.taxonomyService.matchCvProfile(parsedData);
+    } catch (err: any) {
+      this.logger.warn(`Taxonomy match error during CV parse: ${err.message}`);
+    }
+
+    const parsedProfileDto: ParsedProfileDto = {
+      id: profile.id,
+      documentId: profile.documentId,
+      fullName: profile.fullName,
+      targetRole: profile.targetRole,
+      seniorityLevel: profile.seniorityLevel,
+      skills: (profile.skills as string[]) || [],
+      experience: (profile.experience as any[]) || [],
+      education: (profile.education as string[]) || [],
+      rawSummary: profile.rawSummary,
+      createdAt: profile.createdAt,
+    };
+
     return {
       document: {
         ...doc,
         rawText: undefined,
       },
-      parsedProfile: profile,
+      parsedProfile: parsedProfileDto,
+      taxonomyMatch,
     };
   }
 

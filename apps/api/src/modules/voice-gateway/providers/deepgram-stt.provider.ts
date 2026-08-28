@@ -33,6 +33,10 @@ export class DeepgramSttProvider {
     }
   }
 
+  isPaidConfigured(): boolean {
+    return this.isConfigured && Boolean(this.deepgram?.listen?.live);
+  }
+
   createSttStream(sampleRate = 16000, language = 'en-US'): SttStreamSession {
     const events = new Subject<TranscriptEvent>();
 

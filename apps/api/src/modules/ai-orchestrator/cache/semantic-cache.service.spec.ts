@@ -17,12 +17,27 @@ describe('SemanticCacheService (F013)', () => {
     prismaMock = {
       semanticCache: {
         findFirst: jest.fn().mockImplementation(({ where }) => {
-          return Promise.resolve(mockDbCache.find(e => e.promptHash === where.promptHash) || null);
+          const item = mockDbCache.find(e => {
+            if (where.promptHash && e.promptHash !== where.promptHash) return false;
+            if (where.namespace !== undefined && e.namespace !== where.namespace) return false;
+            if (where.userId !== undefined && e.userId !== where.userId) return false;
+            return true;
+          });
+          return Promise.resolve(item || null);
         }),
         findUnique: jest.fn().mockImplementation(({ where }) => {
           return Promise.resolve(mockDbCache.find(e => e.promptHash === where.promptHash) || null);
         }),
-        findMany: jest.fn().mockImplementation(() => Promise.resolve([...mockDbCache])),
+        findMany: jest.fn().mockImplementation(({ where } = {}) => {
+          let results = [...mockDbCache];
+          if (where?.namespace !== undefined) {
+            results = results.filter(e => e.namespace === where.namespace);
+          }
+          if (where?.userId !== undefined) {
+            results = results.filter(e => e.userId === where.userId);
+          }
+          return Promise.resolve(results);
+        }),
         upsert: jest.fn().mockImplementation(({ where, update, create }) => {
           const idx = mockDbCache.findIndex(e => e.promptHash === where.promptHash);
           if (idx >= 0) {
@@ -119,6 +134,29 @@ describe('SemanticCacheService (F013)', () => {
 
     expect(result.hit).toBe(true);
     expect(result.data).toEqual(payload);
+  });
+
+  it('should calibrate default cosine similarity threshold to 0.92 (NEW-PERF-02)', () => {
+    expect(service.getDefaultThreshold()).toBe(0.92);
+  });
+
+  it('should enforce cache isolation across different namespaces', async () => {
+    const questionText = 'Design a rate limiter in distributed systems';
+    const payloadQuestions = { template: 'Token bucket and sliding window counter' };
+
+    // Set under namespace 'questions'
+    await service.set(questionText, payloadQuestions, undefined, 86400, {
+      namespace: 'questions',
+    });
+
+    // Namespace 'questions' gets hit
+    const hitNamespace = await service.get(questionText, 0.92, { namespace: 'questions' });
+    expect(hitNamespace.hit).toBe(true);
+    expect(hitNamespace.data).toEqual(payloadQuestions);
+
+    // Different namespace or un-namespaced query gets miss (isolation)
+    const missOtherNamespace = await service.get(questionText, 0.92, { namespace: 'private-eval' });
+    expect(missOtherNamespace.hit).toBe(false);
   });
 
   it('should invalidate all cache entries when requested', async () => {

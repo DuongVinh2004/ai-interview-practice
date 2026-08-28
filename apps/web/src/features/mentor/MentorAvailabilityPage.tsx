@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
-import { MentorProfileDto, MentorAvailabilitySlotDto } from '@ai-interview/contracts';
+import {
+  MentorProfileDto,
+  MentorAvailabilitySlotDto,
+  MentorAuthorityState,
+} from '@ai-interview/contracts';
 import { Clock, Plus, Trash2, Save, Check, AlertCircle, UserCheck } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Alert } from '../../components/ui/Alert';
-
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+import { useI18nStore } from '../../stores/i18n.store';
 
 export const MentorAvailabilityPage: React.FC = () => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const queryClient = useQueryClient();
   const [bio, setBio] = useState<string>('');
   const [expertise, setExpertise] = useState<string>('');
   const [slots, setSlots] = useState<MentorAvailabilitySlotDto[]>([]);
   const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const DAYS = isVi
+    ? ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy']
+    : ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   const { data: profile } = useQuery<MentorProfileDto>({
     queryKey: ['my-mentor-profile'],
@@ -41,7 +50,7 @@ export const MentorAvailabilityPage: React.FC = () => {
       const areas = expertise
         .split(',')
         .map(s => s.trim())
-        .filter(s => s.length > 0);
+        .filter(Boolean);
 
       // Save profile
       await apiClient.post('/mentor/profile', {
@@ -59,14 +68,22 @@ export const MentorAvailabilityPage: React.FC = () => {
       setTimeout(() => setSaveSuccess(false), 4000);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to save availability');
+      setErrorMessage(
+        err.message || (isVi ? 'Không thể lưu cài đặt lịch rảnh' : 'Failed to save availability'),
+      );
     },
   });
 
   const handleAddSlot = () => {
     setSlots(prev => [
       ...prev,
-      { dayOfWeek: 1, startTime: '09:00', endTime: '11:00', isActive: true },
+      {
+        dayOfWeek: 1,
+        startTime: '09:00',
+        endTime: '11:00',
+        isActive: true,
+        authorityState: MentorAuthorityState.PENDING,
+      },
     ]);
   };
 
@@ -81,16 +98,24 @@ export const MentorAvailabilityPage: React.FC = () => {
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8" data-testid="mentor-availability-page">
       <div className="border-b border-slate-200 pb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Mentor Profile & Weekly Availability</h1>
+        <h1 className="text-2xl font-bold text-slate-900">
+          {isVi ? 'Hồ Sơ Mentor & Lịch Rảnh Hàng Tuần' : 'Mentor Profile & Weekly Availability'}
+        </h1>
         <p className="text-sm text-slate-500 mt-1">
-          Set up your mentor bio, target coaching domains, and recurring weekly time windows for
-          candidate bookings.
+          {isVi
+            ? 'Thiết lập giới thiệu bản thân, chuyên môn huấn luyện và các khung giờ rảnh hàng tuần để ứng viên đặt lịch.'
+            : 'Set up your mentor bio, target coaching domains, and recurring weekly time windows for candidate bookings.'}
         </p>
       </div>
 
       {saveSuccess && (
         <Alert variant="success" className="flex items-center gap-2">
-          <Check className="h-4 w-4" /> Mentor schedule and profile saved successfully!
+          <Check className="h-4 w-4" />
+          <span>
+            {isVi
+              ? 'Đã lưu thành công hồ sơ và lịch rảnh mentor!'
+              : 'Mentor schedule and profile saved successfully!'}
+          </span>
         </Alert>
       )}
 
@@ -103,31 +128,42 @@ export const MentorAvailabilityPage: React.FC = () => {
       {/* Mentor Bio & Expertise */}
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
         <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-          <UserCheck className="h-5 w-5 text-emerald-600" /> Mentor Information
+          <UserCheck className="h-5 w-5 text-emerald-600" />
+          <span>{isVi ? 'Thông Tin Mentor' : 'Mentor Information'}</span>
         </h2>
 
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-            Expertise Areas (Comma-separated)
+            {isVi
+              ? 'Lĩnh vực Chuyên môn (Phân tách bằng dấu phẩy)'
+              : 'Expertise Areas (Comma-separated)'}
           </label>
           <Input
             type="text"
             value={expertise}
             onChange={e => setExpertise(e.target.value)}
-            placeholder="e.g. System Design, Distributed Systems, High Concurrency, Java Core"
+            placeholder={
+              isVi
+                ? 'VD: Thiết Kế Hệ Thống, Hệ Thống Phân Tán, Xử Lý Đồng Thời, Java Core'
+                : 'e.g. System Design, Distributed Systems, High Concurrency, Java Core'
+            }
             data-testid="mentor-expertise-input"
           />
         </div>
 
         <div>
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
-            Mentor Headline & Bio
+            {isVi ? 'Tiêu đề & Giới thiệu bản thân' : 'Mentor Headline & Bio'}
           </label>
           <Textarea
             rows={3}
             value={bio}
             onChange={e => setBio(e.target.value)}
-            placeholder="Introduce your engineering experience, past companies, and how you mentor candidates..."
+            placeholder={
+              isVi
+                ? 'Giới thiệu kinh nghiệm kỹ thuật, các công ty từng làm việc và phong cách hướng dẫn ứng viên...'
+                : 'Introduce your engineering experience, past companies, and how you mentor candidates...'
+            }
             data-testid="mentor-bio-input"
           />
         </div>
@@ -138,9 +174,16 @@ export const MentorAvailabilityPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-emerald-600" /> Recurring Weekly Availability Slots
+              <Clock className="h-5 w-5 text-emerald-600" />
+              <span>
+                {isVi ? 'Khung Giờ Rảnh Cố Định Hàng Tuần' : 'Recurring Weekly Availability Slots'}
+              </span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">Define your recurring weekly hours</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isVi
+                ? 'Tùy chỉnh các khung giờ mở cho ứng viên'
+                : 'Define your recurring weekly hours'}
+            </p>
           </div>
 
           <Button
@@ -150,14 +193,17 @@ export const MentorAvailabilityPage: React.FC = () => {
             className="gap-1.5"
             data-testid="add-slot-btn"
           >
-            <Plus className="h-4 w-4" /> Add Slot
+            <Plus className="h-4 w-4" />
+            <span>{isVi ? 'Thêm Khung Giờ' : 'Add Slot'}</span>
           </Button>
         </div>
 
         <div className="space-y-3">
           {slots.length === 0 ? (
             <p className="text-sm text-slate-400 py-6 text-center italic">
-              No availability slots configured yet. Click "Add Slot" to add available times.
+              {isVi
+                ? 'Chưa có khung giờ rảnh nào. Bấm "Thêm Khung Giờ" để mở lịch.'
+                : 'No availability slots configured yet. Click "Add Slot" to add available times.'}
             </p>
           ) : (
             slots.map((slot, index) => (
@@ -185,7 +231,7 @@ export const MentorAvailabilityPage: React.FC = () => {
                     onChange={e => handleSlotChange(index, 'startTime', e.target.value)}
                     className="w-full sm:w-32 text-center"
                   />
-                  <span className="text-slate-400 text-xs font-bold">to</span>
+                  <span className="text-slate-400 text-xs font-bold">{isVi ? 'đến' : 'to'}</span>
                   <Input
                     type="time"
                     value={slot.endTime}
@@ -202,13 +248,13 @@ export const MentorAvailabilityPage: React.FC = () => {
                       onChange={e => handleSlotChange(index, 'isActive', e.target.checked)}
                       className="rounded text-emerald-600 focus:ring-emerald-500 h-4 w-4"
                     />
-                    Active
+                    {isVi ? 'Kích hoạt' : 'Active'}
                   </label>
 
                   <button
                     onClick={() => handleRemoveSlot(index)}
                     className="text-slate-400 hover:text-rose-600 p-1.5 rounded-lg transition-colors"
-                    title="Remove Slot"
+                    title={isVi ? 'Xóa khung giờ' : 'Remove Slot'}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -227,8 +273,16 @@ export const MentorAvailabilityPage: React.FC = () => {
             className="gap-2"
             data-testid="save-availability-btn"
           >
-            <Save className="h-4 w-4" />{' '}
-            {saveMutation.isPending ? 'Saving...' : 'Save All Settings'}
+            <Save className="h-4 w-4" />
+            <span>
+              {saveMutation.isPending
+                ? isVi
+                  ? 'Đang lưu...'
+                  : 'Saving...'
+                : isVi
+                  ? 'Lưu Tất Cả Cài Đặt'
+                  : 'Save All Settings'}
+            </span>
           </Button>
         </div>
       </div>

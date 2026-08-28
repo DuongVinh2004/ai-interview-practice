@@ -105,7 +105,7 @@ describe('ResultDetailExperience (Phase 4)', () => {
     });
   });
 
-  it('renders overall score, role, level, and formative practice disclaimer', async () => {
+  it('renders overall score, role, level, and rubric breakdown', async () => {
     render(
       <QueryClientProvider client={queryClient}>
         <MemoryRouter initialEntries={['/interviews/session-result-1/result']}>
@@ -119,9 +119,7 @@ describe('ResultDetailExperience (Phase 4)', () => {
     await waitFor(() => {
       expect(screen.getByText(/Fullstack Engineer/i)).toBeInTheDocument();
       expect(screen.getAllByText(/8.8/i).length).toBeGreaterThanOrEqual(1);
-      expect(
-        screen.getByText(/Báo Cáo Phân Tích Kỹ Thuật Luyện Tập|Formative Technical Practice/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Evaluation Report|Kết Quả Đánh Giá/i)).toBeInTheDocument();
     });
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/interviews/session-result-1/result'),
@@ -142,7 +140,7 @@ describe('ResultDetailExperience (Phase 4)', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Distributed Cache Invalidation')).toBeInTheDocument();
-      expect(screen.getByText(/HIGH PRIORITY/i)).toBeInTheDocument();
+      expect(screen.getByText(/(HIGH PRIORITY|ƯU TIÊN CAO)/i)).toBeInTheDocument();
     });
 
     const toggleBtn = screen.getByTitle(

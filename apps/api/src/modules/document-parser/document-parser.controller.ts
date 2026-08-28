@@ -63,9 +63,10 @@ export class DocumentParserController {
   ) {
     if (file) {
       const fileName = file.originalname || 'resume.pdf';
-      const fileType = fileName.endsWith('.pdf')
+      const normalizedFileName = fileName.toLowerCase();
+      const fileType = normalizedFileName.endsWith('.pdf')
         ? 'pdf'
-        : fileName.endsWith('.docx')
+        : normalizedFileName.endsWith('.docx')
           ? 'docx'
           : 'text';
       return this.parserService.parseCv(userId, { fileName, fileType, rawText: '' }, file.buffer);

@@ -135,7 +135,9 @@ describe('Epic 5 Mentor Share Public Review Flow', () => {
     });
 
     const nameInput = screen.getByPlaceholderText(/Alex Nguyen/i);
-    const commentInput = screen.getByPlaceholderText(/Share technical insights/i);
+    const commentInput = screen.getByPlaceholderText(
+      /Share technical insights|Chia sẻ góc nhìn kỹ thuật/i,
+    );
     const submitBtn = screen.getByRole('button', { name: /Submit Review Note|Gửi Nhận xét/i });
 
     fireEvent.change(nameInput, { target: { value: 'Staff Tech Lead' } });

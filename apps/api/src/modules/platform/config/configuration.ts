@@ -30,7 +30,7 @@ export const aiConfig = registerAs('ai', () => ({
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
-  geminiModel: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+  geminiModel: process.env.GEMINI_MODEL || 'gemini-3.6-flash',
   openaiModel: process.env.OPENAI_MODEL || 'gpt-4o',
   anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514',
   modelName: process.env.AI_MODEL_NAME || 'mock-model-v1',
@@ -49,6 +49,7 @@ export const featuresConfig = registerAs('features', () => ({
   socraticTutor: process.env.FEATURE_SOCRATIC_TUTOR === 'true',
   spacedRepetition: process.env.FEATURE_SPACED_REPETITION === 'true',
   voiceStreaming: process.env.FEATURE_VOICE_STREAMING === 'true',
+  questionBank: process.env.FEATURE_QUESTION_BANK !== 'false',
 }));
 
 export const storageConfig = registerAs('storage', () => ({

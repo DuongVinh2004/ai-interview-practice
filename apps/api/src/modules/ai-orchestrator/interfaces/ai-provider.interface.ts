@@ -13,6 +13,7 @@ export interface QuestionPromptContext {
   previousScore?: number;
   competencyArea?: string;
   sessionMode?: string;
+  language?: string;
 }
 
 export interface EvaluationPromptContext {
@@ -22,6 +23,7 @@ export interface EvaluationPromptContext {
   keyFocus?: string;
   expectedPoints?: string[];
   answer: string;
+  language?: string;
 }
 
 export interface LearningPathPromptContext {
@@ -36,6 +38,26 @@ export interface LearningPathPromptContext {
     improvements: string[];
   }>;
   overallScore: number;
+  language?: string;
+}
+
+export interface SocraticChatContext {
+  role: string;
+  level: string;
+  question: string;
+  originalAnswer: string;
+  score: number;
+  strengths: string[];
+  improvements: string[];
+  keyFocus?: string;
+  userMessage: string;
+  chatHistory: Array<{ role: 'USER' | 'AI_TUTOR' | 'user' | 'assistant'; content: string }>;
+  language?: string;
+}
+
+export interface SocraticChatResult {
+  fullText: string;
+  references?: Array<{ title: string; url: string }>;
 }
 
 export interface AiExecutionResult<T> {
@@ -68,4 +90,10 @@ export interface AiProvider {
     systemPrompt: string,
     userPrompt?: string,
   ): Promise<AiExecutionResult<GeneratedLearningPathAi>>;
+
+  streamSocraticChat?(
+    context: SocraticChatContext,
+    systemPrompt: string,
+    onToken?: (token: string) => void,
+  ): Promise<AiExecutionResult<SocraticChatResult>>;
 }

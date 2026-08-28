@@ -8,6 +8,7 @@ import { DomainException } from '../../platform/filters/all-exceptions.filter';
 import { ErrorCode, SessionState } from '@ai-interview/contracts';
 import { AiOrchestratorService } from '../../ai-orchestrator/ai-orchestrator.service';
 import { UsageMeterService } from '../../billing/usage-meter.service';
+import { InterviewConfigurationService } from '../../interview-configuration/interview-configuration.service';
 
 describe('Interview Submission State Machine & CAS (P1-009)', () => {
   let interviewService: InterviewService;
@@ -69,6 +70,13 @@ describe('Interview Submission State Machine & CAS (P1-009)', () => {
         {
           provide: UsageMeterService,
           useValue: { checkAndConsumeQuotaInTransaction: jest.fn() },
+        },
+        {
+          provide: InterviewConfigurationService,
+          useValue: {
+            buildConfigurationSnapshot: jest.fn().mockResolvedValue({}),
+            recordRecentConfiguration: jest.fn().mockResolvedValue(undefined),
+          },
         },
         { provide: 'BullQueue_question-generation', useValue: mockQuestionQueue },
         { provide: 'BullQueue_answer-evaluation', useValue: mockEvaluationQueue },

@@ -8,16 +8,7 @@ import { Card, CardContent } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
-import {
-  History,
-  PlayCircle,
-  ChevronRight,
-  Calendar,
-  Search,
-  X,
-  ChevronLeft,
-  ShieldCheck,
-} from 'lucide-react';
+import { History, PlayCircle, ChevronRight, Calendar, Search, X, ChevronLeft } from 'lucide-react';
 
 export function HistoryPage() {
   const { t, language } = useI18nStore();
@@ -68,16 +59,6 @@ export function HistoryPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12">
-      {/* Formative Practice Disclaimer */}
-      <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex items-center gap-3 text-xs text-emerald-900 shadow-xs">
-        <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
-        <p>
-          {language === 'vi'
-            ? 'Lịch sử lưu trữ toàn bộ các lượt luyện tập và báo cáo rubric nhằm theo dõi sự tiến bộ kỹ thuật qua thời gian.'
-            : 'Archive of all formative practice sessions and rubric reports for longitudinal skill tracking.'}
-        </p>
-      </div>
-
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -196,12 +177,22 @@ export function HistoryPage() {
           <CardContent className="flex flex-col items-center gap-3">
             <History className="h-10 w-10 text-slate-300" />
             <h3 className="text-base font-semibold text-slate-800">
-              {hasActiveFilters ? 'No matching sessions found' : 'No interview sessions found'}
+              {hasActiveFilters
+                ? language === 'vi'
+                  ? 'Không tìm thấy phiên phỏng vấn phù hợp'
+                  : 'No matching sessions found'
+                : language === 'vi'
+                  ? 'Chưa có phiên phỏng vấn nào'
+                  : 'No interview sessions found'}
             </h3>
             <p className="text-xs text-slate-500 max-w-sm">
               {hasActiveFilters
-                ? 'Try adjusting your search criteria or resetting filters.'
-                : "You haven't completed any practice sessions yet. Start your first mock interview now!"}
+                ? language === 'vi'
+                  ? 'Hãy thử điều chỉnh bộ lọc hoặc xóa điều kiện tìm kiếm.'
+                  : 'Try adjusting your search criteria or resetting filters.'
+                : language === 'vi'
+                  ? 'Bạn chưa hoàn thành phiên luyện tập nào. Bắt đầu phiên phỏng vấn đầu tiên ngay!'
+                  : "You haven't completed any practice sessions yet. Start your first mock interview now!"}
             </p>
             {hasActiveFilters ? (
               <Button size="sm" variant="outline" onClick={handleClearFilters} className="mt-2">
@@ -209,7 +200,9 @@ export function HistoryPage() {
               </Button>
             ) : (
               <Link to="/interviews/new" className="mt-2">
-                <Button size="sm">Start Practice</Button>
+                <Button size="sm">
+                  {language === 'vi' ? 'Bắt đầu Luyện tập' : 'Start Practice'}
+                </Button>
               </Link>
             )}
           </CardContent>
@@ -230,11 +223,19 @@ export function HistoryPage() {
                         {s.jobRole.name} • {s.seniorityLevel.name}
                       </span>
                       <Badge variant={s.state === 'COMPLETED' ? 'success' : 'default'}>
-                        {s.state}
+                        {s.state === 'COMPLETED'
+                          ? language === 'vi'
+                            ? 'Hoàn thành'
+                            : 'Completed'
+                          : s.state === 'ACTIVE'
+                            ? language === 'vi'
+                              ? 'Đang thực hiện'
+                              : 'In Progress'
+                            : s.state}
                       </Badge>
                       {isRemediation && (
                         <Badge variant="warning" className="text-[10px]">
-                          Focused Remediation
+                          {language === 'vi' ? 'Luyện Trọng Tâm' : 'Focused Remediation'}
                         </Badge>
                       )}
                       {isSandbox && (
@@ -260,7 +261,7 @@ export function HistoryPage() {
                       </span>
                       <span>•</span>
                       <span>
-                        Turns: {s.currentTurn}/{s.totalTurns}
+                        {language === 'vi' ? 'Lượt' : 'Turns'}: {s.currentTurn}/{s.totalTurns}
                       </span>
                     </div>
                   </div>
@@ -269,7 +270,7 @@ export function HistoryPage() {
                     {s.overallScore !== null && (
                       <div className="text-right">
                         <span className="text-[10px] text-slate-400 block uppercase font-medium">
-                          Score
+                          {language === 'vi' ? 'Điểm' : 'Score'}
                         </span>
                         <span className="font-bold text-base text-emerald-700 font-mono">
                           {formatScore(s.overallScore)}/10
@@ -284,7 +285,15 @@ export function HistoryPage() {
                       }
                     >
                       <Button variant="outline" size="sm" className="gap-1">
-                        <span>{s.state === 'COMPLETED' ? 'View Result' : 'Continue'}</span>
+                        <span>
+                          {s.state === 'COMPLETED'
+                            ? language === 'vi'
+                              ? 'Xem Kết Quả (View Result)'
+                              : 'View Result'
+                            : language === 'vi'
+                              ? 'Tiếp tục'
+                              : 'Continue'}
+                        </span>
                         <ChevronRight className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
@@ -305,10 +314,12 @@ export function HistoryPage() {
                 className="gap-1 text-xs"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
-                <span>Previous</span>
+                <span>{language === 'vi' ? 'Trang trước' : 'Previous'}</span>
               </Button>
               <span className="text-xs text-slate-500 font-medium">
-                Page {meta.page} of {meta.totalPages} ({meta.total} sessions)
+                {language === 'vi'
+                  ? `Trang ${meta.page} / ${meta.totalPages} (${meta.total} phiên)`
+                  : `Page ${meta.page} of ${meta.totalPages} (${meta.total} sessions)`}
               </span>
               <Button
                 variant="outline"
@@ -317,7 +328,7 @@ export function HistoryPage() {
                 disabled={!meta.hasNextPage}
                 className="gap-1 text-xs"
               >
-                <span>Next</span>
+                <span>{language === 'vi' ? 'Trang sau' : 'Next'}</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>

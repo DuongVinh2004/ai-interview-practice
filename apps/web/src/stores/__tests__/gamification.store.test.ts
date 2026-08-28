@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { useGamificationStore } from '../gamification.store';
 
 describe('useGamificationStore', () => {
@@ -70,5 +70,63 @@ describe('useGamificationStore', () => {
 
     store.toggleSfx();
     expect(useGamificationStore.getState().sfxMuted).toBe(false);
+  });
+
+  it('should claim daily login and update profile state', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string, opts: any) => {
+      if (url.includes('/gamification/claim-daily-login')) {
+        expect(opts.headers['x-timezone']).toBeDefined();
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                data: {
+                  claimed: true,
+                  xpAwarded: 10,
+                  profile: {
+                    ...useGamificationStore.getState().profile,
+                    dailyLoginClaimed: true,
+                    totalXp: 60,
+                  },
+                },
+              }),
+            ),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('{}') });
+    });
+
+    const success = await useGamificationStore.getState().claimDailyLogin();
+    expect(success).toBe(true);
+    expect(useGamificationStore.getState().profile?.dailyLoginClaimed).toBe(true);
+  });
+
+  it('should use streak freeze and update freeze count in profile', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string, opts: any) => {
+      if (url.includes('/gamification/use-freeze')) {
+        expect(opts.headers['x-timezone']).toBeDefined();
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          text: () =>
+            Promise.resolve(
+              JSON.stringify({
+                data: {
+                  success: true,
+                  remainingFreezes: 0,
+                },
+              }),
+            ),
+        });
+      }
+      return Promise.resolve({ ok: true, status: 200, text: () => Promise.resolve('{}') });
+    });
+
+    const success = await useGamificationStore.getState().useStreakFreeze();
+    expect(success).toBe(true);
+    expect(useGamificationStore.getState().profile?.streak.freezeCount).toBe(0);
+    expect(useGamificationStore.getState().profile?.streak.freezeUsedToday).toBe(true);
   });
 });

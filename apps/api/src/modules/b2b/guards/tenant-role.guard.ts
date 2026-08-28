@@ -31,7 +31,7 @@ export class TenantRoleGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user = request.user;
-    const tenantId = request.tenantId || request.headers['x-tenant-id'] || request.params.tenantId;
+    let tenantId = request.tenantId || request.headers['x-tenant-id'] || request.params.tenantId;
 
     if (!user) {
       throw new ForbiddenException('User authentication required for tenant operations');
@@ -39,7 +39,29 @@ export class TenantRoleGuard implements CanActivate {
 
     // SuperAdmin bypasses tenant role guard
     if (user.role === UserRole.ADMIN) {
+      if (tenantId) {
+        request.tenantId = tenantId;
+        request.tenantRole = TenantRole.TENANT_ADMIN;
+      }
       return true;
+    }
+
+    // If explicit tenant context is omitted, attempt unambiguous single-tenant resolution
+    if (!tenantId) {
+      const currentUserId = user.sub || user.id;
+      const memberCount = await this.prisma.tenantMember.count({
+        where: { userId: currentUserId },
+      });
+      if (memberCount === 1) {
+        const singleMember = await this.prisma.tenantMember.findFirst({
+          where: { userId: currentUserId },
+        });
+        if (singleMember) {
+          tenantId = singleMember.tenantId;
+          request.tenantId = singleMember.tenantId;
+          request.tenantRole = singleMember.role;
+        }
+      }
     }
 
     if (!tenantId) {

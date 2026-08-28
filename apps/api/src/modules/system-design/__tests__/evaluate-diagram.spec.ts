@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DesignEvaluationService } from '../services/design-evaluation.service';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { MockVisionProvider } from '../providers/mock-vision.provider';
+import { VisionEntitlementService } from '../services/vision-entitlement.service';
 
 describe('DesignEvaluationService.evaluateDiagram (Module B5)', () => {
   let service: DesignEvaluationService;
@@ -44,6 +45,10 @@ describe('DesignEvaluationService.evaluateDiagram (Module B5)', () => {
         DesignEvaluationService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: 'VISION_PROVIDER', useValue: mockVisionProvider },
+        {
+          provide: VisionEntitlementService,
+          useValue: { evaluate: jest.fn(input => input.provider.evaluateDiagram(input.options)) },
+        },
       ],
     }).compile();
 
@@ -55,7 +60,7 @@ describe('DesignEvaluationService.evaluateDiagram (Module B5)', () => {
     const result = await service.evaluateDiagram('user-123', 'int-123', {
       imageUrl: 'data:image/png;base64,mock',
       language: 'vi',
-    });
+    }, 'vision-evaluate-diagram-1');
 
     expect(result.id).toBe('eval-1');
     expect(result.overallScore).toBe(8.5);

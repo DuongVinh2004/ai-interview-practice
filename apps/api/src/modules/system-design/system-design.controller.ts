@@ -1,13 +1,15 @@
-import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Headers, Param, Query, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
-import { BillingMetric } from '@ai-interview/contracts';
 import { CanvasService } from './services/canvas.service';
 import { DesignAnalyzerService } from './services/design-analyzer.service';
 import { DesignEvaluationService } from './services/design-evaluation.service';
-import { InitCanvasSessionDto, UploadCanvasSnapshotDto } from './dto/system-design.dto';
+import {
+  InitCanvasSessionDto,
+  UploadCanvasSnapshotDto,
+  ExportCanvasQueryDto,
+} from './dto/system-design.dto';
 
 @ApiTags('System Design Interactive Whiteboard (F003)')
 @ApiBearerAuth()
@@ -31,7 +33,9 @@ export class SystemDesignController {
   }
 
   @Post('snapshot')
-  @ApiOperation({ summary: 'Upload and record canvas diagram snapshot' })
+  @ApiOperation({
+    summary: 'Upload and record canvas diagram snapshot with optimistic concurrency check',
+  })
   async uploadSnapshot(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
@@ -43,23 +47,26 @@ export class SystemDesignController {
       dto.imageUrl,
       dto.canvasStateJson,
       dto.elapsedSeconds || 0,
+      dto.expectedVersion,
+      dto.ifMatchEtag,
     );
   }
 
   @Post('analyze')
-  @UseGuards(JwtAuthGuard, QuotaGuard)
-  @RequireQuota(BillingMetric.AI_TOKEN)
   @ApiOperation({ summary: 'Trigger multimodal AI vision analysis on canvas diagram' })
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
   async analyzeCanvas(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
     @Body() dto: Partial<UploadCanvasSnapshotDto>,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.designAnalyzerService.analyzeSnapshot(
       userId,
       interviewId,
       dto.imageUrl,
       dto.canvasStateJson,
+      idempotencyKey,
     );
   }
 
@@ -73,32 +80,36 @@ export class SystemDesignController {
   @ApiOperation({
     summary: 'Complete interview turn and evaluate design across 5 rubric dimensions',
   })
-  async evaluateDesign(@CurrentUser('sub') userId: string, @Param('id') interviewId: string) {
-    return this.designEvaluationService.evaluateSession(userId, interviewId);
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
+  async evaluateDesign(
+    @CurrentUser('sub') userId: string,
+    @Param('id') interviewId: string,
+    @Headers('idempotency-key') idempotencyKey?: string,
+  ) {
+    return this.designEvaluationService.evaluateSession(userId, interviewId, idempotencyKey);
   }
 
   @Post('evaluate-diagram')
   @ApiOperation({
     summary: 'On-demand multimodal Vision AI evaluation with visual bounding box annotations',
   })
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
   async evaluateDiagram(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
     @Body() dto: any,
+    @Headers('idempotency-key') idempotencyKey?: string,
   ) {
-    return this.designEvaluationService.evaluateDiagram(userId, interviewId, dto);
+    return this.designEvaluationService.evaluateDiagram(userId, interviewId, dto, idempotencyKey);
   }
 
   @Get('export')
-  @ApiOperation({ summary: 'Get export metadata for system design canvas' })
-  async exportCanvas(@CurrentUser('sub') userId: string, @Param('id') interviewId: string) {
-    const session = await this.canvasService.getSession(userId, interviewId);
-    return {
-      interviewId,
-      finalCanvasUrl: session.finalCanvasUrl,
-      initialPrompt: session.initialPrompt,
-      snapshotCount: session.snapshots?.length || 0,
-      exportedAt: new Date().toISOString(),
-    };
+  @ApiOperation({ summary: 'Export system design canvas as SVG, PNG, or JSON metadata with ETag' })
+  async exportCanvas(
+    @CurrentUser('sub') userId: string,
+    @Param('id') interviewId: string,
+    @Query('format') format?: 'svg' | 'png' | 'json',
+  ) {
+    return this.canvasService.exportDiagram(userId, interviewId, format || 'svg');
   }
 }

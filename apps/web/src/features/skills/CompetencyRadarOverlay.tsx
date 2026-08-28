@@ -1,4 +1,5 @@
 import { CompetencyArea } from '@ai-interview/contracts';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export interface CompetencyRadarItem {
   area: CompetencyArea;
@@ -17,15 +18,21 @@ interface CompetencyRadarOverlayProps {
 export function CompetencyRadarOverlay({
   data,
   size = 360,
-  targetRoleName = 'Senior Benchmark',
+  targetRoleName,
 }: CompetencyRadarOverlayProps) {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+  const resolvedTargetRole = targetRoleName || (isVi ? 'Chuẩn Senior' : 'Senior Benchmark');
+
   if (!data || data.length === 0) {
     return (
       <div
         className="flex items-center justify-center bg-slate-50 border border-slate-200 rounded-xl"
         style={{ width: size, height: size }}
       >
-        <p className="text-xs text-slate-400">No competency data available</p>
+        <p className="text-xs text-slate-400">
+          {isVi ? 'Chưa có dữ liệu năng lực' : 'No competency data available'}
+        </p>
       </div>
     );
   }
@@ -58,65 +65,49 @@ export function CompetencyRadarOverlay({
     <div className="flex flex-col items-center gap-3" data-testid="competency-radar-overlay">
       <svg width={size} height={size} className="overflow-visible select-none">
         {/* Background Grid Circles / Polygons */}
-        {levels.map(lvl => {
-          const gridPoints = data.map((_, i) => getCoordinates(lvl, i));
-          const gridPath =
-            gridPoints.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
+        {levels.map(level => {
+          const points = data.map((_, i) => getCoordinates(level, i));
+          const path =
+            points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ') + ' Z';
           return (
-            <g key={lvl}>
-              <path
-                d={gridPath}
-                fill="none"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-                strokeDasharray="3,3"
-              />
-              <text
-                x={center}
-                y={center - (lvl / 10) * radius + 4}
-                className="text-[9px] fill-slate-400 font-mono text-anchor-middle"
-                textAnchor="middle"
-              >
-                {lvl}
-              </text>
-            </g>
+            <path
+              key={`grid-${level}`}
+              d={path}
+              fill="none"
+              stroke="#e2e8f0"
+              strokeWidth="1"
+              strokeDasharray={level % 4 === 0 ? 'none' : '2 2'}
+            />
           );
         })}
 
-        {/* Radial Axis Lines */}
+        {/* Axis Lines */}
         {data.map((_, i) => {
-          const edge = getCoordinates(10, i);
+          const p = getCoordinates(10, i);
           return (
             <line
-              key={i}
+              key={`axis-${i}`}
               x1={center}
               y1={center}
-              x2={edge.x}
-              y2={edge.y}
+              x2={p.x}
+              y2={p.y}
               stroke="#cbd5e1"
               strokeWidth="1"
             />
           );
         })}
 
-        {/* Benchmark Polygon */}
+        {/* Benchmark Radar Shape (Dashed Indigo) */}
         <path
           d={benchmarkPath}
-          fill="rgba(99, 102, 241, 0.08)"
+          fill="rgba(99, 102, 241, 0.12)"
           stroke="#6366f1"
           strokeWidth="2"
-          strokeDasharray="4,4"
-          className="transition-all duration-300"
+          strokeDasharray="4 3"
         />
 
-        {/* Candidate User Polygon */}
-        <path
-          d={userPath}
-          fill="rgba(16, 185, 129, 0.25)"
-          stroke="#10b981"
-          strokeWidth="2.5"
-          className="transition-all duration-300"
-        />
+        {/* User Radar Shape (Emerald Solid) */}
+        <path d={userPath} fill="rgba(16, 185, 129, 0.22)" stroke="#10b981" strokeWidth="2.5" />
 
         {/* Candidate Data Dots */}
         {userPoints.map((p, i) => (
@@ -154,11 +145,11 @@ export function CompetencyRadarOverlay({
       <div className="flex items-center gap-6 text-xs text-slate-600 bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-emerald-200" />
-          <span className="font-medium">Candidate Score</span>
+          <span className="font-medium">{isVi ? 'Điểm của bạn' : 'Candidate Score'}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full border-2 border-indigo-500 border-dashed" />
-          <span className="font-medium">{targetRoleName} (P50)</span>
+          <span className="font-medium">{resolvedTargetRole} (P50)</span>
         </div>
       </div>
     </div>

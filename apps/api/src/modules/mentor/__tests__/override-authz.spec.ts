@@ -2,7 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LiveSessionService } from '../services/live-session.service';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
-import { LiveSessionStatus } from '@ai-interview/contracts';
+import { LiveSessionStatus, MentorAuthorityState } from '@ai-interview/contracts';
+import { MentorAuthorityPolicy } from '../policies/mentor-authority.policy';
 
 describe('Mentor Score Override Authorization (SEC-006)', () => {
   let liveSessionService: LiveSessionService;
@@ -15,6 +16,7 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
     },
     mentorProfile: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
     },
     liveSession: {
       findFirst: jest.fn(),
@@ -24,6 +26,10 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
       update: jest.fn(),
     },
     auditLog: {
+      create: jest.fn(),
+    },
+    evaluationRun: {
+      findFirst: jest.fn(),
       create: jest.fn(),
     },
     $transaction: jest.fn(cb => (typeof cb === 'function' ? cb(mockPrisma) : Promise.all(cb))),
@@ -38,6 +44,7 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LiveSessionService,
+        MentorAuthorityPolicy,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: 'MEDIA_PROVIDER', useValue: mockMediaProvider },
       ],
@@ -45,6 +52,14 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
 
     liveSessionService = module.get<LiveSessionService>(LiveSessionService);
     jest.clearAllMocks();
+    mockPrisma.mentorProfile.findFirst.mockResolvedValue({
+      id: 'mentor-profile-1',
+      userId: assignedMentorUserId,
+      authorityState: MentorAuthorityState.APPROVED,
+      isActive: true,
+    });
+    mockPrisma.evaluationRun.findFirst.mockResolvedValue(null);
+    mockPrisma.evaluationRun.create.mockResolvedValue({ id: 'run-1', runNumber: 1 });
   });
 
   const assignedMentorUserId = 'mentor-assigned-1';
@@ -69,9 +84,11 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
       },
     });
 
-    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
+    mockPrisma.mentorProfile.findFirst.mockResolvedValue({
       id: 'mentor-profile-2',
       userId: unassignedMentorUserId,
+      authorityState: MentorAuthorityState.APPROVED,
+      isActive: true,
     });
 
     mockPrisma.liveSession.findFirst.mockResolvedValue(null);
@@ -84,7 +101,9 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
         'Override reason is valid',
       ),
     ).rejects.toThrow(
-      new ForbiddenException("You are not the designated mentor for this candidate's session"),
+      new ForbiddenException(
+        'An exact active mentor, candidate, and interview engagement is required',
+      ),
     );
 
     expect(mockPrisma.evaluation.update).not.toHaveBeenCalled();
@@ -106,16 +125,12 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
       },
     });
 
-    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
-      id: 'mentor-profile-1',
-      userId: assignedMentorUserId,
-    });
-
     // Active in-progress live session
     mockPrisma.liveSession.findFirst.mockResolvedValue({
       id: 'live-session-1',
       mentorId: 'mentor-profile-1',
       candidateId: candidateUserId,
+      interviewId: sessionId,
       status: LiveSessionStatus.IN_PROGRESS,
       scheduledAt: new Date(),
     });
@@ -177,15 +192,11 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
       },
     });
 
-    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
-      id: 'mentor-profile-1',
-      userId: assignedMentorUserId,
-    });
-
     mockPrisma.liveSession.findFirst.mockResolvedValue({
       id: 'live-session-1',
       mentorId: 'mentor-profile-1',
       candidateId: candidateUserId,
+      interviewId: sessionId,
       status: LiveSessionStatus.COMPLETED,
       endedAt: sessionEndTime,
     });
@@ -223,15 +234,11 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
       },
     });
 
-    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
-      id: 'mentor-profile-1',
-      userId: assignedMentorUserId,
-    });
-
     mockPrisma.liveSession.findFirst.mockResolvedValue({
       id: 'live-session-1',
       mentorId: 'mentor-profile-1',
       candidateId: candidateUserId,
+      interviewId: sessionId,
       status: LiveSessionStatus.COMPLETED,
       endedAt: sessionEndTime,
     });
@@ -250,10 +257,7 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
     );
   });
 
-  it('rejects override for an unrelated future interview created outside engagement window', async () => {
-    const sessionEndTime = new Date(Date.now() - 10 * 3600 * 1000); // 10 hours ago
-    const futureInterviewTime = new Date(Date.now() + 60 * 3600 * 1000); // Interview in future
-
+  it('rejects the same mentor and candidate when the live session is not bound to the exact interview', async () => {
     mockPrisma.evaluation.findUnique.mockResolvedValue({
       id: evaluationId,
       score: 5.0,
@@ -263,24 +267,13 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
           sessionId,
           session: {
             userId: candidateUserId,
-            createdAt: futureInterviewTime,
+            createdAt: new Date(),
           },
         },
       },
     });
 
-    mockPrisma.mentorProfile.findUnique.mockResolvedValue({
-      id: 'mentor-profile-1',
-      userId: assignedMentorUserId,
-    });
-
-    mockPrisma.liveSession.findFirst.mockResolvedValue({
-      id: 'live-session-1',
-      mentorId: 'mentor-profile-1',
-      candidateId: candidateUserId,
-      status: LiveSessionStatus.COMPLETED,
-      endedAt: sessionEndTime,
-    });
+    mockPrisma.liveSession.findFirst.mockResolvedValue(null);
 
     await expect(
       liveSessionService.overrideScore(
@@ -289,11 +282,61 @@ describe('Mentor Score Override Authorization (SEC-006)', () => {
         8.0,
         'Attempting to alter future interview',
       ),
-    ).rejects.toThrow(
-      new ForbiddenException(
-        'Cannot override score for an interview session created outside the mentor engagement window',
+    ).rejects.toThrow('An exact active mentor, candidate, and interview engagement is required');
+    expect(mockPrisma.liveSession.findFirst).toHaveBeenCalledWith({
+      where: {
+        mentorId: 'mentor-profile-1',
+        candidateId: candidateUserId,
+        interviewId: sessionId,
+        status: { in: [LiveSessionStatus.IN_PROGRESS, LiveSessionStatus.COMPLETED] },
+      },
+    });
+  });
+
+  it('rejects a scheduled engagement that has not started', async () => {
+    mockPrisma.evaluation.findUnique.mockResolvedValue({
+      id: evaluationId,
+      score: 5.0,
+      conciseFeedback: 'Initial feedback',
+      answer: { turn: { sessionId, session: { userId: candidateUserId } } },
+    });
+    mockPrisma.liveSession.findFirst.mockResolvedValue(null);
+
+    await expect(
+      liveSessionService.overrideScore(
+        evaluationId,
+        assignedMentorUserId,
+        8.0,
+        'Session has not started',
       ),
-    );
+    ).rejects.toThrow('An exact active mentor, candidate, and interview engagement is required');
+    expect(mockPrisma.liveSession.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        interviewId: sessionId,
+        status: { in: [LiveSessionStatus.IN_PROGRESS, LiveSessionStatus.COMPLETED] },
+      }),
+    });
+  });
+
+  it('rejects a suspended mentor even when an exact active engagement exists', async () => {
+    mockPrisma.evaluation.findUnique.mockResolvedValue({
+      id: evaluationId,
+      score: 5.0,
+      conciseFeedback: 'Initial feedback',
+      answer: { turn: { sessionId, session: { userId: candidateUserId } } },
+    });
+    mockPrisma.mentorProfile.findFirst.mockResolvedValue(null);
+
+    await expect(
+      liveSessionService.overrideScore(
+        evaluationId,
+        assignedMentorUserId,
+        8.0,
+        'Suspended mentor attempt',
+      ),
+    ).rejects.toThrow(ForbiddenException);
+    expect(mockPrisma.liveSession.findFirst).not.toHaveBeenCalled();
+    expect(mockPrisma.evaluation.update).not.toHaveBeenCalled();
   });
 
   it('rejects invalid score range (<0 or >10)', async () => {

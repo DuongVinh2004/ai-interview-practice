@@ -3,6 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { useAuthStore } from '../../stores/auth.store';
 import { useI18nStore } from '../../stores/i18n.store';
+import { useGamificationStore } from '../../stores/gamification.store';
+import { useBilling } from '../../hooks/useBilling';
+import { getNextUpgradePlan } from '../../lib/plan-tier.utils';
 import { Button } from '../../components/ui/Button';
 import {
   Card,
@@ -26,14 +29,24 @@ import {
   CheckCircle2,
   BookOpen,
   ArrowRight,
-  ShieldCheck,
   Compass,
   FileCheck,
+  Crown,
+  Flame,
+  Trophy,
+  Code,
+  Mic,
 } from 'lucide-react';
 
 export function DashboardPage() {
   const { user } = useAuthStore();
   const { t, language } = useI18nStore();
+  const { profile } = useGamificationStore();
+  const { subscription } = useBilling();
+
+  const isAdmin = user?.role === 'ADMIN';
+  const planSlug = subscription?.plan?.slug?.toLowerCase() || 'free';
+  const upgradeSuggestion = getNextUpgradePlan(planSlug, isAdmin, language === 'vi');
 
   const { data: radarData, isLoading: isLoadingRadar } = useQuery<any>({
     queryKey: ['analytics-competency-radar'],
@@ -51,66 +64,163 @@ export function DashboardPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-      {/* Formative Practice Platform Banner */}
-      <div className="bg-emerald-50/70 border border-emerald-200 p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs text-emerald-900 shadow-xs">
-        <div className="flex items-center gap-2.5">
-          <ShieldCheck className="h-4 w-4 text-emerald-700 shrink-0" />
-          <p>
-            {language === 'vi'
-              ? 'Nền tảng luyện tập phỏng vấn kỹ thuật AI — Dữ liệu phân tích và điểm số chỉ nhằm mục đích tự học và phát triển năng lực cá nhân.'
-              : 'AI Technical Interview Practice Platform — All readiness analytics and scores are formative tools for self-improvement.'}
-          </p>
-        </div>
-      </div>
+      {/* Welcome Hero Banner - Luminous Elegant Cyber Card */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-emerald-50/90 via-white to-teal-50/60 text-slate-900 rounded-3xl p-6 sm:p-9 shadow-sm border border-emerald-200/90">
+        {/* Soft emerald & teal ambient light glows */}
+        <div className="absolute -right-16 -top-16 w-80 h-80 bg-emerald-400/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-16 -bottom-16 w-80 h-80 bg-teal-400/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(#10b98115_1px,transparent_1px)] [background-size:20px_20px] pointer-events-none opacity-80" />
 
-      {/* Welcome Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-lg border border-slate-700/50">
-        <div className="relative z-10 max-w-2xl space-y-4">
-          <div className="inline-flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold px-3 py-1 rounded-full">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>AI Technical Interview Simulator</span>
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          {/* Left Column: Heading, Subtitle & Action CTAs (8 cols on lg) */}
+          <div className="lg:col-span-8 space-y-4">
+            {/* Live AI Pulse Chip */}
+            <div className="inline-flex items-center gap-2 bg-emerald-100/90 border border-emerald-300/80 text-emerald-800 text-xs font-bold px-3.5 py-1 rounded-full shadow-2xs">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+              </span>
+              <span>AI Technical Interview Simulator • Adaptive Engine</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-slate-900 leading-tight">
+              {language === 'vi' ? 'Chào mừng trở lại, ' : 'Welcome back, '}
+              <span className="text-emerald-700 bg-gradient-to-r from-emerald-700 to-teal-600 bg-clip-text text-transparent">
+                {user?.profile?.fullName || user?.email?.split('@')[0]}!
+              </span>
+            </h1>
+
+            <p className="text-slate-600 text-xs sm:text-sm leading-relaxed max-w-2xl font-normal">
+              {language === 'vi'
+                ? 'Luyện tập phỏng vấn kỹ thuật IT với hệ thống AI thích ứng độ khó thời gian thực, live coding sandbox và đánh giá chuẩn khung STAR.'
+                : 'Sharpen your technical interview readiness with 5-turn adaptive mock sessions tailored to your target engineering seniority and technology stack.'}
+            </p>
+
+            {/* Feature Highlights Pills */}
+            <div className="flex flex-wrap gap-2 pt-1 text-[11px] font-semibold text-slate-700">
+              <span className="px-3 py-1 rounded-full bg-white/95 border border-emerald-200/80 text-slate-700 shadow-2xs flex items-center gap-1.5">
+                <Code className="w-3.5 h-3.5 text-emerald-600" /> Live Code Sandbox
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white/95 border border-emerald-200/80 text-slate-700 shadow-2xs flex items-center gap-1.5">
+                <Mic className="w-3.5 h-3.5 text-teal-600" /> Real-time Voice AI
+              </span>
+              <span className="px-3 py-1 rounded-full bg-white/95 border border-emerald-200/80 text-slate-700 shadow-2xs flex items-center gap-1.5">
+                <Target className="w-3.5 h-3.5 text-emerald-700" /> STAR Evaluation
+              </span>
+            </div>
+
+            {/* Action Buttons Row */}
+            <div className="flex flex-wrap items-center gap-3 pt-3">
+              <Link to="/interviews/new">
+                <Button
+                  size="lg"
+                  variant="primary"
+                  className="gap-2 font-bold shadow-md shadow-emerald-600/20 bg-emerald-600 hover:bg-emerald-700 text-white hover:scale-105 active:scale-95 transition-all"
+                  leftIcon={<PlayCircle className="h-5 w-5" />}
+                >
+                  <span>{language === 'vi' ? 'Bắt đầu Phỏng vấn Mới' : 'Start New Interview'}</span>
+                </Button>
+              </Link>
+
+              <Link to="/readiness">
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="gap-2 bg-white hover:bg-slate-50 border-slate-200 text-slate-700 font-bold shadow-2xs hover:scale-105 active:scale-95 transition-all"
+                  leftIcon={<Target className="h-4 w-4 text-emerald-600" />}
+                >
+                  <span>{language === 'vi' ? 'Xem Chỉ số Sẵn sàng' : 'Check Readiness'}</span>
+                </Button>
+              </Link>
+
+              {/* Dynamic Next Higher Tier Upgrade Button (or VIP Badge when on highest tier) */}
+              {upgradeSuggestion.hasHigherPlan ? (
+                <Link to={`/pricing?plan=${upgradeSuggestion.targetPlanSlug}`}>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-2 h-11 px-4 rounded-xl text-xs font-bold text-amber-900 bg-gradient-to-r from-amber-100 via-amber-50 to-emerald-50 border border-amber-300 hover:border-amber-400 hover:shadow-xs transition-all active:scale-95 group cursor-pointer"
+                    title={upgradeSuggestion.headerPillLabel}
+                  >
+                    <Crown className="w-4 h-4 text-amber-600 group-hover:scale-110 group-hover:rotate-6 transition-transform" />
+                    <span>{upgradeSuggestion.buttonLabel}</span>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                  </button>
+                </Link>
+              ) : (
+                <div
+                  className="inline-flex items-center gap-2 h-11 px-4 rounded-xl text-xs font-extrabold text-purple-900 bg-purple-50 border border-purple-200 shadow-2xs select-none"
+                  title="Tài khoản sở hữu quyền lợi cao nhất của hệ thống"
+                >
+                  <Crown className="w-4 h-4 text-purple-600" />
+                  <span>{isAdmin ? 'Quyền Lợi Quản Trị Viên' : 'Gói Doanh Nghiệp VIP'}</span>
+                  <span className="text-[9px] bg-purple-200 text-purple-900 px-1.5 py-0.5 rounded font-mono font-bold">
+                    MAX TIER
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white leading-tight">
-            {language === 'vi' ? 'Chào mừng trở lại, ' : 'Welcome back, '}
-            <span className="text-emerald-400">
-              {user?.profile?.fullName || user?.email?.split('@')[0]}!
-            </span>
-          </h1>
+          {/* Right Column: Mini HUD Glass Widget (4 cols on lg) */}
+          <div className="hidden lg:flex lg:col-span-4 flex-col gap-3 p-4 rounded-2xl bg-white/80 border border-emerald-100/90 shadow-sm backdrop-blur-md">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+              <div className="flex items-center gap-2">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <span className="text-xs font-extrabold text-slate-800">
+                  {profile
+                    ? `Lv.${profile.currentLevel} • ${language === 'vi' ? profile.levelTitleVi : profile.levelTitle}`
+                    : 'Cấp độ ứng viên'}
+                </span>
+              </div>
+              {profile && (
+                <span className="text-xs font-mono text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                  {profile.totalXp} XP
+                </span>
+              )}
+            </div>
 
-          <p className="text-slate-300 text-xs sm:text-sm leading-relaxed max-w-xl">
-            {language === 'vi'
-              ? 'Luyện tập phỏng vấn kỹ thuật IT với hệ thống AI thích ứng độ khó thời gian thực, live coding sandbox và đánh giá chuẩn khung STAR.'
-              : 'Sharpen your technical interview readiness with 5-turn adaptive mock sessions tailored to your target engineering seniority and technology stack.'}
-          </p>
+            {profile && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
+                  <span>Tiến độ lên Lv.{profile.currentLevel + 1}</span>
+                  <span>{profile.levelProgressPercent}%</span>
+                </div>
+                <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden p-0.5 shadow-inner">
+                  <div
+                    className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.min(100, Math.max(4, profile.levelProgressPercent))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Link to="/interviews/new">
-              <Button
-                size="lg"
-                variant="primary"
-                className="gap-2 font-bold shadow-md bg-emerald-500 hover:bg-emerald-600 text-slate-950"
-                leftIcon={<PlayCircle className="h-5 w-5" />}
-              >
-                <span>{language === 'vi' ? 'Bắt đầu Phỏng vấn Mới' : 'Start New Interview'}</span>
-              </Button>
-            </Link>
-            <Link to="/readiness">
-              <Button
-                size="lg"
-                variant="outline"
-                className="gap-2 bg-slate-800/80 border-slate-600 text-slate-200 hover:bg-slate-700 hover:text-white"
-                leftIcon={<Target className="h-4 w-4 text-amber-400" />}
-              >
-                <span>{language === 'vi' ? 'Xem Chỉ số Sẵn sàng' : 'Check Readiness'}</span>
-              </Button>
-            </Link>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div className="p-2.5 rounded-xl bg-orange-50/80 border border-orange-200/80 flex flex-col">
+                <div className="flex items-center gap-1.5 text-[11px] text-orange-800 font-bold">
+                  <Flame className="w-3.5 h-3.5 fill-orange-500 text-orange-500" />
+                  <span>Chuỗi</span>
+                </div>
+                <span className="text-lg font-black text-orange-950 mt-0.5">
+                  {profile?.streak?.currentStreak || 0}{' '}
+                  <span className="text-xs font-normal text-orange-800">ngày</span>
+                </span>
+              </div>
+
+              <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 flex flex-col">
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-800 font-bold">
+                  <Zap className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Lượt đã tập</span>
+                </div>
+                <span className="text-lg font-black text-emerald-950 mt-0.5">
+                  {progressData?.sessions?.length || 0}{' '}
+                  <span className="text-xs font-normal text-emerald-800">buổi</span>
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Decorative background glow */}
-        <div className="absolute -right-16 -top-16 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute right-32 -bottom-20 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
       </div>
 
       {/* FIRST-TIME CANDIDATE ONBOARDING EMPTY STATE */}
@@ -336,50 +446,82 @@ export function DashboardPage() {
               <div className="w-full flex flex-col items-center space-y-4">
                 <CompetencyRadarChart competencies={radarData.competencies} size={280} />
 
-                {/* Strengths & Growth Areas */}
-                <div className="w-full grid grid-cols-2 gap-3 pt-2 border-t border-slate-100 text-xs">
-                  <div className="bg-emerald-50/70 p-3 rounded-xl border border-emerald-100">
-                    <span className="font-bold text-emerald-900 flex items-center gap-1 mb-1.5">
-                      <Zap className="h-3.5 w-3.5 text-emerald-600" />
-                      {t.analytics.topStrengths}
+                {/* Strengths & Growth Areas Action Cards */}
+                <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3 border-t border-slate-100 text-xs">
+                  <div className="bg-gradient-to-br from-emerald-50/90 to-teal-50/40 p-3.5 rounded-2xl border border-emerald-200/80 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-emerald-950 flex items-center gap-1.5">
+                          <Zap className="h-3.5 w-3.5 text-emerald-600" />
+                          {t.analytics.topStrengths}
+                        </span>
+                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">
+                          {language === 'vi' ? 'Vững vàng' : 'Solid'}
+                        </span>
+                      </div>
+                      {radarData.topStrengths?.length > 0 ? (
+                        <ul className="space-y-1.5 text-emerald-900 text-[11px] font-medium">
+                          {radarData.topStrengths.map((s: string) => (
+                            <li key={s} className="flex items-center gap-1.5 truncate">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span className="truncate">{s}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11px] text-emerald-700">
+                          {language === 'vi'
+                            ? 'Hoàn thành thêm lượt để mở khóa phân tích'
+                            : 'Complete more sessions to unlock analytics'}
+                        </p>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-emerald-700/80 font-medium pt-2 mt-auto">
+                      {language === 'vi'
+                        ? 'Duy trì phong độ xuất sắc'
+                        : 'Keep up the strong execution'}
                     </span>
-                    {radarData.topStrengths?.length > 0 ? (
-                      <ul className="list-disc list-inside text-emerald-800 space-y-1 text-[11px]">
-                        {radarData.topStrengths.map((s: string) => (
-                          <li key={s} className="truncate">
-                            {s}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-[11px] text-emerald-600">
-                        {language === 'vi'
-                          ? 'Hoàn thành thêm lượt để mở khóa'
-                          : 'Complete more sessions'}
-                      </p>
-                    )}
                   </div>
 
-                  <div className="bg-amber-50/70 p-3 rounded-xl border border-amber-100">
-                    <span className="font-bold text-amber-900 flex items-center gap-1 mb-1.5">
-                      <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
-                      {t.analytics.growthAreas}
-                    </span>
-                    {radarData.growthAreas?.length > 0 ? (
-                      <ul className="list-disc list-inside text-amber-800 space-y-1 text-[11px]">
-                        {radarData.growthAreas.map((g: string) => (
-                          <li key={g} className="truncate">
-                            {g}
-                          </li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="text-[11px] text-amber-600">
-                        {language === 'vi'
-                          ? 'Không phát hiện lỗ hổng lớn'
-                          : 'No major gaps detected'}
-                      </p>
-                    )}
+                  <div className="bg-gradient-to-br from-amber-50/90 to-orange-50/40 p-3.5 rounded-2xl border border-amber-200/80 flex flex-col justify-between shadow-2xs">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                          <TrendingUp className="h-3.5 w-3.5 text-amber-600" />
+                          {t.analytics.growthAreas}
+                        </span>
+                        <span className="text-[9px] bg-amber-100 text-amber-900 font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                          {language === 'vi' ? 'Cần cải thiện' : 'Priority'}
+                        </span>
+                      </div>
+                      {radarData.growthAreas?.length > 0 ? (
+                        <ul className="space-y-1.5 text-amber-900 text-[11px] font-medium">
+                          {radarData.growthAreas.map((g: string) => (
+                            <li key={g} className="flex items-center gap-1.5 truncate">
+                              <Target className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                              <span className="truncate">{g}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-[11px] text-amber-700">
+                          {language === 'vi'
+                            ? 'Không phát hiện lỗ hổng lớn'
+                            : 'No major gaps detected'}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="pt-2 mt-auto flex items-center justify-between">
+                      <Link
+                        to="/flashcards"
+                        className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-950 bg-amber-200/70 hover:bg-amber-300 px-2.5 py-1 rounded-xl transition-all shadow-2xs hover:scale-105 active:scale-95"
+                      >
+                        <Sparkles className="w-3 h-3 text-amber-800" />
+                        <span>{language === 'vi' ? 'Ôn tập ngay' : 'Practice Flashcards'}</span>
+                        <ArrowRight className="w-3 h-3 text-amber-800" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>

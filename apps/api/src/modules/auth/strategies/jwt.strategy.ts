@@ -3,7 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../platform/prisma/prisma.service';
-import { JwtPayload, UserStatus, ErrorCode } from '@ai-interview/contracts';
+import { JwtPayload, UserRole, UserStatus, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
 import { Request } from 'express';
 
@@ -25,15 +25,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(req: Request, payload: JwtPayload): Promise<JwtPayload> {
+    const tokenType = payload.tokenType as string | undefined;
+
     // Reject temporary MFA challenge tokens attempting to access protected routes (B-001)
-    if (payload.tokenType === 'mfa_challenge') {
+    if (tokenType !== undefined && tokenType !== 'access' && tokenType !== 'mfa_enrollment') {
       throw new UnauthorizedException(
-        'MFA verification required. Challenge token cannot access protected endpoints.',
+        'Only access or enrollment tokens can authenticate HTTP endpoints.',
       );
     }
 
     // Enrollment tokens can only access the two endpoints required to complete enrollment.
-    if (payload.tokenType === 'mfa_enrollment') {
+    if (tokenType === 'mfa_enrollment') {
       const requestPath = (req.originalUrl || req.path || '').split('?')[0];
       const isEnrollmentEndpoint =
         req.method === 'POST' && /\/auth\/mfa\/(setup|enable)\/?$/.test(requestPath);
@@ -46,7 +48,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, status: true, tokenVersion: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        tokenVersion: true,
+        mfaEnabled: true,
+      },
     });
 
     if (!user) {
@@ -72,6 +81,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       );
     }
 
+    const isEnrollmentToken = tokenType === 'mfa_enrollment';
+    if (
+      user.role === UserRole.ADMIN &&
+      ((!isEnrollmentToken && (!user.mfaEnabled || payload.mfaVerified !== true)) ||
+        (isEnrollmentToken && user.mfaEnabled))
+    ) {
+      throw new UnauthorizedException(
+        'Administrator session requires verified multi-factor authentication',
+      );
+    }
+
     return {
       sub: user.id,
       id: user.id,
@@ -80,7 +100,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       status: user.status as any,
       tokenVersion: user.tokenVersion,
       tokenType: payload.tokenType || 'access',
-      mfaVerified: payload.mfaVerified ?? false,
+      mfaVerified: user.mfaEnabled && (payload.mfaVerified ?? false),
     };
   }
 }

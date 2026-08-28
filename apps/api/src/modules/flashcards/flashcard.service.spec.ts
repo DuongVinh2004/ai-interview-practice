@@ -40,6 +40,7 @@ describe('FlashcardService (F005)', () => {
     },
     interviewSession: {
       findUnique: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
   };
 

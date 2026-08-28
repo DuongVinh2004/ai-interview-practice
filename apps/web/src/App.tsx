@@ -34,6 +34,10 @@ import { CohortListPage } from './features/b2b/CohortListPage';
 import { CohortDetailPage } from './features/b2b/CohortDetailPage';
 import { BadgesShowcasePage } from './features/gamification/BadgesShowcasePage';
 import { LeaderboardPage } from './features/gamification/LeaderboardPage';
+import { QuestionBankLandingPage } from './features/question-bank/QuestionBankLandingPage';
+import { QuestionDetailPage } from './features/question-bank/QuestionDetailPage';
+import { BookmarkedQuestionsPage } from './features/question-bank/BookmarkedQuestionsPage';
+import { AdminQuestionBankPage } from './features/question-bank/AdminQuestionBankPage';
 import { NotFoundPage } from './features/error/NotFoundPage';
 import { ForbiddenPage } from './features/error/ForbiddenPage';
 import { UserRole } from '@ai-interview/contracts';
@@ -53,6 +57,8 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/pricing" element={<PricingPage />} />
+            <Route path="/question-bank" element={<QuestionBankLandingPage />} />
+            <Route path="/question-bank/:slug" element={<QuestionDetailPage />} />
             <Route path="/403" element={<ForbiddenPage />} />
 
             {/* Protected Candidate Routes */}
@@ -69,6 +75,7 @@ export function App() {
               <Route path="/gamification/leaderboard" element={<LeaderboardPage />} />
               <Route path="/flashcards" element={<FlashcardDecksPage />} />
               <Route path="/flashcards/review" element={<FlashcardReviewPage />} />
+              <Route path="/question-bank/bookmarks" element={<BookmarkedQuestionsPage />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/profile/portfolio-settings" element={<PortfolioSettingsPage />} />
@@ -89,6 +96,7 @@ export function App() {
               <Route path="/admin/ai-runs" element={<AdminAiRunsPage />} />
               <Route path="/admin/prompts" element={<AdminPromptsPage />} />
               <Route path="/admin/ai-eval" element={<AdminAiEvalPage />} />
+              <Route path="/admin/question-bank" element={<AdminQuestionBankPage />} />
             </Route>
 
             {/* 404 Not Found Catch-All */}

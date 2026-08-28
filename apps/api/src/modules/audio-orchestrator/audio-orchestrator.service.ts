@@ -1,4 +1,4 @@
-import { Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import {
@@ -11,6 +11,11 @@ import { MockAudioProvider } from './providers/mock-audio.provider';
 import { CircuitBreaker } from '../ai-orchestrator/resilience/circuit-breaker';
 import { AudioVoice, AiRunStatus, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
+import {
+  EntitlementMetric,
+  EntitlementReservationService,
+} from '../billing/entitlement-reservation.service';
+import { BillingMetric } from '@ai-interview/contracts';
 
 @Injectable()
 export class AudioOrchestratorService {
@@ -26,6 +31,7 @@ export class AudioOrchestratorService {
     private readonly configService: ConfigService,
     private readonly openAiAudioProvider: OpenAiAudioProvider,
     private readonly mockAudioProvider: MockAudioProvider,
+    private readonly entitlementReservations: EntitlementReservationService,
   ) {
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: 3,
@@ -102,6 +108,7 @@ export class AudioOrchestratorService {
     filename: string = 'audio.webm',
     language?: string,
     sessionId?: string,
+    idempotencyKey?: string,
   ): Promise<AudioSttResult> {
     // Ownership check: verify session belongs to user (F-008)
     if (sessionId) {
@@ -118,6 +125,8 @@ export class AudioOrchestratorService {
       }
     }
     const priorityChain = this.getPriorityChain();
+    const cleanIdempotencyKey = this.requireIdempotencyKey(idempotencyKey);
+    const estimatedMinutes = this.estimateTranscriptionMinutes(audioBuffer, mimeType);
     let lastError: any = null;
     const startTime = Date.now();
 
@@ -137,7 +146,23 @@ export class AudioOrchestratorService {
         continue;
       }
 
+      let reservation: any;
       try {
+        if (providerName !== 'mock') {
+          reservation = await this.entitlementReservations.reserve({
+            userId,
+            metric: EntitlementMetric.AUDIO_MINUTES,
+            quantity: estimatedMinutes,
+            idempotencyKey: cleanIdempotencyKey,
+            operationType: 'audio.transcribe',
+            operationId: sessionId || this.audioFingerprint(audioBuffer, filename),
+          });
+          this.requireFreshReservation(reservation);
+          await this.entitlementReservations.markProviderDispatchStarted(
+            reservation.id,
+            providerName,
+          );
+        }
         const result = await this.circuitBreaker.execute(
           providerName,
           'audio-transcribe',
@@ -148,6 +173,15 @@ export class AudioOrchestratorService {
 
         if (result.costEstimate) {
           this.checkDailyBudget(result.costEstimate);
+        }
+
+        if (reservation) {
+          await this.entitlementReservations.commit({
+            reservationId: reservation.id,
+            actualQuantity: this.durationToMinutes(result.durationSeconds, estimatedMinutes),
+            provider: result.provider,
+            billingMetric: BillingMetric.AUDIO_MINUTE,
+          });
         }
 
         await this.auditAudioRun({
@@ -166,6 +200,9 @@ export class AudioOrchestratorService {
 
         return result;
       } catch (error: any) {
+        if (reservation) {
+          await this.resolvePaidProviderFailure(reservation.id, error);
+        }
         lastError = error;
         this.logger.error(
           `Audio provider [${providerName}] transcribe failed: ${error.message}. Cascading to next fallback...`,
@@ -199,6 +236,7 @@ export class AudioOrchestratorService {
     voice: AudioVoice = AudioVoice.ALLOY,
     speed: number = 1.0,
     sessionId?: string,
+    idempotencyKey?: string,
   ): Promise<AudioTtsResult> {
     // Ownership check: verify session belongs to user (F-008)
     if (sessionId) {
@@ -215,6 +253,8 @@ export class AudioOrchestratorService {
       }
     }
     const priorityChain = this.getPriorityChain();
+    const cleanIdempotencyKey = this.requireIdempotencyKey(idempotencyKey);
+    const estimatedMinutes = this.estimateSynthesisMinutes(text, speed);
     let lastError: any = null;
     const startTime = Date.now();
 
@@ -234,7 +274,23 @@ export class AudioOrchestratorService {
         continue;
       }
 
+      let reservation: any;
       try {
+        if (providerName !== 'mock') {
+          reservation = await this.entitlementReservations.reserve({
+            userId,
+            metric: EntitlementMetric.AUDIO_MINUTES,
+            quantity: estimatedMinutes,
+            idempotencyKey: cleanIdempotencyKey,
+            operationType: 'audio.synthesize',
+            operationId: sessionId || this.textFingerprint(text, voice, speed),
+          });
+          this.requireFreshReservation(reservation);
+          await this.entitlementReservations.markProviderDispatchStarted(
+            reservation.id,
+            providerName,
+          );
+        }
         const result = await this.circuitBreaker.execute(
           providerName,
           'audio-synthesize',
@@ -245,6 +301,15 @@ export class AudioOrchestratorService {
 
         if (result.costEstimate) {
           this.checkDailyBudget(result.costEstimate);
+        }
+
+        if (reservation) {
+          await this.entitlementReservations.commit({
+            reservationId: reservation.id,
+            actualQuantity: this.durationToMinutes(result.durationSeconds, estimatedMinutes),
+            provider: result.provider,
+            billingMetric: BillingMetric.AUDIO_MINUTE,
+          });
         }
 
         await this.auditAudioRun({
@@ -264,6 +329,9 @@ export class AudioOrchestratorService {
 
         return result;
       } catch (error: any) {
+        if (reservation) {
+          await this.resolvePaidProviderFailure(reservation.id, error);
+        }
         lastError = error;
         this.logger.error(
           `Audio provider [${providerName}] synthesize failed: ${error.message}. Cascading to next fallback...`,
@@ -317,5 +385,84 @@ export class AudioOrchestratorService {
     } catch (e: any) {
       this.logger.error('Failed to persist Audio AI audit run', e.message);
     }
+  }
+
+  private requireIdempotencyKey(idempotencyKey?: string): string {
+    const cleanKey = idempotencyKey?.trim();
+    if (!cleanKey || cleanKey.length > 255) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Idempotency-Key header is required for audio operations.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    return cleanKey;
+  }
+
+  private requireFreshReservation(reservation: any): void {
+    if (reservation?.state === 'RESERVED' && reservation?.isNewReservation === true) return;
+    if (reservation?.state === 'RECONCILIATION_REQUIRED') {
+      throw new ConflictException('The earlier paid audio operation is awaiting reconciliation.');
+    }
+    throw new ConflictException('This audio operation has already been processed; use a new idempotency key.');
+  }
+
+  private async resolvePaidProviderFailure(reservationId: string, error: any): Promise<void> {
+    try {
+      // Input validation happens before an upstream operation. Every other error
+      // is treated as ambiguous and held so a retry cannot duplicate a paid call.
+      if (error?.status === HttpStatus.BAD_REQUEST) {
+        await this.entitlementReservations.release(reservationId, 'provider_rejected_preflight_input');
+        return;
+      }
+      await this.entitlementReservations.markForReconciliation(
+        reservationId,
+        'paid_audio_provider_outcome_ambiguous',
+        { status: error?.status, code: error?.code, message: String(error?.message || '').slice(0, 500) },
+      );
+    } catch (resolutionError: any) {
+      this.logger.error(
+        `Unable to resolve entitlement reservation ${reservationId}: ${resolutionError.message}`,
+      );
+    }
+  }
+
+  private durationToMinutes(durationSeconds: number | undefined, estimate: number): number {
+    if (!durationSeconds || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return estimate;
+    return Math.max(1, Math.ceil(durationSeconds / 60));
+  }
+
+  private estimateTranscriptionMinutes(audioBuffer: Buffer, mimeType: string): number {
+    const wavSeconds = this.readWavDurationSeconds(audioBuffer, mimeType);
+    if (wavSeconds !== undefined) return Math.max(1, Math.ceil(wavSeconds / 60));
+
+    // For containers without a trustworthy duration header, reserve the maximum
+    // accepted request duration. A later provider-reported duration is committed
+    // exactly; a larger actual value stays fail-closed for reconciliation.
+    return 15;
+  }
+
+  private estimateSynthesisMinutes(text: string, speed: number): number {
+    const normalizedSpeed = Number.isFinite(speed) && speed > 0 ? speed : 1;
+    return Math.max(1, Math.ceil(text.trim().length / (900 * normalizedSpeed)));
+  }
+
+  private readWavDurationSeconds(audioBuffer: Buffer, mimeType: string): number | undefined {
+    if (!mimeType.toLowerCase().includes('wav') || audioBuffer.length < 44) return undefined;
+    if (audioBuffer.toString('ascii', 0, 4) !== 'RIFF' || audioBuffer.toString('ascii', 8, 12) !== 'WAVE') {
+      return undefined;
+    }
+    const byteRate = audioBuffer.readUInt32LE(28);
+    const dataLength = audioBuffer.readUInt32LE(40);
+    if (!byteRate || !dataLength) return undefined;
+    return dataLength / byteRate;
+  }
+
+  private audioFingerprint(audioBuffer: Buffer, filename: string): string {
+    return `${filename}:${audioBuffer.length}:${audioBuffer.subarray(0, 32).toString('base64')}`;
+  }
+
+  private textFingerprint(text: string, voice: AudioVoice, speed: number): string {
+    return `${voice}:${speed}:${text.trim()}`;
   }
 }

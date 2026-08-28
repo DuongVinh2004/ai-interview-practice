@@ -68,8 +68,26 @@ export class DataRetentionCron {
         },
       });
 
+      // 2b. Purge voice transcripts, metrics, and voice sessions older than retention policy window (FINDING-003)
+      const VOICE_RETENTION_DAYS = 30;
+      const voiceRetentionCutoff = new Date(now.getTime() - VOICE_RETENTION_DAYS * 86_400_000);
+
+      const deletedVoiceTranscripts = await this.prisma.voiceTranscript.deleteMany({
+        where: { createdAt: { lt: voiceRetentionCutoff } },
+      });
+
+      const deletedVoiceMetrics = await this.prisma.voiceSessionMetric.deleteMany({
+        where: {
+          voiceSession: { createdAt: { lt: voiceRetentionCutoff } },
+        },
+      });
+
+      const deletedVoiceSessions = await this.prisma.voiceSession.deleteMany({
+        where: { createdAt: { lt: voiceRetentionCutoff } },
+      });
+
       this.logger.log(
-        `[PRIV-002] Successfully purged ${deletedDocs.count} expired user documents and associated cloud assets.`,
+        `[PRIV-002] Successfully purged ${deletedDocs.count} expired user documents, ${deletedVoiceTranscripts.count} voice transcripts, ${deletedVoiceSessions.count} voice sessions.`,
       );
 
       // 3. Audit log of retention purge
@@ -80,6 +98,8 @@ export class DataRetentionCron {
           resourceId: `purge-${todayStr}`,
           details: {
             purgedExpiredDocumentsCount: deletedDocs.count,
+            purgedVoiceTranscriptsCount: deletedVoiceTranscripts.count,
+            purgedVoiceSessionsCount: deletedVoiceSessions.count,
             purgedAt: now.toISOString(),
           },
         },
@@ -117,7 +137,11 @@ export class DataRetentionCron {
   /**
    * Manual trigger for testing and admin operations
    */
-  async triggerManualPurge(): Promise<{ purgedDocsCount: number }> {
+  async triggerManualPurge(): Promise<{
+    purgedDocsCount: number;
+    purgedVoiceTranscriptsCount: number;
+    purgedVoiceSessionsCount: number;
+  }> {
     const now = new Date();
     const expiredDocs = await this.prisma.userDocument.findMany({
       where: { expiresAt: { lt: now } },
@@ -144,6 +168,21 @@ export class DataRetentionCron {
       },
     });
 
-    return { purgedDocsCount: deletedDocs.count };
+    const VOICE_RETENTION_DAYS = 30;
+    const voiceRetentionCutoff = new Date(now.getTime() - VOICE_RETENTION_DAYS * 86_400_000);
+
+    const deletedVoiceTranscripts = await this.prisma.voiceTranscript.deleteMany({
+      where: { createdAt: { lt: voiceRetentionCutoff } },
+    });
+
+    const deletedVoiceSessions = await this.prisma.voiceSession.deleteMany({
+      where: { createdAt: { lt: voiceRetentionCutoff } },
+    });
+
+    return {
+      purgedDocsCount: deletedDocs.count,
+      purgedVoiceTranscriptsCount: deletedVoiceTranscripts.count,
+      purgedVoiceSessionsCount: deletedVoiceSessions.count,
+    };
   }
 }

@@ -9,11 +9,14 @@ import { useFlashcards } from '../../hooks/useFlashcards';
 import { useGamificationStore } from '../../stores/gamification.store';
 import { ConfettiCelebration } from '../../components/common/Confetti';
 import { FSRSRating } from '@ai-interview/contracts';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export function FlashcardReviewPage() {
   const navigate = useNavigate();
   const { dueCards, isLoadingDue, reviewCard, isReviewingCard } = useFlashcards();
   const { addXpLocally } = useGamificationStore();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -53,7 +56,7 @@ export function FlashcardReviewPage() {
     if (!currentCard || isReviewingCard) return;
 
     // Award +5 XP locally for gamification
-    addXpLocally(5, 'Ôn tập Flashcard');
+    addXpLocally(5, isVi ? 'Ôn tập Flashcard' : 'Flashcard Drill');
 
     const durationMs = Date.now() - startTime;
     await reviewCard({ cardId: currentCard.id, rating, durationMs });
@@ -65,7 +68,9 @@ export function FlashcardReviewPage() {
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-4">
         <Spinner size="lg" />
-        <p className="text-sm text-slate-500">Đang tải thẻ cần ôn tập...</p>
+        <p className="text-sm text-slate-500">
+          {isVi ? 'Đang tải thẻ cần ôn tập...' : 'Loading due flashcards...'}
+        </p>
       </div>
     );
   }
@@ -84,27 +89,39 @@ export function FlashcardReviewPage() {
 
         <div className="space-y-2">
           <h2 className="text-2xl font-extrabold text-slate-900">
-            Tuyệt vời! Bạn đã hoàn thành buổi ôn tập hôm nay
+            {isVi
+              ? 'Tuyệt vời! Bạn đã hoàn thành buổi ôn tập hôm nay'
+              : 'Great job! You completed all due cards for today'}
           </h2>
           <p className="text-sm text-slate-600">
-            Đã hoàn thành <strong className="text-emerald-700">{completedCount}</strong> lượt ôn
-            tập. Thuật toán FSRS v4 đã tối ưu lại thời điểm ôn tiếp theo cho bộ nhớ dài hạn của bạn.
+            {isVi ? (
+              <>
+                Đã hoàn thành <strong className="text-emerald-700">{completedCount}</strong> lượt ôn
+                tập. Thuật toán FSRS v4 đã tối ưu lại thời điểm ôn tiếp theo cho bộ nhớ dài hạn của
+                bạn.
+              </>
+            ) : (
+              <>
+                Reviewed <strong className="text-emerald-700">{completedCount}</strong> cards. FSRS
+                v4 has scheduled your next optimal review intervals.
+              </>
+            )}
           </p>
           <div className="pt-2">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-900 text-xs font-bold font-mono">
               <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />+
-              {completedCount * 5} XP Đã nhận
+              {completedCount * 5} {isVi ? 'XP Đã nhận' : 'XP Earned'}
             </span>
           </div>
         </div>
 
-        <div className="pt-4 flex justify-center space-x-3">
+        <div className="pt-4 flex items-center justify-center gap-4">
           <Button variant="outline" onClick={() => navigate('/flashcards')}>
             <ArrowLeft className="w-4 h-4 mr-1.5" />
-            <span>Quay lại Bộ thẻ</span>
+            <span>{isVi ? 'Quay lại danh sách bộ thẻ' : 'Back to Decks'}</span>
           </Button>
           <Button onClick={() => navigate('/dashboard')}>
-            <span>Về Bảng điều khiển</span>
+            <span>{isVi ? 'Về Trang Tổng Quan' : 'Go to Dashboard'}</span>
           </Button>
         </div>
       </div>
@@ -123,7 +140,7 @@ export function FlashcardReviewPage() {
           className="flex items-center text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-1" />
-          <span>Thoát buổi học</span>
+          <span>{isVi ? 'Thoát buổi học' : 'Exit Drill'}</span>
         </button>
 
         <div className="flex items-center space-x-3">
@@ -132,7 +149,15 @@ export function FlashcardReviewPage() {
             type="button"
             onClick={() => setUseSwipeMode(!useSwipeMode)}
             className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-100 text-xs"
-            title={useSwipeMode ? 'Chuyển sang chế độ bấm nút' : 'Chuyển sang chế độ vuốt (Swipe)'}
+            title={
+              useSwipeMode
+                ? isVi
+                  ? 'Chuyển sang chế độ bấm nút'
+                  : 'Switch to Button Mode'
+                : isVi
+                  ? 'Chuyển sang chế độ vuốt (Swipe)'
+                  : 'Switch to Swipe Mode'
+            }
           >
             {useSwipeMode ? (
               <Smartphone className="w-4 h-4 text-emerald-600" />
@@ -142,7 +167,9 @@ export function FlashcardReviewPage() {
           </button>
 
           <span className="text-xs font-bold text-slate-700">
-            Thẻ {currentIndex + 1} / {dueCards.length}
+            {isVi
+              ? `Thẻ ${currentIndex + 1} / ${dueCards.length}`
+              : `Card ${currentIndex + 1} of ${dueCards.length}`}
           </span>
           <div className="w-28 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
             <div
@@ -185,8 +212,10 @@ export function FlashcardReviewPage() {
               disabled={isReviewingCard}
               className="p-3 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-800 rounded-xl font-bold text-xs flex flex-col items-center justify-center transition-all shadow-xs"
             >
-              <span>1. Chưa nhớ (Again)</span>
-              <span className="text-[10px] text-rose-600 font-normal mt-0.5">&lt; 1 ngày</span>
+              <span>{isVi ? '1. Chưa nhớ (Again)' : '1. Again'}</span>
+              <span className="text-[10px] text-rose-600 font-normal mt-0.5">
+                &lt; 1 {isVi ? 'ngày' : 'day'}
+              </span>
             </button>
 
             {/* Rating 2: Hard */}
@@ -196,8 +225,10 @@ export function FlashcardReviewPage() {
               disabled={isReviewingCard}
               className="p-3 bg-amber-50 border border-amber-200 hover:bg-amber-100 text-amber-800 rounded-xl font-bold text-xs flex flex-col items-center justify-center transition-all shadow-xs"
             >
-              <span>2. Khó (Hard)</span>
-              <span className="text-[10px] text-amber-600 font-normal mt-0.5">~1-2 ngày</span>
+              <span>{isVi ? '2. Khó (Hard)' : '2. Hard'}</span>
+              <span className="text-[10px] text-amber-600 font-normal mt-0.5">
+                ~1-2 {isVi ? 'ngày' : 'days'}
+              </span>
             </button>
 
             {/* Rating 3: Good */}
@@ -207,8 +238,10 @@ export function FlashcardReviewPage() {
               disabled={isReviewingCard}
               className="p-3 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-800 rounded-xl font-bold text-xs flex flex-col items-center justify-center transition-all shadow-xs ring-1 ring-emerald-400"
             >
-              <span>3. Tốt (Good)</span>
-              <span className="text-[10px] text-emerald-600 font-normal mt-0.5">~3-5 ngày</span>
+              <span>{isVi ? '3. Tốt (Good)' : '3. Good'}</span>
+              <span className="text-[10px] text-emerald-600 font-normal mt-0.5">
+                ~3-5 {isVi ? 'ngày' : 'days'}
+              </span>
             </button>
 
             {/* Rating 4: Easy */}
@@ -218,27 +251,44 @@ export function FlashcardReviewPage() {
               disabled={isReviewingCard}
               className="p-3 bg-sky-50 border border-sky-200 hover:bg-sky-100 text-sky-800 rounded-xl font-bold text-xs flex flex-col items-center justify-center transition-all shadow-xs"
             >
-              <span>4. Dễ (Easy)</span>
-              <span className="text-[10px] text-sky-600 font-normal mt-0.5">&gt; 7 ngày</span>
+              <span>{isVi ? '4. Dễ (Easy)' : '4. Easy'}</span>
+              <span className="text-[10px] text-sky-600 font-normal mt-0.5">
+                &gt; 7 {isVi ? 'ngày' : 'days'}
+              </span>
             </button>
           </div>
 
           <p className="text-center text-[11px] text-slate-400">
-            Phím tắt: Nhấn{' '}
-            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">1</kbd>,{' '}
-            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">2</kbd>,{' '}
-            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">3</kbd>,{' '}
-            <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">4</kbd> trên bàn phím
+            {isVi ? (
+              <>
+                Phím tắt: Nhấn{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">1</kbd>,{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">2</kbd>,{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">3</kbd>,{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">4</kbd> trên bàn
+                phím
+              </>
+            ) : (
+              <>
+                Hotkeys: Press{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">1</kbd>,{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">2</kbd>,{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">3</kbd>,{' '}
+                <kbd className="font-mono bg-slate-100 px-1 py-0.5 rounded border">4</kbd> on
+                keyboard
+              </>
+            )}
           </p>
         </div>
       ) : (
         <div className="flex justify-center">
           <Button
             size="lg"
+            variant="primary"
             onClick={() => setIsFlipped(true)}
-            className="w-full sm:w-auto px-8 shadow-sm"
+            className="w-full max-w-sm font-bold shadow-md bg-emerald-600 hover:bg-emerald-700"
           >
-            <span>Hiển thị Đáp án (Lật thẻ)</span>
+            <span>{isVi ? 'Hiện Đáp Án (Space)' : 'Show Answer (Space)'}</span>
           </Button>
         </div>
       )}

@@ -9,6 +9,7 @@ import { ElevenLabsTtsProvider } from './providers/elevenlabs-tts.provider';
 import { SentenceChunkerService } from './services/sentence-chunker.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
+import { EntitlementReservationService } from '../billing/entitlement-reservation.service';
 import {
   VoiceEventType,
   VoiceSessionStatus,
@@ -20,6 +21,7 @@ import {
 describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKET-002)', () => {
   let gateway: VoiceStreamingGateway;
   let authService: AuthService;
+  let deepgramStt: DeepgramSttProvider;
 
   const mockPrisma = {
     interviewSession: {
@@ -36,6 +38,15 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
 
   const mockAuthService = {
     validateAccessToken: jest.fn(),
+  };
+  const mockJwtService = {
+    verify: jest.fn(),
+  };
+
+  const mockEntitlementReservations = {
+    reserve: jest.fn(),
+    commit: jest.fn(),
+    markForReconciliation: jest.fn(),
   };
 
   const mockConfigService = {
@@ -55,14 +66,16 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
         ElevenLabsTtsProvider,
         SentenceChunkerService,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: JwtService, useValue: { verify: jest.fn() } },
+        { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: AuthService, useValue: mockAuthService },
+        { provide: EntitlementReservationService, useValue: mockEntitlementReservations },
       ],
     }).compile();
 
     gateway = module.get<VoiceStreamingGateway>(VoiceStreamingGateway);
     authService = module.get<AuthService>(AuthService);
+    deepgramStt = module.get<DeepgramSttProvider>(DeepgramSttProvider);
     jest.clearAllMocks();
   });
 
@@ -370,5 +383,92 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     const bargeInEvent = sentMessages.find(m => m.type === VoiceEventType.INTERRUPT);
     expect(bargeInEvent).toBeDefined();
     expect(bargeInEvent.bargeInCount).toBe(1);
+  });
+
+  it('enforces single active WebSocket connection per user and disconnects older session', async () => {
+    mockAuthService.validateAccessToken.mockResolvedValue({
+      sub: 'user-single-conn',
+      role: UserRole.CANDIDATE,
+      status: UserStatus.ACTIVE,
+    });
+
+    const sentWs1: any[] = [];
+    const mockWs1: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation(data => sentWs1.push(JSON.parse(data))),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    const sentWs2: any[] = [];
+    const mockWs2: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation(data => sentWs2.push(JSON.parse(data))),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    // Connect first client
+    await gateway.handleConnection(mockWs1, { url: '/voice?token=token-1' });
+    // Connect second client for same user
+    await gateway.handleConnection(mockWs2, { url: '/voice?token=token-1' });
+
+    // First client should be closed with code 1008
+    expect(mockWs1.close).toHaveBeenCalledWith(1008, 'Concurrent connection replaced');
+  });
+
+  it('rejects before opening a paid stream when the atomic entitlement reservation is exhausted', async () => {
+    mockAuthService.validateAccessToken.mockResolvedValueOnce({
+      sub: 'user-quota-test',
+      role: UserRole.CANDIDATE,
+      status: UserStatus.ACTIVE,
+    });
+
+    mockPrisma.interviewSession.findUnique.mockResolvedValueOnce({
+      id: 'int-quota',
+      userId: 'user-quota-test',
+      jobRole: { name: 'Staff Backend Engineer' },
+      turns: [],
+    });
+
+    mockPrisma.voiceSession.upsert.mockResolvedValueOnce({
+      id: 'voice-quota-sess',
+      interviewId: 'int-quota',
+      status: VoiceSessionStatus.ACTIVE,
+    });
+
+    jest.spyOn(deepgramStt, 'isPaidConfigured').mockReturnValue(true);
+    mockJwtService.verify.mockReturnValueOnce({
+      sub: 'user-quota-test',
+      role: UserRole.CANDIDATE,
+      tokenType: 'VOICE_TICKET',
+      jti: 'ticket-quota-1',
+    });
+    mockEntitlementReservations.reserve.mockRejectedValueOnce(new Error('Quota exhausted'));
+
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation(data => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    await gateway.handleConnection(mockWs, { url: '/voice?ticket=single-use-ticket' });
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+
+    await messageHandler(
+      JSON.stringify({
+        type: VoiceEventType.CONNECT,
+        interviewId: 'int-quota',
+      }),
+      false,
+    );
+
+    const quotaError = sentMessages.find(m => m.type === VoiceEventType.QUOTA_EXCEEDED);
+    expect(quotaError).toBeDefined();
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Quota Exceeded');
   });
 });

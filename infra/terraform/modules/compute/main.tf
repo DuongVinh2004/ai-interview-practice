@@ -317,6 +317,27 @@ resource "aws_lb_listener" "https" {
   }
 }
 
+resource "aws_lb_listener_rule" "deny_public_metrics" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 1
+
+  action {
+    type = "fixed-response"
+
+    fixed_response {
+      content_type = "text/plain"
+      message_body = "Not Found"
+      status_code  = "404"
+    }
+  }
+
+  condition {
+    path_pattern {
+      values = ["/api/v1/metrics", "/api/v1/metrics/*"]
+    }
+  }
+}
+
 # ECS Task Definition: API
 resource "aws_ecs_task_definition" "api" {
   family                   = "ai-interview-api-${var.environment}"
@@ -337,12 +358,25 @@ resource "aws_ecs_task_definition" "api" {
           containerPort = 3001
           hostPort      = 3001
           protocol      = "tcp"
+        },
+        {
+          containerPort = 9091
+          hostPort      = 9091
+          protocol      = "tcp"
         }
       ]
       environment = [
         { name = "NODE_ENV", value = "production" },
+        { name = "PROCESS_ROLE", value = "api" },
         { name = "PORT", value = "3001" },
         { name = "API_PREFIX", value = "/api/v1" },
+        { name = "AI_PROVIDER", value = "router" },
+        { name = "AI_PROVIDER_PRIORITY", value = "gemini,openai,anthropic" },
+        { name = "AI_ALLOW_MOCK", value = "false" },
+        { name = "ALLOW_MOCK_PROVIDERS", value = "false" },
+        { name = "METRICS_EXPORTER_ENABLED", value = "true" },
+        { name = "METRICS_EXPORTER_HOST", value = "0.0.0.0" },
+        { name = "METRICS_EXPORTER_PORT", value = "9091" },
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = "6379" },
         { name = "REDIS_TLS", value = "true" },
@@ -354,7 +388,16 @@ resource "aws_ecs_task_definition" "api" {
         { name = "JWT_ACCESS_SECRET", valueFrom = "${var.secrets_arn}:JWT_ACCESS_SECRET::" },
         { name = "JWT_REFRESH_SECRET", valueFrom = "${var.secrets_arn}:JWT_REFRESH_SECRET::" },
         { name = "MFA_ENCRYPTION_KEY", valueFrom = "${var.secrets_arn}:MFA_ENCRYPTION_KEY::" },
-        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" }
+        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" },
+        { name = "METRICS_AUTH_TOKEN", valueFrom = "${var.secrets_arn}:METRICS_AUTH_TOKEN::" },
+        { name = "OPENAI_API_KEY", valueFrom = "${var.secrets_arn}:OPENAI_API_KEY::" },
+        { name = "ANTHROPIC_API_KEY", valueFrom = "${var.secrets_arn}:ANTHROPIC_API_KEY::" },
+        { name = "GEMINI_API_KEY", valueFrom = "${var.secrets_arn}:GEMINI_API_KEY::" },
+        { name = "PAYOS_CLIENT_ID", valueFrom = "${var.secrets_arn}:PAYOS_CLIENT_ID::" },
+        { name = "PAYOS_API_KEY", valueFrom = "${var.secrets_arn}:PAYOS_API_KEY::" },
+        { name = "PAYOS_CHECKSUM_KEY", valueFrom = "${var.secrets_arn}:PAYOS_CHECKSUM_KEY::" },
+        { name = "STRIPE_SECRET_KEY", valueFrom = "${var.secrets_arn}:STRIPE_SECRET_KEY::" },
+        { name = "STRIPE_WEBHOOK_SECRET", valueFrom = "${var.secrets_arn}:STRIPE_WEBHOOK_SECRET::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -384,8 +427,21 @@ resource "aws_ecs_task_definition" "worker" {
       image     = "ai-interview-api:latest"
       command   = ["node", "apps/api/dist/worker.js"]
       essential = true
+      portMappings = [
+        {
+          containerPort = 9090
+          hostPort      = 9090
+          protocol      = "tcp"
+        }
+      ]
       environment = [
         { name = "NODE_ENV", value = "production" },
+        { name = "PROCESS_ROLE", value = "worker" },
+        { name = "AI_PROVIDER", value = "router" },
+        { name = "AI_PROVIDER_PRIORITY", value = "gemini,openai,anthropic" },
+        { name = "AI_ALLOW_MOCK", value = "false" },
+        { name = "ALLOW_MOCK_PROVIDERS", value = "false" },
+        { name = "METRICS_EXPORTER_ENABLED", value = "true" },
         { name = "REDIS_HOST", value = var.redis_endpoint },
         { name = "REDIS_PORT", value = "6379" },
         { name = "REDIS_TLS", value = "true" },
@@ -397,7 +453,16 @@ resource "aws_ecs_task_definition" "worker" {
         { name = "JWT_ACCESS_SECRET", valueFrom = "${var.secrets_arn}:JWT_ACCESS_SECRET::" },
         { name = "JWT_REFRESH_SECRET", valueFrom = "${var.secrets_arn}:JWT_REFRESH_SECRET::" },
         { name = "MFA_ENCRYPTION_KEY", valueFrom = "${var.secrets_arn}:MFA_ENCRYPTION_KEY::" },
-        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" }
+        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" },
+        { name = "METRICS_AUTH_TOKEN", valueFrom = "${var.secrets_arn}:METRICS_AUTH_TOKEN::" },
+        { name = "OPENAI_API_KEY", valueFrom = "${var.secrets_arn}:OPENAI_API_KEY::" },
+        { name = "ANTHROPIC_API_KEY", valueFrom = "${var.secrets_arn}:ANTHROPIC_API_KEY::" },
+        { name = "GEMINI_API_KEY", valueFrom = "${var.secrets_arn}:GEMINI_API_KEY::" },
+        { name = "PAYOS_CLIENT_ID", valueFrom = "${var.secrets_arn}:PAYOS_CLIENT_ID::" },
+        { name = "PAYOS_API_KEY", valueFrom = "${var.secrets_arn}:PAYOS_API_KEY::" },
+        { name = "PAYOS_CHECKSUM_KEY", valueFrom = "${var.secrets_arn}:PAYOS_CHECKSUM_KEY::" },
+        { name = "STRIPE_SECRET_KEY", valueFrom = "${var.secrets_arn}:STRIPE_SECRET_KEY::" },
+        { name = "STRIPE_WEBHOOK_SECRET", valueFrom = "${var.secrets_arn}:STRIPE_WEBHOOK_SECRET::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"

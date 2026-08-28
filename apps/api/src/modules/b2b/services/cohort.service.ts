@@ -1,12 +1,18 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../platform/prisma/prisma.service';
-import { TenantRole, UserRole, UserStatus } from '@ai-interview/contracts';
+import { AssignmentStatus, TenantRole, UserRole, UserStatus } from '@ai-interview/contracts';
+import { CohortAccessContext, CohortAccessPolicy } from '../policies/cohort-access.policy';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class CohortService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cohortAccessPolicy: CohortAccessPolicy,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
+  ) {}
 
   async createCohort(tenantId: string, name: string, description?: string) {
     const cohort = await this.prisma.cohort.create({
@@ -44,11 +50,19 @@ export class CohortService {
     }));
   }
 
-  async getCohort(cohortId: string, tenantId: string) {
+  async getCohort(cohortId: string, access: CohortAccessContext) {
+    const isStudent = this.cohortAccessPolicy.isStudent(access);
     const cohort = await this.prisma.cohort.findFirst({
-      where: { id: cohortId, tenantId },
+      where: this.cohortAccessPolicy.buildReadPredicate(cohortId, access),
       include: {
         members: {
+          ...(isStudent && {
+            where: {
+              tenantMember: {
+                is: { userId: access.userId, tenantId: access.tenantId },
+              },
+            },
+          }),
           include: {
             tenantMember: {
               include: {
@@ -60,6 +74,7 @@ export class CohortService {
           },
         },
         assignments: {
+          ...(isStudent && { where: { status: AssignmentStatus.PUBLISHED } }),
           orderBy: { createdAt: 'desc' },
         },
       },
@@ -75,16 +90,35 @@ export class CohortService {
       name: cohort.name,
       description: cohort.description,
       isActive: cohort.isActive,
-      members: cohort.members.map(m => ({
-        cohortMemberId: m.id,
-        tenantMemberId: m.tenantMemberId,
-        userId: m.tenantMember.userId,
-        email: m.tenantMember.user.email,
-        fullName: m.tenantMember.user.profile?.fullName || m.tenantMember.user.email.split('@')[0],
-        role: m.tenantMember.role,
-        enrolledAt: m.enrolledAt,
-      })),
-      assignments: cohort.assignments,
+      members: cohort.members.map(m =>
+        isStudent
+          ? {
+              role: m.tenantMember.role,
+              enrolledAt: m.enrolledAt,
+            }
+          : {
+              cohortMemberId: m.id,
+              tenantMemberId: m.tenantMemberId,
+              userId: m.tenantMember.userId,
+              email: m.tenantMember.user.email,
+              fullName:
+                m.tenantMember.user.profile?.fullName || m.tenantMember.user.email.split('@')[0],
+              role: m.tenantMember.role,
+              enrolledAt: m.enrolledAt,
+            },
+      ),
+      assignments: isStudent
+        ? cohort.assignments.map(assignment => ({
+            id: assignment.id,
+            cohortId: assignment.cohortId,
+            title: assignment.title,
+            description: assignment.description,
+            status: assignment.status,
+            deadline: assignment.deadline,
+            createdAt: assignment.createdAt,
+            updatedAt: assignment.updatedAt,
+          }))
+        : cohort.assignments,
       createdAt: cohort.createdAt,
       updatedAt: cohort.updatedAt,
     };
@@ -154,6 +188,16 @@ export class CohortService {
                 },
               },
             },
+          });
+
+          // Emit invitation event to send welcome / password setup email (NEW-PRIV-01)
+          this.eventEmitter?.emit('b2b.student_invited', {
+            userId: user.id,
+            email: user.email,
+            fullName: fullName || email.split('@')[0],
+            tenantId,
+            cohortId: cohort.id,
+            cohortName: cohort.name,
           });
         }
 

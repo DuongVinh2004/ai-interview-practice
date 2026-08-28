@@ -137,7 +137,7 @@ describe('HistoryReportService', () => {
         depth: 8,
         clarity: 8.5,
       });
-      expect(result.technologies.map(technology => technology.name)).toEqual([
+      expect(result.technologies.map((technology: any) => technology.name)).toEqual([
         'Node.js',
         'PostgreSQL',
         'TypeScript',
@@ -147,6 +147,18 @@ describe('HistoryReportService', () => {
         completedAt: '2026-08-21T00:00:00.000Z',
       });
       expect(result.learningPath?.summary).toContain('overall performance score of 8.5/10');
+    });
+
+    it('denies access to non-owner ADMIN if mfaVerified is false', async () => {
+      prisma.interviewSession.findUnique.mockResolvedValue({
+        id: 'sess-1',
+        userId: 'other-user',
+        turns: [],
+      });
+
+      await expect(
+        service.getSessionResult('admin-user', UserRole.ADMIN, 'sess-1', false),
+      ).rejects.toThrow();
     });
   });
 });

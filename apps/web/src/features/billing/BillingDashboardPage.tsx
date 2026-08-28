@@ -19,7 +19,10 @@ import {
   FileText,
   Calendar,
   Mic,
+  Sparkles,
+  Crown,
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export function BillingDashboardPage() {
   const navigate = useNavigate();
@@ -85,14 +88,16 @@ export function BillingDashboardPage() {
         title={t.billing.title}
         subtitle={t.billing.subtitle}
         actions={
-          <Button
-            variant="primary"
+          <button
+            type="button"
             onClick={() => navigate('/pricing')}
-            className="gap-1.5 shadow-sm font-semibold"
-            leftIcon={<ArrowUpRight className="w-4 h-4" />}
+            className="group relative inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm text-white bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:via-teal-500 hover:to-indigo-500 shadow-md shadow-emerald-600/25 hover:shadow-lg hover:shadow-teal-500/35 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 overflow-hidden"
           >
+            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+            <Sparkles className="w-4 h-4 text-amber-300 group-hover:rotate-12 group-hover:scale-110 transition-transform duration-300" />
             <span>{t.billing.changePlan}</span>
-          </Button>
+            <ArrowUpRight className="w-4 h-4 text-white/90 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </button>
         }
       />
 
@@ -184,10 +189,23 @@ export function BillingDashboardPage() {
 
       {/* Monthly Quota Consumption Meters */}
       <div className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
-          <Zap className="w-5 h-5 text-amber-500" />
-          <span>{t.billing.usageSummary}</span>
-        </h2>
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <h2 className="text-lg font-bold text-slate-900 flex items-center space-x-2">
+            <Zap className="w-5 h-5 text-amber-500" />
+            <span>{t.billing.usageSummary}</span>
+          </h2>
+
+          <Link
+            to="/pricing"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 border border-emerald-200/80 hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-2xs group"
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
+            <span>
+              {language === 'vi' ? 'Tăng thêm hạn mức / Đổi gói' : 'Get More Sessions / Upgrade'}
+            </span>
+            <ArrowUpRight className="w-3.5 h-3.5 text-emerald-600" />
+          </Link>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Interview Sessions Meter */}

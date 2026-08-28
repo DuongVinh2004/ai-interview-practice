@@ -13,9 +13,17 @@ export const CreateInterviewDtoSchema = z.object({
     .max(5, 'You can select up to 5 technologies'),
   sessionMode: z.nativeEnum(SessionMode).default(SessionMode.STANDARD),
   competencyArea: z.nativeEnum(CompetencyArea).optional(),
+  language: z.string().default('vi').optional(),
   totalTurns: z.number().int().min(1).max(5).default(5),
   isSandbox: z.boolean().default(false),
   blueprintId: z.string().uuid().optional(),
+  presetId: z.string().uuid().optional(),
+  draftId: z.string().uuid().optional(),
+  configurationSource: z
+    .enum(['MANUAL', 'PRESET', 'RECENT', 'BLUEPRINT', 'CV'])
+    .default('MANUAL')
+    .optional(),
+  fieldSources: z.record(z.string(), z.any()).optional(),
 });
 
 export type CreateInterviewDto = z.infer<typeof CreateInterviewDtoSchema>;
@@ -74,11 +82,16 @@ export const InterviewSessionDtoSchema = z.object({
   state: z.nativeEnum(SessionState),
   sessionMode: z.nativeEnum(SessionMode).default(SessionMode.STANDARD),
   competencyArea: z.nativeEnum(CompetencyArea).nullable().optional(),
+  language: z.string().default('vi').optional(),
   isSandbox: z.boolean().default(false),
   currentTurn: z.number().int().min(1).max(5),
   totalTurns: z.number().int().min(1).max(5).default(5),
   targetDifficulty: z.nativeEnum(DifficultyLevel),
   overallScore: z.number().nullable().optional(),
+  configurationSnapshot: z.record(z.any()).nullable().optional(),
+  configurationSource: z.string().nullable().optional(),
+  fieldSources: z.record(z.any()).nullable().optional(),
+  presetId: z.string().uuid().nullable().optional(),
   jobRole: JobRoleDtoSchema,
   seniorityLevel: SeniorityLevelDtoSchema,
   technologies: z.array(TechnologyDtoSchema),

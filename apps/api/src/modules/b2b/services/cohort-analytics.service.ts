@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CompetencyArea } from '@ai-interview/contracts';
+import { CohortAccessContext, CohortAccessPolicy } from '../policies/cohort-access.policy';
 
 export const AREA_NAMES: Record<CompetencyArea, string> = {
   [CompetencyArea.SYSTEM_DESIGN]: 'System Design & Scalability',
@@ -12,11 +13,17 @@ export const AREA_NAMES: Record<CompetencyArea, string> = {
 
 @Injectable()
 export class CohortAnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly cohortAccessPolicy: CohortAccessPolicy,
+  ) {}
 
-  async getCohortAnalytics(cohortId: string, tenantId: string) {
+  async getCohortAnalytics(cohortId: string, access: CohortAccessContext) {
+    const tenantId = access.tenantId;
     const cohort = await this.prisma.cohort.findFirst({
-      where: { id: cohortId, tenantId },
+      where: this.cohortAccessPolicy.buildReadPredicate(cohortId, access, {
+        allowStudent: false,
+      }),
       include: {
         members: {
           include: {
@@ -133,11 +140,27 @@ export class CohortAnalyticsService {
       const readinessScore = u.readinessSnapshots[0]?.readinessScore;
       const lastSession = completedSessions[0];
 
+      // NEW-B2B-01: Match completed assignments to cohort assignment requirements
+      const cohortAssignmentIds = new Set(cohort.assignments.map(a => a.id));
+      let completedAssignmentCount = totalSessions;
+      if (cohortAssignmentIds.size > 0) {
+        const completedAssignmentSet = new Set(
+          completedSessions
+            .map(s => s.assignmentId)
+            .filter((id): id is string => Boolean(id && cohortAssignmentIds.has(id))),
+        );
+        // If sessions are tagged with assignmentId, use exact matching count; otherwise fallback to sessions count capped by total assignments
+        completedAssignmentCount =
+          completedAssignmentSet.size > 0
+            ? completedAssignmentSet.size
+            : Math.min(totalSessions, cohort.assignments.length);
+      }
+
       studentProgressList.push({
         userId: u.id,
         fullName: u.profile?.fullName || u.email.split('@')[0],
         email: u.email,
-        completedAssignments: totalSessions,
+        completedAssignments: completedAssignmentCount,
         totalAssignments: Math.max(cohort.assignments.length, 1),
         averageScore: userAvgScore,
         readinessScore,

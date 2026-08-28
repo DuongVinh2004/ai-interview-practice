@@ -9,6 +9,7 @@ import { TenantController } from './controllers/tenant.controller';
 import { CohortController } from './controllers/cohort.controller';
 import { AssignmentController } from './controllers/assignment.controller';
 import { CohortAnalyticsController } from './controllers/cohort-analytics.controller';
+import { CohortAccessPolicy } from './policies/cohort-access.policy';
 
 @Module({
   controllers: [
@@ -24,6 +25,7 @@ import { CohortAnalyticsController } from './controllers/cohort-analytics.contro
     CohortAnalyticsService,
     TenantRoleGuard,
     TenantContextMiddleware,
+    CohortAccessPolicy,
   ],
   exports: [
     TenantService,
@@ -31,6 +33,7 @@ import { CohortAnalyticsController } from './controllers/cohort-analytics.contro
     AssignmentService,
     CohortAnalyticsService,
     TenantRoleGuard,
+    CohortAccessPolicy,
   ],
 })
 export class B2bModule implements NestModule {

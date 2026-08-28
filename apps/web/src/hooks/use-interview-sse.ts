@@ -10,6 +10,11 @@ interface UseInterviewSseOptions {
   onSessionUpdated?: () => void;
 }
 
+/**
+ * Secure SSE hook for realtime interview feedback.
+ * Authenticates via standard `Authorization: Bearer <token>` headers instead of
+ * URL query parameters (?token=...) to avoid token leakage in server/proxy access logs (NEW-SEC-03).
+ */
 export function useInterviewSse({
   sessionId,
   enabled = true,
@@ -55,55 +60,87 @@ export function useInterviewSse({
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
     const accessToken = useAuthStore.getState().accessToken;
-    const sseUrl = `${API_BASE}/interviews/${sessionId}/events${accessToken ? `?token=${encodeURIComponent(accessToken)}` : ''}`;
+    const sseUrl = `${API_BASE}/interviews/${sessionId}/events`;
+    const abortController = new AbortController();
+    let isCancelled = false;
 
-    try {
-      const eventSource = new EventSource(sseUrl, { withCredentials: true });
-      eventSourceRef.current = eventSource;
+    async function startStream() {
+      try {
+        const headers: Record<string, string> = {
+          Accept: 'text/event-stream',
+        };
+        if (accessToken) {
+          headers['Authorization'] = `Bearer ${accessToken}`;
+        }
 
-      eventSource.onopen = () => {
+        const response = await fetch(sseUrl, {
+          headers,
+          signal: abortController.signal,
+          credentials: 'include',
+        });
+
+        if (!response.ok || !response.body) {
+          throw new Error(`SSE connection failed with status ${response.status}`);
+        }
+
         setIsConnected(true);
         setUsingFallbackPolling(false);
         if (pollingTimerRef.current) {
           clearInterval(pollingTimerRef.current);
           pollingTimerRef.current = null;
         }
-      };
 
-      eventSource.onmessage = event => {
-        try {
-          const payload = JSON.parse(event.data);
-          if (payload.type !== SseEventType.HEARTBEAT) {
-            onEventRef.current?.(payload.type, payload.data);
-            onSessionUpdatedRef.current?.();
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (!isCancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || '';
+
+          for (const block of lines) {
+            const dataLine = block.split('\n').find(l => l.startsWith('data: '));
+            if (dataLine) {
+              const rawJson = dataLine.slice(6).trim();
+              try {
+                const payload = JSON.parse(rawJson);
+                if (payload.type !== SseEventType.HEARTBEAT) {
+                  onEventRef.current?.(payload.type, payload.data);
+                  onSessionUpdatedRef.current?.();
+                }
+              } catch {
+                // Ping or plain text frame
+              }
+            }
           }
-        } catch {
-          // non-json or ping
         }
-      };
 
-      eventSource.onerror = () => {
+        if (!isCancelled) {
+          setIsConnected(false);
+          setUsingFallbackPolling(true);
+          if (!pollingTimerRef.current) {
+            pollingTimerRef.current = setInterval(pollStatus, 3000);
+          }
+        }
+      } catch (err: any) {
+        if (err.name === 'AbortError' || isCancelled) return;
         setIsConnected(false);
         setUsingFallbackPolling(true);
-        eventSource.close();
-
-        // Start fallback polling if not already started
         if (!pollingTimerRef.current) {
           pollingTimerRef.current = setInterval(pollStatus, 3000);
         }
-      };
-    } catch {
-      setUsingFallbackPolling(true);
-      if (!pollingTimerRef.current) {
-        pollingTimerRef.current = setInterval(pollStatus, 3000);
       }
     }
 
+    startStream();
+
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
+      isCancelled = true;
+      abortController.abort();
       if (pollingTimerRef.current) {
         clearInterval(pollingTimerRef.current);
         pollingTimerRef.current = null;

@@ -54,17 +54,25 @@ export class AuthService {
       );
     }
 
-    if (payload.mfaPending || payload.tokenType === 'mfa_challenge') {
+    const tokenType = payload.tokenType as string | undefined;
+    if (payload.mfaPending || (tokenType !== undefined && tokenType !== 'access')) {
       throw new DomainException(
         ErrorCode.MFA_REQUIRED,
-        'MFA verification required. Challenge token cannot access protected endpoints.',
+        'Only access tokens can authenticate this channel.',
         HttpStatus.UNAUTHORIZED,
       );
     }
 
     const user = await this.prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, email: true, role: true, status: true, tokenVersion: true },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        status: true,
+        tokenVersion: true,
+        mfaEnabled: true,
+      },
     });
 
     if (!user) {
@@ -95,6 +103,14 @@ export class AuthService {
       );
     }
 
+    if (user.role === UserRole.ADMIN && (!user.mfaEnabled || payload.mfaVerified !== true)) {
+      throw new DomainException(
+        ErrorCode.MFA_REQUIRED,
+        'Administrator session requires verified multi-factor authentication',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     return {
       sub: user.id,
       id: user.id,
@@ -102,8 +118,8 @@ export class AuthService {
       role: user.role as any,
       status: user.status as any,
       tokenVersion: user.tokenVersion,
-      tokenType: 'access',
-      mfaVerified: payload.mfaVerified ?? false,
+      tokenType: payload.tokenType || 'access',
+      mfaVerified: user.mfaEnabled && (payload.mfaVerified ?? false),
     };
   }
 
@@ -246,12 +262,6 @@ export class AuthService {
 
     // Enforce: Admin must setup MFA if not yet enabled (SEC-003)
     if (user.role === UserRole.ADMIN && !user.mfaEnabled) {
-      if (
-        (process.env.ALLOW_MOCK_PROVIDERS === 'true' && process.env.NODE_ENV !== 'test') ||
-        this.configService.get<string>('ai.allowMock') === 'true'
-      ) {
-        return this.generateAuthResponse(user, true);
-      }
       const authResponse = this.generateMfaEnrollmentResponse(user);
       return {
         ...authResponse,
@@ -361,7 +371,28 @@ export class AuthService {
       );
     }
 
-    return this.generateAuthResponse(storedToken.user, true, storedToken.familyId);
+    const refreshMfaVerified =
+      storedToken.mfaVerified === true && storedToken.user.mfaEnabled === true;
+
+    if (storedToken.user.role === UserRole.ADMIN && !refreshMfaVerified) {
+      await this.prisma.$transaction([
+        this.prisma.refreshToken.updateMany({
+          where: { familyId: storedToken.familyId, isRevoked: false },
+          data: { isRevoked: true },
+        }),
+        this.prisma.user.update({
+          where: { id: storedToken.userId },
+          data: { tokenVersion: { increment: 1 } },
+        }),
+      ]);
+      throw new DomainException(
+        ErrorCode.MFA_REQUIRED,
+        'Administrator session requires fresh MFA verification',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
+    return this.generateAuthResponse(storedToken.user, refreshMfaVerified, storedToken.familyId);
   }
 
   async logout(userId: string, refreshTokenString?: string): Promise<void> {
@@ -818,7 +849,15 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.user.update({
         where: { id: userId },
-        data: { mfaEnabled: false, mfaSecret: null },
+        data: {
+          mfaEnabled: false,
+          mfaSecret: null,
+          tokenVersion: { increment: 1 },
+        },
+      }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true },
       }),
       this.prisma.recoveryCode.deleteMany({ where: { userId } }),
       this.prisma.auditLog.create({
@@ -889,6 +928,7 @@ export class AuthService {
         userId: user.id,
         familyId: tokenFamilyId,
         tokenHash,
+        mfaVerified,
         expiresAt,
       },
     });

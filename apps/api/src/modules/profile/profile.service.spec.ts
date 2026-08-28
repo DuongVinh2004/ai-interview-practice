@@ -263,6 +263,10 @@ describe('ProfileService', () => {
           },
         ]),
       };
+      prisma.voiceSession = {
+        findMany: jest.fn().mockResolvedValue([]),
+        deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+      };
 
       const result = await service.exportUserData('user-1');
       expect(result.gdprComplianceVersion).toBe('GDPR-AIP-2026.08');
@@ -289,6 +293,11 @@ describe('ProfileService', () => {
       prisma.user.update = jest.fn().mockResolvedValue({});
       prisma.userProfile = { update: jest.fn().mockResolvedValue({}) };
       prisma.userDocument = { deleteMany: jest.fn().mockResolvedValue({ count: 2 }) };
+      prisma.interviewSession = { findMany: jest.fn().mockResolvedValue([]) };
+      prisma.voiceTranscript = { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) };
+      prisma.voiceSessionMetric = { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) };
+      prisma.voiceSession = { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) };
+      prisma.voiceConsentRecord = { deleteMany: jest.fn().mockResolvedValue({ count: 0 }) };
       prisma.refreshToken = { updateMany: jest.fn().mockResolvedValue({ count: 2 }) };
       prisma.auditLog = { create: jest.fn().mockResolvedValue({}) };
       prisma.$transaction = jest.fn(async (cb: any) => cb(prisma));

@@ -2,8 +2,13 @@ import { Global, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { RedisService } from './redis.service';
-import { createRedisConnectionOptions } from './redis.options';
+import {
+  createRedisConnectionOptions,
+  calculateExponentialBackoffWithJitter,
+} from './redis.options';
 import { QueueName } from '@ai-interview/contracts';
+
+export { calculateExponentialBackoffWithJitter };
 
 export const DEFAULT_DURABLE_JOB_OPTIONS = {
   attempts: 3,

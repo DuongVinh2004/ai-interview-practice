@@ -35,7 +35,10 @@ export function Tabs({
     return (
       <div
         role="tablist"
-        className={cn('flex border-b border-slate-200 gap-2 overflow-x-auto', className)}
+        className={cn(
+          'flex border-b border-slate-200 dark:border-slate-700 gap-2 overflow-x-auto',
+          className,
+        )}
       >
         {tabs.map(tab => {
           const isActive = tab.id === activeTab;
@@ -53,8 +56,8 @@ export function Tabs({
                 'inline-flex items-center font-medium border-b-2 -mb-px transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-t',
                 sizeStyles[size],
                 isActive
-                  ? 'border-emerald-600 text-emerald-700 font-semibold'
-                  : 'border-transparent text-slate-500 hover:text-slate-900 hover:border-slate-300',
+                  ? 'border-emerald-600 dark:border-emerald-400 text-emerald-700 dark:text-emerald-400 font-semibold'
+                  : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-300 dark:hover:border-slate-600',
                 tab.disabled && 'opacity-50 cursor-not-allowed',
               )}
             >
@@ -73,7 +76,7 @@ export function Tabs({
       <div
         role="tablist"
         className={cn(
-          'inline-flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 overflow-x-auto max-w-full',
+          'inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 gap-1 overflow-x-auto max-w-full',
           className,
         )}
       >
@@ -93,8 +96,8 @@ export function Tabs({
                 'inline-flex items-center font-medium rounded-lg transition-all whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
                 sizeStyles[size],
                 isActive
-                  ? 'bg-white text-slate-900 font-semibold shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60',
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-semibold shadow-xs'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700/60',
                 tab.disabled && 'opacity-50 cursor-not-allowed',
               )}
             >
@@ -127,8 +130,8 @@ export function Tabs({
               'inline-flex items-center font-medium rounded-lg transition-all border select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500',
               sizeStyles[size],
               isActive
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold shadow-xs'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300',
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700 font-semibold shadow-xs'
+                : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600',
               tab.disabled && 'opacity-50 cursor-not-allowed',
             )}
           >

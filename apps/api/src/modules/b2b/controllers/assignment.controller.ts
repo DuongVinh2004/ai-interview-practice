@@ -36,6 +36,11 @@ export class AssignmentController {
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR, TenantRole.STUDENT)
   @ApiOperation({ summary: 'List all assignments for a specific cohort' })
   async listAssignments(@Req() req: RequestWithTenant, @Param('id') cohortId: string) {
-    return this.assignmentService.listCohortAssignments(cohortId, req.tenantId!);
+    return this.assignmentService.listCohortAssignments(cohortId, {
+      userId: req.user!.sub || req.user!.id,
+      systemRole: req.user!.role,
+      tenantRole: req.tenantRole,
+      tenantId: req.tenantId!,
+    });
   }
 }

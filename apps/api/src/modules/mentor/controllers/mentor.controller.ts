@@ -32,8 +32,11 @@ export class MentorController {
 
   @Get('availability/:mentorId')
   @ApiOperation({ summary: 'Get available time slots for a specific mentor' })
-  async getMentorAvailability(@Param('mentorId') mentorId: string) {
-    return this.mentorService.getMentorAvailability(mentorId);
+  async getMentorAvailability(
+    @Param('mentorId') mentorId: string,
+    @CurrentUser('sub') requesterUserId: string,
+  ) {
+    return this.mentorService.getMentorAvailability(mentorId, requesterUserId);
   }
 
   @Get('list')

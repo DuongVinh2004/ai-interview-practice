@@ -10,6 +10,21 @@ import {
 } from '@ai-interview/contracts';
 import { apiClient } from '../../lib/api-client';
 
+export interface ExportDiagramResponse {
+  interviewId: string;
+  version: number;
+  etag: string;
+  finalCanvasUrl: string | null;
+  initialPrompt: string | null;
+  snapshotCount: number;
+  nodesCount: number;
+  connectorsCount: number;
+  exportedAt: string;
+  format: string;
+  svgContent?: string;
+  canvasState?: Record<string, any>;
+}
+
 export function useSystemDesign(interviewId: string) {
   const queryClient = useQueryClient();
   const [activeSnapshotIdx, setActiveSnapshotIdx] = useState<number | null>(null);
@@ -31,17 +46,26 @@ export function useSystemDesign(interviewId: string) {
     enabled: !!interviewId,
   });
 
-  // Mutation to save snapshot
+  // Mutation to save snapshot with version and etag check
   const saveSnapshotMutation = useMutation<
-    CanvasSnapshotDto,
+    CanvasSnapshotDto & { version: number; etag: string },
     Error,
-    { imageUrl: string; canvasStateJson?: any; elapsedSeconds?: number }
+    {
+      imageUrl: string;
+      canvasStateJson?: any;
+      elapsedSeconds?: number;
+      expectedVersion?: number;
+      ifMatchEtag?: string;
+    }
   >({
     mutationFn: body =>
-      apiClient<CanvasSnapshotDto>(`/interviews/${interviewId}/canvas/snapshot`, {
-        method: 'POST',
-        body: JSON.stringify(body),
-      }),
+      apiClient<CanvasSnapshotDto & { version: number; etag: string }>(
+        `/interviews/${interviewId}/canvas/snapshot`,
+        {
+          method: 'POST',
+          body: JSON.stringify(body),
+        },
+      ),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['system-design', interviewId, 'history'] });
     },
@@ -85,6 +109,14 @@ export function useSystemDesign(interviewId: string) {
     },
   );
 
+  const exportDiagram = async (
+    format: 'svg' | 'png' | 'json' = 'svg',
+  ): Promise<ExportDiagramResponse> => {
+    return apiClient<ExportDiagramResponse>(
+      `/interviews/${interviewId}/canvas/export?format=${format}`,
+    );
+  };
+
   return {
     session: sessionQuery.data,
     isLoadingSession: sessionQuery.isLoading,
@@ -103,5 +135,6 @@ export function useSystemDesign(interviewId: string) {
     evaluateDiagram: evaluateDiagramMutation.mutateAsync,
     isEvaluatingDiagram: evaluateDiagramMutation.isPending,
     diagramEvaluationResult: evaluateDiagramMutation.data,
+    exportDiagram,
   };
 }

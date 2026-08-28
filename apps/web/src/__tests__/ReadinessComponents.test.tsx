@@ -13,7 +13,7 @@ describe('Readiness Score Components (F009)', () => {
 
     expect(screen.getByTestId('readiness-gauge')).toBeInTheDocument();
     expect(screen.getByText('82.5')).toBeInTheDocument();
-    expect(screen.getByText(/95% CI: \[78.0% – 87.0%\]/i)).toBeInTheDocument();
+    expect(screen.getByText(/Độ tin cậy 95%: \[78.0% – 87.0%\]/i)).toBeInTheDocument();
   });
 
   it('renders TierBadge with color styling and Vietnamese translation', () => {
@@ -42,15 +42,15 @@ describe('Readiness Score Components (F009)', () => {
     );
 
     expect(screen.getByTestId('time-estimate-card')).toBeInTheDocument();
-    expect(screen.getByText('+0.35 pts/wk')).toBeInTheDocument();
-    expect(screen.getByText(/~4 weeks/i)).toBeInTheDocument();
+    expect(screen.getByText('+0.35 điểm/tuần')).toBeInTheDocument();
+    expect(screen.getByText(/Cần hoàn thành thêm ~4 bài phỏng vấn thử/i)).toBeInTheDocument();
   });
 
   it('renders CompetencyBreakdownTable with weights and status badges', () => {
     const items = [
       {
         area: CompetencyArea.SYSTEM_DESIGN,
-        name: 'System Design & Scalability',
+        name: 'Thiết Kế Hệ Thống & Khả Năng Mở Rộng',
         currentScore: 8.5,
         targetScore: 8.5,
         weight: 0.3,
@@ -61,7 +61,7 @@ describe('Readiness Score Components (F009)', () => {
       },
       {
         area: CompetencyArea.DATABASE_CONCURRENCY,
-        name: 'Database & Concurrency',
+        name: 'Cơ Sở Dữ Liệu & Xử Lý Đồng Thời',
         currentScore: 6.8,
         targetScore: 8.0,
         weight: 0.25,
@@ -74,10 +74,10 @@ describe('Readiness Score Components (F009)', () => {
 
     render(<CompetencyBreakdownTable items={items} />);
     expect(screen.getByTestId('competency-breakdown-table')).toBeInTheDocument();
-    expect(screen.getByText('System Design & Scalability')).toBeInTheDocument();
+    expect(screen.getByText('Thiết Kế Hệ Thống & Khả Năng Mở Rộng')).toBeInTheDocument();
     expect(screen.getByText('30%')).toBeInTheDocument();
-    expect(screen.getByText('Target Met')).toBeInTheDocument();
-    expect(screen.getByText('Approaching')).toBeInTheDocument();
+    expect(screen.getByText('Đạt Chuẩn')).toBeInTheDocument();
+    expect(screen.getByText('Đang Tiệm Cận')).toBeInTheDocument();
   });
 
   it('renders MilestoneTimeline with completed milestones', () => {
@@ -91,8 +91,8 @@ describe('Readiness Score Components (F009)', () => {
 
     render(<MilestoneTimeline milestones={milestones} />);
     expect(screen.getByTestId('milestone-timeline')).toBeInTheDocument();
-    expect(screen.getByText('3 of 5 Completed')).toBeInTheDocument();
-    expect(screen.getByText('25% Ready')).toBeInTheDocument();
-    expect(screen.getByText('85% Ready')).toBeInTheDocument();
+    expect(screen.getByText(/Đạt 3 \/ 5 Cột mốc/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sẵn sàng 25%/i)).toBeInTheDocument();
+    expect(screen.getByText(/Sẵn sàng 85%/i)).toBeInTheDocument();
   });
 });

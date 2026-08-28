@@ -7,6 +7,7 @@ import { DesignEvaluationService } from './services/design-evaluation.service';
 import { MockVisionProvider } from './providers/mock-vision.provider';
 import { OpenAiVisionProvider } from './providers/openai-vision.provider';
 import { GeminiVisionProvider } from './providers/gemini-vision.provider';
+import { VisionEntitlementService } from './services/vision-entitlement.service';
 
 @Module({
   imports: [ConfigModule],
@@ -15,6 +16,7 @@ import { GeminiVisionProvider } from './providers/gemini-vision.provider';
     CanvasService,
     DesignAnalyzerService,
     DesignEvaluationService,
+    VisionEntitlementService,
     MockVisionProvider,
     OpenAiVisionProvider,
     GeminiVisionProvider,
@@ -58,6 +60,7 @@ import { GeminiVisionProvider } from './providers/gemini-vision.provider';
     CanvasService,
     DesignAnalyzerService,
     DesignEvaluationService,
+    VisionEntitlementService,
     MockVisionProvider,
     'VISION_PROVIDER',
   ],

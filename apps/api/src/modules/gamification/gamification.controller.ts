@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Query,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+  Headers,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { XpService } from './xp.service';
@@ -15,8 +24,8 @@ export class GamificationController {
   ) {}
 
   @Get('profile')
-  async getProfile(@CurrentUser('sub') userId: string) {
-    return this.xpService.getGamificationProfile(userId);
+  async getProfile(@CurrentUser('sub') userId: string, @Headers('x-timezone') timezone?: string) {
+    return this.xpService.getGamificationProfile(userId, timezone);
   }
 
   @Get('badges')
@@ -43,13 +52,16 @@ export class GamificationController {
 
   @Post('claim-daily-login')
   @HttpCode(HttpStatus.OK)
-  async claimDailyLogin(@CurrentUser('sub') userId: string) {
-    return this.xpService.claimDailyLogin(userId);
+  async claimDailyLogin(
+    @CurrentUser('sub') userId: string,
+    @Headers('x-timezone') timezone?: string,
+  ) {
+    return this.xpService.claimDailyLogin(userId, timezone);
   }
 
   @Post('use-freeze')
   @HttpCode(HttpStatus.OK)
-  async useFreeze(@CurrentUser('sub') userId: string) {
-    return this.streakService.useStreakFreeze(userId);
+  async useFreeze(@CurrentUser('sub') userId: string, @Headers('x-timezone') timezone?: string) {
+    return this.streakService.useStreakFreeze(userId, timezone);
   }
 }

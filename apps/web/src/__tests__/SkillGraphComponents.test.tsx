@@ -42,8 +42,8 @@ describe('Skill Graph & Benchmark Components (F008)', () => {
 
     render(<CompetencyRadarOverlay data={data} size={300} />);
     expect(screen.getByTestId('competency-radar-overlay')).toBeInTheDocument();
-    expect(screen.getByText('Candidate Score')).toBeInTheDocument();
-    expect(screen.getByText(/Senior Benchmark/i)).toBeInTheDocument();
+    expect(screen.getByText(/Điểm của bạn|Candidate Score/i)).toBeInTheDocument();
+    expect(screen.getByText(/Chuẩn Senior|Senior Benchmark/i)).toBeInTheDocument();
   });
 
   it('renders SkillTreeView with collapsible nodes and scores', () => {
@@ -116,10 +116,12 @@ describe('Skill Graph & Benchmark Components (F008)', () => {
 
     renderWithProviders(<GapAnalysisCard gap={gap} />);
     expect(screen.getByTestId('gap-analysis-card')).toBeInTheDocument();
-    expect(screen.getByText('Distributed Lock Contention')).toBeInTheDocument();
-    expect(screen.getByText('HIGH PRIORITY')).toBeInTheDocument();
-    expect(screen.getByText('-2.8 pt gap')).toBeInTheDocument();
-    expect(screen.getByText(/Practice/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Distributed Lock Contention|Xung Đột Khóa Phân Tán/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Ưu Tiên Cao|HIGH PRIORITY/i)).toBeInTheDocument();
+    expect(screen.getByText(/-2.8 (điểm thiếu|pt gap)/i)).toBeInTheDocument();
+    expect(screen.getByText(/Luyện tập ngay|Practice/i)).toBeInTheDocument();
   });
 
   it('renders HeatmapCalendar without errors', () => {

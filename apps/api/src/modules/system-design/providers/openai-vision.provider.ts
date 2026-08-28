@@ -90,6 +90,7 @@ Provide structured JSON response with:
     const parsed = JSON.parse(content);
 
     return {
+      usageTokens: response.usage?.total_tokens,
       overallScore: Number(parsed.overallScore) || 8.0,
       requirementsScore: Number(parsed.requirementsScore) || 8.0,
       highLevelScore: Number(parsed.highLevelScore) || 8.0,

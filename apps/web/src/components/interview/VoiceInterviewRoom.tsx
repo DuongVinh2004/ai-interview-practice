@@ -1,18 +1,32 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, MicOff, Hand, PhoneOff, Bot, User, Sparkles } from 'lucide-react';
+import {
+  Mic,
+  MicOff,
+  Hand,
+  PhoneOff,
+  Bot,
+  User,
+  Sparkles,
+  AlertCircle,
+  RefreshCw,
+  ShieldCheck,
+} from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { AudioVisualizer } from './AudioVisualizer';
 import { NetworkQualityBadge } from './NetworkQualityBadge';
+import { AudioAnswerRecorder } from './AudioAnswerRecorder';
 import { useVoiceStreaming } from '../../hooks/useVoiceStreaming';
 import { SpeakerRole } from '@ai-interview/contracts';
+import { apiClient } from '../../lib/api-client';
 
 interface VoiceInterviewRoomProps {
   interviewId: string;
   roleName?: string;
   levelName?: string;
   onFinish?: () => void;
+  onRestAnswerSubmit?: (text: string) => Promise<void>;
 }
 
 export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
@@ -20,10 +34,14 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
   roleName = 'Senior Software Engineer',
   levelName = 'SENIOR',
   onFinish,
+  onRestAnswerSubmit,
 }) => {
   const navigate = useNavigate();
   const transcriptEndRef = useRef<HTMLDivElement>(null);
   const [elapsedSec, setElapsedSec] = useState(0);
+  const [hasConsented, setHasConsented] = useState(false);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  const [isSubmittingConsent, setIsSubmittingConsent] = useState(false);
 
   const {
     connectionStatus,
@@ -33,6 +51,10 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
     toggleMute,
     isAiSpeaking,
     isCandidateSpeaking,
+    silenceDurationSec,
+    isProlongedSilence,
+    resetSilenceTimer,
+    isFallbackToRest,
     transcripts,
     networkQuality,
     bargeInCount,
@@ -40,6 +62,7 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
   } = useVoiceStreaming(interviewId);
 
   useEffect(() => {
+    if (!hasConsented) return;
     connect();
     const timer = setInterval(() => {
       setElapsedSec(prev => prev + 1);
@@ -49,7 +72,7 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
       clearInterval(timer);
       disconnect();
     };
-  }, [interviewId]);
+  }, [interviewId, connect, disconnect, hasConsented]);
 
   useEffect(() => {
     transcriptEndRef.current?.scrollIntoView?.({ behavior: 'smooth' });
@@ -66,9 +89,106 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
     if (onFinish) {
       onFinish();
     } else {
-      navigate(`/interviews/${interviewId}/result`);
+      navigate('/history');
     }
   };
+
+  const handleFallbackAnswer = async (text: string) => {
+    if (onRestAnswerSubmit) {
+      await onRestAnswerSubmit(text);
+    }
+  };
+
+  const handleGrantConsent = async () => {
+    setIsSubmittingConsent(true);
+    setConsentError(null);
+    try {
+      await apiClient.post('/voice-gateway/consent', {
+        interviewId,
+        policyVersion: 'VOICE-PRIVACY-2026.08',
+      });
+      setHasConsented(true);
+    } catch (err: any) {
+      setConsentError(err?.message || 'Failed to record voice consent. Please try again.');
+    } finally {
+      setIsSubmittingConsent(false);
+    }
+  };
+
+  if (!hasConsented) {
+    return (
+      <div
+        className="max-w-xl mx-auto my-12 bg-white rounded-2xl border border-slate-200 shadow-xl p-6 sm:p-8 space-y-6"
+        data-testid="voice-consent-modal"
+      >
+        <div className="flex items-center space-x-3">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">
+              Xác Nhận Quyền Riêng Tư & Xử Lý Giọng Nói
+            </h3>
+            <p className="text-xs text-slate-500">GDPR / CCPA Explicit Consent Gate (F001)</p>
+          </div>
+        </div>
+
+        <div className="text-xs text-slate-700 space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100 leading-relaxed">
+          <p className="font-semibold text-slate-900">
+            Trước khi bắt đầu phiên phỏng vấn thoại trực tiếp, vui lòng xác nhận:
+          </p>
+          <ul className="list-disc pl-4 space-y-1.5 text-slate-600">
+            <li>
+              Âm thanh micro sẽ được truyền trực tiếp (live stream) qua kết nối mã hóa WSS đến máy
+              chủ.
+            </li>
+            <li>
+              Dịch vụ nhận diện (Deepgram STT) và tổng hợp giọng nói (ElevenLabs TTS) xử lý âm thanh
+              trong thời gian thực.
+            </li>
+            <li>
+              Hệ thống <strong>KHÔNG</strong> lưu trữ vĩnh viễn file âm thanh gốc (Zero Raw Audio
+              Retention).
+            </li>
+            <li>
+              Biên bản văn bản (Transcript) được lưu trữ tối đa 30 ngày theo chính sách Data
+              Retention.
+            </li>
+            <li>Bạn có thể dừng thu âm, tắt micro hoặc kết thúc phiên phỏng vấn bất kỳ lúc nào.</li>
+          </ul>
+        </div>
+
+        {consentError && (
+          <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center space-x-2">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{consentError}</span>
+          </div>
+        )}
+
+        <div className="flex items-center justify-end space-x-3 pt-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="md"
+            onClick={() => navigate(-1)}
+            disabled={isSubmittingConsent}
+          >
+            Hủy Bỏ
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            onClick={handleGrantConsent}
+            disabled={isSubmittingConsent}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-200"
+          >
+            {isSubmittingConsent ? 'Đang kích hoạt...' : 'Tôi Đồng Ý & Bắt Đầu Phỏng Vấn'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 p-4 sm:p-6" data-testid="voice-interview-room">
@@ -92,8 +212,26 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
               </span>
               <span>•</span>
               <span className="flex items-center space-x-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span className="text-emerald-700 font-semibold">{connectionStatus}</span>
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    connectionStatus === 'LIVE'
+                      ? 'bg-emerald-500 animate-ping'
+                      : connectionStatus === 'ERROR'
+                        ? 'bg-rose-500'
+                        : 'bg-amber-500'
+                  }`}
+                />
+                <span
+                  className={`font-semibold ${
+                    connectionStatus === 'LIVE'
+                      ? 'text-emerald-700'
+                      : connectionStatus === 'ERROR'
+                        ? 'text-rose-700'
+                        : 'text-amber-700'
+                  }`}
+                >
+                  {connectionStatus}
+                </span>
               </span>
             </div>
           </div>
@@ -108,6 +246,74 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
           )}
         </div>
       </div>
+
+      {/* Prolonged Silence Warning Prompt (>15s) */}
+      {isProlongedSilence && (
+        <div
+          data-testid="voice-silence-hint"
+          className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in-50 duration-200"
+        >
+          <div className="flex items-center gap-2.5">
+            <span className="text-xl">💡</span>
+            <div>
+              <p className="text-xs font-semibold text-amber-900">
+                Phát hiện im lặng kéo dài ({silenceDurationSec}s)
+              </p>
+              <p className="text-xs text-amber-800">
+                AI Interviewer đang lắng nghe. Bạn có thể tiếp tục phát biểu câu trả lời hoặc ngắt
+                lời AI khi sẵn sàng.
+              </p>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={resetSilenceTimer}
+            className="text-xs shrink-0 bg-white"
+          >
+            Đã hiểu
+          </Button>
+        </div>
+      )}
+
+      {/* Fail-Closed & Fallback to REST Audio Upload on Error */}
+      {(isFallbackToRest || connectionStatus === 'ERROR') && (
+        <div
+          data-testid="voice-fallback-banner"
+          className="p-5 bg-rose-50 border border-rose-200 rounded-2xl space-y-4 animate-in fade-in-50 duration-200"
+        >
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-rose-900">
+                Kết nối Voice WebSocket bị gián đoạn — Kích hoạt chế độ REST Fallback
+              </h4>
+              <p className="text-xs text-rose-700 leading-relaxed">
+                Hệ thống tự động kích hoạt bộ ghi âm REST Audio Upload dự phòng để đảm bảo bạn không
+                bị mất dữ liệu câu trả lời dở dang. Bạn có thể ghi âm câu trả lời bên dưới:
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-rose-100 shadow-sm">
+            <AudioAnswerRecorder sessionId={interviewId} onAnswerReady={handleFallbackAnswer} />
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={connect}
+              className="gap-1.5 text-xs text-rose-800 border-rose-300 hover:bg-rose-100"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Thử kết nối lại Voice Stream</span>
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Voice Avatars Stage */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -184,7 +390,13 @@ export const VoiceInterviewRoom: React.FC<VoiceInterviewRoomProps> = ({
           </span>
         </div>
 
-        <div className="max-h-60 overflow-y-auto space-y-3 p-2">
+        <div
+          role="log"
+          aria-live="polite"
+          aria-relevant="additions text"
+          aria-label="Biên bản hội thoại phỏng vấn trực tiếp"
+          className="max-h-60 overflow-y-auto space-y-3 p-2"
+        >
           {transcripts.length === 0 ? (
             <p className="text-xs text-slate-400 italic text-center py-6">
               AI Interviewer đang chuẩn bị câu hỏi đầu tiên...

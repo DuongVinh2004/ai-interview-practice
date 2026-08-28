@@ -26,6 +26,7 @@ import {
   ReEvaluateTurnRequestDto,
 } from './dto/interview.dto';
 import { UsageMeterService } from '../billing/usage-meter.service';
+import { InterviewConfigurationService } from '../interview-configuration/interview-configuration.service';
 
 @Injectable()
 export class InterviewService {
@@ -36,6 +37,7 @@ export class InterviewService {
     private readonly sseService: SseService,
     private readonly aiOrchestrator: AiOrchestratorService,
     private readonly usageMeter: UsageMeterService,
+    private readonly configService: InterviewConfigurationService,
     @InjectQueue(QueueName.QUESTION_GENERATION)
     private readonly questionQueue: Queue,
     @InjectQueue(QueueName.ANSWER_EVALUATION)
@@ -86,6 +88,22 @@ export class InterviewService {
           userId,
           BillingMetric.SESSION_COUNT,
         );
+
+        const configurationSnapshot = await this.configService.buildConfigurationSnapshot(
+          {
+            jobRoleId: dto.jobRoleId,
+            seniorityLevelId: dto.seniorityLevelId,
+            technologyIds: dto.technologyIds,
+            sessionMode,
+            competencyArea: competencyArea || undefined,
+            language: dto.language || 'vi',
+            totalTurns,
+            isSandbox,
+            blueprintId: dto.blueprintId || undefined,
+          },
+          tx,
+        );
+
         return tx.interviewSession.create({
           data: {
             userId,
@@ -94,10 +112,16 @@ export class InterviewService {
             state: SessionState.CREATED,
             sessionMode,
             competencyArea,
+            language: dto.language || 'vi',
             isSandbox,
             currentTurn: 1,
             totalTurns,
             targetDifficulty: 1,
+            configurationSnapshot,
+            configurationSource: dto.configurationSource || (dto.presetId ? 'PRESET' : 'MANUAL'),
+            fieldSources: dto.fieldSources ? (dto.fieldSources as any) : undefined,
+            draftId: dto.draftId || null,
+            presetId: dto.presetId || null,
             technologies: {
               create: dto.technologyIds.map(techId => ({
                 technologyId: techId,
@@ -124,7 +148,7 @@ export class InterviewService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10000 },
     );
 
-    const firstTurn = session.turns.find(t => t.turnNumber === 1);
+    const firstTurn = (session as any).turns?.find((t: any) => t.turnNumber === 1);
     if (!firstTurn) {
       throw new DomainException(
         ErrorCode.INTERNAL_SERVER_ERROR,
@@ -155,9 +179,12 @@ export class InterviewService {
         where: { id: session.id },
         data: { state: SessionState.FAILED },
       });
+      if (this.usageMeter?.refundQuota) {
+        await this.usageMeter.refundQuota(userId, BillingMetric.SESSION_COUNT, 1);
+      }
       throw new DomainException(
         ErrorCode.INTERNAL_SERVER_ERROR,
-        'Failed to enqueue interview question generation. Please try again.',
+        'Failed to enqueue interview question generation. Quota has been refunded. Please try again.',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -205,10 +232,44 @@ export class InterviewService {
       },
     });
 
+    // Record recent configuration asynchronously
+    await this.configService
+      .recordRecentConfiguration(
+        userId,
+        {
+          jobRoleId: dto.jobRoleId,
+          seniorityLevelId: dto.seniorityLevelId,
+          technologyIds: dto.technologyIds,
+          sessionMode,
+          competencyArea: competencyArea || undefined,
+          language: dto.language || 'vi',
+          totalTurns,
+          isSandbox,
+          blueprintId: dto.blueprintId || undefined,
+        },
+        dto.presetId,
+      )
+      .catch((err: any) => {
+        this.logger.warn(
+          `Could not record recent configuration for session ${session.id}: ${err.message}`,
+        );
+      });
+
+    if (dto.draftId) {
+      await this.prisma.interviewSetupDraft
+        .updateMany({
+          where: { id: dto.draftId, userId },
+          data: { status: 'COMPLETED' },
+        })
+        .catch((err: any) => {
+          this.logger.warn(`Could not complete draft ${dto.draftId}: ${err.message}`);
+        });
+    }
+
     return this.mapToSessionDto(session);
   }
 
-  async getSession(userId: string, userRole: UserRole, sessionId: string) {
+  async getSession(userId: string, userRole: UserRole, sessionId: string, mfaVerified?: boolean) {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: sessionId },
       include: {
@@ -240,7 +301,8 @@ export class InterviewService {
       );
     }
 
-    if (session.userId !== userId && userRole !== UserRole.ADMIN) {
+    const isSuperAdmin = userRole === UserRole.ADMIN && mfaVerified !== false;
+    if (session.userId !== userId && !isSuperAdmin) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         'You do not have permission to view this session',
@@ -251,7 +313,12 @@ export class InterviewService {
     return this.mapToSessionDto(session);
   }
 
-  async assertSessionAccess(userId: string, userRole: UserRole, sessionId: string): Promise<void> {
+  async assertSessionAccess(
+    userId: string,
+    userRole: UserRole,
+    sessionId: string,
+    mfaVerified?: boolean,
+  ): Promise<void> {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: sessionId },
       select: { id: true, userId: true },
@@ -265,7 +332,8 @@ export class InterviewService {
       );
     }
 
-    if (session.userId !== userId && userRole !== UserRole.ADMIN) {
+    const isSuperAdmin = userRole === UserRole.ADMIN && mfaVerified === true;
+    if (session.userId !== userId && !isSuperAdmin) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         'You do not have permission to access this session',
@@ -274,17 +342,19 @@ export class InterviewService {
     }
   }
 
-  async getSessionStatus(userId: string, userRole: UserRole, sessionId: string) {
+  async getSessionStatus(
+    userId: string,
+    userRole: UserRole,
+    sessionId: string,
+    mfaVerified?: boolean,
+  ) {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: sessionId },
       include: {
         turns: {
-          orderBy: { turnNumber: 'asc' },
-          include: {
-            question: true,
-            answer: {
-              include: { evaluation: true },
-            },
+          select: {
+            turnNumber: true,
+            status: true,
           },
         },
       },
@@ -298,7 +368,8 @@ export class InterviewService {
       );
     }
 
-    if (session.userId !== userId && userRole !== UserRole.ADMIN) {
+    const isSuperAdmin = userRole === UserRole.ADMIN && mfaVerified !== false;
+    if (session.userId !== userId && !isSuperAdmin) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         'You do not have permission to view this session',
@@ -310,7 +381,7 @@ export class InterviewService {
 
     return {
       id: session.id,
-      state: session.state,
+      state: session.state as unknown as SessionState,
       currentTurn: session.currentTurn,
       totalTurns: session.totalTurns,
       latestTurn: currentTurn ? this.mapToTurnDto(currentTurn) : null,
@@ -479,8 +550,9 @@ export class InterviewService {
     sessionId: string,
     turnNumber: number,
     dto?: ReEvaluateTurnRequestDto,
+    mfaVerified?: boolean,
   ) {
-    await this.assertSessionAccess(userId, userRole, sessionId);
+    await this.assertSessionAccess(userId, userRole, sessionId, mfaVerified);
 
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: sessionId },
@@ -514,8 +586,32 @@ export class InterviewService {
     }
 
     const oldScore = turn.answer.evaluation.score;
+    let overallScore = session.overallScore;
 
-    // Invoke AI Orchestrator to evaluate answer with clean prompts and deterministic scoring
+    const isReviewerAdmin = userRole === UserRole.ADMIN && mfaVerified === true;
+    const existingEval = this.prisma.evaluation?.findUnique
+      ? await this.prisma.evaluation.findUnique({
+          where: { answerId: turn.answer.id },
+        })
+      : this.prisma.evaluation?.findFirst
+        ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
+        : null;
+
+    // Rate-limit candidate re-evaluations to at most 2 per turn
+    if (!isReviewerAdmin && existingEval && this.prisma.evaluationRun?.count) {
+      const candidateRunsCount = await this.prisma.evaluationRun.count({
+        where: { evaluationId: existingEval.id, triggeredBy: 'CANDIDATE' },
+      });
+      if (candidateRunsCount >= 2) {
+        throw new DomainException(
+          ErrorCode.QUOTA_EXCEEDED,
+          'Maximum re-evaluation attempts (2) reached for this turn',
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    }
+
+    // Invoke AI Orchestrator to evaluate answer
     const evalResult = await this.aiOrchestrator.evaluateAnswer(sessionId, {
       role: session.jobRole.name,
       level: session.seniorityLevel.name,
@@ -524,14 +620,6 @@ export class InterviewService {
       expectedPoints: (turn.question.expectedPoints as string[]) || undefined,
       answer: turn.answer.content,
     });
-
-    const existingEval = this.prisma.evaluation?.findUnique
-      ? await this.prisma.evaluation.findUnique({
-          where: { answerId: turn.answer.id },
-        })
-      : this.prisma.evaluation?.findFirst
-        ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
-        : null;
 
     const lastRun =
       existingEval && this.prisma.evaluationRun?.findFirst
@@ -542,7 +630,7 @@ export class InterviewService {
         : null;
     const runNumberVal = (lastRun?.runNumber || 0) + 1;
 
-    const evalRecord =
+    const evalRecord: any =
       existingEval ||
       (this.prisma.evaluation?.create
         ? await this.prisma.evaluation.create({
@@ -556,7 +644,10 @@ export class InterviewService {
               evidence: evalResult.evidence,
             },
           })
-        : { id: turn.answer.id });
+        : { id: turn.answer.id, answerId: turn.answer.id, score: evalResult.score });
+
+    const triggeredBy = isReviewerAdmin ? 'REVIEWER' : 'CANDIDATE';
+    const authorityState = isReviewerAdmin ? 'AUTHORITATIVE' : 'NEEDS_REVIEW';
 
     const run = this.prisma.evaluationRun?.create
       ? await this.prisma.evaluationRun.create({
@@ -569,39 +660,43 @@ export class InterviewService {
             improvements: evalResult.improvements,
             conciseFeedback: evalResult.conciseFeedback,
             evidence: evalResult.evidence,
-            needsReview: (evalResult as any).needsReview || false,
-            authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
+            needsReview: !isReviewerAdmin,
+            authorityState,
             provider: (evalResult as any).provider || undefined,
             fallbackReason: (evalResult as any).fallbackReason || undefined,
             confidence: evalResult.confidence || 0.85,
-            triggeredBy: 'RE_EVALUATION',
+            triggeredBy,
           },
         })
       : null;
 
-    const updatedEval = await this.prisma.evaluation.update({
-      where: { answerId: turn.answer.id },
-      data: {
-        score: evalResult.score,
-        rubricScores: evalResult.rubricScores as any,
-        strengths: evalResult.strengths,
-        improvements: evalResult.improvements,
-        conciseFeedback: evalResult.conciseFeedback,
-        evidence: evalResult.evidence,
-        needsReview: (evalResult as any).needsReview || false,
-        authorityState: (evalResult as any).needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
-        provider: (evalResult as any).provider || undefined,
-        fallbackReason: (evalResult as any).fallbackReason || undefined,
-        confidence: evalResult.confidence || 0.85,
-        ...(run ? { currentRunId: run.id } : {}),
-      },
-    });
+    // Only authorized reviewer/admin can overwrite canonical projection score
+    let updatedEval: any = evalRecord;
+    if (isReviewerAdmin) {
+      updatedEval = await this.prisma.evaluation.update({
+        where: { answerId: turn.answer.id },
+        data: {
+          score: evalResult.score,
+          rubricScores: evalResult.rubricScores as any,
+          strengths: evalResult.strengths,
+          improvements: evalResult.improvements,
+          conciseFeedback: evalResult.conciseFeedback,
+          evidence: evalResult.evidence,
+          needsReview: false,
+          authorityState: 'AUTHORITATIVE',
+          provider: (evalResult as any).provider || undefined,
+          fallbackReason: (evalResult as any).fallbackReason || undefined,
+          confidence: evalResult.confidence || 0.85,
+          ...(run ? { currentRunId: run.id } : {}),
+        },
+      });
+    }
 
-    // Recalculate overall score across all completed turn evaluations
+    // Recalculate overall score across completed evaluations
     let allEvaluations = await this.prisma.evaluation.findMany({
       where: {
         answer: { turn: { sessionId } },
-        authorityState: 'AUTHORITATIVE', // Only count authoritative evaluations (F-011)
+        authorityState: 'AUTHORITATIVE',
       },
     });
 
@@ -611,7 +706,7 @@ export class InterviewService {
       });
     }
 
-    const overallScore =
+    overallScore =
       allEvaluations.length > 0
         ? Number(
             (allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length).toFixed(
@@ -620,7 +715,7 @@ export class InterviewService {
           )
         : null;
 
-    if (overallScore !== null) {
+    if (isReviewerAdmin && overallScore !== null) {
       await this.prisma.interviewSession.update({
         where: { id: sessionId },
         data: { overallScore },
@@ -633,9 +728,9 @@ export class InterviewService {
       turnNumber,
       evaluation: {
         id: updatedEval.id,
-        score: updatedEval.score,
-        rubricScores: updatedEval.rubricScores,
-        conciseFeedback: updatedEval.conciseFeedback,
+        score: isReviewerAdmin ? updatedEval.score : evalResult.score,
+        rubricScores: isReviewerAdmin ? updatedEval.rubricScores : evalResult.rubricScores,
+        conciseFeedback: isReviewerAdmin ? updatedEval.conciseFeedback : evalResult.conciseFeedback,
       },
       overallScore,
     });
@@ -651,25 +746,25 @@ export class InterviewService {
           sessionId,
           turnNumber,
           oldScore,
-          newScore: updatedEval.score,
+          newScore: isReviewerAdmin ? updatedEval.score : evalResult.score,
           reason: dto?.reason,
         },
       },
     });
 
     this.logger.log(
-      `Turn ${turnNumber} of session ${sessionId} re-evaluated by user ${userId}. Score changed from ${oldScore} to ${updatedEval.score}`,
+      `Turn ${turnNumber} of session ${sessionId} re-evaluated by user ${userId}. Score: ${isReviewerAdmin ? updatedEval.score : evalResult.score}`,
     );
 
     return {
       id: updatedEval.id,
-      answerId: updatedEval.answerId,
-      score: updatedEval.score,
-      rubricScores: updatedEval.rubricScores,
-      strengths: updatedEval.strengths,
-      improvements: updatedEval.improvements,
-      conciseFeedback: updatedEval.conciseFeedback,
-      evidence: updatedEval.evidence,
+      answerId: updatedEval.answerId || turn.answer.id,
+      score: isReviewerAdmin ? updatedEval.score : evalResult.score,
+      rubricScores: isReviewerAdmin ? updatedEval.rubricScores : evalResult.rubricScores,
+      strengths: isReviewerAdmin ? updatedEval.strengths : evalResult.strengths,
+      improvements: isReviewerAdmin ? updatedEval.improvements : evalResult.improvements,
+      conciseFeedback: isReviewerAdmin ? updatedEval.conciseFeedback : evalResult.conciseFeedback,
+      evidence: isReviewerAdmin ? updatedEval.evidence : evalResult.evidence,
       overallScore,
       createdAt: (updatedEval.createdAt || new Date()).toISOString(),
     };
@@ -687,6 +782,10 @@ export class InterviewService {
       totalTurns: session.totalTurns,
       targetDifficulty: session.targetDifficulty as DifficultyLevel,
       overallScore: session.overallScore,
+      configurationSnapshot: session.configurationSnapshot || null,
+      configurationSource: session.configurationSource || 'MANUAL',
+      fieldSources: session.fieldSources || null,
+      presetId: session.presetId || null,
       jobRole: {
         id: session.jobRole.id,
         slug: session.jobRole.slug,

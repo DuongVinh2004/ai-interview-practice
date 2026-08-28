@@ -3,7 +3,7 @@
  * ==============================================================================
  * Script: smoke-test.ts
  * Purpose: End-to-End Production Smoke Test Suite (AIP-064)
- * Validates: Public health probes, readiness, Prometheus metrics,
+ * Validates: Public health probes, public metrics denial, private Prometheus metrics,
  *            OpenAPI documentation, and synthetic candidate flow.
  * ==============================================================================
  */
@@ -30,11 +30,62 @@ async function runSmokeTests() {
   const checks = [
     { name: 'Liveness Probe', endpoint: '/api/v1/health/live', expected: 200 },
     { name: 'Readiness Probe', endpoint: '/api/v1/health/ready', expected: 200 },
-    { name: 'Prometheus Metrics Exporter', endpoint: '/api/v1/metrics', expected: 200 },
+    { name: 'Public Metrics Boundary', endpoint: '/api/v1/metrics', expected: 404 },
     { name: 'OpenAPI Documentation UI', endpoint: '/api/docs', expected: 200 },
     { name: 'Public Taxonomy Roles', endpoint: '/api/v1/taxonomy/roles', expected: 200 },
     { name: 'Public Taxonomy Levels', endpoint: '/api/v1/taxonomy/levels', expected: 200 },
   ];
+
+  const privateMetricsUrl = process.env.PRIVATE_METRICS_URL;
+  const metricsAuthToken = process.env.METRICS_AUTH_TOKEN;
+  const requirePrivateMetrics = process.env.REQUIRE_PRIVATE_METRICS_SMOKE === 'true';
+  if (privateMetricsUrl && metricsAuthToken) {
+    const start = Date.now();
+    try {
+      const denied = await fetch(privateMetricsUrl);
+      results.push({
+        name: 'Private Metrics Rejects Anonymous',
+        endpoint: privateMetricsUrl,
+        expectedStatus: 401,
+        observedStatus: denied.status,
+        durationMs: Date.now() - start,
+        passed: denied.status === 401,
+      });
+
+      const res = await fetch(privateMetricsUrl, {
+        headers: { Authorization: `Bearer ${metricsAuthToken}` },
+      });
+      const duration = Date.now() - start;
+      results.push({
+        name: 'Private Authenticated Metrics',
+        endpoint: privateMetricsUrl,
+        expectedStatus: 200,
+        observedStatus: res.status,
+        durationMs: duration,
+        passed: res.status === 200,
+      });
+    } catch (error: any) {
+      results.push({
+        name: 'Private Authenticated Metrics',
+        endpoint: privateMetricsUrl,
+        expectedStatus: 200,
+        observedStatus: 0,
+        durationMs: Date.now() - start,
+        passed: false,
+        notes: error.message,
+      });
+    }
+  } else if (requirePrivateMetrics) {
+    results.push({
+      name: 'Private Authenticated Metrics',
+      endpoint: privateMetricsUrl || '(missing PRIVATE_METRICS_URL)',
+      expectedStatus: 200,
+      observedStatus: 0,
+      durationMs: 0,
+      passed: false,
+      notes: 'Deployment acceptance requires PRIVATE_METRICS_URL and METRICS_AUTH_TOKEN',
+    });
+  }
 
   for (const check of checks) {
     const start = Date.now();

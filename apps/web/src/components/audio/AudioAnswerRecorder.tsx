@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAudioRecorder } from '../../hooks/use-audio-recorder';
+import { useAudioRecorder, MAX_AUDIO_DURATION_SECONDS } from '../../hooks/use-audio-recorder';
 import { useAudioSettingsStore } from '../../stores/audio-settings.store';
 import { useI18nStore } from '../../stores/i18n.store';
 import { apiClient, ApiError } from '../../lib/api-client';
@@ -9,7 +9,18 @@ import { Button } from '../ui/Button';
 import { Textarea } from '../ui/Textarea';
 import { Alert } from '../ui/Alert';
 import { Spinner } from '../ui/Spinner';
-import { Mic, Square, RotateCcw, Send, Radio, Keyboard, CheckCircle2 } from 'lucide-react';
+import {
+  Mic,
+  Square,
+  RotateCcw,
+  Send,
+  Radio,
+  Keyboard,
+  CheckCircle2,
+  AlertTriangle,
+  RefreshCw,
+  Edit3,
+} from 'lucide-react';
 
 interface AudioAnswerRecorderProps {
   onAnswerReady: (text: string) => Promise<void>;
@@ -25,13 +36,18 @@ export function AudioAnswerRecorder({
   const {
     isRecording,
     recordingDuration,
+    remainingDuration,
+    isNearMaxDuration,
     audioLevel,
+    silenceDuration,
+    isProlongedSilence,
+    resetSilenceTimer,
     error: recorderError,
     startRecording,
     stopRecording,
     resetRecording,
     getAnalyserData,
-  } = useAudioRecorder();
+  } = useAudioRecorder({ maxDuration: MAX_AUDIO_DURATION_SECONDS });
 
   const { pushToTalk } = useAudioSettingsStore();
   const { t, language } = useI18nStore();
@@ -41,6 +57,7 @@ export function AudioAnswerRecorder({
   const [transcribeError, setTranscribeError] = useState<string | null>(null);
   const [hasRecorded, setHasRecorded] = useState(false);
   const [isFallbackNotice, setIsFallbackNotice] = useState(false);
+  const [savedAudioBlob, setSavedAudioBlob] = useState<Blob | null>(null);
 
   const isSpaceKeyDownRef = useRef(false);
 
@@ -49,6 +66,7 @@ export function AudioAnswerRecorder({
     async (blob: Blob) => {
       setIsTranscribing(true);
       setTranscribeError(null);
+      setSavedAudioBlob(blob);
 
       try {
         const formData = new FormData();
@@ -74,7 +92,9 @@ export function AudioAnswerRecorder({
         if (err instanceof ApiError) {
           setTranscribeError(err.message);
         } else {
-          setTranscribeError('Failed to transcribe audio. You can type your answer manually.');
+          setTranscribeError(
+            'Failed to transcribe audio. You can retry upload or type your answer manually.',
+          );
         }
       } finally {
         setIsTranscribing(false);
@@ -82,6 +102,18 @@ export function AudioAnswerRecorder({
     },
     [language, sessionId],
   );
+
+  // Auto-stop when reaching duration cap (5 minutes = 300s)
+  useEffect(() => {
+    if (isRecording && recordingDuration >= MAX_AUDIO_DURATION_SECONDS) {
+      stopRecording().then(blob => {
+        if (blob) {
+          setSavedAudioBlob(blob);
+          handleTranscribe(blob);
+        }
+      });
+    }
+  }, [isRecording, recordingDuration, stopRecording, handleTranscribe]);
 
   // Push-to-Talk & Keyboard shortcut handler
   useEffect(() => {
@@ -104,7 +136,10 @@ export function AudioAnswerRecorder({
             startRecording();
           } else if (isRecording) {
             stopRecording().then(blob => {
-              if (blob) handleTranscribe(blob);
+              if (blob) {
+                setSavedAudioBlob(blob);
+                handleTranscribe(blob);
+              }
             });
           }
         }
@@ -121,7 +156,10 @@ export function AudioAnswerRecorder({
 
         if (pushToTalk && isRecording) {
           stopRecording().then(blob => {
-            if (blob) handleTranscribe(blob);
+            if (blob) {
+              setSavedAudioBlob(blob);
+              handleTranscribe(blob);
+            }
           });
         }
       }
@@ -148,13 +186,29 @@ export function AudioAnswerRecorder({
     if (isRecording) {
       const blob = await stopRecording();
       if (blob) {
+        setSavedAudioBlob(blob);
         await handleTranscribe(blob);
       }
     } else {
       setTranscribedText('');
       setHasRecorded(false);
       setTranscribeError(null);
+      setSavedAudioBlob(null);
       await startRecording();
+    }
+  };
+
+  const handleRetryUpload = async () => {
+    if (savedAudioBlob) {
+      await handleTranscribe(savedAudioBlob);
+    }
+  };
+
+  const handleManualTypeFallback = () => {
+    setTranscribeError(null);
+    setHasRecorded(true);
+    if (!transcribedText) {
+      setTranscribedText('');
     }
   };
 
@@ -164,6 +218,7 @@ export function AudioAnswerRecorder({
     setHasRecorded(false);
     setTranscribeError(null);
     setIsFallbackNotice(false);
+    setSavedAudioBlob(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -182,7 +237,7 @@ export function AudioAnswerRecorder({
     <div className="space-y-4">
       {/* Recording Card & Visualizer */}
       <div className="p-6 rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50/50 shadow-sm space-y-5">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <div
               className={`p-2 rounded-xl transition-all ${
@@ -211,19 +266,72 @@ export function AudioAnswerRecorder({
             </div>
           </div>
 
-          {/* Recording Duration Timer Badge */}
-          {isRecording && (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-full">
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
-              <span className="text-xs font-bold text-rose-700 font-mono">
-                {formatSeconds(recordingDuration)}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Audio Duration Warning Badge (< 30s remaining) */}
+            {isRecording && isNearMaxDuration && (
+              <div
+                data-testid="duration-warning-badge"
+                className="flex items-center gap-1.5 px-3 py-1 bg-amber-50 border border-amber-300 rounded-full text-xs font-bold text-amber-800 animate-pulse"
+              >
+                <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />
+                <span>Còn {remainingDuration}s (Tối đa 5:00)</span>
+              </div>
+            )}
+
+            {/* Recording Duration Timer Badge */}
+            {isRecording && (
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-rose-50 border border-rose-200 rounded-full">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping" />
+                <span className="text-xs font-bold text-rose-700 font-mono">
+                  {formatSeconds(recordingDuration)} / 05:00
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
+        {/* Prolonged Silence (>15s) Detection Suggestion Prompt */}
+        {isRecording && isProlongedSilence && (
+          <div
+            data-testid="silence-prompt-alert"
+            className="p-3.5 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in-50 duration-200"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-base leading-none">💡</span>
+              <p className="font-medium">
+                Phát hiện im lặng kéo dài ({silenceDuration}s). Bạn có muốn tiếp tục trả lời hay
+                hoàn tất ghi âm để nộp bài?
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                onClick={resetSilenceTimer}
+                className="text-xs py-1 px-2.5"
+              >
+                Tiếp tục nói
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={handleToggleRecord}
+                className="text-xs py-1 px-2.5 bg-indigo-600 hover:bg-indigo-700 text-white"
+              >
+                Hoàn tất ghi âm
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Real-time Waveform Canvas */}
-        <div className="bg-slate-900 p-4 rounded-xl shadow-inner border border-slate-800 flex flex-col items-center justify-center gap-2">
+        <div
+          role="region"
+          aria-label="Biểu đồ sóng âm thanh trực tiếp"
+          className="bg-slate-900 p-4 rounded-xl shadow-inner border border-slate-800 flex flex-col items-center justify-center gap-2"
+        >
           <AudioVisualizer
             isActive={isRecording}
             getAnalyserData={getAnalyserData}
@@ -251,7 +359,13 @@ export function AudioAnswerRecorder({
               type="button"
               onClick={handleToggleRecord}
               disabled={isTranscribing || isSubmitting}
-              className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all ${
+              aria-label={
+                isRecording
+                  ? t.audio?.stopRecording || 'Dừng ghi âm câu trả lời'
+                  : t.audio?.startRecording || 'Bắt đầu ghi âm câu trả lời'
+              }
+              aria-pressed={isRecording}
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2.5 shadow-md transition-all focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-500 ${
                 isRecording
                   ? 'bg-rose-600 hover:bg-rose-700 text-white ring-4 ring-rose-200'
                   : 'bg-emerald-600 hover:bg-emerald-700 text-white ring-4 ring-emerald-100 hover:shadow-lg'
@@ -288,7 +402,7 @@ export function AudioAnswerRecorder({
           </div>
         )}
 
-        {/* Error Messages */}
+        {/* Error Messages & State Recovery Actions */}
         {recorderError && (
           <Alert variant="error">
             {recorderError === 'MICROPHONE_PERMISSION_DENIED'
@@ -299,7 +413,47 @@ export function AudioAnswerRecorder({
           </Alert>
         )}
 
-        {transcribeError && <Alert variant="error">{transcribeError}</Alert>}
+        {transcribeError && (
+          <div className="space-y-3">
+            <Alert variant="error">{transcribeError}</Alert>
+
+            {/* State Recovery Action Bar */}
+            {savedAudioBlob && (
+              <div
+                data-testid="state-recovery-bar"
+                className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap items-center justify-between gap-2 text-xs"
+              >
+                <span className="text-slate-600 font-medium">
+                  Bản ghi âm vẫn được lưu tại client. Bạn có thể thử gửi lại mà không cần nói lại:
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="primary"
+                    onClick={handleRetryUpload}
+                    disabled={isTranscribing}
+                    className="gap-1.5"
+                    data-testid="retry-upload-btn"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${isTranscribing ? 'animate-spin' : ''}`} />
+                    <span>Thử lại (Retry Upload)</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={handleManualTypeFallback}
+                    className="gap-1.5"
+                  >
+                    <Edit3 className="h-3.5 w-3.5" />
+                    <span>Nhập thủ công</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Editable Transcribed Text & Submission Form */}

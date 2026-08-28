@@ -101,7 +101,12 @@ export class HistoryReportService {
     };
   }
 
-  async getSessionResult(userId: string, userRole: UserRole, sessionId: string) {
+  async getSessionResult(
+    userId: string,
+    userRole: UserRole,
+    sessionId: string,
+    mfaVerified?: boolean,
+  ) {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: sessionId },
       include: {
@@ -133,7 +138,8 @@ export class HistoryReportService {
       );
     }
 
-    if (session.userId !== userId && userRole !== UserRole.ADMIN) {
+    const isSuperAdmin = userRole === UserRole.ADMIN && mfaVerified !== false;
+    if (session.userId !== userId && !isSuperAdmin) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         'You do not have permission to view this interview result',

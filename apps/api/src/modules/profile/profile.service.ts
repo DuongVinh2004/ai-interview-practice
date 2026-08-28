@@ -14,6 +14,13 @@ import { UpdateProfileRequestDto } from './dto/profile.dto';
 import { BillingService } from '../billing/billing.service';
 
 const BENCHMARKS_BY_LEVEL: Record<string, Record<CompetencyArea, number>> = {
+  fresher: {
+    [CompetencyArea.LANGUAGE_CORE]: 5.5,
+    [CompetencyArea.DATABASE_CONCURRENCY]: 4.5,
+    [CompetencyArea.SYSTEM_DESIGN]: 4.0,
+    [CompetencyArea.ARCHITECTURE_PATTERNS]: 4.0,
+    [CompetencyArea.RESILIENCE_SECURITY]: 4.0,
+  },
   junior: {
     [CompetencyArea.LANGUAGE_CORE]: 6.5,
     [CompetencyArea.DATABASE_CONCURRENCY]: 5.5,
@@ -504,6 +511,29 @@ export class ProfileService {
         createdAt: s.createdAt.toISOString(),
         updatedAt: s.updatedAt.toISOString(),
       })) as any,
+      voiceSessions: (
+        await this.prisma.voiceSession.findMany({
+          where: { interviewSession: { userId } },
+          include: { transcripts: { orderBy: { startTimeMs: 'asc' } } },
+        })
+      ).map(vs => ({
+        id: vs.id,
+        interviewId: vs.interviewId,
+        status: vs.status,
+        startedAt: vs.startedAt.toISOString(),
+        endedAt: vs.endedAt?.toISOString() || null,
+        totalDuration: vs.totalDuration,
+        transcripts: vs.transcripts.map(t => ({
+          id: t.id,
+          speaker: t.speaker,
+          text: t.text,
+          startTimeMs: t.startTimeMs,
+          endTimeMs: t.endTimeMs,
+          isFinal: t.isFinal,
+          turnNumber: t.turnNumber,
+          createdAt: t.createdAt.toISOString(),
+        })),
+      })),
       summary: {
         totalSessionsCount: user.sessions.length,
         completedSessionsCount: completedSessions.length,
@@ -563,6 +593,29 @@ export class ProfileService {
 
       // 4. Purge user documents
       await tx.userDocument.deleteMany({
+        where: { userId },
+      });
+
+      // 4b. Purge voice transcripts, metrics, voice sessions, and consent records (FINDING-003)
+      const userSessionIds =
+        (await tx.interviewSession?.findMany({
+          where: { userId },
+          select: { id: true },
+        })) || [];
+      const sessionIds = userSessionIds.map(s => s.id);
+
+      if (sessionIds.length > 0) {
+        await tx.voiceTranscript.deleteMany({
+          where: { voiceSession: { interviewId: { in: sessionIds } } },
+        });
+        await tx.voiceSessionMetric.deleteMany({
+          where: { voiceSession: { interviewId: { in: sessionIds } } },
+        });
+        await tx.voiceSession.deleteMany({
+          where: { interviewId: { in: sessionIds } },
+        });
+      }
+      await tx.voiceConsentRecord?.deleteMany({
         where: { userId },
       });
 

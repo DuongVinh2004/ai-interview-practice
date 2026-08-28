@@ -19,9 +19,13 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Alert } from '../../components/ui/Alert';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export const PortfolioSettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const [formData, setFormData] = useState({
     username: '',
     displayName: '',
@@ -85,7 +89,9 @@ export const PortfolioSettingsPage: React.FC = () => {
       setTimeout(() => setSaveSuccess(false), 4000);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to update settings');
+      setErrorMessage(
+        err.message || (isVi ? 'Không thể lưu cài đặt' : 'Failed to update settings'),
+      );
     },
   });
 
@@ -99,11 +105,17 @@ export const PortfolioSettingsPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['portfolio-settings'] });
       queryClient.invalidateQueries({ queryKey: ['profile-badges'] });
-      setCertSuccess('Verified Certificate generated successfully! View on your public portfolio.');
-      setTimeout(() => setCertSuccess(null), 5000);
+      setCertSuccess(
+        isVi
+          ? 'Đã cấp chứng chỉ số thành công! Xem trên hồ sơ công khai.'
+          : 'Certificate generated successfully! View on public portfolio.',
+      );
+      setTimeout(() => setCertSuccess(null), 4000);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to generate certificate');
+      setErrorMessage(
+        err.message || (isVi ? 'Không thể tạo chứng chỉ' : 'Failed to generate certificate'),
+      );
     },
   });
 
@@ -114,17 +126,22 @@ export const PortfolioSettingsPage: React.FC = () => {
   };
 
   const eligibleForCert =
-    badges?.filter(b => b.highestLevel === 'GOLD' || b.highestLevel === 'PLATINUM') || [];
+    badges?.filter(
+      b => (b.highestLevel === 'GOLD' || b.highestLevel === 'PLATINUM') && b.currentScore >= 8.0,
+    ) || [];
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8" data-testid="portfolio-settings-page">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Public Portfolio & Badge Settings</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isVi ? 'Cài Đặt Hồ Sơ Portfolio & Huy Hiệu' : 'Public Portfolio & Badge Settings'}
+          </h1>
           <p className="text-sm text-slate-500 mt-1">
-            Customize your shareable public profile, toggle section privacy, and generate verified
-            digital certificates.
+            {isVi
+              ? 'Tùy chỉnh trang hồ sơ chia sẻ công khai, quản lý quyền riêng tư và xuất chứng chỉ số có chữ ký điện tử.'
+              : 'Customize your shareable public profile, toggle section privacy, and generate verified digital certificates.'}
           </p>
         </div>
         {formData.username && formData.isPublic && (
@@ -134,14 +151,16 @@ export const PortfolioSettingsPage: React.FC = () => {
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl hover:bg-emerald-100 transition-colors shadow-sm self-start sm:self-auto"
           >
-            <Globe className="h-4 w-4" /> View Live Profile <ExternalLink className="h-3.5 w-3.5" />
+            <Globe className="h-4 w-4" /> {isVi ? 'Xem Trang Trực Tiếp' : 'View Live Profile'}{' '}
+            <ExternalLink className="h-3.5 w-3.5" />
           </a>
         )}
       </div>
 
       {saveSuccess && (
         <Alert variant="success" className="flex items-center gap-2">
-          <Check className="h-4 w-4" /> Settings updated successfully!
+          <Check className="h-4 w-4" />{' '}
+          {isVi ? 'Đã lưu cài đặt thành công!' : 'Settings updated successfully!'}
         </Alert>
       )}
 
@@ -161,13 +180,14 @@ export const PortfolioSettingsPage: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-8">
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <User className="h-5 w-5 text-emerald-600" /> Profile Information
+            <User className="h-5 w-5 text-emerald-600" />{' '}
+            {isVi ? 'Thông Tin Hồ Sơ' : 'Profile Information'}
           </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Custom Portfolio Username
+                {isVi ? 'Tên đường dẫn (Username)' : 'Custom Portfolio Username'}
               </label>
               <div className="relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-sm">
@@ -184,19 +204,25 @@ export const PortfolioSettingsPage: React.FC = () => {
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                Alphanumeric, underscores, and dashes only.
+                {isVi
+                  ? 'Chỉ gồm chữ cái, chữ số, gạch dưới và gạch nối.'
+                  : 'Alphanumeric, underscores, and dashes only.'}
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
-                Public Display Name
+                {isVi ? 'Tên Hiển Thị Công Khai' : 'Public Display Name'}
               </label>
               <Input
                 type="text"
                 value={formData.displayName}
                 onChange={e => setFormData({ ...formData, displayName: e.target.value })}
-                placeholder="e.g. John Doe, Senior Backend Engineer"
+                placeholder={
+                  isVi
+                    ? 'VD: Nguyễn Văn A, Senior Backend Engineer'
+                    : 'e.g. John Doe, Senior Backend Engineer'
+                }
                 data-testid="displayname-input"
               />
             </div>
@@ -204,13 +230,17 @@ export const PortfolioSettingsPage: React.FC = () => {
 
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
-              Custom Bio & Headline
+              {isVi ? 'Tiểu Sử & Giới Thiệu (Bio)' : 'Custom Bio & Headline'}
             </label>
             <Textarea
               rows={3}
               value={formData.customBio}
               onChange={e => setFormData({ ...formData, customBio: e.target.value })}
-              placeholder="Tell recruiters about your background, favorite tech stacks, and career goals..."
+              placeholder={
+                isVi
+                  ? 'Chia sẻ với nhà tuyển dụng về kinh nghiệm, công nghệ thế mạnh và mục tiêu nghề nghiệp...'
+                  : 'Tell recruiters about your background, favorite tech stacks, and career goals...'
+              }
               data-testid="bio-input"
             />
           </div>
@@ -219,7 +249,8 @@ export const PortfolioSettingsPage: React.FC = () => {
         {/* Visibility Toggles */}
         <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Globe className="h-5 w-5 text-emerald-600" /> Visibility & Privacy Controls
+            <Globe className="h-5 w-5 text-emerald-600" />{' '}
+            {isVi ? 'Cài Đặt Hiển Thị & Quyền Riêng Tư' : 'Visibility & Privacy Controls'}
           </h2>
 
           <div className="divide-y divide-slate-100">
@@ -227,10 +258,12 @@ export const PortfolioSettingsPage: React.FC = () => {
             <div className="py-3.5 flex items-center justify-between">
               <div>
                 <span className="text-sm font-semibold text-slate-900 block">
-                  Enable Public Portfolio
+                  {isVi ? 'Bật Hồ Sơ Công Khai' : 'Enable Public Portfolio'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Allow anyone with your link to view your public profile
+                  {isVi
+                    ? 'Cho phép bất kỳ ai có liên kết xem được hồ sơ công khai của bạn'
+                    : 'Allow anyone with your link to view your public profile'}
                 </span>
               </div>
               <input
@@ -246,10 +279,12 @@ export const PortfolioSettingsPage: React.FC = () => {
             <div className="py-3.5 flex items-center justify-between">
               <div>
                 <span className="text-sm font-semibold text-slate-900 block">
-                  Show Competency Skills Graph
+                  {isVi ? 'Hiển Thị Cây Năng Lực & Kỹ Năng' : 'Show Competency Skills Graph'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Display evaluated benchmark scores across 5 core technical areas
+                  {isVi
+                    ? 'Hiển thị điểm số đánh giá chuẩn hóa qua 5 mảng kỹ thuật cốt lõi'
+                    : 'Display evaluated benchmark scores across 5 core technical areas'}
                 </span>
               </div>
               <input
@@ -264,10 +299,12 @@ export const PortfolioSettingsPage: React.FC = () => {
             <div className="py-3.5 flex items-center justify-between">
               <div>
                 <span className="text-sm font-semibold text-slate-900 block">
-                  Show Technical Badges
+                  {isVi ? 'Hiển Thị Huy Hiệu Thành Tựu' : 'Show Technical Badges'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Display Bronze, Silver, Gold, and Platinum achievement badges
+                  {isVi
+                    ? 'Hiển thị huy hiệu Đồng, Bạc, Vàng và Bạch Kim đã mở khóa'
+                    : 'Display Bronze, Silver, Gold, and Platinum achievement badges'}
                 </span>
               </div>
               <input
@@ -282,10 +319,12 @@ export const PortfolioSettingsPage: React.FC = () => {
             <div className="py-3.5 flex items-center justify-between">
               <div>
                 <span className="text-sm font-semibold text-slate-900 block">
-                  Show Verified Certificates
+                  {isVi ? 'Hiển Thị Chứng Chỉ Số' : 'Show Verified Certificates'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Display cryptographically signed digital certificates & QR links
+                  {isVi
+                    ? 'Hiển thị chứng chỉ số có chữ ký điện tử HMAC-SHA256 và mã QR'
+                    : 'Display cryptographically signed digital certificates & QR links'}
                 </span>
               </div>
               <input
@@ -300,10 +339,14 @@ export const PortfolioSettingsPage: React.FC = () => {
             <div className="py-3.5 flex items-center justify-between">
               <div>
                 <span className="text-sm font-semibold text-slate-900 block">
-                  Show Completed Interview Highlights
+                  {isVi
+                    ? 'Hiển Thị Điểm Nổi Bật Lịch Sử Phỏng Vấn'
+                    : 'Show Completed Interview Highlights'}
                 </span>
                 <span className="text-xs text-slate-500">
-                  Display recent completed mock interview results and scores
+                  {isVi
+                    ? 'Hiển thị các phiên phỏng vấn thử gần nhất và điểm số'
+                    : 'Display recent completed mock interview results and scores'}
                 </span>
               </div>
               <input
@@ -325,7 +368,13 @@ export const PortfolioSettingsPage: React.FC = () => {
               data-testid="save-settings-btn"
             >
               <Save className="h-4 w-4" />{' '}
-              {updateMutation.isPending ? 'Saving...' : 'Save Portfolio Settings'}
+              {updateMutation.isPending
+                ? isVi
+                  ? 'Đang lưu...'
+                  : 'Saving...'
+                : isVi
+                  ? 'Lưu Cài Đặt Hồ Sơ'
+                  : 'Save Portfolio Settings'}
             </Button>
           </div>
         </div>
@@ -335,10 +384,13 @@ export const PortfolioSettingsPage: React.FC = () => {
       <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-            <Award className="h-5 w-5 text-amber-500" /> Badge Inventory & Unlock Progress
+            <Award className="h-5 w-5 text-amber-500" />{' '}
+            {isVi ? 'Kho Huy Hiệu & Tiến Độ Mở Khóa' : 'Badge Inventory & Unlock Progress'}
           </h2>
           <span className="text-xs text-slate-500">
-            Auto-calculated from evaluation turn benchmarks
+            {isVi
+              ? 'Tự động tính từ điểm chuẩn các lượt phỏng vấn'
+              : 'Auto-calculated from evaluation turn benchmarks'}
           </span>
         </div>
 
@@ -347,19 +399,22 @@ export const PortfolioSettingsPage: React.FC = () => {
         {/* Certificate Generation Action */}
         <div className="mt-8 pt-6 border-t border-slate-100">
           <h3 className="text-base font-bold text-slate-900 flex items-center gap-2 mb-2">
-            <ShieldCheck className="h-5 w-5 text-emerald-600" /> Digital Certificate Generator
+            <ShieldCheck className="h-5 w-5 text-emerald-600" />{' '}
+            {isVi ? 'Cấp Chứng Chỉ Số Xác Thực' : 'Digital Certificate Generator'}
           </h3>
           <p className="text-xs text-slate-500 mb-4">
-            Candidates who attain Gold (≥8.0) or Platinum (≥9.0) badge tier can issue digitally
-            signed, HMAC-SHA256 verified certificates.
+            {isVi
+              ? 'Ứng viên đạt Huy hiệu Vàng (≥8.0) hoặc Bạch Kim (≥9.0) có thể tạo chứng chỉ số xác thực với chữ ký điện tử HMAC-SHA256.'
+              : 'Candidates who attain Gold (≥8.0) or Platinum (≥9.0) badge tier can issue digitally signed, HMAC-SHA256 verified certificates.'}
           </p>
 
           {eligibleForCert.length === 0 ? (
             <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600 flex items-center gap-2">
               <Lock className="h-4 w-4 text-slate-400 flex-shrink-0" />
               <span>
-                Complete more interview turn evaluations and achieve a Gold Badge (score ≥ 8.0) to
-                unlock verified certificates.
+                {isVi
+                  ? 'Hãy hoàn thành thêm các bài phỏng vấn và đạt Huy hiệu Vàng (điểm ≥ 8.0) để mở khóa cấp chứng chỉ số.'
+                  : 'Complete more interview turn evaluations and achieve a Gold Badge (score ≥ 8.0) to unlock verified certificates.'}
               </span>
             </div>
           ) : (
@@ -382,7 +437,8 @@ export const PortfolioSettingsPage: React.FC = () => {
                     disabled={generateCertMutation.isPending}
                     className="gap-1.5"
                   >
-                    <Sparkles className="h-3.5 w-3.5" /> Issue Certificate
+                    <Sparkles className="h-3.5 w-3.5" />{' '}
+                    {isVi ? 'Cấp Chứng Chỉ' : 'Issue Certificate'}
                   </Button>
                 </div>
               ))}

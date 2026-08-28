@@ -6,6 +6,8 @@ import {
   QuestionPromptContext,
   EvaluationPromptContext,
   LearningPathPromptContext,
+  SocraticChatContext,
+  SocraticChatResult,
   AiExecutionResult,
 } from '../interfaces/ai-provider.interface';
 import {
@@ -230,6 +232,81 @@ export class OpenAiProvider implements AiProvider {
       throw new DomainException(
         ErrorCode.AI_GENERATION_FAILED,
         `OpenAI API learning path generation failed: ${error.message}`,
+        error.status || 500,
+      );
+    }
+  }
+
+  async streamSocraticChat(
+    context: SocraticChatContext,
+    systemPrompt: string,
+    onToken?: (token: string) => void,
+  ): Promise<AiExecutionResult<SocraticChatResult>> {
+    const client = this.getClient();
+    const startTime = Date.now();
+
+    try {
+      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        { role: 'system', content: systemPrompt },
+      ];
+
+      for (const msg of context.chatHistory || []) {
+        const role = msg.role === 'AI_TUTOR' || msg.role === 'assistant' ? 'assistant' : 'user';
+        messages.push({ role, content: msg.content });
+      }
+      messages.push({ role: 'user', content: context.userMessage });
+
+      let fullText = '';
+      const stream = await client.chat.completions.create({
+        model: this.defaultModel,
+        messages,
+        stream: true,
+        temperature: 0.6,
+        max_tokens: 800,
+      });
+
+      for await (const chunk of stream) {
+        const token = chunk.choices[0]?.delta?.content || '';
+        if (token) {
+          fullText += token;
+          onToken?.(token);
+        }
+      }
+
+      const docReferences = [
+        {
+          title: 'Official Documentation & Best Practices',
+          url: 'https://developer.mozilla.org',
+        },
+      ];
+
+      const promptLength = messages.reduce(
+        (sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0),
+        0,
+      );
+      const promptTokens = Math.round(promptLength / 4);
+      const completionTokens = Math.round(fullText.length / 4);
+      const totalTokens = promptTokens + completionTokens;
+
+      return {
+        data: {
+          fullText,
+          references: docReferences,
+        },
+        model: this.defaultModel,
+        provider: this.name,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        latencyMs: Date.now() - startTime,
+        costEstimate: this.calculateCost(promptTokens, completionTokens),
+      };
+    } catch (error: any) {
+      this.logger.error(`OpenAI streamSocraticChat failed: ${error.message}`);
+      if (error instanceof DomainException) throw error;
+      throw new DomainException(
+        ErrorCode.AI_GENERATION_FAILED,
+        `OpenAI API socratic chat failed: ${error.message}`,
         error.status || 500,
       );
     }

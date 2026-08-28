@@ -67,14 +67,14 @@ describe('AnalyticsService', () => {
     expect(result.totalEvaluatedTurns).toBe(2);
     expect(result.overallAverageScore).toBe(8.5);
 
-    const dbComp = result.competencies.find(
-      c => c.competency === CompetencyArea.DATABASE_CONCURRENCY,
+    const dbComp = (result.competencies as any[]).find(
+      (c: any) => c.competency === CompetencyArea.DATABASE_CONCURRENCY,
     );
     expect(dbComp?.score).toBe(9.0);
     expect(dbComp?.benchmarkLevel).toBe('Senior / Staff');
 
-    const resComp = result.competencies.find(
-      c => c.competency === CompetencyArea.RESILIENCE_SECURITY,
+    const resComp = (result.competencies as any[]).find(
+      (c: any) => c.competency === CompetencyArea.RESILIENCE_SECURITY,
     );
     expect(resComp?.score).toBe(8.0);
   });
@@ -110,5 +110,85 @@ describe('AnalyticsService', () => {
     expect(result.averageScore).toBe(7.3);
     expect(result.highestScore).toBe(8.5);
     expect(result.scoreVelocity).toBe(2.5); // 8.5 - 6.0 = 2.5 improvement
+  });
+
+  describe('Redis Caching & Invalidation (NEW-DATA-03)', () => {
+    let mockRedisClient: any;
+    let mockRedisService: any;
+    let serviceWithRedis: AnalyticsService;
+
+    beforeEach(async () => {
+      mockRedisClient = {
+        get: jest.fn(),
+        set: jest.fn(),
+        del: jest.fn(),
+      };
+
+      mockRedisService = {
+        getClient: jest.fn(() => mockRedisClient),
+      };
+
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          AnalyticsService,
+          { provide: PrismaService, useValue: prisma },
+          { provide: 'RedisService', useValue: mockRedisService },
+        ],
+      })
+        .useMocker(token => {
+          if (token === 'RedisService' || token?.toString?.().includes('RedisService')) {
+            return mockRedisService;
+          }
+          return undefined;
+        })
+        .compile();
+
+      serviceWithRedis = new AnalyticsService(prisma, mockRedisService);
+    });
+
+    it('returns cached competency radar on cache hit', async () => {
+      const cachedData = {
+        userId: mockUserId,
+        totalEvaluatedTurns: 10,
+        overallAverageScore: 9.2,
+        competencies: [],
+      };
+      mockRedisClient.get.mockResolvedValue(JSON.stringify(cachedData));
+
+      const result = await serviceWithRedis.getCompetencyRadar(mockUserId);
+
+      expect(mockRedisClient.get).toHaveBeenCalledWith(`user:analytics:${mockUserId}:radar`);
+      expect(result).toEqual(cachedData);
+      expect(prisma.interviewSession.findMany).not.toHaveBeenCalled();
+    });
+
+    it('computes and stores in cache on cache miss for progress history', async () => {
+      mockRedisClient.get.mockResolvedValue(null);
+      prisma.interviewSession.findMany.mockResolvedValue([]);
+
+      const result = await serviceWithRedis.getProgressHistory(mockUserId);
+
+      expect(mockRedisClient.get).toHaveBeenCalledWith(`user:analytics:${mockUserId}:progress`);
+      expect(mockRedisClient.set).toHaveBeenCalledWith(
+        `user:analytics:${mockUserId}:progress`,
+        expect.any(String),
+        'EX',
+        3600,
+      );
+      expect(result.totalCompletedSessions).toBe(0);
+    });
+
+    it('invalidates user analytics cache on interview.completed event', async () => {
+      await serviceWithRedis.handleInterviewCompleted({
+        userId: mockUserId,
+        sessionId: 'session-123',
+      });
+
+      expect(mockRedisClient.del).toHaveBeenCalledWith(
+        `user:analytics:${mockUserId}:radar`,
+        `user:analytics:${mockUserId}:progress`,
+        `user:analytics:${mockUserId}`,
+      );
+    });
   });
 });

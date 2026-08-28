@@ -136,22 +136,28 @@ export function Modal({
         ref={dialogRef}
         tabIndex={-1}
         className={cn(
-          'relative w-full bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden z-10 animate-slide-up focus:outline-none',
+          'relative w-full bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden z-10 animate-slide-up focus:outline-none',
           maxWidths[maxWidth],
           className,
         )}
       >
         {/* Header */}
         {(title || description) && (
-          <div className="flex items-start justify-between p-5 sm:p-6 border-b border-slate-100">
+          <div className="flex items-start justify-between p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
             <div>
               {title && (
-                <h3 id={titleId} className="text-lg font-bold text-slate-900 tracking-tight">
+                <h3
+                  id={titleId}
+                  className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight"
+                >
                   {title}
                 </h3>
               )}
               {description && (
-                <p id={descId} className="text-xs sm:text-sm text-slate-500 mt-1">
+                <p
+                  id={descId}
+                  className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1"
+                >
                   {description}
                 </p>
               )}
@@ -159,7 +165,7 @@ export function Modal({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
               aria-label="Close modal"
             >
               <X className="h-5 w-5" />
@@ -168,7 +174,7 @@ export function Modal({
         )}
 
         {/* Content */}
-        <div className="p-5 sm:p-6">{children}</div>
+        <div className="p-5 sm:p-6 text-slate-900 dark:text-slate-100">{children}</div>
       </div>
     </div>
   );

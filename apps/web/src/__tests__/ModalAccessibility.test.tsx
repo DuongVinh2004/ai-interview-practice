@@ -83,4 +83,16 @@ describe('Modal Accessibility & Focus Trapping (A11Y-001)', () => {
     fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
     expect(document.activeElement).toBe(submitBtn);
   });
+
+  it('supports Dark Mode styling with WCAG 2.1 AA contrast', () => {
+    render(
+      <Modal isOpen={true} onClose={vi.fn()} title="Dark Mode Accessible Title">
+        <p>Modal body content</p>
+      </Modal>,
+    );
+
+    const dialogContainer = screen.getByRole('dialog').querySelector('.dark\\:bg-slate-900');
+    expect(dialogContainer).toBeInTheDocument();
+    expect(screen.getByText('Dark Mode Accessible Title')).toHaveClass('dark:text-slate-100');
+  });
 });

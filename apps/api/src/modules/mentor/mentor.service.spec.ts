@@ -5,8 +5,9 @@ import { LiveSessionService } from './services/live-session.service';
 import { CopilotHintService } from './services/copilot-hint.service';
 import { MockMediaProvider } from './providers/mock-media.provider';
 import { PrismaService } from '../platform/prisma/prisma.service';
-import { LiveSessionStatus, CompetencyArea } from '@ai-interview/contracts';
+import { LiveSessionStatus, CompetencyArea, MentorAuthorityState } from '@ai-interview/contracts';
 import { ConflictException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { MentorAuthorityPolicy } from './policies/mentor-authority.policy';
 
 describe('Track F012: Mentor Co-Pilot Module', () => {
   let mentorService: MentorService;
@@ -21,10 +22,12 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
     },
     mentorProfile: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       upsert: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     mentorAvailability: {
       deleteMany: jest.fn(),
@@ -36,6 +39,7 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
     },
     evaluation: {
       findUnique: jest.fn(),
@@ -43,12 +47,17 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
       update: jest.fn(),
     },
     interviewSession: {
+      findFirst: jest.fn(),
       update: jest.fn(),
     },
     interviewTurn: {
       findMany: jest.fn(),
     },
     auditLog: {
+      create: jest.fn(),
+    },
+    evaluationRun: {
+      findFirst: jest.fn(),
       create: jest.fn(),
     },
     $transaction: jest.fn(cb => (typeof cb === 'function' ? cb(mockPrisma) : Promise.all(cb))),
@@ -63,6 +72,7 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         BookingService,
         LiveSessionService,
         CopilotHintService,
+        MentorAuthorityPolicy,
         {
           provide: 'MEDIA_PROVIDER',
           useClass: MockMediaProvider,
@@ -79,6 +89,16 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
     liveSessionService = module.get<LiveSessionService>(LiveSessionService);
     copilotHintService = module.get<CopilotHintService>(CopilotHintService);
     prisma = module.get<PrismaService>(PrismaService);
+    mockPrisma.mentorProfile.findFirst.mockResolvedValue({
+      id: 'mentor-1',
+      userId: 'mentor-user-1',
+      authorityState: MentorAuthorityState.APPROVED,
+      isActive: true,
+      user: { email: 'mentor@test.com', profile: { fullName: 'Sarah Connor' } },
+      availabilities: [],
+    });
+    mockPrisma.evaluationRun.findFirst.mockResolvedValue(null);
+    mockPrisma.evaluationRun.create.mockResolvedValue({ id: 'run-1', runNumber: 1 });
   });
 
   describe('1. Mentor Profile & Directory', () => {
@@ -226,6 +246,48 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
         ForbiddenException,
       );
     });
+
+    it('only transitions a scheduled live session to in progress once', async () => {
+      const sessionId = 'session-lifecycle-1';
+      mockPrisma.liveSession.findUnique.mockResolvedValue({
+        id: sessionId,
+        mentorId: 'mentor-1',
+        status: LiveSessionStatus.SCHEDULED,
+        mentor: { userId: 'mentor-user-1' },
+      });
+      mockPrisma.liveSession.updateMany.mockResolvedValue({ count: 1 });
+
+      await liveSessionService.startSession(sessionId, 'mentor-user-1');
+
+      expect(mockPrisma.liveSession.updateMany).toHaveBeenCalledWith({
+        where: { id: sessionId, status: LiveSessionStatus.SCHEDULED },
+        data: expect.objectContaining({ status: LiveSessionStatus.IN_PROGRESS }),
+      });
+    });
+
+    it('rejects direct completion of a scheduled or canceled session', async () => {
+      const sessionId = 'session-lifecycle-2';
+      mockPrisma.liveSession.findUnique.mockResolvedValue({
+        id: sessionId,
+        mentorId: 'mentor-1',
+        status: LiveSessionStatus.SCHEDULED,
+        mentor: { userId: 'mentor-user-1' },
+      });
+      mockPrisma.liveSession.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(liveSessionService.endSession(sessionId, 'mentor-user-1')).rejects.toThrow(
+        ConflictException,
+      );
+      expect(mockPrisma.mentorProfile.update).not.toHaveBeenCalled();
+      expect(mockPrisma.liveSession.updateMany).toHaveBeenCalledWith({
+        where: {
+          id: sessionId,
+          status: LiveSessionStatus.IN_PROGRESS,
+          startedAt: { not: null },
+        },
+        data: expect.objectContaining({ status: LiveSessionStatus.COMPLETED }),
+      });
+    });
   });
 
   describe('4. Score Override & Audit Trail', () => {
@@ -289,6 +351,14 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
 
   describe('5. Real-Time Probing Co-Pilot Hints', () => {
     it('returns contextual probing questions for deep-dive technical interview', async () => {
+      mockPrisma.liveSession.findUnique.mockResolvedValue({
+        id: 'session-1',
+        status: LiveSessionStatus.IN_PROGRESS,
+        interviewId: 'interview-1',
+        candidateId: 'candidate-user-1',
+        mentor: { userId: 'mentor-user-1' },
+      });
+      mockPrisma.interviewSession.findFirst.mockResolvedValue({ id: 'interview-1' });
       mockPrisma.interviewTurn.findMany.mockResolvedValue([
         {
           question: { keyFocus: 'Distributed Cache Invalidation' },
@@ -298,11 +368,30 @@ describe('Track F012: Mentor Co-Pilot Module', () => {
 
       const result = await copilotHintService.getProbingHints(
         'session-1',
+        'mentor-user-1',
         'Distributed Cache Invalidation',
       );
       expect(result.hints.length).toBeGreaterThan(0);
       expect(result.hints[0].questionText).toContain('traffic surge');
       expect(result.hints[0].expectedKeySignals.length).toBeGreaterThan(0);
+      expect(mockPrisma.interviewTurn.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { sessionId: 'interview-1' } }),
+      );
+    });
+
+    it('rejects an unbound active live session from accessing interview co-pilot hints', async () => {
+      mockPrisma.liveSession.findUnique.mockResolvedValue({
+        id: 'session-unbound',
+        status: LiveSessionStatus.IN_PROGRESS,
+        interviewId: null,
+        candidateId: 'candidate-user-1',
+        mentor: { userId: 'mentor-user-1' },
+      });
+
+      await expect(
+        copilotHintService.getProbingHints('session-unbound', 'mentor-user-1'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(mockPrisma.interviewTurn.findMany).not.toHaveBeenCalled();
     });
   });
 });

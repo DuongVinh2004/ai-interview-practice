@@ -91,9 +91,26 @@ export const GenerateBlueprintRequestSchema = z.object({
 });
 export type GenerateBlueprintRequest = z.infer<typeof GenerateBlueprintRequestSchema>;
 
+export const TaxonomyMatchResultSchema = z.object({
+  jobRoleId: z.string().uuid().nullable().optional(),
+  seniorityLevelId: z.string().uuid().nullable().optional(),
+  technologyIds: z.array(z.string().uuid()).default([]),
+  suggestedMode: z.string().nullable().optional(),
+  unmatchedSkills: z.array(z.string()).default([]),
+});
+export type TaxonomyMatchResult = z.infer<typeof TaxonomyMatchResultSchema>;
+
+export const CvParseResponseSchema = z.object({
+  document: z.any(),
+  parsedProfile: ParsedProfileDtoSchema,
+  taxonomyMatch: TaxonomyMatchResultSchema.optional(),
+});
+export type CvParseResponse = z.infer<typeof CvParseResponseSchema>;
+
 export const TailoredInterviewSetupResponseSchema = z.object({
   parsedProfile: ParsedProfileDtoSchema,
   jdAnalysis: JdAnalysisDtoSchema,
   blueprint: InterviewBlueprintDtoSchema,
+  taxonomyMatch: TaxonomyMatchResultSchema.optional(),
 });
 export type TailoredInterviewSetupResponse = z.infer<typeof TailoredInterviewSetupResponseSchema>;

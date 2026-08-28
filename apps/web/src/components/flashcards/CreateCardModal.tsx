@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Plus, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { CardType } from '@ai-interview/contracts';
+import { useI18nStore } from '../../stores/i18n.store';
 
 interface CreateCardModalProps {
   isOpen: boolean;
@@ -23,6 +24,8 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
   onCreateCard,
   isSubmitting,
 }) => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const [type, setType] = useState<CardType>(CardType.CONCEPT);
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
@@ -33,7 +36,11 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!front.trim() || !back.trim()) {
-      setError('Vui lòng điền đầy đủ cả 2 mặt của thẻ.');
+      setError(
+        isVi
+          ? 'Vui lòng điền đầy đủ cả 2 mặt của thẻ.'
+          : 'Please fill in both sides of the flashcard.',
+      );
       return;
     }
     setError(null);
@@ -43,7 +50,11 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
       setBack('');
       onClose();
     } catch (err: any) {
-      setError(err?.response?.data?.message || err?.message || 'Không thể tạo flashcard');
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          (isVi ? 'Không thể tạo flashcard' : 'Failed to create flashcard'),
+      );
     }
   };
 
@@ -57,7 +68,9 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
           <div className="flex items-center space-x-2">
             <Plus className="w-5 h-5 text-emerald-600" />
-            <h3 className="font-bold text-base text-slate-900">Thêm Flashcard Mới</h3>
+            <h3 className="font-bold text-base text-slate-900">
+              {isVi ? 'Thêm Flashcard Mới' : 'Add New Flashcard'}
+            </h3>
           </div>
           <button
             onClick={onClose}
@@ -77,55 +90,73 @@ export const CreateCardModal: React.FC<CreateCardModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Loại thẻ</label>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">
+              {isVi ? 'Loại thẻ' : 'Card Type'}
+            </label>
             <select
               value={type}
               onChange={e => setType(e.target.value as CardType)}
               className="w-full text-xs p-2.5 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             >
-              <option value={CardType.CONCEPT}>Khái niệm (CONCEPT)</option>
-              <option value={CardType.CODE_SNIPPET}>Đoạn mã (CODE_SNIPPET)</option>
-              <option value={CardType.SCENARIO}>Tình huống (SCENARIO)</option>
-              <option value={CardType.MCQ}>Trắc nghiệm (MCQ)</option>
+              <option value={CardType.CONCEPT}>
+                {isVi ? 'Khái niệm (CONCEPT)' : 'Concept (CONCEPT)'}
+              </option>
+              <option value={CardType.CODE_SNIPPET}>
+                {isVi ? 'Đoạn mã (CODE_SNIPPET)' : 'Code Snippet (CODE_SNIPPET)'}
+              </option>
+              <option value={CardType.SCENARIO}>
+                {isVi ? 'Tình huống (SCENARIO)' : 'Scenario (SCENARIO)'}
+              </option>
+              <option value={CardType.MCQ}>
+                {isVi ? 'Trắc nghiệm (MCQ)' : 'Multiple Choice (MCQ)'}
+              </option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Mặt trước (Câu hỏi / Đề bài)
+              {isVi ? 'Mặt trước (Câu hỏi / Đề bài)' : 'Front (Question / Prompt)'}
             </label>
             <textarea
               value={front}
               onChange={e => setFront(e.target.value)}
               rows={3}
-              placeholder="VD: Điều gì xảy ra khi một Node.js event loop gặp synchronous blocking CPU task?"
+              placeholder={
+                isVi
+                  ? 'VD: Điều gì xảy ra khi một Node.js event loop gặp synchronous blocking CPU task?'
+                  : 'e.g. What happens when Node.js event loop encounters a synchronous CPU-bound task?'
+              }
               className="w-full text-xs p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 mb-1">
-              Mặt sau (Đáp án / Nguyên lý cốt lõi)
+              {isVi ? 'Mặt sau (Đáp án / Nguyên lý cốt lõi)' : 'Back (Key Invariant / Answer)'}
             </label>
             <textarea
               value={back}
               onChange={e => setBack(e.target.value)}
               rows={4}
-              placeholder="VD: Toàn bộ single-threaded event loop bị block, không thể xử lý các I/O callback khác. Giải pháp: Sử dụng Worker Threads hoặc delegate sang background microservice."
+              placeholder={
+                isVi
+                  ? 'VD: Toàn bộ single-threaded event loop bị block, không thể xử lý các I/O callback khác. Giải pháp: Sử dụng Worker Threads hoặc delegate sang background microservice.'
+                  : 'e.g. The single-threaded event loop blocks, stalling all other I/O callbacks. Solution: Worker threads or background queue.'
+              }
               className="w-full text-xs p-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:outline-none"
             />
           </div>
 
           <div className="flex justify-end space-x-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>
-              Hủy
+              {isVi ? 'Hủy' : 'Cancel'}
             </Button>
             <Button
               type="submit"
               isLoading={isSubmitting}
               disabled={isSubmitting || !front.trim() || !back.trim()}
             >
-              Tạo Flashcard
+              {isVi ? 'Tạo Flashcard' : 'Create Flashcard'}
             </Button>
           </div>
         </form>

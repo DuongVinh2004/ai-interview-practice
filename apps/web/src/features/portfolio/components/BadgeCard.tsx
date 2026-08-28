@@ -1,6 +1,7 @@
 import React from 'react';
 import { BadgeLevel, CompetencyArea } from '@ai-interview/contracts';
 import { Award, Lock, ShieldCheck, Sparkles } from 'lucide-react';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface BadgeCardProps {
   areaName: string;
@@ -66,6 +67,8 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
   isUnlocked,
   earnedAt,
 }) => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const badgeStyle = level ? BADGE_COLORS[level] : null;
 
   return (
@@ -106,11 +109,13 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
                   {level}
                 </span>
               ) : (
-                <span className="text-xs text-slate-500 font-medium">Locked</span>
+                <span className="text-xs text-slate-500 font-medium">
+                  {isVi ? 'Chưa mở' : 'Locked'}
+                </span>
               )}
               {isUnlocked && (
                 <span className="text-xs font-semibold text-slate-700">
-                  {score.toFixed(1)} / 10 ({evidenceCount} tests)
+                  {score.toFixed(1)} / 10 ({evidenceCount} {isVi ? 'lượt' : 'tests'})
                 </span>
               )}
             </div>
@@ -125,10 +130,16 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
         <div className="flex justify-between text-xs text-slate-500 mb-1.5 font-medium">
           <span>
             {level === BadgeLevel.PLATINUM
-              ? 'Mastery Level Achieved'
+              ? isVi
+                ? 'Đã đạt cấp độ Xuất sắc nhất'
+                : 'Mastery Level Achieved'
               : nextBadgeLevel
-                ? `Next: ${nextBadgeLevel} (Score ≥ ${requiredScore}, Ev ≥ ${requiredEvidence})`
-                : 'Unlock Bronze'}
+                ? isVi
+                  ? `Mục tiêu tiếp theo: ${nextBadgeLevel} (Điểm ≥ ${requiredScore}, Số bài ≥ ${requiredEvidence})`
+                  : `Next: ${nextBadgeLevel} (Score ≥ ${requiredScore}, Ev ≥ ${requiredEvidence})`
+                : isVi
+                  ? 'Mở khóa Đồng (Bronze)'
+                  : 'Unlock Bronze'}
           </span>
           <span className="font-bold text-slate-700">{progressPercentage}%</span>
         </div>
@@ -143,7 +154,9 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
 
         {earnedAt && (
           <p className="text-[11px] text-slate-400 mt-2 text-right">
-            Earned on {new Date(earnedAt).toLocaleDateString()}
+            {isVi
+              ? `Đạt được vào ${new Date(earnedAt).toLocaleDateString()}`
+              : `Earned on ${new Date(earnedAt).toLocaleDateString()}`}
           </p>
         )}
       </div>

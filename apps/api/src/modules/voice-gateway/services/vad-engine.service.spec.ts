@@ -63,4 +63,27 @@ describe('VadEngineService (Voice Activity Detection & Barge-In)', () => {
     expect(res.isSpeaking).toBe(true);
     expect(res.isBargeIn).toBe(true);
   });
+
+  it('detects prolonged silence when silence duration exceeds 15 seconds (15000ms)', () => {
+    const state = {
+      consecutiveSpeechFrames: 0,
+      consecutiveSilenceFrames: 749, // 749 * 20ms = 14980ms (< 15s)
+      isAiSpeaking: false,
+    };
+
+    const silentBuffer = Buffer.alloc(640);
+    const res1 = vad.processFrame(silentBuffer, state, 20);
+    // state.consecutiveSilenceFrames becomes 750 (750 * 20ms = 15000ms)
+    expect(res1.silenceDurationMs).toBe(15000);
+    expect(res1.isProlongedSilence).toBe(true);
+
+    // If candidate speaks, consecutiveSilenceFrames resets and isProlongedSilence becomes false
+    const loudBuffer = Buffer.alloc(640);
+    for (let i = 0; i < 320; i++) {
+      loudBuffer.writeInt16LE(20000, i * 2);
+    }
+    const res2 = vad.processFrame(loudBuffer, state, 20);
+    expect(res2.isProlongedSilence).toBe(false);
+    expect(res2.silenceDurationMs).toBe(0);
+  });
 });

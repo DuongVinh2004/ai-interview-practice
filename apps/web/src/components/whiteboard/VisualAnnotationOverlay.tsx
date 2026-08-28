@@ -63,12 +63,14 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
         <button
           type="button"
           onClick={() => setShowOverlay(prev => !prev)}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/90 backdrop-blur-sm border border-slate-200 shadow-sm text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-all"
+          aria-label={showOverlay ? 'Ẩn nhận xét AI' : `Hiện nhận xét AI (${annotations.length})`}
+          aria-pressed={showOverlay}
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-700 shadow-sm text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
           {showOverlay ? (
-            <EyeOff className="w-3.5 h-3.5 text-slate-500" />
+            <EyeOff className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
           ) : (
-            <Eye className="w-3.5 h-3.5 text-indigo-600" />
+            <Eye className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
           )}
           <span>{showOverlay ? 'Ẩn nhận xét AI' : `Hiện nhận xét AI (${annotations.length})`}</span>
         </button>
@@ -82,7 +84,11 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
           return (
             <div
               key={idx}
-              className={`absolute border-2 border-dashed rounded-xl transition-all duration-200 pointer-events-auto cursor-pointer ${style.border} ${style.bg} ${isSelected ? 'ring-4 ring-offset-1 ring-indigo-500/30' : ''}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`Nhận xét AI: ${ann.label} - ${ann.suggestion}`}
+              aria-expanded={isSelected}
+              className={`absolute border-2 border-dashed rounded-xl transition-all duration-200 pointer-events-auto cursor-pointer focus:outline-none focus-visible:ring-4 focus-visible:ring-indigo-500 ${style.border} ${style.bg} ${isSelected ? 'ring-4 ring-offset-1 ring-indigo-500/30' : ''}`}
               style={{
                 left: `${Math.max(2, Math.min(90, ann.x))}%`,
                 top: `${Math.max(2, Math.min(90, ann.y))}%`,
@@ -91,7 +97,15 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
               }}
               onMouseEnter={() => setActiveAnnotationIndex(idx)}
               onMouseLeave={() => setActiveAnnotationIndex(null)}
+              onFocus={() => setActiveAnnotationIndex(idx)}
+              onBlur={() => setActiveAnnotationIndex(null)}
               onClick={() => setActiveAnnotationIndex(prev => (prev === idx ? null : idx))}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setActiveAnnotationIndex(prev => (prev === idx ? null : idx));
+                }
+              }}
             >
               {/* Badge Label */}
               <div
@@ -113,7 +127,10 @@ export const VisualAnnotationOverlay: React.FC<VisualAnnotationOverlayProps> = (
 
               {/* Tooltip Overlay */}
               {isSelected && (
-                <div className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-900 text-white rounded-2xl shadow-xl z-50 animate-fadeIn text-xs space-y-1">
+                <div
+                  role="tooltip"
+                  className="absolute left-0 top-full mt-2 w-72 p-3 bg-slate-900 dark:bg-slate-800 text-slate-100 rounded-2xl shadow-xl z-50 animate-fadeIn text-xs space-y-1 border border-slate-700 dark:border-slate-600"
+                >
                   <div className="flex items-center space-x-1.5 font-bold text-slate-200">
                     {style.icon}
                     <span>{ann.label}</span>

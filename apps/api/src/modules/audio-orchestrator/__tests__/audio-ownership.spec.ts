@@ -9,6 +9,7 @@ describe('Audio Ownership and IDOR Prevention (F-008)', () => {
   let mockConfig: any;
   let mockOpenAiProvider: any;
   let mockMockProvider: any;
+  let mockEntitlementReservations: any;
 
   beforeEach(() => {
     mockPrisma = {
@@ -40,12 +41,20 @@ describe('Audio Ownership and IDOR Prevention (F-008)', () => {
         provider: 'mock',
       }),
     };
+    mockEntitlementReservations = {
+      reserve: jest.fn().mockResolvedValue({ reservationId: 'res-1' }),
+      markProviderDispatchStarted: jest.fn().mockResolvedValue(undefined),
+      commit: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+      markForReconciliation: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new AudioOrchestratorService(
       mockPrisma as any,
       mockConfig as any,
       mockOpenAiProvider as any,
       mockMockProvider as any,
+      mockEntitlementReservations as any,
     );
   });
 
@@ -105,6 +114,7 @@ describe('Audio Ownership and IDOR Prevention (F-008)', () => {
       'test.webm',
       'en',
       'session-user-a',
+      'idem-audio-test-1',
     );
 
     expect(result.text).toBe('mock transcribed text');

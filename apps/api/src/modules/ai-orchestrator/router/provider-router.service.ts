@@ -5,6 +5,8 @@ import {
   QuestionPromptContext,
   EvaluationPromptContext,
   LearningPathPromptContext,
+  SocraticChatContext,
+  SocraticChatResult,
   AiExecutionResult,
 } from '../interfaces/ai-provider.interface';
 import {
@@ -81,8 +83,25 @@ export class ProviderRouterService {
   getPriorityChain(): string[] {
     const configuredProvider = this.configService.get<string>('ai.provider', 'mock').toLowerCase();
     const isProduction = process.env.NODE_ENV === 'production';
+    const rawEnvProvider = process.env.AI_PROVIDER;
+    const openaiKey = this.configService.get<string>('ai.openaiApiKey', '');
+    const geminiKey = this.configService.get<string>('ai.geminiApiKey', '');
+    const anthropicKey = this.configService.get<string>('ai.anthropicApiKey', '');
 
     if (configuredProvider === 'mock') {
+      // If user supplied real LLM API keys in .env without explicitly setting AI_PROVIDER='mock', auto-route to real LLM
+      if (!rawEnvProvider && (geminiKey || openaiKey || anthropicKey)) {
+        const available: string[] = [];
+        if (geminiKey) available.push('gemini');
+        if (openaiKey) available.push('openai');
+        if (anthropicKey) available.push('anthropic');
+        if (!isProduction) available.push('mock');
+        this.logger.log(
+          `Auto-detected LLM API keys in environment. Using priority chain: [${available.join(', ')}]`,
+        );
+        return available;
+      }
+
       if (isProduction && process.env.AI_ALLOW_MOCK !== 'true') {
         this.logger.error(
           'AI_PROVIDER=mock configured in production environment without explicit override!',
@@ -170,7 +189,8 @@ export class ProviderRouterService {
    * Generic execution wrapper that tries providers in priority order with intelligent fallback.
    */
   async executeWithFallback<T>(
-    operation: 'generateQuestion' | 'evaluateAnswer' | 'generateLearningPath',
+    operation:
+      'generateQuestion' | 'evaluateAnswer' | 'generateLearningPath' | 'streamSocraticChat',
     invokeFn: (provider: AiProvider) => Promise<AiExecutionResult<T>>,
   ): Promise<AiExecutionResult<T>> {
     await this.syncDailyBudgetFromDb();
@@ -391,5 +411,18 @@ export class ProviderRouterService {
     return this.executeWithFallback('generateLearningPath', provider =>
       provider.generateLearningPath(context, systemPrompt, userPrompt),
     );
+  }
+
+  async streamSocraticChat(
+    context: SocraticChatContext,
+    systemPrompt: string,
+    onToken?: (token: string) => void,
+  ): Promise<AiExecutionResult<SocraticChatResult>> {
+    return this.executeWithFallback('streamSocraticChat', provider => {
+      if (provider.streamSocraticChat) {
+        return provider.streamSocraticChat(context, systemPrompt, onToken);
+      }
+      throw new Error(`Provider ${provider.name} does not implement streamSocraticChat`);
+    });
   }
 }

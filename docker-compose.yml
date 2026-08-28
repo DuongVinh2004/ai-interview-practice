@@ -50,12 +50,18 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
+      PROCESS_ROLE: api
       API_PREFIX: /api/v1
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_interview_practice}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      AI_PROVIDER: ${AI_PROVIDER:-mock}
-      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-true}
+      AI_PROVIDER: ${AI_PROVIDER:-router}
+      AI_ALLOW_MOCK: ${AI_ALLOW_MOCK:-false}
+      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-false}
+      METRICS_EXPORTER_ENABLED: ${METRICS_EXPORTER_ENABLED:-false}
+      METRICS_EXPORTER_HOST: 0.0.0.0
+      METRICS_EXPORTER_PORT: 9091
+      METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -81,11 +87,15 @@ services:
     command: ['node', 'apps/api/dist/worker.js']
     environment:
       NODE_ENV: production
+      PROCESS_ROLE: worker
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_interview_practice}?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      AI_PROVIDER: ${AI_PROVIDER:-mock}
-      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-true}
+      AI_PROVIDER: ${AI_PROVIDER:-router}
+      AI_ALLOW_MOCK: ${AI_ALLOW_MOCK:-false}
+      ALLOW_MOCK_PROVIDERS: ${ALLOW_MOCK_PROVIDERS:-false}
+      METRICS_EXPORTER_ENABLED: ${METRICS_EXPORTER_ENABLED:-false}
+      METRICS_AUTH_TOKEN: ${METRICS_AUTH_TOKEN:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}

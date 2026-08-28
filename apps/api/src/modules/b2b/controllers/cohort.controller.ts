@@ -32,7 +32,12 @@ export class CohortController {
   @RequireTenantRoles(TenantRole.TENANT_ADMIN, TenantRole.INSTRUCTOR, TenantRole.STUDENT)
   @ApiOperation({ summary: 'Get cohort detail with student roster' })
   async getCohort(@Req() req: RequestWithTenant, @Param('id') cohortId: string) {
-    return this.cohortService.getCohort(cohortId, req.tenantId!);
+    return this.cohortService.getCohort(cohortId, {
+      userId: req.user!.sub || req.user!.id,
+      systemRole: req.user!.role,
+      tenantRole: req.tenantRole,
+      tenantId: req.tenantId!,
+    });
   }
 
   @Post(':id/members/csv')

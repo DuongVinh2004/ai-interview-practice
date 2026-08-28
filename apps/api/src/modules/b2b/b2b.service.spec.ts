@@ -4,8 +4,9 @@ import { CohortService } from './services/cohort.service';
 import { AssignmentService } from './services/assignment.service';
 import { CohortAnalyticsService } from './services/cohort-analytics.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
-import { TenantRole, AssignmentStatus, CompetencyArea } from '@ai-interview/contracts';
+import { TenantRole, AssignmentStatus, CompetencyArea, UserRole } from '@ai-interview/contracts';
 import { ConflictException, NotFoundException } from '@nestjs/common';
+import { CohortAccessPolicy } from './policies/cohort-access.policy';
 
 describe('Track F011: B2B Multi-Tenant Dashboard Module', () => {
   let tenantService: TenantService;
@@ -59,6 +60,7 @@ describe('Track F011: B2B Multi-Tenant Dashboard Module', () => {
         CohortService,
         AssignmentService,
         CohortAnalyticsService,
+        CohortAccessPolicy,
         {
           provide: PrismaService,
           useValue: mockPrisma,
@@ -252,7 +254,12 @@ invalid-email,"Bad Line",STUDENT`;
         assignments: [{ id: 'a-1' }],
       });
 
-      const analytics = await cohortAnalyticsService.getCohortAnalytics(cohortId, tenantId);
+      const analytics = await cohortAnalyticsService.getCohortAnalytics(cohortId, {
+        userId: 'instructor-1',
+        systemRole: UserRole.CANDIDATE,
+        tenantRole: TenantRole.INSTRUCTOR,
+        tenantId,
+      });
       expect(analytics.cohortId).toBe(cohortId);
       expect(analytics.totalStudents).toBe(2);
       expect(analytics.activeStudents).toBe(2);
@@ -263,6 +270,118 @@ invalid-email,"Bad Line",STUDENT`;
       expect(analytics.topPerformers[0].fullName).toBe('Top Student');
       expect(analytics.studentsNeedingHelp.length).toBe(1);
       expect(analytics.studentsNeedingHelp[0].fullName).toBe('Needs Help');
+    });
+  });
+
+  describe('5. Final-resource cohort authorization (F5)', () => {
+    const studentAccess = {
+      userId: 'student-1',
+      systemRole: UserRole.CANDIDATE,
+      tenantRole: TenantRole.STUDENT,
+      tenantId: 'tenant-1',
+    };
+
+    it('scopes a student cohort lookup through exact tenant and cohort membership', async () => {
+      mockPrisma.cohort.findFirst.mockResolvedValue(null);
+
+      await expect(cohortService.getCohort('cohort-other', studentAccess)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(mockPrisma.cohort.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: {
+            id: 'cohort-other',
+            tenantId: 'tenant-1',
+            members: {
+              some: {
+                tenantMember: {
+                  is: { userId: 'student-1', tenantId: 'tenant-1' },
+                },
+              },
+            },
+          },
+        }),
+      );
+    });
+
+    it('minimizes roster and assignment data returned to a cohort member student', async () => {
+      mockPrisma.cohort.findFirst.mockResolvedValue({
+        id: 'cohort-1',
+        tenantId: 'tenant-1',
+        name: 'Student Cohort',
+        description: null,
+        isActive: true,
+        members: [
+          {
+            id: 'cohort-member-1',
+            tenantMemberId: 'tenant-member-1',
+            enrolledAt: new Date(),
+            tenantMember: {
+              userId: 'student-1',
+              role: TenantRole.STUDENT,
+              user: { email: 'student@example.com', profile: { fullName: 'Student' } },
+            },
+          },
+        ],
+        assignments: [
+          {
+            id: 'assignment-1',
+            cohortId: 'cohort-1',
+            title: 'Published work',
+            description: null,
+            status: AssignmentStatus.PUBLISHED,
+            deadline: null,
+            config: { rubricId: 'internal-rubric' },
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          },
+        ],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      const result = await cohortService.getCohort('cohort-1', studentAccess);
+      expect(result.members).toEqual([
+        expect.objectContaining({ role: TenantRole.STUDENT, enrolledAt: expect.any(Date) }),
+      ]);
+      expect(result.members[0]).not.toHaveProperty('email');
+      expect(result.members[0]).not.toHaveProperty('userId');
+      expect(result.members[0]).not.toHaveProperty('tenantMemberId');
+      expect(result.assignments[0]).not.toHaveProperty('config');
+    });
+
+    it('shows students only published assignment metadata without cohort aggregates', async () => {
+      mockPrisma.cohort.findFirst.mockResolvedValue({ id: 'cohort-1' });
+      mockPrisma.assignment.findMany.mockResolvedValue([
+        {
+          id: 'assignment-1',
+          cohortId: 'cohort-1',
+          title: 'Published work',
+          description: null,
+          status: AssignmentStatus.PUBLISHED,
+          deadline: null,
+          config: {
+            sessionMode: 'STANDARD',
+            difficulty: 2,
+            targetScore: 7,
+            rubricId: 'internal-rubric',
+            questionBankId: 'internal-bank',
+          },
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ]);
+
+      const result = await assignmentService.listCohortAssignments('cohort-1', studentAccess);
+      expect(mockPrisma.assignment.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { cohortId: 'cohort-1', status: AssignmentStatus.PUBLISHED },
+        }),
+      );
+      expect(result[0]).not.toHaveProperty('averageScore');
+      expect(result[0]).not.toHaveProperty('totalCandidates');
+      expect(result[0].config).not.toHaveProperty('rubricId');
+      expect(result[0].config).not.toHaveProperty('questionBankId');
     });
   });
 });

@@ -6,6 +6,8 @@ import {
   QuestionPromptContext,
   EvaluationPromptContext,
   LearningPathPromptContext,
+  SocraticChatContext,
+  SocraticChatResult,
   AiExecutionResult,
 } from '../interfaces/ai-provider.interface';
 import {
@@ -242,6 +244,81 @@ export class AnthropicProvider implements AiProvider {
       throw new DomainException(
         ErrorCode.AI_GENERATION_FAILED,
         `Anthropic API learning path generation failed: ${error.message}`,
+        error.status || 500,
+      );
+    }
+  }
+
+  async streamSocraticChat(
+    context: SocraticChatContext,
+    systemPrompt: string,
+    onToken?: (token: string) => void,
+  ): Promise<AiExecutionResult<SocraticChatResult>> {
+    const client = this.getClient();
+    const startTime = Date.now();
+
+    try {
+      const messages: Anthropic.MessageParam[] = [];
+      for (const msg of context.chatHistory || []) {
+        const role = msg.role === 'AI_TUTOR' || msg.role === 'assistant' ? 'assistant' : 'user';
+        messages.push({ role, content: msg.content });
+      }
+      messages.push({ role: 'user', content: context.userMessage });
+
+      let fullText = '';
+      const stream = client.messages.stream({
+        model: this.defaultModel,
+        max_tokens: 800,
+        temperature: 0.6,
+        system: systemPrompt,
+        messages,
+      });
+
+      for await (const chunk of stream) {
+        if (
+          chunk.type === 'content_block_delta' &&
+          chunk.delta.type === 'text_delta' &&
+          chunk.delta.text
+        ) {
+          fullText += chunk.delta.text;
+          onToken?.(chunk.delta.text);
+        }
+      }
+
+      const docReferences = [
+        {
+          title: 'Official Documentation & Best Practices',
+          url: 'https://developer.mozilla.org',
+        },
+      ];
+
+      const promptLength = messages.reduce(
+        (sum, m) => sum + (typeof m.content === 'string' ? m.content.length : 0),
+        0,
+      );
+      const promptTokens = Math.round(promptLength / 4);
+      const completionTokens = Math.round(fullText.length / 4);
+      const totalTokens = promptTokens + completionTokens;
+
+      return {
+        data: {
+          fullText,
+          references: docReferences,
+        },
+        model: this.defaultModel,
+        provider: this.name,
+        promptTokens,
+        completionTokens,
+        totalTokens,
+        latencyMs: Date.now() - startTime,
+        costEstimate: this.calculateCost(promptTokens, completionTokens),
+      };
+    } catch (error: any) {
+      this.logger.error(`Anthropic streamSocraticChat failed: ${error.message}`);
+      if (error instanceof DomainException) throw error;
+      throw new DomainException(
+        ErrorCode.AI_GENERATION_FAILED,
+        `Anthropic API socratic chat failed: ${error.message}`,
         error.status || 500,
       );
     }

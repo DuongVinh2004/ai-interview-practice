@@ -5,6 +5,7 @@ import { X, ShieldAlert, AlertCircle } from 'lucide-react';
 import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { Alert } from '../../../components/ui/Alert';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface ScoreOverrideModalProps {
   isOpen: boolean;
@@ -21,6 +22,8 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
   originalScore,
   onSuccess,
 }) => {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const queryClient = useQueryClient();
   const [newScore, setNewScore] = useState<number>(originalScore);
   const [justification, setJustification] = useState<string>('');
@@ -42,7 +45,9 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
       onClose();
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to override score');
+      setErrorMessage(
+        err.message || (isVi ? 'Không thể ghi đè điểm rubric' : 'Failed to override score'),
+      );
     },
   });
 
@@ -51,7 +56,11 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (justification.trim().length < 10) {
-      setErrorMessage('Justification reason must be at least 10 characters long.');
+      setErrorMessage(
+        isVi
+          ? 'Lý do giải trình điều chỉnh điểm phải có ít nhất 10 ký tự.'
+          : 'Justification reason must be at least 10 characters long.',
+      );
       return;
     }
     setErrorMessage(null);
@@ -82,10 +91,12 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
           </div>
           <div>
             <h3 id="score-override-title" className="text-lg font-bold text-slate-900">
-              Override AI Evaluation Score
+              {isVi ? 'Điều Chỉnh Điểm Đánh Giá AI' : 'Override AI Evaluation Score'}
             </h3>
             <p id="score-override-desc" className="text-xs text-slate-500">
-              Human-in-the-loop mentor moderation with audit trail
+              {isVi
+                ? 'Quy trình kiểm duyệt bởi Mentor kèm lưu vết kiểm toán hệ thống'
+                : 'Human-in-the-loop mentor moderation with audit trail'}
             </p>
           </div>
         </div>
@@ -99,14 +110,16 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
             <div>
-              <span className="text-xs text-slate-500 block font-medium">Original AI Score</span>
+              <span className="text-xs text-slate-500 block font-medium">
+                {isVi ? 'Điểm AI Gốc' : 'Original AI Score'}
+              </span>
               <span className="text-lg font-bold text-slate-700">
                 {originalScore.toFixed(1)} / 10.0
               </span>
             </div>
             <div className="text-right">
               <label className="text-xs text-slate-500 block font-medium mb-1">
-                Adjusted Mentor Score
+                {isVi ? 'Điểm Mentor Điều Chỉnh' : 'Adjusted Mentor Score'}
               </label>
               <input
                 type="number"
@@ -124,24 +137,33 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
 
           <div>
             <label className="block text-sm font-semibold text-slate-700 mb-1">
-              Mentor Justification & Feedback Note <span className="text-rose-500">*</span>
+              {isVi
+                ? 'Lý Do Giải Trình & Ghi Chú Của Mentor'
+                : 'Mentor Justification & Feedback Note'}{' '}
+              <span className="text-rose-500">*</span>
             </label>
             <Textarea
               rows={4}
               value={justification}
               onChange={e => setJustification(e.target.value)}
-              placeholder="Explain why the automated AI score was adjusted (e.g. candidate elaborated on deadlock recovery during probing discussion)..."
+              placeholder={
+                isVi
+                  ? 'Giải thích lý do điều chỉnh điểm (VD: Ứng viên đã giải trình chi tiết về cách khắc phục Deadlock trong lúc trao đổi trực tiếp)...'
+                  : 'Explain why the automated AI score was adjusted (e.g. candidate elaborated on deadlock recovery during probing discussion)...'
+              }
               required
               data-testid="override-justification-input"
             />
             <p className="text-xs text-slate-400 mt-1">
-              This explanation is appended to the permanent audit trail.
+              {isVi
+                ? 'Giải trình này sẽ được ghi nhận vĩnh viễn vào nhật ký kiểm toán phiên phỏng vấn.'
+                : 'This explanation is appended to the permanent audit trail.'}
             </p>
           </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="ghost" size="md" onClick={onClose}>
-              Cancel
+              {isVi ? 'Hủy' : 'Cancel'}
             </Button>
             <Button
               type="submit"
@@ -150,7 +172,13 @@ export const ScoreOverrideModal: React.FC<ScoreOverrideModalProps> = ({
               disabled={overrideMutation.isPending}
               data-testid="confirm-override-btn"
             >
-              {overrideMutation.isPending ? 'Saving...' : 'Confirm Score Override'}
+              {overrideMutation.isPending
+                ? isVi
+                  ? 'Đang lưu...'
+                  : 'Saving...'
+                : isVi
+                  ? 'Xác Nhận Điều Chỉnh Điểm'
+                  : 'Confirm Score Override'}
             </Button>
           </div>
         </form>
