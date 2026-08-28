@@ -1,4 +1,4 @@
-﻿-- CreateTable: interview_configuration_presets
+-- CreateTable: interview_configuration_presets
 CREATE TABLE IF NOT EXISTS "interview_configuration_presets" (
     "id" UUID NOT NULL,
     "user_id" UUID NOT NULL,
