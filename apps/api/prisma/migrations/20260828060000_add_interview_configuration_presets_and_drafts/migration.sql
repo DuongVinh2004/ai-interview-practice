@@ -64,11 +64,15 @@ CREATE TABLE IF NOT EXISTS "interview_setup_drafts" (
 );
 
 -- Add missing columns to interview_sessions if not existing
+ALTER TABLE "interview_sessions" ADD COLUMN IF NOT EXISTS "language" VARCHAR(10) NOT NULL DEFAULT 'vi';
 ALTER TABLE "interview_sessions" ADD COLUMN IF NOT EXISTS "configuration_snapshot" JSONB;
 ALTER TABLE "interview_sessions" ADD COLUMN IF NOT EXISTS "configuration_source" VARCHAR(50);
 ALTER TABLE "interview_sessions" ADD COLUMN IF NOT EXISTS "field_sources" JSONB;
 ALTER TABLE "interview_sessions" ADD COLUMN IF NOT EXISTS "draft_id" UUID;
 ALTER TABLE "interview_sessions" ADD COLUMN IF NOT EXISTS "preset_id" UUID;
+
+-- Add missing columns to invoices if not existing
+ALTER TABLE "invoices" ADD COLUMN IF NOT EXISTS "metadata" JSONB;
 
 -- Create Indexes
 CREATE UNIQUE INDEX IF NOT EXISTS "interview_configuration_presets_user_id_name_key" ON "interview_configuration_presets"("user_id", "name");
