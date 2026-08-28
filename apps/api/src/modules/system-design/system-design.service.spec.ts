@@ -178,7 +178,11 @@ describe('SystemDesign Services (F003)', () => {
         createdAt: new Date(),
       });
 
-      const result = await evaluationService.evaluateSession(userId, interviewId, 'vision-evaluate-1');
+      const result = await evaluationService.evaluateSession(
+        userId,
+        interviewId,
+        'vision-evaluate-1',
+      );
       expect(result.id).toBe('eval-1');
       expect(result.overallScore).toBe(8.3);
       expect(result.rubricBreakdown).toBeDefined();

@@ -74,7 +74,7 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   async runAllowedCommand(params: WorkspaceRunCommandParams): Promise<WorkspaceRunResult> {
-    const cmdDef = params.manifest.commands.find((c) => c.id === params.commandId);
+    const cmdDef = params.manifest.commands.find(c => c.id === params.commandId);
     if (!cmdDef) {
       throw new Error(`Command '${params.commandId}' is not allowed by challenge manifest.`);
     }

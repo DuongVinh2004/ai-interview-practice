@@ -52,10 +52,7 @@ export class ArenaCopilotService {
     return sanitized;
   }
 
-  async askCopilot(
-    userId: string,
-    request: CopilotQueryRequest,
-  ): Promise<CopilotQueryResponse> {
+  async askCopilot(userId: string, request: CopilotQueryRequest): Promise<CopilotQueryResponse> {
     const session = await this.sessionRepo.findSessionById(request.sessionId, userId);
     if (!session) {
       throw new DomainException(
@@ -66,7 +63,8 @@ export class ArenaCopilotService {
     }
 
     const manifest = session.challengeVersion.manifestJson as unknown as ArenaChallengeManifest;
-    const mode = (session.aiAssistanceMode as ArenaAiAssistanceMode) || ArenaAiAssistanceMode.HINTS_ONLY;
+    const mode =
+      (session.aiAssistanceMode as ArenaAiAssistanceMode) || ArenaAiAssistanceMode.HINTS_ONLY;
 
     if (mode === ArenaAiAssistanceMode.DISABLED) {
       throw new DomainException(

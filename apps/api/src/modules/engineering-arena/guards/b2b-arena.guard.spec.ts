@@ -53,7 +53,10 @@ describe('B2bArenaTenantGuard', () => {
       createdById: 'author-123',
     });
 
-    const ctx = createMockContext({ id: 'author-123', role: 'CANDIDATE' }, { slug: 'draft-challenge' });
+    const ctx = createMockContext(
+      { id: 'author-123', role: 'CANDIDATE' },
+      { slug: 'draft-challenge' },
+    );
     const result = await guard.canActivate(ctx);
     expect(result).toBe(true);
   });
@@ -79,7 +82,10 @@ describe('B2bArenaTenantGuard', () => {
       createdById: 'author-123',
     });
 
-    const ctx = createMockContext({ id: 'other-candidate', role: 'CANDIDATE' }, { slug: 'draft-challenge' });
+    const ctx = createMockContext(
+      { id: 'other-candidate', role: 'CANDIDATE' },
+      { slug: 'draft-challenge' },
+    );
     await expect(guard.canActivate(ctx)).rejects.toThrow(DomainException);
   });
 });

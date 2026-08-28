@@ -49,9 +49,21 @@ describe('Engineering Arena Hardening & Adversarial Security Suite (ARENA-080..0
   describe('ARENA-080: BOLA & Session Ownership Invariants', () => {
     it('enforces terminal state preservation and blocks state tampering', () => {
       // Completed, cancelled, expired cannot be resurrected
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.COMPLETED, ArenaSessionState.ACTIVE)).toBe(false);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.CANCELLED, ArenaSessionState.ACTIVE)).toBe(false);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.EXPIRED, ArenaSessionState.ACTIVE)).toBe(false);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.COMPLETED,
+          ArenaSessionState.ACTIVE,
+        ),
+      ).toBe(false);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.CANCELLED,
+          ArenaSessionState.ACTIVE,
+        ),
+      ).toBe(false);
+      expect(
+        ArenaSessionStateMachine.canTransition(ArenaSessionState.EXPIRED, ArenaSessionState.ACTIVE),
+      ).toBe(false);
     });
   });
 

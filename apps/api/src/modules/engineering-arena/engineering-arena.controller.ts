@@ -26,10 +26,7 @@ export class EngineeringArenaController {
   @Get('challenges')
   @ApiOperation({ summary: 'List published engineering challenges' })
   @ApiResponse({ status: HttpStatus.OK, description: 'List of published challenges' })
-  async listChallenges(
-    @Query('domain') domain?: string,
-    @Query('category') category?: string,
-  ) {
+  async listChallenges(@Query('domain') domain?: string, @Query('category') category?: string) {
     return this.arenaService.listChallenges({ domain, category });
   }
 
@@ -44,20 +41,14 @@ export class EngineeringArenaController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Start a new Engineering Arena session' })
   @ApiResponse({ status: HttpStatus.CREATED, description: 'Arena session started' })
-  async startSession(
-    @CurrentUser('id') userId: string,
-    @Body() body: StartArenaSessionRequest,
-  ) {
+  async startSession(@CurrentUser('id') userId: string, @Body() body: StartArenaSessionRequest) {
     return this.arenaService.startSession(userId, body);
   }
 
   @Get('sessions/:id')
   @ApiOperation({ summary: 'Get Arena session status by ID' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Arena session details' })
-  async getSession(
-    @CurrentUser('id') userId: string,
-    @Param('id') sessionId: string,
-  ) {
+  async getSession(@CurrentUser('id') userId: string, @Param('id') sessionId: string) {
     return this.arenaService.getSession(sessionId, userId);
   }
 
@@ -91,5 +82,3 @@ export class EngineeringArenaController {
     return this.arenaService.submitSolution(sessionId, userId, body);
   }
 }
-
-

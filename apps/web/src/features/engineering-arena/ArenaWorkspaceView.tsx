@@ -7,9 +7,7 @@ interface ArenaWorkspaceViewProps {
   onBackToCatalog?: () => void;
 }
 
-export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
-  onBackToCatalog,
-}) => {
+export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackToCatalog }) => {
   const {
     session,
     fileContents,
@@ -34,8 +32,12 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">No active workspace</h2>
-        <p className="text-sm text-slate-500 mt-2">Select a challenge from the catalog to start practicing.</p>
+        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">
+          No active workspace
+        </h2>
+        <p className="text-sm text-slate-500 mt-2">
+          Select a challenge from the catalog to start practicing.
+        </p>
         {onBackToCatalog && (
           <button
             onClick={onBackToCatalog}
@@ -49,7 +51,7 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
   }
 
   const activeContent = activeFilePath ? fileContents[activeFilePath] || '' : '';
-  const currentFileNode = session.files.find((f) => f.path === activeFilePath);
+  const currentFileNode = session.files.find(f => f.path === activeFilePath);
 
   const handleSubmit = async () => {
     setShowSubmitConfirm(false);
@@ -71,14 +73,18 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
             </button>
           )}
           <div>
-            <span className="text-xs text-primary-400 font-semibold uppercase">{session.challengeDomain}</span>
-            <h1 className="text-sm font-bold text-white truncate max-w-md">{session.challengeTitle}</h1>
+            <span className="text-xs text-primary-400 font-semibold uppercase">
+              {session.challengeDomain}
+            </span>
+            <h1 className="text-sm font-bold text-white truncate max-w-md">
+              {session.challengeTitle}
+            </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <button
-            onClick={() => setShowCopilot((prev) => !prev)}
+            onClick={() => setShowCopilot(prev => !prev)}
             className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               showCopilot
                 ? 'bg-primary-600 text-white border-primary-500'
@@ -114,7 +120,7 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
             Files
           </div>
           <div className="flex-1 overflow-y-auto py-2">
-            {session.files.map((file) => (
+            {session.files.map(file => (
               <button
                 key={file.path}
                 onClick={() => setActiveFilePath(file.path)}
@@ -145,7 +151,7 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
               aria-label="Code Editor"
               value={activeContent}
               readOnly={!currentFileNode?.isEditable}
-              onChange={(e) => {
+              onChange={e => {
                 if (activeFilePath && currentFileNode?.isEditable) {
                   updateFileContent(activeFilePath, e.target.value);
                 }
@@ -161,7 +167,9 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
           <div className="px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
             <span>Execution Terminal</span>
             {latestRun && (
-              <span className={latestRun.status === 'PASSED' ? 'text-emerald-400' : 'text-rose-400'}>
+              <span
+                className={latestRun.status === 'PASSED' ? 'text-emerald-400' : 'text-rose-400'}
+              >
                 {latestRun.status}
               </span>
             )}
@@ -170,7 +178,9 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
           <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-slate-300 bg-slate-950 whitespace-pre-wrap">
             {latestRun ? (
               <>
-                <div className="text-slate-500 mb-2">// Exit code: {latestRun.exitCode} | Duration: {latestRun.durationMs}ms</div>
+                <div className="text-slate-500 mb-2">
+                  // Exit code: {latestRun.exitCode} | Duration: {latestRun.durationMs}ms
+                </div>
                 <div>{latestRun.stdout}</div>
                 {latestRun.stderr && <div className="text-rose-400 mt-2">{latestRun.stderr}</div>}
               </>
@@ -205,7 +215,7 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({
               </label>
               <textarea
                 value={explanation}
-                onChange={(e) => setExplanation(e.target.value)}
+                onChange={e => setExplanation(e.target.value)}
                 rows={3}
                 className="w-full text-xs p-2.5 rounded-lg bg-slate-800 border border-slate-700 text-white focus:outline-none"
                 placeholder="Explain the root cause and the architectural reasoning behind your fix..."

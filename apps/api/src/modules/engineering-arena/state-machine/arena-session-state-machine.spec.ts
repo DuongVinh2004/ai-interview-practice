@@ -127,10 +127,7 @@ describe('ArenaSessionStateMachine', () => {
     it('forbids resurrection from EXPIRED', () => {
       expect(ArenaSessionStateMachine.isTerminalState(ArenaSessionState.EXPIRED)).toBe(true);
       expect(
-        ArenaSessionStateMachine.canTransition(
-          ArenaSessionState.EXPIRED,
-          ArenaSessionState.ACTIVE,
-        ),
+        ArenaSessionStateMachine.canTransition(ArenaSessionState.EXPIRED, ArenaSessionState.ACTIVE),
       ).toBe(false);
 
       expect(() =>

@@ -18,7 +18,9 @@ export class ArenaPatchExporterService {
     initialFiles: Record<string, string>,
     finalFiles: Record<string, string>,
   ): PatchExportResult {
-    const allPaths = Array.from(new Set([...Object.keys(initialFiles), ...Object.keys(finalFiles)]));
+    const allPaths = Array.from(
+      new Set([...Object.keys(initialFiles), ...Object.keys(finalFiles)]),
+    );
     let patchOutput = '';
     let totalAdditions = 0;
     let totalDeletions = 0;

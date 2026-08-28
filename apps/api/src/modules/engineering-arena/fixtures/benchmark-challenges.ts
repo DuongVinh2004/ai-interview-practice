@@ -18,7 +18,8 @@ export const BENCHMARK_CHALLENGES: BenchmarkChallengeFixture[] = [
       schemaVersion: '1.0',
       slug: 'fix-user-profile-bola',
       title: 'Fix Broken Object Level Authorization (BOLA) in Profile API',
-      description: 'Audit and fix BOLA vulnerability where candidates can update profiles belonging to other users.',
+      description:
+        'Audit and fix BOLA vulnerability where candidates can update profiles belonging to other users.',
       domain: ChallengeDomain.SECURITY,
       category: ChallengeCategory.SECURITY_REMEDIATION,
       difficulty: 3,
@@ -89,7 +90,8 @@ export const BENCHMARK_CHALLENGES: BenchmarkChallengeFixture[] = [
       schemaVersion: '1.0',
       slug: 'optimize-graphql-n-plus-one',
       title: 'Optimize N+1 Query Amplification in Batch DataLoader',
-      description: 'Implement DataLoader batching to eliminate N+1 SQL queries when resolving author details.',
+      description:
+        'Implement DataLoader batching to eliminate N+1 SQL queries when resolving author details.',
       domain: ChallengeDomain.BACKEND,
       category: ChallengeCategory.PERFORMANCE_OPTIMIZATION,
       difficulty: 4,
@@ -161,7 +163,8 @@ export const BENCHMARK_CHALLENGES: BenchmarkChallengeFixture[] = [
       schemaVersion: '1.0',
       slug: 'fix-inventory-oversell-race',
       title: 'Fix Race Condition and Inventory Oversell Under High Concurrency',
-      description: 'Prevent overselling products when multiple concurrent orders arrive simultaneously.',
+      description:
+        'Prevent overselling products when multiple concurrent orders arrive simultaneously.',
       domain: ChallengeDomain.BACKEND,
       category: ChallengeCategory.BUG_FIX,
       difficulty: 4,
@@ -236,7 +239,8 @@ export const BENCHMARK_CHALLENGES: BenchmarkChallengeFixture[] = [
       schemaVersion: '1.0',
       slug: 'harden-jwt-session-replay',
       title: 'Harden Refresh Token Family against Token Replay and Theft',
-      description: 'Implement token rotation and automatic family invalidation when a compromised refresh token is reused.',
+      description:
+        'Implement token rotation and automatic family invalidation when a compromised refresh token is reused.',
       domain: ChallengeDomain.SECURITY,
       category: ChallengeCategory.SECURITY_REMEDIATION,
       difficulty: 4,
@@ -267,7 +271,8 @@ export const BENCHMARK_CHALLENGES: BenchmarkChallengeFixture[] = [
           {
             key: 'token_family_revocation',
             name: 'Token Family Invalidation',
-            description: 'Revokes all descendant tokens if an already-used refresh token is presented.',
+            description:
+              'Revokes all descendant tokens if an already-used refresh token is presented.',
             maxPoints: 50,
           },
         ],
@@ -312,7 +317,8 @@ export const BENCHMARK_CHALLENGES: BenchmarkChallengeFixture[] = [
       schemaVersion: '1.0',
       slug: 'idempotent-payment-webhook-worker',
       title: 'Implement Idempotent Payment Webhook Queue Consumer',
-      description: 'Ensure payment webhooks can be retried safely without double-charging or duplicate order fulfillment.',
+      description:
+        'Ensure payment webhooks can be retried safely without double-charging or duplicate order fulfillment.',
       domain: ChallengeDomain.BACKEND,
       category: ChallengeCategory.BUG_FIX,
       difficulty: 3,

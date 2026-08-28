@@ -146,13 +146,15 @@ export class ArenaReportExporterService {
         isSuspicious: antiCheatReport.isSuspicious,
         flagsCount: antiCheatReport.flags.length,
       },
-      rubricCriteria: ((evaluation.rubricFeedbackJson as any)?.criteriaFeedback || []).map((c: any) => ({
-        key: c.key,
-        name: c.name,
-        score: c.score,
-        maxPoints: c.maxPoints,
-        feedback: c.feedback,
-      })),
+      rubricCriteria: ((evaluation.rubricFeedbackJson as any)?.criteriaFeedback || []).map(
+        (c: any) => ({
+          key: c.key,
+          name: c.name,
+          score: c.score,
+          maxPoints: c.maxPoints,
+          feedback: c.feedback,
+        }),
+      ),
       skillEvidences: evidences,
       patchSummary,
       evaluatedAt: evaluation.createdAt.toISOString(),

@@ -51,13 +51,18 @@ export class ArenaAntiCheatService {
 
     // 1. Check for Unnatural Completion Speed
     if (session.startedAt && session.submittedAt) {
-      const durationSeconds = (new Date(session.submittedAt).getTime() - new Date(session.startedAt).getTime()) / 1000;
+      const durationSeconds =
+        (new Date(session.submittedAt).getTime() - new Date(session.startedAt).getTime()) / 1000;
       if (challenge.difficulty >= 3 && durationSeconds < 180 && executionRuns.length === 0) {
         flags.push({
           ruleId: 'UNNATURAL_COMPLETION_SPEED',
           description: `Difficulty ${challenge.difficulty} challenge completed in ${Math.round(durationSeconds)}s without running tests.`,
           severity: 'HIGH',
-          metadata: { durationSeconds, difficulty: challenge.difficulty, testRunsCount: executionRuns.length },
+          metadata: {
+            durationSeconds,
+            difficulty: challenge.difficulty,
+            testRunsCount: executionRuns.length,
+          },
         });
         riskScore += 50;
       }
@@ -81,7 +86,8 @@ export class ArenaAntiCheatService {
     if (challenge.difficulty >= 4 && executionRuns.length === 0) {
       flags.push({
         ruleId: 'ZERO_INTERMEDIATE_TEST_RUNS',
-        description: 'Candidate submitted high-difficulty solution without executing test suite once.',
+        description:
+          'Candidate submitted high-difficulty solution without executing test suite once.',
         severity: 'LOW',
         metadata: { difficulty: challenge.difficulty },
       });

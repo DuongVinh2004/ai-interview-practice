@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  CanActivate,
-  ExecutionContext,
-  HttpStatus,
-} from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
 import { ErrorCode } from '@ai-interview/contracts';

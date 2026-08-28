@@ -53,7 +53,7 @@ describe('ArenaAdminService', () => {
 
   beforeEach(async () => {
     prisma = {
-      $transaction: jest.fn().mockImplementation(async (cb) => {
+      $transaction: jest.fn().mockImplementation(async cb => {
         const tx = {
           engineeringChallenge: {
             create: jest.fn().mockResolvedValue({ id: 'c1', slug: 'fix-memory-leak' }),

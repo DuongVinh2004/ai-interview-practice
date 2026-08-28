@@ -57,7 +57,7 @@ export async function seedArenaChallenges() {
 
 if (require.main === module) {
   seedArenaChallenges()
-    .catch((e) => {
+    .catch(e => {
       console.error(e);
       process.exit(1);
     })

@@ -57,10 +57,15 @@ describe('DesignEvaluationService.evaluateDiagram (Module B5)', () => {
   });
 
   it('evaluates diagram on-demand and saves evaluation with visual annotations', async () => {
-    const result = await service.evaluateDiagram('user-123', 'int-123', {
-      imageUrl: 'data:image/png;base64,mock',
-      language: 'vi',
-    }, 'vision-evaluate-diagram-1');
+    const result = await service.evaluateDiagram(
+      'user-123',
+      'int-123',
+      {
+        imageUrl: 'data:image/png;base64,mock',
+        language: 'vi',
+      },
+      'vision-evaluate-diagram-1',
+    );
 
     expect(result.id).toBe('eval-1');
     expect(result.overallScore).toBe(8.5);

@@ -36,7 +36,7 @@ export class ArenaAdminService {
       hiddenFilesContent: data.hiddenFilesContent,
     });
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async tx => {
       const challenge = await tx.engineeringChallenge.create({
         data: {
           slug: data.manifest.slug,
@@ -84,7 +84,7 @@ export class ArenaAdminService {
       );
     }
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async tx => {
       // Deprecate older active versions
       await tx.engineeringChallengeVersion.updateMany({
         where: {

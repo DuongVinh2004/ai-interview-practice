@@ -60,13 +60,10 @@ export class EntitlementReservationService {
 
     for (let attempt = 1; attempt <= EntitlementReservationService.MAX_RETRIES; attempt += 1) {
       try {
-        return await this.prisma.$transaction(
-          async tx => this.reserveInTransaction(tx, input),
-          {
-            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-            timeout: 10_000,
-          },
-        );
+        return await this.prisma.$transaction(async tx => this.reserveInTransaction(tx, input), {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: 10_000,
+        });
       } catch (error: any) {
         lastError = error;
         if (!this.isRetryable(error) || attempt === EntitlementReservationService.MAX_RETRIES) {
@@ -95,7 +92,9 @@ export class EntitlementReservationService {
 
     if (existing) {
       if (existing.requestFingerprint !== fingerprint) {
-        throw new ConflictException('Idempotency key was already used for a different entitlement operation');
+        throw new ConflictException(
+          'Idempotency key was already used for a different entitlement operation',
+        );
       }
       if (existing.state === 'RESERVED' && existing.expiresAt <= new Date()) {
         throw new ConflictException(
@@ -157,7 +156,9 @@ export class EntitlementReservationService {
         operationType: input.operationType,
         operationId: input.operationId,
         estimatedQuantity: input.quantity,
-        expiresAt: new Date(Date.now() + (input.expiresInMs || EntitlementReservationService.DEFAULT_EXPIRY_MS)),
+        expiresAt: new Date(
+          Date.now() + (input.expiresInMs || EntitlementReservationService.DEFAULT_EXPIRY_MS),
+        ),
       },
     });
     return { ...created, isNewReservation: true };
@@ -169,13 +170,10 @@ export class EntitlementReservationService {
 
     for (let attempt = 1; attempt <= EntitlementReservationService.MAX_RETRIES; attempt += 1) {
       try {
-        return await this.prisma.$transaction(
-          async tx => this.commitInTransaction(tx, input),
-          {
-            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-            timeout: 10_000,
-          },
-        );
+        return await this.prisma.$transaction(async tx => this.commitInTransaction(tx, input), {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+          timeout: 10_000,
+        });
       } catch (error: any) {
         lastError = error;
         if (!this.isRetryable(error) || attempt === EntitlementReservationService.MAX_RETRIES) {
@@ -199,7 +197,9 @@ export class EntitlementReservationService {
       return reservation;
     }
     if (reservation.state !== 'RESERVED') {
-      throw new ConflictException(`Cannot commit entitlement reservation in ${reservation.state} state`);
+      throw new ConflictException(
+        `Cannot commit entitlement reservation in ${reservation.state} state`,
+      );
     }
     if (input.actualQuantity > reservation.estimatedQuantity) {
       await tx.entitlementReservation.update({
@@ -214,12 +214,16 @@ export class EntitlementReservationService {
           },
         },
       });
-      throw new ConflictException('Actual provider usage exceeds its reservation and requires reconciliation');
+      throw new ConflictException(
+        'Actual provider usage exceeds its reservation and requires reconciliation',
+      );
     }
 
     const bucket = await tx.entitlementBucket.findUnique({ where: { id: reservation.bucketId } });
     if (!bucket || bucket.reserved < reservation.estimatedQuantity) {
-      throw new RetryableReservationConflict('Entitlement reservation does not have a matching bucket balance');
+      throw new RetryableReservationConflict(
+        'Entitlement reservation does not have a matching bucket balance',
+      );
     }
     const updated = await tx.entitlementBucket.updateMany({
       where: { id: bucket.id, version: bucket.version },
@@ -279,7 +283,9 @@ export class EntitlementReservationService {
               );
             }
 
-            const bucket = await tx.entitlementBucket.findUnique({ where: { id: reservation.bucketId } });
+            const bucket = await tx.entitlementBucket.findUnique({
+              where: { id: reservation.bucketId },
+            });
             if (!bucket || bucket.reserved < reservation.estimatedQuantity) {
               throw new RetryableReservationConflict(
                 'Entitlement reservation does not have a matching bucket balance',
@@ -314,7 +320,11 @@ export class EntitlementReservationService {
     throw lastError;
   }
 
-  async markForReconciliation(reservationId: string, reason: string, details?: Record<string, unknown>) {
+  async markForReconciliation(
+    reservationId: string,
+    reason: string,
+    details?: Record<string, unknown>,
+  ) {
     return this.prisma.entitlementReservation.updateMany({
       where: { id: reservationId, state: 'RESERVED' },
       data: {
@@ -385,7 +395,8 @@ export class EntitlementReservationService {
         };
       case EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS:
         return {
-          limit: planSlug === 'team' || planSlug === 'enterprise' ? null : planSlug === 'pro' ? 50 : 5,
+          limit:
+            planSlug === 'team' || planSlug === 'enterprise' ? null : planSlug === 'pro' ? 50 : 5,
           accessPeriodKey,
           resetsAt,
         };
@@ -396,7 +407,9 @@ export class EntitlementReservationService {
 
   private validateReserveInput(input: ReserveEntitlementInput) {
     if (!input.userId || !input.metric || !input.operationType) {
-      throw new ConflictException('Entitlement reservation requires user, metric, and operation type');
+      throw new ConflictException(
+        'Entitlement reservation requires user, metric, and operation type',
+      );
     }
     if (!Number.isSafeInteger(input.quantity) || input.quantity <= 0) {
       throw new ConflictException('Entitlement reservation quantity must be a positive integer');
@@ -407,8 +420,14 @@ export class EntitlementReservationService {
   }
 
   private validateCommitInput(input: CommitEntitlementInput) {
-    if (!input.reservationId || !Number.isSafeInteger(input.actualQuantity) || input.actualQuantity <= 0) {
-      throw new ConflictException('Entitlement commit requires a reservation and positive actual quantity');
+    if (
+      !input.reservationId ||
+      !Number.isSafeInteger(input.actualQuantity) ||
+      input.actualQuantity <= 0
+    ) {
+      throw new ConflictException(
+        'Entitlement commit requires a reservation and positive actual quantity',
+      );
     }
   }
 
@@ -434,6 +453,8 @@ export class EntitlementReservationService {
   }
 
   private isRetryable(error: any): boolean {
-    return error?.code === 'P2034' || error?.code === 'P2002' || error?.code === 'ENTITLEMENT_RETRY';
+    return (
+      error?.code === 'P2034' || error?.code === 'P2002' || error?.code === 'ENTITLEMENT_RETRY'
+    );
   }
 }

@@ -5,8 +5,8 @@ const productionBase = {
   DATABASE_URL: 'postgresql://user:password@localhost:5432/app',
   JWT_ACCESS_SECRET: 'access-secret-at-least-16-characters',
   JWT_REFRESH_SECRET: 'refresh-secret-at-least-16-characters',
-  MFA_ENCRYPTION_KEY: 'mfa-encryption-key-at-least-32-characters',
-  CERTIFICATE_SECRET: 'certificate-secret-at-least-32-characters',
+  MFA_ENCRYPTION_KEY: 'test-mfa-encryption-key-32-chars',
+  CERTIFICATE_SECRET: 'test-certificate-secret-32-chars',
   AI_PROVIDER: 'openai',
 };
 

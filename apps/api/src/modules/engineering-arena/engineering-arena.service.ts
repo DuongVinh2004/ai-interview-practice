@@ -30,12 +30,11 @@ export class EngineeringArenaService {
     private readonly sseService: ArenaSseService,
   ) {}
 
-  async listChallenges(filters?: {
-    domain?: string;
-    category?: string;
-  }) {
+  async listChallenges(filters?: { domain?: string; category?: string }) {
     const domainEnum = filters?.domain ? (filters.domain as ArenaChallengeDomain) : undefined;
-    const categoryEnum = filters?.category ? (filters.category as ArenaChallengeCategory) : undefined;
+    const categoryEnum = filters?.category
+      ? (filters.category as ArenaChallengeCategory)
+      : undefined;
 
     return this.challengeRepo.listPublishedChallenges({
       domain: domainEnum,
@@ -100,14 +99,10 @@ export class EngineeringArenaService {
       ArenaSessionState.READY,
     );
 
-    await this.sessionRepo.updateSessionState(
-      session.id,
-      userId,
-      ArenaSessionLifecycleState.READY,
-    );
+    await this.sessionRepo.updateSessionState(session.id, userId, ArenaSessionLifecycleState.READY);
 
     // Construct visible file tree
-    const fileTree: ArenaFileNode[] = (manifest.visibleFiles || []).map((filePath) => {
+    const fileTree: ArenaFileNode[] = (manifest.visibleFiles || []).map(filePath => {
       const parts = filePath.split('/');
       const name = parts[parts.length - 1] ?? filePath;
       return {
@@ -233,4 +228,3 @@ export class EngineeringArenaService {
     return this.evaluationService.submitAndEvaluate(sessionId, userId, body);
   }
 }
-

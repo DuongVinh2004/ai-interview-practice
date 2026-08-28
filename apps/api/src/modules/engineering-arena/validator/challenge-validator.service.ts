@@ -61,7 +61,7 @@ export class ChallengeValidatorService {
     // Stage 2: Source Integrity Check
     const stage2Start = Date.now();
     const missingVisible = params.manifest.visibleFiles.filter(
-      (f) => !(f in params.visibleFilesContent),
+      f => !(f in params.visibleFilesContent),
     );
     stages.push({
       stage: '2_SOURCE_INTEGRITY',
@@ -109,9 +109,7 @@ export class ChallengeValidatorService {
 
     // Stage 5: Hidden Test Isolation Separation
     const stage5Start = Date.now();
-    const leakedHidden = params.manifest.hiddenFiles.filter(
-      (h) => h in params.visibleFilesContent,
-    );
+    const leakedHidden = params.manifest.hiddenFiles.filter(h => h in params.visibleFilesContent);
     stages.push({
       stage: '5_CANDIDATE_ARTIFACT_SEPARATION',
       status: leakedHidden.length === 0 ? ValidatorStageStatus.PASS : ValidatorStageStatus.FAIL,
@@ -134,8 +132,8 @@ export class ChallengeValidatorService {
       durationMs: Date.now() - stage6Start,
     });
 
-    const failedStages = stages.filter((s) => s.status === ValidatorStageStatus.FAIL).length;
-    const passedStages = stages.filter((s) => s.status === ValidatorStageStatus.PASS).length;
+    const failedStages = stages.filter(s => s.status === ValidatorStageStatus.FAIL).length;
+    const passedStages = stages.filter(s => s.status === ValidatorStageStatus.PASS).length;
 
     return {
       overallPass: failedStages === 0,

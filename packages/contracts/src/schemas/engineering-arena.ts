@@ -48,21 +48,25 @@ export const ArenaChallengeManifestSchema = z.object({
     version: z.string().default('1.0'),
     objectiveWeight: z.number().min(0).max(1).default(0.7),
     rubricWeight: z.number().min(0).max(1).default(0.3),
-    criteria: z.array(
-      z.object({
-        key: z.string(),
-        name: z.string(),
-        description: z.string(),
-        maxPoints: z.number().int().min(1).max(100),
-      }),
-    ).default([]),
+    criteria: z
+      .array(
+        z.object({
+          key: z.string(),
+          name: z.string(),
+          description: z.string(),
+          maxPoints: z.number().int().min(1).max(100),
+        }),
+      )
+      .default([]),
   }),
-  skills: z.array(
-    z.object({
-      taxonomyKey: z.string(),
-      weight: z.number().min(0).max(1).default(1.0),
-    }),
-  ).default([]),
+  skills: z
+    .array(
+      z.object({
+        taxonomyKey: z.string(),
+        weight: z.number().min(0).max(1).default(1.0),
+      }),
+    )
+    .default([]),
 });
 export type ArenaChallengeManifest = z.infer<typeof ArenaChallengeManifestSchema>;
 
@@ -130,7 +134,6 @@ export const ArenaWorkspaceSyncRequestSchema = z.object({
   files: z.array(ArenaWorkspaceFileUpdateSchema).min(1),
 });
 export type ArenaWorkspaceSyncRequest = z.infer<typeof ArenaWorkspaceSyncRequestSchema>;
-
 
 // ---------------------------------------------------------------------------
 // Session Schemas

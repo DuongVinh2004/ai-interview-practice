@@ -155,22 +155,21 @@ flowchart TD
 
 ## 4. Bảng Tiêu chí Nghiệm thu Release Gates (G1 — G13)
 
-| Release Gate                          | Nội dung kiểm định                             | Trạng thái | Điều kiện đóng Gate (Exit Criteria)                                   |
-| :------------------------------------ | :--------------------------------------------- | :--------: | :-------------------------------------------------------------------- |
-| **G1: Type & Contract Safety**        | Tính nhất quán kiểu dữ liệu monorepo           |  **PASS**  | `pnpm type-check` 0 lỗi trên 5/5 packages                             |
-| **G2: Identity & Session Auth**       | Bảo mật đăng nhập, token, MFA Admin            |  **PASS**  | Token revocation, role validation, MFA step-up hoạt động chuẩn        |
-| **G3: Object Authorization (IDOR)**   | Phân quyền truy cập tài nguyên                 |  **PASS**  | 100% negative authorization tests pass (STAR, storage, bookmarks)     |
-| **G4: Financial & Quota Integrity**   | Đối soát giao dịch & sổ cái quota              |  **PASS**  | Webhook idempotent, không trừ quota trùng, 0 bản ghi mồ côi           |
-| **G5: Safe Data Projection**          | Chống rò rỉ dữ liệu trước khi trả phí/mở quyền |  **PASS**  | Đáp án & Rubric không lộ qua list/detail API trước khi reveal         |
-| **G6: Content Governance Workflow**   | Quy trình biên tập câu hỏi 5 bước              |  **PASS**  | Tác giả không thể tự duyệt bài, state transitions chặt chẽ            |
-| **G7: Code Sandbox Security**         | An toàn thực thi mã nguồn (Judge0 & Arena)     |  **PASS**  | Giới hạn tài nguyên nghiêm ngặt, chặn path traversal và fork bomb     |
-| **G8: AI Evaluation Fidelity**        | Độ chuẩn xác của hệ thống AI chấm điểm         |  **PASS**  | Sai lệch điểm $\le 5\%$ so với Golden Dataset, score caps chặt chẽ    |
-| **G9: Async State & Queue DLQ**       | Khả năng phục hồi hàng đợi bất đồng bộ         |  **PASS**  | Tự động retry và đẩy vào DLQ khi worker fail, không kẹt state         |
-| **G10: Chaos & Fault Tolerance**      | Chịu lỗi khi Redis/AI Provider gián đoạn       |  **PASS**  | Multi-provider fallback chuyển tuyến mượt mà $\le 1.5s$               |
-| **G11: Browser E2E & A11y**           | Trải nghiệm luồng chính & tiếp cận             |  **PASS**  | Luồng phỏng vấn, ngân hàng câu hỏi & Arena đạt chuẩn WCAG 2.2 AA      |
-| **G12: Git Tree & Work Preservation** | Bảo toàn các thay đổi và tài liệu dự án        |  **PASS**  | 100% file uncommitted/untracked được giữ nguyên vẹn                   |
-| **G13: Engineering Arena Quality**    | Thẩm định 5 bài Benchmark Challenge & Runner  |  **PASS**  | 6-stage validator pass 100%, BOLA và path traversal tests pass        |
-
+| Release Gate                          | Nội dung kiểm định                             | Trạng thái | Điều kiện đóng Gate (Exit Criteria)                                |
+| :------------------------------------ | :--------------------------------------------- | :--------: | :----------------------------------------------------------------- |
+| **G1: Type & Contract Safety**        | Tính nhất quán kiểu dữ liệu monorepo           |  **PASS**  | `pnpm type-check` 0 lỗi trên 5/5 packages                          |
+| **G2: Identity & Session Auth**       | Bảo mật đăng nhập, token, MFA Admin            |  **PASS**  | Token revocation, role validation, MFA step-up hoạt động chuẩn     |
+| **G3: Object Authorization (IDOR)**   | Phân quyền truy cập tài nguyên                 |  **PASS**  | 100% negative authorization tests pass (STAR, storage, bookmarks)  |
+| **G4: Financial & Quota Integrity**   | Đối soát giao dịch & sổ cái quota              |  **PASS**  | Webhook idempotent, không trừ quota trùng, 0 bản ghi mồ côi        |
+| **G5: Safe Data Projection**          | Chống rò rỉ dữ liệu trước khi trả phí/mở quyền |  **PASS**  | Đáp án & Rubric không lộ qua list/detail API trước khi reveal      |
+| **G6: Content Governance Workflow**   | Quy trình biên tập câu hỏi 5 bước              |  **PASS**  | Tác giả không thể tự duyệt bài, state transitions chặt chẽ         |
+| **G7: Code Sandbox Security**         | An toàn thực thi mã nguồn (Judge0 & Arena)     |  **PASS**  | Giới hạn tài nguyên nghiêm ngặt, chặn path traversal và fork bomb  |
+| **G8: AI Evaluation Fidelity**        | Độ chuẩn xác của hệ thống AI chấm điểm         |  **PASS**  | Sai lệch điểm $\le 5\%$ so với Golden Dataset, score caps chặt chẽ |
+| **G9: Async State & Queue DLQ**       | Khả năng phục hồi hàng đợi bất đồng bộ         |  **PASS**  | Tự động retry và đẩy vào DLQ khi worker fail, không kẹt state      |
+| **G10: Chaos & Fault Tolerance**      | Chịu lỗi khi Redis/AI Provider gián đoạn       |  **PASS**  | Multi-provider fallback chuyển tuyến mượt mà $\le 1.5s$            |
+| **G11: Browser E2E & A11y**           | Trải nghiệm luồng chính & tiếp cận             |  **PASS**  | Luồng phỏng vấn, ngân hàng câu hỏi & Arena đạt chuẩn WCAG 2.2 AA   |
+| **G12: Git Tree & Work Preservation** | Bảo toàn các thay đổi và tài liệu dự án        |  **PASS**  | 100% file uncommitted/untracked được giữ nguyên vẹn                |
+| **G13: Engineering Arena Quality**    | Thẩm định 5 bài Benchmark Challenge & Runner   |  **PASS**  | 6-stage validator pass 100%, BOLA và path traversal tests pass     |
 
 ---
 

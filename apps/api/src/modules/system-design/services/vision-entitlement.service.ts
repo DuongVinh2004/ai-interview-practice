@@ -24,7 +24,8 @@ export class VisionEntitlementService {
   async evaluate(input: {
     userId: string;
     idempotencyKey?: string;
-    operationType: 'system-design.analyze' | 'system-design.evaluate' | 'system-design.evaluate-diagram';
+    operationType:
+      'system-design.analyze' | 'system-design.evaluate' | 'system-design.evaluate-diagram';
     interviewId: string;
     provider: VisionProvider;
     options: VisionEvaluationOptions;
@@ -48,7 +49,9 @@ export class VisionEntitlementService {
       throw new ConflictException('The earlier vision request is awaiting reconciliation.');
     }
     if (reservation.state !== 'RESERVED' || reservation.isNewReservation !== true) {
-      throw new ConflictException('This vision request has already been processed; use a new idempotency key.');
+      throw new ConflictException(
+        'This vision request has already been processed; use a new idempotency key.',
+      );
     }
 
     try {
@@ -84,7 +87,10 @@ export class VisionEntitlementService {
     const canvasBytes = Buffer.byteLength(JSON.stringify(options.canvasData || {}));
     // The constant covers the fixed high-detail prompt and model output; the
     // payload terms make a large untrusted canvas consume more quota up front.
-    return Math.min(50_000, Math.max(2_000, 2_000 + Math.ceil(imageBytes / 400) + Math.ceil(canvasBytes / 4)));
+    return Math.min(
+      50_000,
+      Math.max(2_000, 2_000 + Math.ceil(imageBytes / 400) + Math.ceil(canvasBytes / 4)),
+    );
   }
 
   private actualTokens(result: VisionEvaluationResult, estimate: number): number {
@@ -115,7 +121,11 @@ export class VisionEntitlementService {
       await this.reservations.markForReconciliation(
         reservationId,
         'paid_vision_provider_outcome_ambiguous',
-        { status: error?.status, code: error?.code, message: String(error?.message || '').slice(0, 500) },
+        {
+          status: error?.status,
+          code: error?.code,
+          message: String(error?.message || '').slice(0, 500),
+        },
       );
     } catch {
       // Keep the original provider error. The reservation remains fail-closed

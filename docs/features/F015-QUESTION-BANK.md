@@ -340,7 +340,7 @@ Tất cả endpoint yêu cầu JWT trừ khi chính sách sản phẩm sau này 
 Headers:
 
 ```http
-Idempotency-Key: 4f4d2c92-7b76-4a66-8a0e-3f9731fa9181
+Idempotency-Key: <uuid-idempotency-key>
 ```
 
 Response thành công:

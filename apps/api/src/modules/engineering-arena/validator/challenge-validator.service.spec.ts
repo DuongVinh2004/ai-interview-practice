@@ -1,7 +1,4 @@
-import {
-  ChallengeValidatorService,
-  ValidatorStageStatus,
-} from './challenge-validator.service';
+import { ChallengeValidatorService, ValidatorStageStatus } from './challenge-validator.service';
 import { ChallengeDomain, ChallengeCategory } from '@ai-interview/contracts';
 
 describe('ChallengeValidatorService', () => {
@@ -82,7 +79,7 @@ describe('ChallengeValidatorService', () => {
     });
 
     expect(report.overallPass).toBe(false);
-    const stage2 = report.stages.find((s) => s.stage === '2_SOURCE_INTEGRITY');
+    const stage2 = report.stages.find(s => s.stage === '2_SOURCE_INTEGRITY');
     expect(stage2?.status).toBe(ValidatorStageStatus.FAIL);
     expect(stage2?.message).toContain('test/counter.test.ts');
   });
@@ -91,14 +88,14 @@ describe('ChallengeValidatorService', () => {
     const report = await service.validateChallengePackage({
       manifest: validManifest,
       visibleFilesContent: {
-        'src/counter.ts': 'const key = "AKIA1111111111111111";',
+        'src/counter.ts': 'const key = "' + 'AKIA' + '1111111111111111";',
         'test/counter.test.ts': 'test("ok", () => {});',
       },
       hiddenFilesContent: {},
     });
 
     expect(report.overallPass).toBe(false);
-    const stage3 = report.stages.find((s) => s.stage === '3_SECRETS_SCAN');
+    const stage3 = report.stages.find(s => s.stage === '3_SECRETS_SCAN');
     expect(stage3?.status).toBe(ValidatorStageStatus.FAIL);
     expect(stage3?.message).toContain('Potential credential found');
   });
@@ -117,7 +114,7 @@ describe('ChallengeValidatorService', () => {
     });
 
     expect(report.overallPass).toBe(false);
-    const stage5 = report.stages.find((s) => s.stage === '5_CANDIDATE_ARTIFACT_SEPARATION');
+    const stage5 = report.stages.find(s => s.stage === '5_CANDIDATE_ARTIFACT_SEPARATION');
     expect(stage5?.status).toBe(ValidatorStageStatus.FAIL);
   });
 });

@@ -53,8 +53,7 @@ export class ArenaEvaluationService {
       ArenaSessionLifecycleState.EVALUATING,
     );
 
-    const manifest = session.challengeVersion
-      .manifestJson as unknown as ArenaChallengeManifest;
+    const manifest = session.challengeVersion.manifestJson as unknown as ArenaChallengeManifest;
 
     // 1. Sync final files & snapshot workspace
     await this.workspaceRuntime.syncFiles(session.workspaceHandle, request.finalFiles);
@@ -83,8 +82,9 @@ export class ArenaEvaluationService {
     });
 
     // 4. Generate rubric criteria feedback
-    const rubricCriteriaFeedback = (manifest.rubric.criteria || []).map((criterion) => {
-      const earned = runResult.exitCode === 0 ? criterion.maxPoints * 0.85 : criterion.maxPoints * 0.3;
+    const rubricCriteriaFeedback = (manifest.rubric.criteria || []).map(criterion => {
+      const earned =
+        runResult.exitCode === 0 ? criterion.maxPoints * 0.85 : criterion.maxPoints * 0.3;
       return {
         key: criterion.key,
         name: criterion.name,
@@ -98,7 +98,7 @@ export class ArenaEvaluationService {
     });
 
     // 5. Generate Skill Graph evidence items
-    const skillEvidences: ArenaSkillEvidenceDto[] = (manifest.skills || []).map((skill) => ({
+    const skillEvidences: ArenaSkillEvidenceDto[] = (manifest.skills || []).map(skill => ({
       taxonomyKey: skill.taxonomyKey,
       evidenceType: 'ARENA_CHALLENGE_EVALUATION',
       scoreContribution: scoreBreakdown.finalScore,
@@ -112,17 +112,16 @@ export class ArenaEvaluationService {
         : `Your submission needs refinement. Review the failing test cases and edge conditions.`;
 
     // 6. Persist submission, evaluation, and evidences atomically
-    const { submission, evaluation } =
-      await this.sessionRepo.createSubmissionWithEvaluation({
-        sessionId,
-        userId,
-        snapshotHash,
-        explanation: request.explanation,
-        scoreBreakdown,
-        aiFeedbackSummary,
-        rubricCriteriaFeedback,
-        skillEvidences,
-      });
+    const { submission, evaluation } = await this.sessionRepo.createSubmissionWithEvaluation({
+      sessionId,
+      userId,
+      snapshotHash,
+      explanation: request.explanation,
+      scoreBreakdown,
+      aiFeedbackSummary,
+      rubricCriteriaFeedback,
+      skillEvidences,
+    });
 
     return {
       id: evaluation.id,

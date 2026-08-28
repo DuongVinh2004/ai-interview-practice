@@ -51,11 +51,8 @@ export class ArenaChallengeRepository {
     });
   }
 
-  async createChallengeWithVersion(
-    manifest: ArenaChallengeManifest,
-    createdById?: string,
-  ) {
-    return this.prisma.$transaction(async (tx) => {
+  async createChallengeWithVersion(manifest: ArenaChallengeManifest, createdById?: string) {
+    return this.prisma.$transaction(async tx => {
       const challenge = await tx.engineeringChallenge.create({
         data: {
           slug: manifest.slug,

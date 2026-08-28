@@ -404,7 +404,9 @@ export class AudioOrchestratorService {
     if (reservation?.state === 'RECONCILIATION_REQUIRED') {
       throw new ConflictException('The earlier paid audio operation is awaiting reconciliation.');
     }
-    throw new ConflictException('This audio operation has already been processed; use a new idempotency key.');
+    throw new ConflictException(
+      'This audio operation has already been processed; use a new idempotency key.',
+    );
   }
 
   private async resolvePaidProviderFailure(reservationId: string, error: any): Promise<void> {
@@ -412,13 +414,20 @@ export class AudioOrchestratorService {
       // Input validation happens before an upstream operation. Every other error
       // is treated as ambiguous and held so a retry cannot duplicate a paid call.
       if (error?.status === HttpStatus.BAD_REQUEST) {
-        await this.entitlementReservations.release(reservationId, 'provider_rejected_preflight_input');
+        await this.entitlementReservations.release(
+          reservationId,
+          'provider_rejected_preflight_input',
+        );
         return;
       }
       await this.entitlementReservations.markForReconciliation(
         reservationId,
         'paid_audio_provider_outcome_ambiguous',
-        { status: error?.status, code: error?.code, message: String(error?.message || '').slice(0, 500) },
+        {
+          status: error?.status,
+          code: error?.code,
+          message: String(error?.message || '').slice(0, 500),
+        },
       );
     } catch (resolutionError: any) {
       this.logger.error(
@@ -428,7 +437,8 @@ export class AudioOrchestratorService {
   }
 
   private durationToMinutes(durationSeconds: number | undefined, estimate: number): number {
-    if (!durationSeconds || !Number.isFinite(durationSeconds) || durationSeconds <= 0) return estimate;
+    if (!durationSeconds || !Number.isFinite(durationSeconds) || durationSeconds <= 0)
+      return estimate;
     return Math.max(1, Math.ceil(durationSeconds / 60));
   }
 
@@ -449,7 +459,10 @@ export class AudioOrchestratorService {
 
   private readWavDurationSeconds(audioBuffer: Buffer, mimeType: string): number | undefined {
     if (!mimeType.toLowerCase().includes('wav') || audioBuffer.length < 44) return undefined;
-    if (audioBuffer.toString('ascii', 0, 4) !== 'RIFF' || audioBuffer.toString('ascii', 8, 12) !== 'WAVE') {
+    if (
+      audioBuffer.toString('ascii', 0, 4) !== 'RIFF' ||
+      audioBuffer.toString('ascii', 8, 12) !== 'WAVE'
+    ) {
       return undefined;
     }
     const byteRate = audioBuffer.readUInt32LE(28);

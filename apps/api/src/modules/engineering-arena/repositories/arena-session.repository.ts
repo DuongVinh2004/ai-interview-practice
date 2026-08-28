@@ -168,7 +168,7 @@ export class ArenaSessionRepository {
     }>;
     skillEvidences: ArenaSkillEvidenceDto[];
   }) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async tx => {
       const submission = await tx.arenaSubmission.create({
         data: {
           sessionId: data.sessionId,
@@ -198,7 +198,7 @@ export class ArenaSessionRepository {
 
       if (data.skillEvidences.length > 0) {
         await tx.arenaSkillEvidence.createMany({
-          data: data.skillEvidences.map((evidence) => ({
+          data: data.skillEvidences.map(evidence => ({
             evaluationId: evaluation.id,
             userId: data.userId,
             taxonomyKey: evidence.taxonomyKey,

@@ -74,7 +74,7 @@ describe('ManifestValidator', () => {
 
     const result = ManifestValidator.validate(manifest);
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes("Duplicate command ID 'test'"))).toBe(true);
+    expect(result.errors.some(e => e.includes("Duplicate command ID 'test'"))).toBe(true);
   });
 
   it('rejects weights not summing to 1.0', () => {
@@ -84,7 +84,7 @@ describe('ManifestValidator', () => {
 
     const result = ManifestValidator.validate(manifest);
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('must sum to 1.0'))).toBe(true);
+    expect(result.errors.some(e => e.includes('must sum to 1.0'))).toBe(true);
   });
 
   it('rejects hidden files that are in visible or editable sets', () => {
@@ -93,7 +93,7 @@ describe('ManifestValidator', () => {
 
     const result = ManifestValidator.validate(manifest);
     expect(result.isValid).toBe(false);
-    expect(result.errors.some((e) => e.includes('Security violation'))).toBe(true);
+    expect(result.errors.some(e => e.includes('Security violation'))).toBe(true);
   });
 
   it('rejects excessive memory limits', () => {
@@ -104,7 +104,7 @@ describe('ManifestValidator', () => {
     expect(result.isValid).toBe(false);
     expect(
       result.errors.some(
-        (e) => e.includes('environment.memoryLimitMb') || e.includes('Memory limit'),
+        e => e.includes('environment.memoryLimitMb') || e.includes('Memory limit'),
       ),
     ).toBe(true);
   });

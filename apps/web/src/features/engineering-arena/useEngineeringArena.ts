@@ -53,8 +53,10 @@ export function useEngineeringArena() {
         setSession(res.data);
         setFileContents(res.data.initialFileContents || {});
 
-        const firstEditable = res.data.files.find((f) => f.isEditable);
-        const initialActivePath = firstEditable ? firstEditable.path : res.data.files[0]?.path || null;
+        const firstEditable = res.data.files.find(f => f.isEditable);
+        const initialActivePath = firstEditable
+          ? firstEditable.path
+          : res.data.files[0]?.path || null;
         setActiveFilePath(initialActivePath);
 
         return res.data;
@@ -69,7 +71,7 @@ export function useEngineeringArena() {
   );
 
   const updateFileContent = useCallback((path: string, content: string) => {
-    setFileContents((prev) => ({ ...prev, [path]: content }));
+    setFileContents(prev => ({ ...prev, [path]: content }));
   }, []);
 
   const runCommand = useCallback(
@@ -182,4 +184,3 @@ export function useEngineeringArena() {
     askCopilot,
   };
 }
-

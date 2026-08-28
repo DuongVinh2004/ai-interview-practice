@@ -26,9 +26,7 @@ describe('AudioController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AudioController],
-      providers: [
-        { provide: AudioOrchestratorService, useValue: mockAudioService },
-      ],
+      providers: [{ provide: AudioOrchestratorService, useValue: mockAudioService }],
     }).compile();
 
     controller = module.get<AudioController>(AudioController);

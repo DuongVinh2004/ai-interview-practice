@@ -38,7 +38,7 @@ export class ArenaRecommendationService {
     // Identify weak skills (average score < 70)
     const weakSkills = Array.from(skillScores.entries())
       .map(([key, data]) => ({ key, avg: data.total / data.count }))
-      .filter((s) => s.avg < 70)
+      .filter(s => s.avg < 70)
       .sort((a, b) => a.avg - b.avg);
 
     // 2. Fetch all published challenges
@@ -52,8 +52,8 @@ export class ArenaRecommendationService {
       if (!activeVersion) continue;
 
       const manifest = activeVersion.manifestJson as unknown as ArenaChallengeManifest;
-      const matchingWeakSkill = weakSkills.find((ws) =>
-        manifest.skills.some((s) => s.taxonomyKey === ws.key),
+      const matchingWeakSkill = weakSkills.find(ws =>
+        manifest.skills.some(s => s.taxonomyKey === ws.key),
       );
 
       if (matchingWeakSkill) {

@@ -14,7 +14,11 @@ export class ArenaSseService {
   private readonly logger = new Logger(ArenaSseService.name);
   private readonly eventSubject = new Subject<ArenaStreamMessage>();
 
-  emitLog(sessionId: string, type: 'stdout' | 'stderr' | 'status' | 'test_result', payload: string): void {
+  emitLog(
+    sessionId: string,
+    type: 'stdout' | 'stderr' | 'status' | 'test_result',
+    payload: string,
+  ): void {
     this.eventSubject.next({
       sessionId,
       type,
@@ -26,8 +30,8 @@ export class ArenaSseService {
   getSessionStream(sessionId: string): Observable<{ data: ArenaStreamMessage }> {
     this.logger.log(`Client subscribed to Arena SSE stream for session ${sessionId}`);
     return this.eventSubject.asObservable().pipe(
-      filter((msg) => msg.sessionId === sessionId),
-      map((msg) => ({ data: msg })),
+      filter(msg => msg.sessionId === sessionId),
+      map(msg => ({ data: msg })),
     );
   }
 }

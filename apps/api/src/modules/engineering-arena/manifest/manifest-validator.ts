@@ -1,7 +1,4 @@
-import {
-  ArenaChallengeManifest,
-  ArenaChallengeManifestSchema,
-} from '@ai-interview/contracts';
+import { ArenaChallengeManifest, ArenaChallengeManifestSchema } from '@ai-interview/contracts';
 
 export interface ManifestValidationResult {
   isValid: boolean;
@@ -48,7 +45,7 @@ export class ManifestValidator {
     }
 
     // Must have at least one test command
-    if (!data.commands.some((c) => c.id === 'test' || c.isVerification)) {
+    if (!data.commands.some(c => c.id === 'test' || c.isVerification)) {
       warnings.push(`Manifest does not define an explicit 'test' or verification command.`);
     }
 
@@ -76,14 +73,10 @@ export class ManifestValidator {
     const editableSet = new Set(data.editableFiles);
     for (const hiddenFile of data.hiddenFiles) {
       if (editableSet.has(hiddenFile)) {
-        errors.push(
-          `Security violation: Hidden file '${hiddenFile}' is also marked as editable.`,
-        );
+        errors.push(`Security violation: Hidden file '${hiddenFile}' is also marked as editable.`);
       }
       if (data.visibleFiles.includes(hiddenFile)) {
-        errors.push(
-          `Security violation: Hidden file '${hiddenFile}' is also marked as visible.`,
-        );
+        errors.push(`Security violation: Hidden file '${hiddenFile}' is also marked as visible.`);
       }
     }
 

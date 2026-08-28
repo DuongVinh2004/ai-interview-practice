@@ -16,7 +16,10 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   useEffect(() => {
-    fetchChallenges({ domain: selectedDomain || undefined, category: selectedCategory || undefined });
+    fetchChallenges({
+      domain: selectedDomain || undefined,
+      category: selectedCategory || undefined,
+    });
   }, [fetchChallenges, selectedDomain, selectedCategory]);
 
   return (
@@ -28,7 +31,8 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
             Engineering Arena
           </h1>
           <p className="mt-2 text-base text-slate-600 dark:text-slate-400 max-w-2xl">
-            Solve real-world multi-file repository challenges: debug race conditions, fix memory leaks, and prove your skills with evidence-backed evaluation.
+            Solve real-world multi-file repository challenges: debug race conditions, fix memory
+            leaks, and prove your skills with evidence-backed evaluation.
           </p>
         </div>
 
@@ -65,7 +69,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
           <div className="flex flex-wrap gap-4 mb-8">
             <select
               value={selectedDomain}
-              onChange={(e) => setSelectedDomain(e.target.value)}
+              onChange={e => setSelectedDomain(e.target.value)}
               aria-label="Filter by domain"
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
@@ -79,14 +83,16 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
 
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
+              onChange={e => setSelectedCategory(e.target.value)}
               aria-label="Filter by category"
               className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
               <option value="">All Categories</option>
               <option value={ChallengeCategory.BUG_FIX}>Bug Fix</option>
               <option value={ChallengeCategory.REFACTORING}>Refactoring</option>
-              <option value={ChallengeCategory.FEATURE_IMPLEMENTATION}>Feature Implementation</option>
+              <option value={ChallengeCategory.FEATURE_IMPLEMENTATION}>
+                Feature Implementation
+              </option>
               <option value={ChallengeCategory.PERFORMANCE_OPTIMIZATION}>Performance</option>
               <option value={ChallengeCategory.SECURITY_REMEDIATION}>Security</option>
             </select>
@@ -109,7 +115,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {challenges.map((challenge) => (
+              {challenges.map(challenge => (
                 <div
                   key={challenge.id}
                   className="flex flex-col justify-between rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm hover:shadow-md transition-shadow"
@@ -127,7 +133,10 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
                       {challenge.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                      Category: <span className="font-medium text-slate-700 dark:text-slate-300">{challenge.category}</span>
+                      Category:{' '}
+                      <span className="font-medium text-slate-700 dark:text-slate-300">
+                        {challenge.category}
+                      </span>
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
                       Estimated time: ~{challenge.estimatedMinutes} minutes

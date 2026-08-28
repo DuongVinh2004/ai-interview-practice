@@ -23,7 +23,8 @@ export class ArenaScoringEngine {
       objectiveScore = Math.round((totalPassed / totalTests) * 100);
     }
 
-    const rubricScore = input.rubricScore !== undefined ? Math.max(0, Math.min(100, input.rubricScore)) : 100;
+    const rubricScore =
+      input.rubricScore !== undefined ? Math.max(0, Math.min(100, input.rubricScore)) : 100;
 
     const objWeight = input.manifest.rubric.objectiveWeight ?? 0.7;
     const rubWeight = input.manifest.rubric.rubricWeight ?? 0.3;

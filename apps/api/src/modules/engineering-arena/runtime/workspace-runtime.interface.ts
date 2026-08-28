@@ -37,6 +37,8 @@ export interface WorkspaceRuntime {
   provision(params: WorkspaceProvisionParams): Promise<void>;
   syncFiles(workspaceHandle: string, files: ArenaWorkspaceFileUpdate[]): Promise<void>;
   runAllowedCommand(params: WorkspaceRunCommandParams): Promise<WorkspaceRunResult>;
-  snapshot(workspaceHandle: string): Promise<{ snapshotHash: string; files: Record<string, string> }>;
+  snapshot(
+    workspaceHandle: string,
+  ): Promise<{ snapshotHash: string; files: Record<string, string> }>;
   destroy(workspaceHandle: string): Promise<void>;
 }

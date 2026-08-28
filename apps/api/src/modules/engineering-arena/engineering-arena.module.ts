@@ -21,11 +21,7 @@ import { PrismaModule } from '../platform/prisma/prisma.module';
 
 @Module({
   imports: [PrismaModule],
-  controllers: [
-    EngineeringArenaController,
-    ArenaAdminController,
-    ArenaCopilotController,
-  ],
+  controllers: [EngineeringArenaController, ArenaAdminController, ArenaCopilotController],
   providers: [
     EngineeringArenaService,
     ArenaAdminService,

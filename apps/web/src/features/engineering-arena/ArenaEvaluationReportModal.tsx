@@ -30,7 +30,10 @@ export const ArenaEvaluationReportModal: React.FC<ArenaEvaluationReportModalProp
             <span className="text-xs font-semibold uppercase tracking-wider text-primary-600 dark:text-primary-400">
               Evaluation Completed
             </span>
-            <h2 id="evaluation-modal-title" className="text-2xl font-bold text-slate-900 dark:text-white mt-1">
+            <h2
+              id="evaluation-modal-title"
+              className="text-2xl font-bold text-slate-900 dark:text-white mt-1"
+            >
               Engineering Arena Assessment Report
             </h2>
           </div>
@@ -54,7 +57,9 @@ export const ArenaEvaluationReportModal: React.FC<ArenaEvaluationReportModalProp
         {/* Score Dial & Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 my-6">
           <div className="flex flex-col items-center justify-center p-5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Final Score</span>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Final Score
+            </span>
             <span className="text-4xl font-extrabold text-primary-600 dark:text-primary-400 mt-1">
               {scoreBreakdown.finalScore}
               <span className="text-lg font-normal text-slate-400">/100</span>
@@ -62,14 +67,18 @@ export const ArenaEvaluationReportModal: React.FC<ArenaEvaluationReportModalProp
           </div>
 
           <div className="flex flex-col items-center justify-center p-5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Visible Tests</span>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Visible Tests
+            </span>
             <span className="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">
               {scoreBreakdown.testsVisiblePassed} / {scoreBreakdown.testsVisibleTotal}
             </span>
           </div>
 
           <div className="flex flex-col items-center justify-center p-5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Hidden Tests</span>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Hidden Tests
+            </span>
             <span className="text-2xl font-bold text-slate-800 dark:text-slate-200 mt-1">
               {scoreBreakdown.testsHiddenPassed} / {scoreBreakdown.testsHiddenTotal}
             </span>
@@ -93,7 +102,7 @@ export const ArenaEvaluationReportModal: React.FC<ArenaEvaluationReportModalProp
               Rubric Criteria Feedback
             </h3>
             <div className="space-y-3">
-              {rubricCriteriaFeedback.map((crit) => (
+              {rubricCriteriaFeedback.map(crit => (
                 <div
                   key={crit.key}
                   className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900"

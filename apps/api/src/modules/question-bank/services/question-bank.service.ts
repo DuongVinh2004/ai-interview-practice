@@ -228,8 +228,8 @@ export class QuestionBankService {
   /**
    * Safe question detail by slug.
    * If user already has an active access grant, full answer is included.
-  * Otherwise, answerBody and rubric are omitted.
-  */
+   * Otherwise, answerBody and rubric are omitted.
+   */
   async getQuestionBySlug(slug: string, userId?: string): Promise<QuestionBankQuestionDetailDto> {
     const accessSnapshot = await this.prisma.$transaction(
       async tx => {
@@ -435,7 +435,11 @@ export class QuestionBankService {
     userId: string,
     idempotencyKey?: string,
   ): Promise<RevealAnswerResponseDto> {
-    if (!idempotencyKey || idempotencyKey.trim().length === 0 || idempotencyKey.trim().length > 100) {
+    if (
+      !idempotencyKey ||
+      idempotencyKey.trim().length === 0 ||
+      idempotencyKey.trim().length > 100
+    ) {
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
         'Idempotency-Key header is required for answer reveal',
@@ -509,7 +513,9 @@ export class QuestionBankService {
           throw new ConflictException('A committed reveal reservation is missing its access grant');
         }
         if (reservation.state !== 'RESERVED') {
-          throw new ConflictException('The reveal operation is awaiting entitlement reconciliation');
+          throw new ConflictException(
+            'The reveal operation is awaiting entitlement reconciliation',
+          );
         }
 
         const grant = await tx.questionAnswerAccessGrant.create({

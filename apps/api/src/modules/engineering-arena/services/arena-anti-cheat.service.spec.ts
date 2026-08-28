@@ -39,8 +39,8 @@ describe('ArenaAntiCheatService', () => {
     expect(report.isSuspicious).toBe(true);
     expect(report.riskScore).toBeGreaterThanOrEqual(60);
     expect(report.flags).toHaveLength(3);
-    expect(report.flags.some((f) => f.ruleId === 'UNNATURAL_COMPLETION_SPEED')).toBe(true);
-    expect(report.flags.some((f) => f.ruleId === 'BURST_PASTE_DETECTED')).toBe(true);
+    expect(report.flags.some(f => f.ruleId === 'UNNATURAL_COMPLETION_SPEED')).toBe(true);
+    expect(report.flags.some(f => f.ruleId === 'BURST_PASTE_DETECTED')).toBe(true);
   });
 
   it('marks normal candidate session with multiple test runs and realistic timing as safe', async () => {

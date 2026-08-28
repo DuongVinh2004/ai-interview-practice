@@ -5,10 +5,7 @@ import {
   WorkspaceRunCommandParams,
   WorkspaceRunResult,
 } from './workspace-runtime.interface';
-import {
-  ArenaWorkspaceFileUpdate,
-  ArenaTestResult,
-} from '@ai-interview/contracts';
+import { ArenaWorkspaceFileUpdate, ArenaTestResult } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
 
 interface ActiveWorkspace {
@@ -55,7 +52,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
     }
 
     // Lookup command from manifest allowlist
-    const cmdDef = params.manifest.commands.find((c) => c.id === params.commandId);
+    const cmdDef = params.manifest.commands.find(c => c.id === params.commandId);
     if (!cmdDef) {
       throw new Error(`Command '${params.commandId}' is not allowed by challenge manifest.`);
     }

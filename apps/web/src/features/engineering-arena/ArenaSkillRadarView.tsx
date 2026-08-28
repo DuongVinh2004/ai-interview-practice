@@ -14,11 +14,41 @@ interface ArenaSkillRadarViewProps {
 }
 
 const DEFAULT_SKILLS: SkillDimension[] = [
-  { key: 'security', name: 'Security & Auth (BOLA, JWT)', score: 85, level: 'Senior', challengesCompleted: 2 },
-  { key: 'performance', name: 'Query & Memory Performance', score: 78, level: 'Mid-Senior', challengesCompleted: 1 },
-  { key: 'concurrency', name: 'Concurrency & Race Invariants', score: 92, level: 'Staff', challengesCompleted: 3 },
-  { key: 'idempotency', name: 'Queue & Webhook Idempotency', score: 88, level: 'Senior', challengesCompleted: 2 },
-  { key: 'architecture', name: 'Refactoring & Clean Architecture', score: 70, level: 'Mid', challengesCompleted: 1 },
+  {
+    key: 'security',
+    name: 'Security & Auth (BOLA, JWT)',
+    score: 85,
+    level: 'Senior',
+    challengesCompleted: 2,
+  },
+  {
+    key: 'performance',
+    name: 'Query & Memory Performance',
+    score: 78,
+    level: 'Mid-Senior',
+    challengesCompleted: 1,
+  },
+  {
+    key: 'concurrency',
+    name: 'Concurrency & Race Invariants',
+    score: 92,
+    level: 'Staff',
+    challengesCompleted: 3,
+  },
+  {
+    key: 'idempotency',
+    name: 'Queue & Webhook Idempotency',
+    score: 88,
+    level: 'Senior',
+    challengesCompleted: 2,
+  },
+  {
+    key: 'architecture',
+    name: 'Refactoring & Clean Architecture',
+    score: 70,
+    level: 'Mid',
+    challengesCompleted: 1,
+  },
 ];
 
 export const ArenaSkillRadarView: React.FC<ArenaSkillRadarViewProps> = ({
@@ -33,13 +63,14 @@ export const ArenaSkillRadarView: React.FC<ArenaSkillRadarViewProps> = ({
           Engineering Skill Radar & Mastery Growth
         </h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          Evidence-backed competency matrix computed from multi-file arena evaluations and hidden test verifications.
+          Evidence-backed competency matrix computed from multi-file arena evaluations and hidden
+          test verifications.
         </p>
       </div>
 
       {/* Grid: Radar Dimensions & Growth Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {skills.map((skill) => (
+        {skills.map(skill => (
           <div
             key={skill.key}
             className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between"
@@ -87,7 +118,8 @@ export const ArenaSkillRadarView: React.FC<ArenaSkillRadarViewProps> = ({
           </span>
           <h3 className="text-lg font-bold mt-1">Refactoring & Clean Architecture</h3>
           <p className="text-xs text-slate-400 max-w-xl mt-1">
-            Your lowest evaluated dimension is currently 70%. Solving an intermediate architecture challenge will boost your Staff Readiness score by +8%.
+            Your lowest evaluated dimension is currently 70%. Solving an intermediate architecture
+            challenge will boost your Staff Readiness score by +8%.
           </p>
         </div>
         {onSelectRecommendedChallenge && (

@@ -161,9 +161,7 @@ describe('EngineeringArenaService', () => {
 
     it('throws RESOURCE_NOT_FOUND when not found', async () => {
       challengeRepo.findBySlug.mockResolvedValue(null);
-      await expect(service.getChallengeBySlug('nonexistent')).rejects.toThrow(
-        DomainException,
-      );
+      await expect(service.getChallengeBySlug('nonexistent')).rejects.toThrow(DomainException);
     });
   });
 

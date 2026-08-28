@@ -28,7 +28,9 @@ describe('ArenaReportExporterService', () => {
       testsHiddenTotal: 3,
     },
     rubricFeedbackJson: {
-      criteriaFeedback: [{ key: 'cleanup', name: 'Cleanup', score: 45, maxPoints: 50, feedback: 'Good' }],
+      criteriaFeedback: [
+        { key: 'cleanup', name: 'Cleanup', score: 45, maxPoints: 50, feedback: 'Good' },
+      ],
     },
     createdAt: new Date('2026-08-28T12:30:00.000Z'),
     submission: {
@@ -53,7 +55,11 @@ describe('ArenaReportExporterService', () => {
   beforeEach(async () => {
     prisma = {
       arenaEvaluation: { findUnique: jest.fn().mockResolvedValue(mockEvaluation) },
-      arenaSkillEvidence: { findMany: jest.fn().mockResolvedValue([{ taxonomyKey: 'nodejs_memory', scoreContribution: 88 }]) },
+      arenaSkillEvidence: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ taxonomyKey: 'nodejs_memory', scoreContribution: 88 }]),
+      },
     };
 
     antiCheatService = {
@@ -97,6 +103,8 @@ describe('ArenaReportExporterService', () => {
   });
 
   it('throws Forbidden if user does not own evaluation session', async () => {
-    await expect(service.exportCandidateDossier('eval-1', 'other-user')).rejects.toThrow(DomainException);
+    await expect(service.exportCandidateDossier('eval-1', 'other-user')).rejects.toThrow(
+      DomainException,
+    );
   });
 });

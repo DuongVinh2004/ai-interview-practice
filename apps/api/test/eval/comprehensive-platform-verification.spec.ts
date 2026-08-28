@@ -30,18 +30,57 @@ describe('Comprehensive Platform & Engineering Arena 7-Tier Verification Suite',
 
   describe('Tier 2: Domain State Machine Integrity', () => {
     it('proves valid lifecycle path: CREATED -> PROVISIONING -> READY -> ACTIVE -> SUBMITTING -> EVALUATING -> COMPLETED', () => {
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.CREATED, ArenaSessionState.PROVISIONING)).toBe(true);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.PROVISIONING, ArenaSessionState.READY)).toBe(true);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.READY, ArenaSessionState.ACTIVE)).toBe(true);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.ACTIVE, ArenaSessionState.SUBMITTING)).toBe(true);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.SUBMITTING, ArenaSessionState.EVALUATING)).toBe(true);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.EVALUATING, ArenaSessionState.COMPLETED)).toBe(true);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.CREATED,
+          ArenaSessionState.PROVISIONING,
+        ),
+      ).toBe(true);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.PROVISIONING,
+          ArenaSessionState.READY,
+        ),
+      ).toBe(true);
+      expect(
+        ArenaSessionStateMachine.canTransition(ArenaSessionState.READY, ArenaSessionState.ACTIVE),
+      ).toBe(true);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.ACTIVE,
+          ArenaSessionState.SUBMITTING,
+        ),
+      ).toBe(true);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.SUBMITTING,
+          ArenaSessionState.EVALUATING,
+        ),
+      ).toBe(true);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.EVALUATING,
+          ArenaSessionState.COMPLETED,
+        ),
+      ).toBe(true);
     });
 
     it('proves terminal state immutability (No resurrection from COMPLETED, CANCELLED, EXPIRED)', () => {
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.COMPLETED, ArenaSessionState.ACTIVE)).toBe(false);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.CANCELLED, ArenaSessionState.ACTIVE)).toBe(false);
-      expect(ArenaSessionStateMachine.canTransition(ArenaSessionState.EXPIRED, ArenaSessionState.ACTIVE)).toBe(false);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.COMPLETED,
+          ArenaSessionState.ACTIVE,
+        ),
+      ).toBe(false);
+      expect(
+        ArenaSessionStateMachine.canTransition(
+          ArenaSessionState.CANCELLED,
+          ArenaSessionState.ACTIVE,
+        ),
+      ).toBe(false);
+      expect(
+        ArenaSessionStateMachine.canTransition(ArenaSessionState.EXPIRED, ArenaSessionState.ACTIVE),
+      ).toBe(false);
     });
   });
 
@@ -159,12 +198,12 @@ describe('Comprehensive Platform & Engineering Arena 7-Tier Verification Suite',
 
   describe('Tier 7: Benchmark Domain Coverage (F017)', () => {
     it('verifies presence of Security, Performance, Concurrency, and Distributed Queue challenges', () => {
-      const categories = BENCHMARK_CHALLENGES.map((c) => c.manifest.category);
+      const categories = BENCHMARK_CHALLENGES.map(c => c.manifest.category);
       expect(categories).toContain(ChallengeCategory.SECURITY_REMEDIATION);
       expect(categories).toContain(ChallengeCategory.PERFORMANCE_OPTIMIZATION);
       expect(categories).toContain(ChallengeCategory.BUG_FIX);
 
-      const domains = BENCHMARK_CHALLENGES.map((c) => c.manifest.domain);
+      const domains = BENCHMARK_CHALLENGES.map(c => c.manifest.domain);
       expect(domains).toContain(ChallengeDomain.SECURITY);
       expect(domains).toContain(ChallengeDomain.BACKEND);
     });

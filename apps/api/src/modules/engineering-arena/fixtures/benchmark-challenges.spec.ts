@@ -22,7 +22,7 @@ describe('Benchmark Challenge Fixtures Pack (ARENA-070..075)', () => {
       });
 
       if (!report.overallPass) {
-        console.error(`Validation failed for ${fixture.manifest.slug}:`, report.stages);
+        console.error('Validation failed for', fixture.manifest.slug, report.stages);
       }
 
       expect(report.overallPass).toBe(true);

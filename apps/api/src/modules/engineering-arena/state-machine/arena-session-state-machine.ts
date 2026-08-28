@@ -26,21 +26,12 @@ export class ArenaSessionStateMachine {
       ArenaSessionState.EXPIRED,
       ArenaSessionState.FAILED,
     ],
-    [ArenaSessionState.SUBMITTING]: [
-      ArenaSessionState.EVALUATING,
-      ArenaSessionState.FAILED,
-    ],
-    [ArenaSessionState.EVALUATING]: [
-      ArenaSessionState.COMPLETED,
-      ArenaSessionState.FAILED,
-    ],
+    [ArenaSessionState.SUBMITTING]: [ArenaSessionState.EVALUATING, ArenaSessionState.FAILED],
+    [ArenaSessionState.EVALUATING]: [ArenaSessionState.COMPLETED, ArenaSessionState.FAILED],
     [ArenaSessionState.COMPLETED]: [],
     [ArenaSessionState.CANCELLED]: [],
     [ArenaSessionState.EXPIRED]: [],
-    [ArenaSessionState.FAILED]: [
-      ArenaSessionState.PROVISIONING,
-      ArenaSessionState.ACTIVE,
-    ],
+    [ArenaSessionState.FAILED]: [ArenaSessionState.PROVISIONING, ArenaSessionState.ACTIVE],
   };
 
   /**

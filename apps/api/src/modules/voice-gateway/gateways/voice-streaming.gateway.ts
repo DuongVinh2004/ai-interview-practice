@@ -15,11 +15,7 @@ import { DeepgramSttProvider } from '../providers/deepgram-stt.provider';
 import { ElevenLabsTtsProvider } from '../providers/elevenlabs-tts.provider';
 import { SentenceChunkerService } from '../services/sentence-chunker.service';
 import { SttStreamSession, TtsStreamSession } from '../interfaces/voice-provider.interface';
-import {
-  VoiceEventType,
-  VoiceSessionStatus,
-  SpeakerRole,
-} from '@ai-interview/contracts';
+import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/contracts';
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { InterviewService } from '../../interview/interview.service';
@@ -386,7 +382,8 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
         this.logger.warn(`Voice entitlement reservation rejected: ${err.message}`);
         this.sendJson(client, {
           type: VoiceEventType.QUOTA_EXCEEDED,
-          message: 'Voice quota is unavailable or exhausted. Please use a new ticket after resolving billing.',
+          message:
+            'Voice quota is unavailable or exhausted. Please use a new ticket after resolving billing.',
         });
         client.close(1008, 'Quota Exceeded');
         return;
@@ -398,7 +395,11 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     try {
       sttStream = this.deepgramStt.createSttStream(24000);
     } catch (err: any) {
-      await this.holdVoiceReservationForReconciliation(state, 'voice_stt_start_outcome_ambiguous', err);
+      await this.holdVoiceReservationForReconciliation(
+        state,
+        'voice_stt_start_outcome_ambiguous',
+        err,
+      );
       throw err;
     }
     state.sttSession = sttStream;
@@ -696,11 +697,15 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   ): Promise<void> {
     if (!state.entitlementReservationId) return;
     try {
-      await this.entitlementReservations.markForReconciliation(state.entitlementReservationId, reason, {
-        status: error?.status,
-        code: error?.code,
-        message: String(error?.message || '').slice(0, 500),
-      });
+      await this.entitlementReservations.markForReconciliation(
+        state.entitlementReservationId,
+        reason,
+        {
+          status: error?.status,
+          code: error?.code,
+          message: String(error?.message || '').slice(0, 500),
+        },
+      );
     } catch (reservationError: any) {
       this.logger.error(`Unable to hold voice reservation: ${reservationError.message}`);
     }

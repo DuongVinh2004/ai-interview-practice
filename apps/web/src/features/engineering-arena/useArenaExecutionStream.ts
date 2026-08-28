@@ -26,11 +26,11 @@ export function useArenaExecutionStream(sessionId: string | null) {
       setIsConnected(true);
     };
 
-    eventSource.onmessage = (event) => {
+    eventSource.onmessage = event => {
       try {
         const parsed = JSON.parse(event.data);
         if (parsed && parsed.payload) {
-          setLogs((prev) => [...prev, parsed]);
+          setLogs(prev => [...prev, parsed]);
         }
       } catch (err) {
         console.error('Failed to parse SSE Arena stream message:', err);

@@ -265,42 +265,42 @@ The project MUST NOT claim compliance/certification simply because this plan ref
 
 Target after MVP stabilization:
 
-| Metric | Initial target |
-|---|---:|
-| Challenge start → valid submission completion | ≥ 60% |
-| Users who open evidence/report after submission | ≥ 80% |
-| Users who attempt recommended next challenge | ≥ 25% |
-| Completed challenge with reproducible objective score | 100% |
-| Reports with evidence attached to every scored dimension | 100% |
-| Challenge versions with validator PASS before activation | 100% |
+| Metric                                                   | Initial target |
+| -------------------------------------------------------- | -------------: |
+| Challenge start → valid submission completion            |          ≥ 60% |
+| Users who open evidence/report after submission          |          ≥ 80% |
+| Users who attempt recommended next challenge             |          ≥ 25% |
+| Completed challenge with reproducible objective score    |           100% |
+| Reports with evidence attached to every scored dimension |           100% |
+| Challenge versions with validator PASS before activation |           100% |
 
 Do not optimize completion rate by making challenges artificially easy.
 
 ## 4.2 Evaluation quality metrics
 
-| Metric | Target |
-|---|---:|
-| Deterministic correctness reproducibility | 100% for same pinned challenge/runtime |
-| Final result schema validity | 100% |
-| Hidden-test nondisclosure | 100% |
-| Critical security regression incorrectly scored as success | 0 known cases |
-| AI rubric regression gate | no material regression vs approved golden set |
-| Evidence-to-score traceability | 100% of scored dimensions |
-| Evaluation retry idempotency | 100% |
+| Metric                                                     |                                        Target |
+| ---------------------------------------------------------- | --------------------------------------------: |
+| Deterministic correctness reproducibility                  |        100% for same pinned challenge/runtime |
+| Final result schema validity                               |                                          100% |
+| Hidden-test nondisclosure                                  |                                          100% |
+| Critical security regression incorrectly scored as success |                                 0 known cases |
+| AI rubric regression gate                                  | no material regression vs approved golden set |
+| Evidence-to-score traceability                             |                     100% of scored dimensions |
+| Evaluation retry idempotency                               |                                          100% |
 
 ## 4.3 Reliability/performance targets
 
 MVP local/staging targets:
 
-| Area | Target |
-|---|---:|
-| Challenge metadata GET p95 | < 300 ms excluding cold external storage |
-| Session creation API p95 | < 500 ms excluding workspace provisioning |
-| Workspace provisioning p95 | < 10 s for prebuilt local/staging images |
-| Test-run queue acknowledgement p95 | < 500 ms |
-| Visible test result delivery | p95 < 10 s for standard challenge test suite |
+| Area                                         |                                                                   Target |
+| -------------------------------------------- | -----------------------------------------------------------------------: |
+| Challenge metadata GET p95                   |                                 < 300 ms excluding cold external storage |
+| Session creation API p95                     |                                < 500 ms excluding workspace provisioning |
+| Workspace provisioning p95                   |                                 < 10 s for prebuilt local/staging images |
+| Test-run queue acknowledgement p95           |                                                                 < 500 ms |
+| Visible test result delivery                 |                             p95 < 10 s for standard challenge test suite |
 | Evaluation completion after final submission | p95 < 30 s with mock provider; provider-specific SLO separately measured |
-| Orphan workspace cleanup | 100% eventually cleaned within configured TTL |
+| Orphan workspace cleanup                     |                            100% eventually cleaned within configured TTL |
 
 Production targets MUST be calibrated from load tests before release; do not blindly inherit speculative 1,000-concurrent-execution claims from older documents.
 
@@ -515,18 +515,18 @@ brief:
   summary: >
     During flash-sale traffic, inventory can be oversold.
   userVisibleSymptoms:
-    - "Occasional duplicate successful purchase when stock is nearly exhausted"
+    - 'Occasional duplicate successful purchase when stock is nearly exhausted'
   constraints:
-    - "Do not change the public API contract"
-    - "Preserve existing authorization behavior"
-    - "Add regression coverage"
+    - 'Do not change the public API contract'
+    - 'Preserve existing authorization behavior'
+    - 'Add regression coverage'
 
 workspace:
-  sourceRef: "challenge-repo@<immutable-sha>"
-  runtimeImage: "ghcr.io/anyf/arena-node-postgres@sha256:<digest>"
-  workingDirectory: "/workspace"
-  networkPolicy: "DENY_ALL"
-  cpuLimit: "1"
+  sourceRef: 'challenge-repo@<immutable-sha>'
+  runtimeImage: 'ghcr.io/anyf/arena-node-postgres@sha256:<digest>'
+  workingDirectory: '/workspace'
+  networkPolicy: 'DENY_ALL'
+  cpuLimit: '1'
   memoryMb: 512
   pidsLimit: 128
   diskMb: 512
@@ -535,12 +535,12 @@ workspace:
 commands:
   allowed:
     - id: unit
-      argv: ["pnpm", "test", "--", "--runInBand"]
+      argv: ['pnpm', 'test', '--', '--runInBand']
     - id: lint
-      argv: ["pnpm", "lint"]
+      argv: ['pnpm', 'lint']
   forbiddenPatterns:
-    - "docker"
-    - "kubectl"
+    - 'docker'
+    - 'kubectl'
 
 verification:
   visibleSuites:
@@ -548,14 +548,14 @@ verification:
       commandId: unit
   hiddenSuites:
     - id: concurrent-purchase
-      runnerRef: "hidden-tests/concurrent-purchase@<sha>"
+      runnerRef: 'hidden-tests/concurrent-purchase@<sha>'
   requiredChecks:
     - compile
     - visible-tests
     - hidden-tests
 
 scorePolicy:
-  id: "engineering-default-v1"
+  id: 'engineering-default-v1'
   weights:
     correctness: 35
     diagnosis: 20
@@ -568,17 +568,17 @@ scorePolicy:
     securityRegression: 49
 
 skills:
-  - key: "database.transactions"
+  - key: 'database.transactions'
     weight: 0.35
-  - key: "backend.concurrency"
+  - key: 'backend.concurrency'
     weight: 0.35
-  - key: "testing.regression"
+  - key: 'testing.regression'
     weight: 0.30
 
 ai:
   allowed: true
-  evaluationRubricVersion: "arena-rubric-v1"
-  feedbackPromptVersion: "arena-feedback-v1"
+  evaluationRubricVersion: 'arena-rubric-v1'
+  feedbackPromptVersion: 'arena-feedback-v1'
 ```
 
 The actual implementation may use JSON/Zod rather than YAML, but semantics must remain explicit and versioned.
@@ -990,14 +990,14 @@ AI-generated evidence summaries MUST reference underlying evidence IDs rather th
 
 Recommended default rubric (challenge may override with versioned policy):
 
-| Dimension | Default weight | Primary authority |
-|---|---:|---|
-| Correctness | 35% | deterministic tests/build/runtime |
-| Diagnosis / root cause | 20% | evidence + rubric evaluator |
-| Testing discipline | 15% | deterministic/process evidence |
-| Engineering reasoning | 15% | versioned rubric evaluator |
-| Security & reliability | 10% | deterministic checks + rubric |
-| Communication | 5% | rubric evaluator |
+| Dimension              | Default weight | Primary authority                 |
+| ---------------------- | -------------: | --------------------------------- |
+| Correctness            |            35% | deterministic tests/build/runtime |
+| Diagnosis / root cause |            20% | evidence + rubric evaluator       |
+| Testing discipline     |            15% | deterministic/process evidence    |
+| Engineering reasoning  |            15% | versioned rubric evaluator        |
+| Security & reliability |            10% | deterministic checks + rubric     |
+| Communication          |             5% | rubric evaluator                  |
 
 Weights MUST be challenge-versioned and sum to 100.
 
@@ -2868,26 +2868,26 @@ Return the standard handoff with STATUS PASS only if the read-only audit actuall
 
 # 32. Risk register
 
-| ID | Risk | Severity | Primary mitigation | Release gate |
-|---|---|---:|---|---|
-| R-01 | sandbox escape | Critical | isolated runtime, deny network, least privilege, adversarial tests | P8 |
-| R-02 | platform secret exposure to workspace | Critical | zero-secret runtime, env allowlist, secret scan | P8 |
-| R-03 | candidate sees hidden tests/reference fix | High | artifact separation, signed/versioned packaging, leakage tests | P7/P8 |
-| R-04 | AI gives high score to broken solution | High | deterministic score caps + golden eval | P4 |
-| R-05 | prompt injection in repo/comments | High | treat content as data, tool allowlist, red-team | P4/P8 |
-| R-06 | cross-user session/artifact access | Critical | ownership guard + BOLA tests | P1/P8 |
-| R-07 | duplicate worker jobs corrupt state | High | idempotency + CAS + deterministic job IDs | P3 |
-| R-08 | cancelled session resurrected | High | terminal-state CAS guards | P3 |
-| R-09 | orphan workspaces cost resources | High | TTL, cleanup worker, reconciliation scanner, alerts | P3/P8 |
-| R-10 | challenge becomes nondeterministic/flaky | High | validator, pinned runtime, calibration fixtures | P2/P7 |
-| R-11 | challenge dependency download requires internet | Medium/High | prebuilt images/vendor dependencies, egress deny | P3/P7 |
-| R-12 | stdout/log storage DoS | High | size limits/truncation | P3 |
-| R-13 | false precision in SkillGraph | Medium | evidence threshold, confidence, aggregation | P6 |
-| R-14 | AI collaboration becomes autonomous excessive agency | High | read-only first, explicit permission model | P9 |
-| R-15 | scope explosion into cloud IDE | High | staged roadmap/non-goal until P5 baseline works | continuous |
-| R-16 | expensive remote execution/AI costs | Medium | quotas, queue limits, mock/semantic cache, metrics | P8/P10 |
-| R-17 | accessibility degraded by IDE layout | Medium | WCAG review, keyboard alternatives | P5/P8 |
-| R-18 | user behavior telemetry becomes surveillance | High | minimal event model, no raw keystrokes, privacy review | P4/P8 |
+| ID   | Risk                                                 |    Severity | Primary mitigation                                                 | Release gate |
+| ---- | ---------------------------------------------------- | ----------: | ------------------------------------------------------------------ | ------------ |
+| R-01 | sandbox escape                                       |    Critical | isolated runtime, deny network, least privilege, adversarial tests | P8           |
+| R-02 | platform secret exposure to workspace                |    Critical | zero-secret runtime, env allowlist, secret scan                    | P8           |
+| R-03 | candidate sees hidden tests/reference fix            |        High | artifact separation, signed/versioned packaging, leakage tests     | P7/P8        |
+| R-04 | AI gives high score to broken solution               |        High | deterministic score caps + golden eval                             | P4           |
+| R-05 | prompt injection in repo/comments                    |        High | treat content as data, tool allowlist, red-team                    | P4/P8        |
+| R-06 | cross-user session/artifact access                   |    Critical | ownership guard + BOLA tests                                       | P1/P8        |
+| R-07 | duplicate worker jobs corrupt state                  |        High | idempotency + CAS + deterministic job IDs                          | P3           |
+| R-08 | cancelled session resurrected                        |        High | terminal-state CAS guards                                          | P3           |
+| R-09 | orphan workspaces cost resources                     |        High | TTL, cleanup worker, reconciliation scanner, alerts                | P3/P8        |
+| R-10 | challenge becomes nondeterministic/flaky             |        High | validator, pinned runtime, calibration fixtures                    | P2/P7        |
+| R-11 | challenge dependency download requires internet      | Medium/High | prebuilt images/vendor dependencies, egress deny                   | P3/P7        |
+| R-12 | stdout/log storage DoS                               |        High | size limits/truncation                                             | P3           |
+| R-13 | false precision in SkillGraph                        |      Medium | evidence threshold, confidence, aggregation                        | P6           |
+| R-14 | AI collaboration becomes autonomous excessive agency |        High | read-only first, explicit permission model                         | P9           |
+| R-15 | scope explosion into cloud IDE                       |        High | staged roadmap/non-goal until P5 baseline works                    | continuous   |
+| R-16 | expensive remote execution/AI costs                  |      Medium | quotas, queue limits, mock/semantic cache, metrics                 | P8/P10       |
+| R-17 | accessibility degraded by IDE layout                 |      Medium | WCAG review, keyboard alternatives                                 | P5/P8        |
+| R-18 | user behavior telemetry becomes surveillance         |        High | minimal event model, no raw keystrokes, privacy review             | P4/P8        |
 
 ---
 
@@ -2979,16 +2979,16 @@ Do not calibrate solely by “minutes taken”.
 
 Recommended default retention policy for MVP design review:
 
-| Data | Default intent |
-|---|---|
-| final patch/submission | retained with user's learning history |
-| final report/evaluation | retained |
-| objective test summary | retained |
-| full command stdout/stderr | short retention or size-limited; review need |
-| ephemeral workspace | delete after completion/TTL |
-| AI assistant transcript | retain only if needed for learning/evidence and disclosed |
-| raw keystrokes | do not collect |
-| unrelated browsing/window activity | do not collect |
+| Data                               | Default intent                                            |
+| ---------------------------------- | --------------------------------------------------------- |
+| final patch/submission             | retained with user's learning history                     |
+| final report/evaluation            | retained                                                  |
+| objective test summary             | retained                                                  |
+| full command stdout/stderr         | short retention or size-limited; review need              |
+| ephemeral workspace                | delete after completion/TTL                               |
+| AI assistant transcript            | retain only if needed for learning/evidence and disclosed |
+| raw keystrokes                     | do not collect                                            |
+| unrelated browsing/window activity | do not collect                                            |
 
 Exact retention values must follow existing project privacy/retention policy and be formally configured before production.
 
@@ -3265,20 +3265,20 @@ The implementation team should verify current editions at execution/release time
 
 # Appendix B — Current AnyF reuse map to verify live
 
-| Arena need | Expected current AnyF asset | Agent action |
-|---|---|---|
-| code editor | Monaco/live coding feature | reuse components where compatible |
+| Arena need     | Expected current AnyF asset               | Agent action                               |
+| -------------- | ----------------------------------------- | ------------------------------------------ |
+| code editor    | Monaco/live coding feature                | reuse components where compatible          |
 | code execution | `code-execution` module + Judge0 provider | inspect and extend/share; do not duplicate |
-| async jobs | BullMQ worker infrastructure | reuse idempotent patterns |
-| persistence | PostgreSQL + Prisma | add backward-compatible models |
-| AI | `ai-orchestrator` provider abstraction | reuse structured/provider policies |
-| evaluation | evaluation module | reuse versioning/evidence patterns |
-| skills | SkillGraph module | add Arena evidence source |
-| auth | existing JWT/MFA/RBAC/ownership | reuse guards/policies |
-| telemetry | Prometheus + OTel + Grafana | add Arena signals |
-| CI | current GitHub Actions/security scans | add challenge/eval gates |
-| system design | existing SystemDesign module | future escalation integration |
-| JD/CV | existing document/JD blueprint capability | future JD → challenge selection |
+| async jobs     | BullMQ worker infrastructure              | reuse idempotent patterns                  |
+| persistence    | PostgreSQL + Prisma                       | add backward-compatible models             |
+| AI             | `ai-orchestrator` provider abstraction    | reuse structured/provider policies         |
+| evaluation     | evaluation module                         | reuse versioning/evidence patterns         |
+| skills         | SkillGraph module                         | add Arena evidence source                  |
+| auth           | existing JWT/MFA/RBAC/ownership           | reuse guards/policies                      |
+| telemetry      | Prometheus + OTel + Grafana               | add Arena signals                          |
+| CI             | current GitHub Actions/security scans     | add challenge/eval gates                   |
+| system design  | existing SystemDesign module              | future escalation integration              |
+| JD/CV          | existing document/JD blueprint capability | future JD → challenge selection            |
 
 Every row must be validated against live code before implementation.
 

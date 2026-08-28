@@ -41,7 +41,7 @@ export const ArenaCopilotChatPanel: React.FC<ArenaCopilotChatPanelProps> = ({
       text: inputQuery.trim(),
       timestamp: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, userMsg]);
     const queryToSend = inputQuery;
     setInputQuery('');
 
@@ -54,7 +54,7 @@ export const ArenaCopilotChatPanel: React.FC<ArenaCopilotChatPanelProps> = ({
           text: response.answer,
           timestamp: new Date().toISOString(),
         };
-        setMessages((prev) => [...prev, copilotMsg]);
+        setMessages(prev => [...prev, copilotMsg]);
       }
     } catch (err: any) {
       const errorMsg: CopilotChatMessage = {
@@ -63,7 +63,7 @@ export const ArenaCopilotChatPanel: React.FC<ArenaCopilotChatPanelProps> = ({
         text: 'Sorry, I encountered an issue retrieving guidance. Please try again.',
         timestamp: new Date().toISOString(),
       };
-      setMessages((prev) => [...prev, errorMsg]);
+      setMessages(prev => [...prev, errorMsg]);
     }
   };
 
@@ -90,7 +90,7 @@ export const ArenaCopilotChatPanel: React.FC<ArenaCopilotChatPanelProps> = ({
 
       {/* Message List */}
       <div className="flex-1 p-3 overflow-y-auto space-y-3 font-sans text-xs">
-        {messages.map((m) => (
+        {messages.map(m => (
           <div
             key={m.id}
             className={`p-3 rounded-xl max-w-[90%] ${
@@ -134,8 +134,8 @@ export const ArenaCopilotChatPanel: React.FC<ArenaCopilotChatPanelProps> = ({
         <input
           type="text"
           value={inputQuery}
-          onChange={(e) => setInputQuery(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+          onChange={e => setInputQuery(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
           placeholder="Ask Copilot..."
           disabled={isAsking}
           className="flex-1 px-3 py-1.5 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"

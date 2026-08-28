@@ -461,4 +461,3 @@ export enum ArenaSandboxMode {
   STAGE_B_CONTAINER = 'STAGE_B_CONTAINER',
   STAGE_C_MICROVM = 'STAGE_C_MICROVM',
 }
-

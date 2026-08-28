@@ -142,11 +142,7 @@ describe('Engineering Arena Web Components', () => {
       };
 
       render(
-        <ArenaEvaluationReportModal
-          isOpen={true}
-          evaluation={cappedEval}
-          onClose={vi.fn()}
-        />,
+        <ArenaEvaluationReportModal isOpen={true} evaluation={cappedEval} onClose={vi.fn()} />,
       );
 
       expect(screen.getByText('Score Cap Applied')).toBeInTheDocument();
@@ -183,7 +179,9 @@ describe('Engineering Arena Web Components', () => {
       expect(mockAsk).toHaveBeenCalledWith('How do I fix BOLA?');
 
       await waitFor(() => {
-        expect(screen.getByText('Check the ownership validation logic in controller.')).toBeInTheDocument();
+        expect(
+          screen.getByText('Check the ownership validation logic in controller.'),
+        ).toBeInTheDocument();
       });
     });
 
