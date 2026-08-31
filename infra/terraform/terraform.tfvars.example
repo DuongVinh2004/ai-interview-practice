@@ -11,3 +11,7 @@ api_container_memory  = 1024
 worker_container_cpu  = 512
 worker_container_memory = 1024
 domain_name           = "interview.example.com"
+api_image             = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/ai-interview-api@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+web_image             = "123456789012.dkr.ecr.ap-southeast-1.amazonaws.com/ai-interview-web@sha256:0000000000000000000000000000000000000000000000000000000000000000"
+ai_daily_budget_usd   = 50
+ai_max_provider_call_cost_usd = 2

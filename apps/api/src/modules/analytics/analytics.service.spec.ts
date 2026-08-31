@@ -46,7 +46,13 @@ describe('AnalyticsService', () => {
               content: 'Explain B-Tree index scan.',
             },
             answer: {
-              evaluation: { score: 9.0 },
+              evaluation: {
+                score: 9.0,
+                authorityState: 'AUTHORITATIVE',
+                needsReview: false,
+                provider: 'openai',
+                evidence: ['Index explanation'],
+              },
             },
           },
           {
@@ -56,7 +62,13 @@ describe('AnalyticsService', () => {
               content: 'How does resilience circuit breaker work?',
             },
             answer: {
-              evaluation: { score: 8.0 },
+              evaluation: {
+                score: 8.0,
+                authorityState: 'AUTHORITATIVE',
+                needsReview: false,
+                provider: 'gemini',
+                evidence: ['Circuit breaker explanation'],
+              },
             },
           },
         ],
@@ -77,6 +89,39 @@ describe('AnalyticsService', () => {
       (c: any) => c.competency === CompetencyArea.RESILIENCE_SECURITY,
     );
     expect(resComp?.score).toBe(8.0);
+  });
+
+  it('excludes missing-provenance and needs-review evaluations from competency scores', async () => {
+    prisma.interviewSession.findMany.mockResolvedValue([
+      {
+        id: 'session-review-only',
+        state: SessionState.COMPLETED,
+        technologies: [],
+        turns: [
+          {
+            question: { keyFocus: 'Security', content: 'Explain authentication.' },
+            answer: {
+              evaluation: {
+                score: 9.9,
+                authorityState: 'NEEDS_REVIEW',
+                needsReview: true,
+                provider: 'mock',
+                evidence: [],
+              },
+            },
+          },
+          {
+            question: { keyFocus: 'Database', content: 'Explain indexing.' },
+            answer: { evaluation: { score: 9.8 } },
+          },
+        ],
+      },
+    ]);
+
+    const result = await service.getCompetencyRadar(mockUserId);
+
+    expect(result.totalEvaluatedTurns).toBe(0);
+    expect(result.overallAverageScore).toBe(0);
   });
 
   it('should compute longitudinal progress and score velocity', async () => {

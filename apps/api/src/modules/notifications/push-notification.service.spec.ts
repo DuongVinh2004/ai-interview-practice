@@ -20,6 +20,9 @@ describe('PushNotificationService (SEC-011)', () => {
       },
     };
 
+    delete process.env.VAPID_PUBLIC_KEY;
+    delete process.env.VAPID_PRIVATE_KEY;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [PushNotificationService, { provide: PrismaService, useValue: prismaMock }],
     }).compile();
@@ -35,6 +38,8 @@ describe('PushNotificationService (SEC-011)', () => {
 
   it('should remain disabled without VAPID keys in development mode', () => {
     process.env.NODE_ENV = 'development';
+    delete process.env.VAPID_PUBLIC_KEY;
+    delete process.env.VAPID_PRIVATE_KEY;
     service.initVapid();
     expect(service.getIsConfigured()).toBe(false);
   });

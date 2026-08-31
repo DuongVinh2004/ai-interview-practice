@@ -9,6 +9,7 @@ import { MockEmailProvider } from './providers/mock-email.provider';
 import { EmailService } from './email.service';
 import { EmailProcessor } from './email.processor';
 import { EmailEventsListener } from './listeners/email-events.listener';
+import { isWorkerProcess } from '../platform/process-role';
 
 @Module({
   imports: [
@@ -42,8 +43,8 @@ import { EmailEventsListener } from './listeners/email-events.listener';
       inject: [ConfigService, ResendEmailProvider, MockEmailProvider],
     },
     EmailService,
-    EmailProcessor,
     EmailEventsListener,
+    ...(isWorkerProcess() ? [EmailProcessor] : []),
   ],
   exports: [EmailService, 'EMAIL_PROVIDER'],
 })

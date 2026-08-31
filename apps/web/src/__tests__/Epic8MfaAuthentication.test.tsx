@@ -394,7 +394,7 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
       expect(screen.getByText(/Copy Codes|Sao chép mã/i)).toBeInTheDocument();
       expect(screen.getByText(/Download TXT|Tải file TXT/i)).toBeInTheDocument();
       expect(useAuthStore.getState().accessToken).toBe('post-mfa-access-token');
-      expect(useAuthStore.getState().refreshToken).toBe('post-mfa-refresh-token');
+      expect(useAuthStore.getState()).not.toHaveProperty('refreshToken');
       expect(useAuthStore.getState().user?.mfaEnabled).toBe(true);
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
     });

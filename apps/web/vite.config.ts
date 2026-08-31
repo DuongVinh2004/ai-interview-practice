@@ -57,6 +57,17 @@ export default defineConfig({
       '@ai-interview/contracts': path.resolve(__dirname, '../../packages/contracts/src'),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'query-vendor': ['@tanstack/react-query', 'zustand'],
+          'motion-vendor': ['framer-motion'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

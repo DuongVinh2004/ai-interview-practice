@@ -27,8 +27,19 @@ export default defineConfig({
       port: 3001,
       reuseExistingServer: !process.env.CI,
       env: {
-        BYPASS_ADMIN_MFA: 'true',
+        ...process.env,
+        PROCESS_ROLE: 'api',
+        // The complete parallel walkthrough intentionally exceeds the production
+        // per-IP request budget because every browser context shares one Docker IP.
+        THROTTLE_LIMIT: process.env.PLAYWRIGHT_THROTTLE_LIMIT || '1000',
+        AUTH_REFRESH_THROTTLE_LIMIT: process.env.PLAYWRIGHT_THROTTLE_LIMIT || '1000',
       },
+    },
+    {
+      command: 'pnpm --filter api start:worker',
+      port: 9090,
+      reuseExistingServer: !process.env.CI,
+      env: { ...process.env, PROCESS_ROLE: 'worker', WORKER_PORT: '9090' },
     },
     {
       command: 'pnpm --filter web dev',

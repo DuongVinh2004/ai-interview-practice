@@ -76,6 +76,8 @@ ADD COLUMN     "parent_turn_number" INTEGER;
 ALTER TABLE "mfa_challenges" ALTER COLUMN "id" DROP DEFAULT;
 
 -- AlterTable
+-- migration-safety: backfilled by 20260825000000_audit_remediation_schema, which added
+-- family_id with DEFAULT gen_random_uuid() before this constraint was enforced.
 ALTER TABLE "refresh_tokens" ALTER COLUMN "family_id" SET NOT NULL,
 ALTER COLUMN "family_id" DROP DEFAULT;
 

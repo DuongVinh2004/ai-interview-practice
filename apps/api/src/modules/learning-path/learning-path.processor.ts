@@ -5,6 +5,7 @@ import { PrismaService } from '../platform/prisma/prisma.service';
 import { SseService } from '../platform/sse/sse.service';
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 import { QueueName, JobName, LearningPathStatus, SseEventType } from '@ai-interview/contracts';
+import { isPersistedAuthoritativeEvaluation } from '../evaluation/evaluation-authority';
 
 interface GenerateLearningPathJobData {
   sessionId: string;
@@ -50,7 +51,17 @@ export class LearningPathProcessor extends WorkerHost {
       return;
     }
 
-    const turnsSummary = session.turns.map(t => ({
+    const authoritativeTurns = session.turns.filter(t =>
+      isPersistedAuthoritativeEvaluation(t.answer?.evaluation),
+    );
+    if (authoritativeTurns.length === 0) {
+      this.logger.warn(
+        `Session ${sessionId} has no authoritative evaluation evidence; learning path generation is blocked pending review.`,
+      );
+      return;
+    }
+
+    const turnsSummary = authoritativeTurns.map(t => ({
       turnNumber: t.turnNumber,
       question: t.question?.content || '',
       answer: t.answer?.content || '',
@@ -64,7 +75,12 @@ export class LearningPathProcessor extends WorkerHost {
         role: session.jobRole.name,
         level: session.seniorityLevel.name,
         turns: turnsSummary,
-        overallScore: session.overallScore || 0,
+        overallScore: Number(
+          (
+            authoritativeTurns.reduce((sum, turn) => sum + turn.answer!.evaluation!.score, 0) /
+            authoritativeTurns.length
+          ).toFixed(1),
+        ),
         language: (session as any).language || 'vi',
       });
 

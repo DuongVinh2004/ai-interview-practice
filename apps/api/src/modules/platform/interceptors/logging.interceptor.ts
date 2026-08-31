@@ -125,33 +125,30 @@ export class LoggingInterceptor implements NestInterceptor {
         },
       );
 
-      if (!queryString) return sanitizedPath;
+      // SSE / streaming endpoints must never log any query string (PRD-1102 / SEC-003)
+      if (sanitizedPath.endsWith('/events') || sanitizedPath.endsWith('/stream')) {
+        return sanitizedPath;
+      }
 
-      const searchParams = new URLSearchParams(queryString);
-      const sensitiveKeys = [
-        'passcode',
-        'token',
-        'password',
-        'code',
-        'secret',
-        'key',
-        'signature',
-        'auth',
-        'authorization',
-        'access_token',
-        'refresh_token',
-        'apiKey',
-        'api_key',
-      ];
+      if (!queryString) {
+        return sanitizedPath;
+      }
 
-      for (const key of Array.from(searchParams.keys())) {
-        if (sensitiveKeys.some(s => key.toLowerCase().includes(s.toLowerCase()))) {
-          searchParams.set(key, '[REDACTED]');
+      const params = new URLSearchParams(queryString);
+      const sensitiveKeys = ['passcode', 'token', 'key', 'secret', 'password', 'authorization', 'auth', 'apiKey', 'api_key'];
+      for (const [key] of Array.from(params.entries())) {
+        if (
+          sensitiveKeys.includes(key.toLowerCase()) ||
+          key.toLowerCase().includes('pass') ||
+          key.toLowerCase().includes('secret') ||
+          key.toLowerCase().includes('token')
+        ) {
+          params.set(key, '[REDACTED]');
         }
       }
 
-      const sanitizedQuery = searchParams.toString();
-      return sanitizedQuery ? `${sanitizedPath}?${sanitizedQuery}` : sanitizedPath;
+      const safeQuery = params.toString();
+      return safeQuery ? `${sanitizedPath}?${safeQuery}` : sanitizedPath;
     } catch {
       return url.split('?')[0];
     }

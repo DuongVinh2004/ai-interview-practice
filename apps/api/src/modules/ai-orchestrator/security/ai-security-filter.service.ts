@@ -143,25 +143,33 @@ export class AiSecurityFilterService {
 
     // 1. Verbatim Evidence Verification
     const verifiedEvidence: string[] = [];
-    if (Array.isArray(rawEvaluation.evidence)) {
+    const hadRawEvidence =
+      Array.isArray(rawEvaluation.evidence) && rawEvaluation.evidence.length > 0;
+    if (hadRawEvidence) {
       for (const quote of rawEvaluation.evidence) {
         if (!quote || typeof quote !== 'string') continue;
         // Clean outer quotation marks if wrapped by LLM
         const cleanQuote = quote.replace(/^["'«“]|["'»”]$/g, '').trim();
         if (cleanQuote.length > 0 && lowerAnswer.includes(cleanQuote.toLowerCase())) {
-          verifiedEvidence.push(quote);
+          verifiedEvidence.push(cleanQuote);
         }
       }
     }
 
-    // If evidence was hallucinated by LLM, fall back to matching sentence excerpts from candidate answer
-    if (verifiedEvidence.length === 0 && rawAnswer.length > 0) {
-      const sentences = rawAnswer.split(/(?<=[.!?;\n])\s+/).filter(s => s.trim().length > 0);
-      if (sentences.length > 0) {
-        verifiedEvidence.push(sentences[0]);
-      } else {
-        verifiedEvidence.push(rawAnswer.substring(0, 100));
-      }
+    const safetyFlags = [...(rawEvaluation.safetyFlags || [])];
+    let confidence = rawEvaluation.confidence ?? 0.85;
+
+    // Flag ungrounded / hallucinated evidence if LLM provided quotes but none matched candidate text
+    if (hadRawEvidence && verifiedEvidence.length === 0) {
+      this.logger.warn(
+        'LLM provided evidence quotes that could not be verified in candidate answer',
+      );
+      safetyFlags.push('unsubstantiated_evidence');
+      confidence = Math.min(confidence, 0.5);
+    }
+    if (!hadRawEvidence) {
+      safetyFlags.push('missing_evidence');
+      confidence = Math.min(confidence, 0.6);
     }
 
     // 2. Deterministic Application-computed weighted score
@@ -177,8 +185,6 @@ export class AiSecurityFilterService {
     );
 
     // 3. Needs review flag determination
-    const confidence = rawEvaluation.confidence ?? 0.85;
-    const safetyFlags = rawEvaluation.safetyFlags || [];
     const needsReview = rawEvaluation.needsReview || confidence < 0.7 || safetyFlags.length > 0;
 
     return {

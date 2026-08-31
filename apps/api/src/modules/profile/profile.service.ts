@@ -380,6 +380,11 @@ export class ProfileService {
       orderBy: { createdAt: 'desc' },
     });
 
+    const voiceSessions = await this.prisma.voiceSession.findMany({
+      where: { interviewSession: { userId } },
+      include: { transcripts: { orderBy: { startTimeMs: 'asc' } } },
+    });
+
     return {
       exportedAt: new Date().toISOString(),
       gdprComplianceVersion: 'GDPR-AIP-2026.08',
@@ -511,12 +516,7 @@ export class ProfileService {
         createdAt: s.createdAt.toISOString(),
         updatedAt: s.updatedAt.toISOString(),
       })) as any,
-      voiceSessions: (
-        await this.prisma.voiceSession.findMany({
-          where: { interviewSession: { userId } },
-          include: { transcripts: { orderBy: { startTimeMs: 'asc' } } },
-        })
-      ).map(vs => ({
+      voiceSessions: voiceSessions.map(vs => ({
         id: vs.id,
         interviewId: vs.interviewId,
         status: vs.status,

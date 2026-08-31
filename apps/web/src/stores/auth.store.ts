@@ -5,29 +5,24 @@ import { clearClientCaches } from '../lib/query-client';
 interface AuthState {
   user: UserDto | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: UserDto, accessToken: string, refreshToken: string) => void;
+  isSessionRestoring: boolean;
+  mfaEnrollmentRequired: boolean;
+  setAuth: (user: UserDto, accessToken: string) => void;
+  setMfaEnrollmentAuth: (user: UserDto, accessToken: string) => void;
   setUser: (user: UserDto) => void;
   setAccessToken: (accessToken: string) => void;
+  restoreSession: () => Promise<void>;
   logout: () => void;
 }
 
-const getStoredToken = (key: string): string | null => {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    try {
-      return localStorage.getItem(key);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-};
+let sessionRestorePromise: Promise<void> | null = null;
+let authStateVersion = 0;
 
 const safeSetItem = (key: string, val: string) => {
-  if (typeof window !== 'undefined' && window.localStorage) {
+  if (typeof window !== 'undefined') {
     try {
-      localStorage.setItem(key, val);
+      window.localStorage.setItem(key, val);
     } catch {
       // ignore storage write errors
     }
@@ -35,9 +30,9 @@ const safeSetItem = (key: string, val: string) => {
 };
 
 const safeRemoveItem = (key: string) => {
-  if (typeof window !== 'undefined' && window.localStorage) {
+  if (typeof window !== 'undefined') {
     try {
-      localStorage.removeItem(key);
+      window.localStorage.removeItem(key);
     } catch {
       // ignore storage removal errors
     }
@@ -45,9 +40,9 @@ const safeRemoveItem = (key: string) => {
 };
 
 const getStoredUser = (): UserDto | null => {
-  if (typeof window !== 'undefined' && window.localStorage) {
+  if (typeof window !== 'undefined') {
     try {
-      const raw = localStorage.getItem('auth_user');
+      const raw = window.localStorage.getItem('auth_user');
       return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
@@ -58,20 +53,38 @@ const getStoredUser = (): UserDto | null => {
 
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: getStoredUser(),
-  accessToken: getStoredToken('access_token'),
-  refreshToken: getStoredToken('refresh_token'),
-  isAuthenticated: !!getStoredToken('access_token'),
+  accessToken: null,
+  isAuthenticated: false,
+  isSessionRestoring: true,
+  mfaEnrollmentRequired: false,
 
-  setAuth: (user, accessToken, refreshToken) => {
+  setAuth: (user, accessToken) => {
+    authStateVersion += 1;
     const currentUser = get().user;
     if (currentUser && currentUser.id !== user.id) {
       // Switched accounts: purge prior user queries and caches immediately (PRIV-001)
       clearClientCaches();
     }
-    safeSetItem('access_token', accessToken);
-    safeSetItem('refresh_token', refreshToken);
     safeSetItem('auth_user', JSON.stringify(user));
-    set({ user, accessToken, refreshToken, isAuthenticated: true });
+    set({
+      user,
+      accessToken,
+      isAuthenticated: true,
+      isSessionRestoring: false,
+      mfaEnrollmentRequired: false,
+    });
+  },
+
+  setMfaEnrollmentAuth: (user, accessToken) => {
+    authStateVersion += 1;
+    safeSetItem('auth_user', JSON.stringify(user));
+    set({
+      user,
+      accessToken,
+      isAuthenticated: true,
+      isSessionRestoring: false,
+      mfaEnrollmentRequired: true,
+    });
   },
 
   setUser: user => {
@@ -80,36 +93,93 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setAccessToken: accessToken => {
-    safeSetItem('access_token', accessToken);
+    authStateVersion += 1;
     set({ accessToken, isAuthenticated: true });
   },
 
+  restoreSession: async () => {
+    if (!sessionRestorePromise) {
+      const restoreVersion = authStateVersion;
+      sessionRestorePromise = (async () => {
+        try {
+          const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+          const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'X-CSRF-Protection': '1' },
+          });
+          if (!response.ok) {
+            if (authStateVersion === restoreVersion) {
+              set({
+                user: null,
+                accessToken: null,
+                isAuthenticated: false,
+                mfaEnrollmentRequired: false,
+              });
+              safeRemoveItem('auth_user');
+            }
+            return;
+          }
+          const body = await response.json();
+          const payload = body.data || body;
+          if (!payload.user || !payload.accessToken) throw new Error('Invalid refresh response');
+          if (authStateVersion === restoreVersion) {
+            get().setAuth(payload.user, payload.accessToken);
+          }
+        } catch {
+          if (authStateVersion === restoreVersion) {
+            set({
+              user: null,
+              accessToken: null,
+              isAuthenticated: false,
+              mfaEnrollmentRequired: false,
+            });
+            safeRemoveItem('auth_user');
+          }
+        } finally {
+          set({ isSessionRestoring: false });
+        }
+      })();
+    }
+
+    const activeRestore = sessionRestorePromise;
+    try {
+      await activeRestore;
+    } finally {
+      if (sessionRestorePromise === activeRestore) {
+        sessionRestorePromise = null;
+      }
+    }
+  },
+
   logout: async () => {
-    const currentRefreshToken = get().refreshToken;
+    authStateVersion += 1;
     const currentAccessToken = get().accessToken;
 
     // Clear local auth state before best-effort server revocation. This immediately
     // stops protected queries from retrying with an expired or incomplete session.
     clearClientCaches();
-    safeRemoveItem('access_token');
-    safeRemoveItem('refresh_token');
     safeRemoveItem('auth_user');
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+    set({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+      isSessionRestoring: false,
+      mfaEnrollmentRequired: false,
+    });
 
-    if (currentRefreshToken || currentAccessToken) {
-      try {
-        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-        await fetch(`${API_BASE_URL}/auth/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {}),
-          },
-          body: JSON.stringify({ refreshToken: currentRefreshToken || undefined }),
-        });
-      } catch (err) {
-        console.warn('Backend logout revocation error:', err);
-      }
+    try {
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+      await fetch(`${API_BASE_URL}/auth/logout`, {
+        method: 'POST',
+        headers: {
+          'X-CSRF-Protection': '1',
+          ...(currentAccessToken ? { Authorization: `Bearer ${currentAccessToken}` } : {}),
+        },
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.warn('Backend logout revocation error:', err);
     }
   },
 }));

@@ -86,3 +86,35 @@ variable "frontend_origins" {
   type        = list(string)
   default     = ["https://interview.ai.example.com"]
 }
+
+variable "api_image" {
+  description = "Immutable API image reference promoted into this environment"
+  type        = string
+
+  validation {
+    condition     = can(regex("@sha256:[0-9a-f]{64}$", var.api_image))
+    error_message = "api_image must include an immutable sha256 digest."
+  }
+}
+
+variable "web_image" {
+  description = "Immutable web image reference promoted into this environment"
+  type        = string
+
+  validation {
+    condition     = can(regex("@sha256:[0-9a-f]{64}$", var.web_image))
+    error_message = "web_image must include an immutable sha256 digest."
+  }
+}
+
+variable "ai_daily_budget_usd" {
+  description = "Shared UTC-day AI provider budget"
+  type        = number
+  default     = 50
+}
+
+variable "ai_max_provider_call_cost_usd" {
+  description = "Per-call amount reserved before dispatching to a paid AI provider"
+  type        = number
+  default     = 2
+}

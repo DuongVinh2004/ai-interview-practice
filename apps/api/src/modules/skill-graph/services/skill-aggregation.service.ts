@@ -79,7 +79,11 @@ export class SkillAggregationService {
     const interviewTurns = await this.prisma.interviewTurn.findMany({
       where: {
         session: { userId },
-        answer: { evaluation: { isNot: null } },
+        answer: {
+          evaluation: {
+            is: { authorityState: 'AUTHORITATIVE', needsReview: false },
+          },
+        },
       },
       include: {
         answer: { include: { evaluation: true } },

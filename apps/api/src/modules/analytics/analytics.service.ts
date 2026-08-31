@@ -3,6 +3,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { RedisService } from '../platform/redis/redis.service';
 import { CompetencyArea, SessionState } from '@ai-interview/contracts';
+import { isPersistedAuthoritativeEvaluation } from '../evaluation/evaluation-authority';
 
 interface CompetencyMapping {
   area: CompetencyArea;
@@ -173,12 +174,10 @@ export class AnalyticsService {
       const techNames = session.technologies.map(t => t.technology.name.toLowerCase());
       for (const turn of session.turns) {
         const evaluation = turn.answer?.evaluation;
-        if (
-          evaluation &&
-          (!evaluation.authorityState || evaluation.authorityState === 'AUTHORITATIVE')
-        ) {
+        if (isPersistedAuthoritativeEvaluation(evaluation)) {
+          const authoritativeEvaluation = evaluation!;
           turnEvaluations.push({
-            score: evaluation.score,
+            score: authoritativeEvaluation.score,
             keyFocus: turn.question?.keyFocus?.toLowerCase() || '',
             questionContent: turn.question?.content?.toLowerCase() || '',
             techNames,

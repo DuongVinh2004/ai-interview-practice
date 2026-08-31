@@ -178,14 +178,14 @@ export function ProfilePage() {
         method: 'POST',
         body: JSON.stringify({ code: mfaVerifyCode.trim() }),
       });
-      if (!res.accessToken || !res.refreshToken || !res.user) {
+      if (!res.accessToken || !res.user) {
         await logout();
         setErrorMsg(
           'Two-factor authentication was enabled, but session rotation failed. Sign in again.',
         );
         return;
       }
-      setAuth(res.user, res.accessToken, res.refreshToken);
+      setAuth(res.user, res.accessToken);
       setRecoveryCodes(res.recoveryCodes);
       setMfaSetupData(null);
       setMfaVerifyCode('');
@@ -247,7 +247,7 @@ export function ProfilePage() {
   const isMfaActive = user?.mfaEnabled ?? profileData?.mfaEnabled ?? false;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 pb-16">
+    <div className="max-w-4xl mx-auto space-y-8 pb-16" data-testid="profile-page">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-2">

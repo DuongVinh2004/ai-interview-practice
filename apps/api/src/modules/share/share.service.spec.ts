@@ -134,8 +134,8 @@ describe('ShareService', () => {
     const result = await service.getPublicSharedResult('valid-token');
     expect(result.candidate.fullName).toBe('Anonymous Candidate');
     expect((result.candidate as any).email).toBeUndefined();
-    expect(result.session.overallScore).toBe(8.5);
-    expect(result.session.rubricAverages.technicalAccuracy).toBe(9);
+    expect(result.session.overallScore).toBeNull();
+    expect(result.session.rubricAverages.technicalAccuracy).toBe(0);
   });
 
   it('should reject expired share link', async () => {
@@ -161,11 +161,13 @@ describe('ShareService', () => {
         evaluation: {
           score,
           authorityState,
+          needsReview: authorityState !== 'AUTHORITATIVE',
+          provider: authorityState === 'AUTHORITATIVE' ? 'openai' : 'mock',
           rubricScores: { technicalAccuracy: score, depth: score, clarity: score },
           strengths: [],
           improvements: [],
           conciseFeedback: 'Feedback',
-          evidence: [],
+          evidence: authorityState === 'AUTHORITATIVE' ? [`Evidence ${turnNumber}`] : [],
         },
       },
     });
@@ -202,6 +204,59 @@ describe('ShareService', () => {
 
     expect(result.session.overallScore).toBe(5);
     expect(result.session.rubricAverages.technicalAccuracy).toBe(5);
+  });
+
+  it('does not expose a public overall score derived only from review-needed output', async () => {
+    prisma.shareToken.findUnique.mockResolvedValue({
+      id: 'token-review-only',
+      token: 'review-only-token',
+      isRevoked: false,
+      isAnonymized: true,
+      expiresAt: new Date(Date.now() + 86400000),
+      viewCount: 0,
+      createdAt: new Date(),
+      mentorFeedback: [],
+      session: {
+        id: mockSessionId,
+        state: SessionState.COMPLETED,
+        overallScore: 9.9,
+        completedAt: new Date(),
+        jobRole: { name: 'Backend Engineer' },
+        seniorityLevel: { name: 'Senior' },
+        technologies: [],
+        user: { email: 'candidate@example.com', profile: { fullName: 'Candidate' } },
+        turns: [
+          {
+            turnNumber: 1,
+            difficulty: 2,
+            status: 'EVALUATED',
+            question: { content: 'Question', keyFocus: 'Focus' },
+            answer: {
+              content: 'Answer',
+              submittedAt: new Date(),
+              evaluation: {
+                score: 9.9,
+                authorityState: 'NEEDS_REVIEW',
+                needsReview: true,
+                provider: 'mock',
+                rubricScores: { technicalAccuracy: 9.9, depth: 9.9, clarity: 9.9 },
+                strengths: [],
+                improvements: [],
+                conciseFeedback: 'Mock feedback',
+                evidence: [],
+              },
+            },
+          },
+        ],
+        learningPath: null,
+      },
+    });
+    prisma.shareToken.update.mockResolvedValue({});
+
+    const result = await service.getPublicSharedResult('review-only-token');
+
+    expect(result.session.overallScore).toBeNull();
+    expect(result.session.rubricAverages.technicalAccuracy).toBe(0);
   });
 
   it('should allow adding mentor feedback to a shared session', async () => {

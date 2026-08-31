@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, HttpStatus, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import {
@@ -16,6 +16,10 @@ import {
   EntitlementReservationService,
 } from '../billing/entitlement-reservation.service';
 import { BillingMetric } from '@ai-interview/contracts';
+import {
+  BudgetReservation,
+  DistributedBudgetService,
+} from '../platform/budget/distributed-budget.service';
 
 @Injectable()
 export class AudioOrchestratorService {
@@ -23,6 +27,7 @@ export class AudioOrchestratorService {
   private readonly providersMap = new Map<string, AudioProviderInterface>();
   private readonly circuitBreaker: CircuitBreaker;
   private readonly dailyBudgetUsd: number;
+  private readonly maxProviderCallCostUsd: number;
   private currentDailyCostUsd = 0;
   private lastBudgetResetDay = new Date().getUTCDate();
 
@@ -32,6 +37,7 @@ export class AudioOrchestratorService {
     private readonly openAiAudioProvider: OpenAiAudioProvider,
     private readonly mockAudioProvider: MockAudioProvider,
     private readonly entitlementReservations: EntitlementReservationService,
+    @Optional() private readonly distributedBudget?: DistributedBudgetService,
   ) {
     this.circuitBreaker = new CircuitBreaker({
       failureThreshold: 3,
@@ -43,6 +49,7 @@ export class AudioOrchestratorService {
     this.providersMap.set('mock', this.mockAudioProvider);
 
     this.dailyBudgetUsd = this.configService.get<number>('ai.dailyBudgetUsd', 50.0);
+    this.maxProviderCallCostUsd = this.configService.get<number>('ai.maxProviderCallCostUsd', 2.0);
     this.logger.log(
       `Audio Orchestrator initialized (Priority Chain: ${this.getPriorityChain().join(' -> ')})`,
     );
@@ -134,11 +141,6 @@ export class AudioOrchestratorService {
       const provider = this.providersMap.get(providerName);
       if (!provider) continue;
 
-      if (providerName !== 'mock' && !this.checkDailyBudget(0)) {
-        this.logger.warn(`Skipping paid audio provider [${providerName}] due to budget cap.`);
-        continue;
-      }
-
       if (!this.circuitBreaker.canExecute(providerName, 'audio-transcribe')) {
         this.logger.warn(
           `Circuit breaker OPEN for [${providerName}:audio-transcribe]. Cascading...`,
@@ -147,8 +149,18 @@ export class AudioOrchestratorService {
       }
 
       let reservation: any;
+      let budgetReservation: BudgetReservation | undefined;
+      let providerDispatchStarted = false;
       try {
         if (providerName !== 'mock') {
+          const budget = await this.reserveDistributedBudget('audio-transcribe', providerName);
+          if (budget === null) {
+            this.logger.warn(
+              `Skipping paid audio provider [${providerName}] due to global budget cap.`,
+            );
+            continue;
+          }
+          budgetReservation = budget;
           reservation = await this.entitlementReservations.reserve({
             userId,
             metric: EntitlementMetric.AUDIO_MINUTES,
@@ -162,6 +174,7 @@ export class AudioOrchestratorService {
             reservation.id,
             providerName,
           );
+          providerDispatchStarted = true;
         }
         const result = await this.circuitBreaker.execute(
           providerName,
@@ -171,6 +184,10 @@ export class AudioOrchestratorService {
           },
         );
 
+        if (budgetReservation) {
+          await this.distributedBudget!.settle(budgetReservation, result.costEstimate || 0);
+          budgetReservation = undefined;
+        }
         if (result.costEstimate) {
           this.checkDailyBudget(result.costEstimate);
         }
@@ -200,6 +217,9 @@ export class AudioOrchestratorService {
 
         return result;
       } catch (error: any) {
+        if (budgetReservation && this.distributedBudget && !providerDispatchStarted) {
+          await this.distributedBudget.release(budgetReservation);
+        }
         if (reservation) {
           await this.resolvePaidProviderFailure(reservation.id, error);
         }
@@ -262,11 +282,6 @@ export class AudioOrchestratorService {
       const provider = this.providersMap.get(providerName);
       if (!provider) continue;
 
-      if (providerName !== 'mock' && !this.checkDailyBudget(0)) {
-        this.logger.warn(`Skipping paid audio provider [${providerName}] due to budget cap.`);
-        continue;
-      }
-
       if (!this.circuitBreaker.canExecute(providerName, 'audio-synthesize')) {
         this.logger.warn(
           `Circuit breaker OPEN for [${providerName}:audio-synthesize]. Cascading...`,
@@ -275,8 +290,18 @@ export class AudioOrchestratorService {
       }
 
       let reservation: any;
+      let budgetReservation: BudgetReservation | undefined;
+      let providerDispatchStarted = false;
       try {
         if (providerName !== 'mock') {
+          const budget = await this.reserveDistributedBudget('audio-synthesize', providerName);
+          if (budget === null) {
+            this.logger.warn(
+              `Skipping paid audio provider [${providerName}] due to global budget cap.`,
+            );
+            continue;
+          }
+          budgetReservation = budget;
           reservation = await this.entitlementReservations.reserve({
             userId,
             metric: EntitlementMetric.AUDIO_MINUTES,
@@ -290,6 +315,7 @@ export class AudioOrchestratorService {
             reservation.id,
             providerName,
           );
+          providerDispatchStarted = true;
         }
         const result = await this.circuitBreaker.execute(
           providerName,
@@ -299,6 +325,10 @@ export class AudioOrchestratorService {
           },
         );
 
+        if (budgetReservation) {
+          await this.distributedBudget!.settle(budgetReservation, result.costEstimate || 0);
+          budgetReservation = undefined;
+        }
         if (result.costEstimate) {
           this.checkDailyBudget(result.costEstimate);
         }
@@ -329,6 +359,9 @@ export class AudioOrchestratorService {
 
         return result;
       } catch (error: any) {
+        if (budgetReservation && this.distributedBudget && !providerDispatchStarted) {
+          await this.distributedBudget.release(budgetReservation);
+        }
         if (reservation) {
           await this.resolvePaidProviderFailure(reservation.id, error);
         }
@@ -384,6 +417,32 @@ export class AudioOrchestratorService {
       });
     } catch (e: any) {
       this.logger.error('Failed to persist Audio AI audit run', e.message);
+    }
+  }
+
+  private async reserveDistributedBudget(
+    operation: string,
+    providerName: string,
+  ): Promise<BudgetReservation | undefined | null> {
+    if (!this.distributedBudget) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Distributed AI budget enforcement is unavailable');
+      }
+      return this.checkDailyBudget(0) ? undefined : null;
+    }
+
+    try {
+      return await this.distributedBudget.reserve(
+        'ai-provider-global',
+        this.dailyBudgetUsd,
+        this.maxProviderCallCostUsd,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `Global AI budget reservation failed for [${providerName}:${operation}]: ${error.message}`,
+      );
+      if (process.env.NODE_ENV === 'production') throw error;
+      return this.checkDailyBudget(0) ? undefined : null;
     }
   }
 

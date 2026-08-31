@@ -55,12 +55,6 @@ export class BadgeService {
   }
 
   async syncUserBadges(userId: string) {
-    // 1. Fetch skill scores from SkillScore table
-    const skillScores = await this.prisma.skillScore.findMany({
-      where: { userId },
-      include: { skillNode: true },
-    });
-
     const areaMetrics: Record<
       CompetencyArea,
       { totalWeightedScore: number; totalWeight: number; totalEvidence: number }
@@ -84,36 +78,31 @@ export class BadgeService {
       },
     };
 
-    for (const ss of skillScores) {
-      const area = ss.skillNode.competencyArea;
-      if (area && areaMetrics[area]) {
-        areaMetrics[area].totalWeightedScore += ss.weightedScore * ss.skillNode.weight;
-        areaMetrics[area].totalWeight += ss.skillNode.weight;
-        areaMetrics[area].totalEvidence += ss.evidenceCount;
-      }
-    }
-
-    // Also look at completed turn evaluations for user if skillScores is empty
-    if (skillScores.length === 0) {
-      const turns = await this.prisma.interviewTurn.findMany({
-        where: {
-          session: { userId },
-          status: 'EVALUATED',
-          answer: { evaluation: { isNot: null } },
+    // Only evidence with explicit authoritative provenance may unlock badges.
+    // SkillScore rows are retained for display, but their provenance is not yet
+    // modeled strongly enough to grant credentials on their own.
+    const turns = await this.prisma.interviewTurn.findMany({
+      where: {
+        session: { userId },
+        status: 'EVALUATED',
+        answer: {
+          evaluation: {
+            is: { authorityState: 'AUTHORITATIVE', needsReview: false },
+          },
         },
-        include: {
-          session: true,
-          answer: { include: { evaluation: true } },
-        },
-      });
+      },
+      include: {
+        session: true,
+        answer: { include: { evaluation: true } },
+      },
+    });
 
-      for (const t of turns) {
-        const area = t.session.competencyArea || CompetencyArea.SYSTEM_DESIGN;
-        if (areaMetrics[area] && t.answer?.evaluation) {
-          areaMetrics[area].totalWeightedScore += t.answer.evaluation.score;
-          areaMetrics[area].totalWeight += 1;
-          areaMetrics[area].totalEvidence += 1;
-        }
+    for (const t of turns) {
+      const area = t.session.competencyArea || CompetencyArea.SYSTEM_DESIGN;
+      if (areaMetrics[area] && t.answer?.evaluation) {
+        areaMetrics[area].totalWeightedScore += t.answer.evaluation.score;
+        areaMetrics[area].totalWeight += 1;
+        areaMetrics[area].totalEvidence += 1;
       }
     }
 

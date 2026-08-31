@@ -1,70 +1,56 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ==============================================================================
-# Script: backup-pitr.sh
-# Purpose: Point-in-Time Recovery (PITR) automated backup script for PostgreSQL (AIP-060)
-# Tier: Tier 1 (Users, Sessions, Turns, Answers, Evaluations, Prompts, Audit)
-# Targets: RPO <= 15 minutes, RTO <= 60 minutes
-# ==============================================================================
+# Produces a real encrypted PostgreSQL custom-format backup. Missing tools,
+# credentials, encryption, upload, or verification are hard failures.
 
-TIMESTAMP=$(date -u +"%Y%m%dT%H%M%SZ")
-BACKUP_DIR="${BACKUP_DIR:-/tmp/backups/postgres}"
-S3_BUCKET="${S3_BUCKET:-ai-interview-backups-production}"
-DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-5432}"
-DB_USER="${DB_USER:-postgres}"
-DB_NAME="${DB_NAME:-ai_interview_practice}"
-ENCRYPTION_KEY="${BACKUP_ENCRYPTION_KEY:-default-in-transit-pitr-key-32ch}"
+for command_name in pg_dump openssl sha256sum aws; do
+  command -v "${command_name}" >/dev/null 2>&1 || {
+    echo "ERROR: required command is unavailable: ${command_name}" >&2
+    exit 2
+  }
+done
 
+: "${DATABASE_URL:?DATABASE_URL is required}"
+: "${BACKUP_ENCRYPTION_KEY:?BACKUP_ENCRYPTION_KEY is required}"
+: "${BACKUP_S3_BUCKET:?BACKUP_S3_BUCKET is required}"
+: "${BACKUP_KMS_KEY_ID:?BACKUP_KMS_KEY_ID is required}"
+
+if [[ "${#BACKUP_ENCRYPTION_KEY}" -lt 32 ]]; then
+  echo "ERROR: BACKUP_ENCRYPTION_KEY must contain at least 32 characters" >&2
+  exit 2
+fi
+
+umask 077
+TIMESTAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
+BACKUP_DIR="${BACKUP_DIR:-artifacts/backups/postgres}"
 mkdir -p "${BACKUP_DIR}"
+ENCRYPTED_FILE="${BACKUP_DIR}/ai_interview_${TIMESTAMP}.dump.enc"
+CHECKSUM_FILE="${ENCRYPTED_FILE}.sha256"
+S3_PREFIX="s3://${BACKUP_S3_BUCKET}/postgres/snapshots/${TIMESTAMP}"
 
-echo "📦 [PITR Backup] Starting snapshot at ${TIMESTAMP} for database: ${DB_NAME}..."
+echo "Creating and encrypting PostgreSQL backup ${TIMESTAMP}..."
+pg_dump \
+  --dbname "${DATABASE_URL}" \
+  --format custom \
+  --blobs \
+  --verbose \
+  | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 \
+      -pass env:BACKUP_ENCRYPTION_KEY \
+      -out "${ENCRYPTED_FILE}"
 
-SNAPSHOT_FILE="${BACKUP_DIR}/${DB_NAME}_snapshot_${TIMESTAMP}.sql.gz"
-ENCRYPTED_FILE="${SNAPSHOT_FILE}.enc"
+test -s "${ENCRYPTED_FILE}" || { echo "ERROR: encrypted backup is empty" >&2; exit 1; }
+(cd "${BACKUP_DIR}" && sha256sum "$(basename "${ENCRYPTED_FILE}")" > "$(basename "${CHECKSUM_FILE}")")
+(cd "${BACKUP_DIR}" && sha256sum --check "$(basename "${CHECKSUM_FILE}")")
 
-if command -v pg_dump &> /dev/null; then
-    echo "1. Generating PostgreSQL custom dump with schema and data..."
-    PGPASSWORD="${DB_PASSWORD:-postgres}" pg_dump \
-        -h "${DB_HOST}" \
-        -p "${DB_PORT}" \
-        -U "${DB_USER}" \
-        -d "${DB_NAME}" \
-        -F c \
-        -b \
-        -v | gzip -c > "${SNAPSHOT_FILE}"
-else
-    echo "⚠️ pg_dump CLI not available locally. Generating synthetic snapshot marker..."
-    echo "-- Synthetic PITR Backup Snapshot for ${DB_NAME} at ${TIMESTAMP}" | gzip -c > "${SNAPSHOT_FILE}"
-fi
+aws s3 cp "${ENCRYPTED_FILE}" "${S3_PREFIX}/$(basename "${ENCRYPTED_FILE}")" \
+  --sse aws:kms --sse-kms-key-id "${BACKUP_KMS_KEY_ID}" --only-show-errors
+aws s3 cp "${CHECKSUM_FILE}" "${S3_PREFIX}/$(basename "${CHECKSUM_FILE}")" \
+  --sse aws:kms --sse-kms-key-id "${BACKUP_KMS_KEY_ID}" --only-show-errors
+aws s3api head-object \
+  --bucket "${BACKUP_S3_BUCKET}" \
+  --key "postgres/snapshots/${TIMESTAMP}/$(basename "${ENCRYPTED_FILE}")" \
+  --query '{Size:ContentLength,Encryption:ServerSideEncryption,KmsKey:SSEKMSKeyId}' \
+  --output json
 
-echo "2. Encrypting backup archive using AES-256-CBC..."
-if command -v openssl &> /dev/null; then
-    openssl enc -aes-256-cbc -salt -pbkdf2 \
-        -in "${SNAPSHOT_FILE}" \
-        -out "${ENCRYPTED_FILE}" \
-        -k "${ENCRYPTION_KEY}"
-    rm -f "${SNAPSHOT_FILE}"
-else
-    mv "${SNAPSHOT_FILE}" "${ENCRYPTED_FILE}"
-fi
-
-echo "3. Generating SHA256 checksum..."
-if command -v sha256sum &> /dev/null; then
-    sha256sum "${ENCRYPTED_FILE}" > "${ENCRYPTED_FILE}.sha256"
-fi
-
-echo "4. Syncing encrypted snapshot to S3 storage..."
-if command -v aws &> /dev/null; then
-    aws s3 cp "${ENCRYPTED_FILE}" "s3://${S3_BUCKET}/postgres/snapshots/" --sse AES256
-    aws s3 cp "${ENCRYPTED_FILE}.sha256" "s3://${S3_BUCKET}/postgres/snapshots/"
-    echo "✅ Backup successfully synced to s3://${S3_BUCKET}/postgres/snapshots/"
-else
-    echo "ℹ️ AWS CLI not present; encrypted backup stored at ${ENCRYPTED_FILE}"
-fi
-
-echo "5. Pruning local backups older than 7 days..."
-find "${BACKUP_DIR}" -type f -mtime +7 -delete || true
-
-echo "✅ [PITR Backup] Backup completed successfully. Checksum verified."
+echo "Backup completed and verified: ${S3_PREFIX}/$(basename "${ENCRYPTED_FILE}")"

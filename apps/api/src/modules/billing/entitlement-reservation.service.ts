@@ -32,6 +32,15 @@ export interface CommitEntitlementInput {
   billingMetric?: BillingMetric;
 }
 
+export interface ResolveEntitlementReconciliationInput {
+  reservationId: string;
+  outcome: 'NO_PROVIDER_USAGE' | 'CONFIRMED_PROVIDER_USAGE';
+  actualQuantity?: number;
+  provider?: string;
+  providerOperationId?: string;
+  evidence?: Record<string, unknown>;
+}
+
 interface EntitlementPolicy {
   limit: number | null;
   accessPeriodKey: string;
@@ -320,6 +329,133 @@ export class EntitlementReservationService {
     throw lastError;
   }
 
+  /**
+   * Completes an operator-verified reconciliation without ever refunding an
+   * ambiguous provider call automatically. This method is intentionally an
+   * internal service boundary; callers must retain provider evidence.
+   */
+  async resolveReconciliation(input: ResolveEntitlementReconciliationInput): Promise<any> {
+    this.validateReconciliationInput(input);
+    let lastError: unknown;
+
+    for (let attempt = 1; attempt <= EntitlementReservationService.MAX_RETRIES; attempt += 1) {
+      try {
+        return await this.prisma.$transaction(
+          async tx => {
+            const reservation = await tx.entitlementReservation.findUnique({
+              where: { id: input.reservationId },
+            });
+            if (!reservation) {
+              throw new ConflictException('Entitlement reservation not found');
+            }
+            if (reservation.state === 'COMMITTED' || reservation.state === 'RELEASED') {
+              return reservation;
+            }
+            if (reservation.state !== 'RECONCILIATION_REQUIRED') {
+              throw new ConflictException(
+                `Cannot reconcile entitlement reservation in ${reservation.state} state`,
+              );
+            }
+
+            const bucket = await tx.entitlementBucket.findUnique({
+              where: { id: reservation.bucketId },
+            });
+            if (!bucket || bucket.reserved < reservation.estimatedQuantity) {
+              throw new RetryableReservationConflict(
+                'Entitlement reservation does not have a matching bucket balance',
+              );
+            }
+
+            const evidence = {
+              outcome: input.outcome,
+              evidence: input.evidence || {},
+              resolvedBy: 'operator',
+            } as Prisma.InputJsonValue;
+
+            if (input.outcome === 'NO_PROVIDER_USAGE') {
+              const released = await tx.entitlementBucket.updateMany({
+                where: { id: bucket.id, version: bucket.version },
+                data: {
+                  reserved: { decrement: reservation.estimatedQuantity },
+                  version: { increment: 1 },
+                },
+              });
+              if (released.count !== 1) {
+                throw new RetryableReservationConflict('Entitlement bucket changed concurrently');
+              }
+              return tx.entitlementReservation.update({
+                where: { id: reservation.id },
+                data: {
+                  state: 'RELEASED',
+                  resolutionReason: 'provider_usage_confirmed_absent',
+                  reconciliationData: evidence,
+                  reconciledAt: new Date(),
+                },
+              });
+            }
+
+            const actualQuantity = input.actualQuantity!;
+            const remainingReserved = bucket.reserved - reservation.estimatedQuantity;
+            if (
+              bucket.limit !== null &&
+              bucket.limit !== undefined &&
+              bucket.consumed + remainingReserved + actualQuantity > bucket.limit
+            ) {
+              throw new DomainException(
+                ErrorCode.QUOTA_EXCEEDED,
+                'Confirmed provider usage exceeds the remaining entitlement balance',
+                403,
+              );
+            }
+            const committed = await tx.entitlementBucket.updateMany({
+              where: { id: bucket.id, version: bucket.version },
+              data: {
+                reserved: { decrement: reservation.estimatedQuantity },
+                consumed: { increment: actualQuantity },
+                version: { increment: 1 },
+              },
+            });
+            if (committed.count !== 1) {
+              throw new RetryableReservationConflict('Entitlement bucket changed concurrently');
+            }
+
+            const billingMetric = this.billingMetricFor(reservation.metric);
+            if (billingMetric) {
+              await tx.usageRecord.create({
+                data: {
+                  userId: reservation.userId,
+                  metric: billingMetric,
+                  quantity: actualQuantity,
+                  reservationId: reservation.id,
+                },
+              });
+            }
+            return tx.entitlementReservation.update({
+              where: { id: reservation.id },
+              data: {
+                state: 'COMMITTED',
+                actualQuantity,
+                provider: input.provider || reservation.provider,
+                providerOperationId: input.providerOperationId || reservation.providerOperationId,
+                resolutionReason: 'provider_usage_confirmed',
+                reconciliationData: evidence,
+                reconciledAt: new Date(),
+              },
+            });
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10_000 },
+        );
+      } catch (error: any) {
+        lastError = error;
+        if (!this.isRetryable(error) || attempt === EntitlementReservationService.MAX_RETRIES) {
+          throw error;
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
   async markForReconciliation(
     reservationId: string,
     reason: string,
@@ -361,7 +497,14 @@ export class EntitlementReservationService {
       include: { plan: true },
       orderBy: { createdAt: 'desc' },
     });
-    const isPaidSubscription = Boolean(subscription?.id && subscription.status === 'ACTIVE');
+    const configuredPlanSlug = String(subscription?.plan?.slug || '').toLowerCase();
+    const planSlug = configuredPlanSlug || 'free';
+    // Only an explicitly identified free tier is a free entitlement. Treating a
+    // legacy subscription without its joined plan as free would silently lower
+    // its entitlement and break the existing subscription-period contract.
+    const isPaidSubscription = Boolean(
+      subscription?.id && subscription.status === 'ACTIVE' && configuredPlanSlug !== 'free',
+    );
     const periodStart = isPaidSubscription
       ? new Date(subscription.currentPeriodStart)
       : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
@@ -372,7 +515,6 @@ export class EntitlementReservationService {
       ? `sub_${subscription.id}_${periodStart.toISOString().slice(0, 10)}`
       : `month_${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
     const limits = (subscription?.plan?.limits || {}) as Record<string, unknown>;
-    const planSlug = String(subscription?.plan?.slug || 'free').toLowerCase();
 
     switch (metric) {
       case EntitlementMetric.AUDIO_MINUTES:
@@ -429,6 +571,32 @@ export class EntitlementReservationService {
         'Entitlement commit requires a reservation and positive actual quantity',
       );
     }
+  }
+
+  private validateReconciliationInput(input: ResolveEntitlementReconciliationInput) {
+    if (!input.reservationId) {
+      throw new ConflictException('Entitlement reconciliation requires a reservation');
+    }
+    if (
+      input.outcome !== 'NO_PROVIDER_USAGE' &&
+      input.outcome !== 'CONFIRMED_PROVIDER_USAGE'
+    ) {
+      throw new ConflictException('A valid reconciliation outcome is required');
+    }
+    if (
+      input.outcome === 'CONFIRMED_PROVIDER_USAGE' &&
+      (!Number.isSafeInteger(input.actualQuantity) || input.actualQuantity! <= 0)
+    ) {
+      throw new ConflictException(
+        'Confirmed provider usage requires a positive whole-number quantity',
+      );
+    }
+  }
+
+  private billingMetricFor(metric: string): BillingMetric | undefined {
+    if (metric === EntitlementMetric.AUDIO_MINUTES) return BillingMetric.AUDIO_MINUTE;
+    if (metric === EntitlementMetric.VISION_TOKENS) return BillingMetric.AI_TOKEN;
+    return undefined;
   }
 
   private fingerprint(input: ReserveEntitlementInput): string {

@@ -47,7 +47,7 @@ export function RegisterPage() {
         skipAuth: true,
       });
 
-      setAuth(response.user, response.accessToken, response.refreshToken);
+      setAuth(response.user, response.accessToken);
       navigate('/interviews/new');
     } catch (err: any) {
       if (err instanceof ApiError) {

@@ -52,9 +52,13 @@ describe('EvaluationProcessor completion score', () => {
         strengths: ['Strong'],
         improvements: [],
         conciseFeedback: 'Excellent final answer',
-        evidence: [],
+        evidence: ['Answer'],
         needsReview: false,
         confidence: 0.99,
+        provider: 'gemini',
+        model: 'gemini-test',
+        promptVersionId: 'd57ac2e4-19bd-4dc7-8478-a23a4f8d4aad',
+        rubricVersion: 'answer-evaluator-v1',
       }),
     } as any;
     const questionQueue = { add: jest.fn() } as any;
@@ -126,6 +130,7 @@ describe('EvaluationProcessor completion score', () => {
 
     const recoverySession = await prisma.interviewSession.findUnique({});
     recoverySession.state = SessionState.COMPLETED;
+    recoverySession.overallScore = 6;
     recoverySession.turns[0].status = 'EVALUATED';
     recoverySession.learningPath = null;
     learningPathQueue.add.mockClear();

@@ -11,6 +11,7 @@ import {
 import { CreateShareTokenDto, AddMentorFeedbackDto } from './dto/share.dto';
 import * as crypto from 'crypto';
 import * as bcrypt from 'bcrypt';
+import { isPersistedAuthoritativeEvaluation } from '../evaluation/evaluation-authority';
 
 @Injectable()
 export class ShareService {
@@ -314,10 +315,10 @@ export class ShareService {
 
     // Calculate rubric averages
     const turnsWithEval = session.turns.filter(t => t.answer?.evaluation);
-    const authoritativeTurns = turnsWithEval.filter(
-      t => t.answer!.evaluation!.authorityState === 'AUTHORITATIVE',
+    const authoritativeTurns = turnsWithEval.filter(t =>
+      isPersistedAuthoritativeEvaluation(t.answer!.evaluation),
     );
-    const scoreableTurns = authoritativeTurns.length > 0 ? authoritativeTurns : turnsWithEval;
+    const scoreableTurns = authoritativeTurns;
     let avgAccuracy = 0;
     let avgDepth = 0;
     let avgClarity = 0;
@@ -349,7 +350,7 @@ export class ShareService {
               scoreableTurns.length
             ).toFixed(1),
           )
-        : session.overallScore;
+        : null;
 
     return {
       shareTokenId: shareToken.id,

@@ -246,6 +246,7 @@ describe('Epic 3 Forensic Quality & Security Audit', () => {
         confidence: 0.98,
         missingConcepts: [],
         needsReview: false,
+        provider: 'openai',
       });
 
       prisma.evaluation.update.mockResolvedValue({

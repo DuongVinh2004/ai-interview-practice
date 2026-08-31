@@ -6,9 +6,54 @@ import {
   GetObjectCommand,
   DeleteObjectCommand,
   HeadObjectCommand,
+  S3ClientConfig,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { StorageProvider, ObjectMetadata } from '../interfaces/storage-provider.interface';
+
+export function buildS3ClientConfig(
+  region: string,
+  accessKeyId?: string,
+  secretAccessKey?: string,
+  sessionToken?: string,
+): S3ClientConfig {
+  const normalizeCredential = (value: string | undefined, variableName: string) => {
+    if (!value) return undefined;
+    if (value.trim() !== value) {
+      throw new Error(`${variableName} must not contain leading or trailing whitespace`);
+    }
+    return value;
+  };
+  const normalizedAccessKeyId = normalizeCredential(accessKeyId, 'AWS_ACCESS_KEY_ID');
+  const normalizedSecretAccessKey = normalizeCredential(secretAccessKey, 'AWS_SECRET_ACCESS_KEY');
+  const normalizedSessionToken = normalizeCredential(sessionToken, 'AWS_SESSION_TOKEN');
+  const hasAccessKeyId = Boolean(normalizedAccessKeyId);
+  const hasSecretAccessKey = Boolean(normalizedSecretAccessKey);
+
+  if (hasAccessKeyId !== hasSecretAccessKey) {
+    throw new Error(
+      'AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be configured together for S3 storage',
+    );
+  }
+  if (normalizedSessionToken && !hasAccessKeyId) {
+    throw new Error(
+      'AWS_SESSION_TOKEN requires AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY for S3 storage',
+    );
+  }
+
+  if (!hasAccessKeyId) {
+    return { region };
+  }
+
+  return {
+    region,
+    credentials: {
+      accessKeyId: normalizedAccessKeyId!,
+      secretAccessKey: normalizedSecretAccessKey!,
+      ...(normalizedSessionToken ? { sessionToken: normalizedSessionToken } : {}),
+    },
+  };
+}
 
 @Injectable()
 export class S3StorageProvider implements StorageProvider {
@@ -27,21 +72,16 @@ export class S3StorageProvider implements StorageProvider {
       process.env.AWS_REGION ||
       'ap-southeast-1';
     const accessKeyId =
-      this.configService.get<string>('storage.awsAccessKeyId') ||
-      process.env.AWS_ACCESS_KEY_ID ||
-      'mock-access-key';
+      this.configService.get<string>('storage.awsAccessKeyId') || process.env.AWS_ACCESS_KEY_ID;
     const secretAccessKey =
       this.configService.get<string>('storage.awsSecretAccessKey') ||
-      process.env.AWS_SECRET_ACCESS_KEY ||
-      'mock-secret-key';
+      process.env.AWS_SECRET_ACCESS_KEY;
+    const sessionToken =
+      this.configService.get<string>('storage.awsSessionToken') || process.env.AWS_SESSION_TOKEN;
 
-    this.client = new S3Client({
-      region,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    });
+    this.client = new S3Client(
+      buildS3ClientConfig(region, accessKeyId, secretAccessKey, sessionToken),
+    );
   }
 
   async generatePresignedUploadUrl(

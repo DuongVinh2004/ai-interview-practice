@@ -49,3 +49,19 @@ temp
 .parallel-worktrees/
 .codex-runs/
 .terraform/
+
+# Terraform local state, plans, account-specific backend configuration, and inputs
+*.tfstate
+*.tfstate.*
+*.tfplan
+backend.hcl
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+crash.log
+crash.*.log
+terraform.rc
+.terraformrc
+!*.tfvars.example
+!backend.hcl.example

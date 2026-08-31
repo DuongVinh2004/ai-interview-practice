@@ -47,12 +47,12 @@ describe('Contracts Validation Schemas', () => {
         createdAt: '2026-08-26T00:00:00.000Z',
       },
       accessToken: 'replacement-access-token',
-      refreshToken: 'replacement-refresh-token',
       expiresIn: 900,
       message: 'MFA enabled',
     });
 
     expect(result.success).toBe(true);
+    if (result.success) expect(result.data).not.toHaveProperty('refreshToken');
   });
 
   it('validates RegisterDto correctly', () => {

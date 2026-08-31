@@ -36,6 +36,7 @@ export const aiConfig = registerAs('ai', () => ({
   modelName: process.env.AI_MODEL_NAME || 'mock-model-v1',
   providerPriority: process.env.AI_PROVIDER_PRIORITY || 'gemini,openai,anthropic,mock',
   dailyBudgetUsd: parseFloat(process.env.AI_BUDGET_DAILY_USD || '50.0'),
+  maxProviderCallCostUsd: parseFloat(process.env.AI_MAX_PROVIDER_CALL_COST_USD || '2.0'),
   timeoutMs: parseInt(process.env.AI_TIMEOUT_MS || '10000', 10),
   maxRetries: parseInt(process.env.AI_MAX_RETRIES || '2', 10),
 }));
@@ -56,6 +57,7 @@ export const storageConfig = registerAs('storage', () => ({
   provider: process.env.STORAGE_PROVIDER || 'mock',
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+  awsSessionToken: process.env.AWS_SESSION_TOKEN || '',
   awsRegion: process.env.AWS_REGION || 'ap-southeast-1',
   awsS3Bucket: process.env.AWS_S3_BUCKET || 'ai-interview-bucket',
   r2Endpoint: process.env.R2_ENDPOINT || '',

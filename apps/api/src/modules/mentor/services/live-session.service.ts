@@ -237,6 +237,10 @@ export class LiveSessionService {
           const originalScore = evaluation.score;
           const normalizedJustification = justification.trim();
           const auditFeedback = `${evaluation.conciseFeedback}\n\n[Mentor Score Override (${new Date().toISOString()}): Original: ${originalScore} -> Adjusted: ${newScore}. Reason: ${normalizedJustification}]`;
+          const mentorEvidence = [
+            ...(Array.isArray(evaluation.evidence) ? (evaluation.evidence as string[]) : []),
+            `Authorized mentor review: ${normalizedJustification}`,
+          ];
           const lastRun = await tx.evaluationRun.findFirst({
             where: { evaluationId },
             orderBy: { runNumber: 'desc' },
@@ -250,10 +254,10 @@ export class LiveSessionService {
               strengths: evaluation.strengths as any,
               improvements: evaluation.improvements as any,
               conciseFeedback: auditFeedback,
-              evidence: evaluation.evidence as any,
+              evidence: mentorEvidence,
               needsReview: false,
               authorityState: 'AUTHORITATIVE',
-              provider: evaluation.provider,
+              provider: 'mentor-review',
               fallbackReason: `Mentor override: ${normalizedJustification}`,
               confidence: 1.0,
               triggeredBy: 'MENTOR_OVERRIDE',
@@ -264,8 +268,10 @@ export class LiveSessionService {
             data: {
               score: newScore,
               conciseFeedback: auditFeedback,
+              evidence: mentorEvidence,
               needsReview: false,
               authorityState: 'AUTHORITATIVE',
+              provider: 'mentor-review',
               currentRunId: run.id,
             },
           });
@@ -274,6 +280,7 @@ export class LiveSessionService {
             where: {
               answer: { turn: { sessionId } },
               authorityState: 'AUTHORITATIVE',
+              needsReview: false,
             },
           });
           if (allEvaluations.length > 0) {

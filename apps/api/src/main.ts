@@ -5,10 +5,11 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { WsAdapter } from '@nestjs/platform-ws';
 import helmet from 'helmet';
 import compression from 'compression';
-import { AppModule } from './app.module';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  process.env.PROCESS_ROLE ??= 'api';
+  const { AppModule } = await import('./app.module');
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
     rawBody: true,
@@ -31,7 +32,7 @@ async function bootstrap() {
   app.use(compression());
 
   app.enableCors({
-    origin: corsOrigin.split(','),
+    origin: corsOrigin.split(',').map(origin => origin.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -45,6 +46,8 @@ async function bootstrap() {
       'X-Tenant-Id',
       'If-Match',
       'if-match',
+      'X-CSRF-Protection',
+      'x-csrf-protection',
       'Accept',
       'traceparent',
     ],

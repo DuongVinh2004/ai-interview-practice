@@ -1,16 +1,21 @@
 terraform {
-  required_version = ">= 1.5.0"
-  backend "s3" {
-    bucket         = "ai-interview-terraform-state"
-    key            = "environments/staging/terraform.tfstate"
-    region         = "ap-southeast-1"
-    encrypt        = true
-    dynamodb_table = "ai-interview-terraform-locks"
-  }
+  required_version = ">= 1.10.0"
+  backend "s3" {}
 }
 
 variable "certificate_arn" {
   description = "Staging ACM certificate ARN"
+  type        = string
+}
+
+
+variable "api_image" {
+  description = "Approved API image reference including its sha256 digest"
+  type        = string
+}
+
+variable "web_image" {
+  description = "Approved web image reference including its sha256 digest"
   type        = string
 }
 
@@ -29,4 +34,6 @@ module "staging_platform" {
   worker_container_memory = 512
   certificate_arn         = var.certificate_arn
   frontend_origins        = ["https://staging.interview.ai.example.com"]
+  api_image               = var.api_image
+  web_image               = var.web_image
 }

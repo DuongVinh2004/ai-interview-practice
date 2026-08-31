@@ -49,24 +49,12 @@ export class CertificateService {
       orderBy: { earnedAt: 'desc' },
     });
 
-    // If no Gold/Platinum badge, check if skillScore >= 8.0
-    let score = badge?.score;
-    if (!score) {
-      const skillScore = await this.prisma.skillScore.findFirst({
-        where: {
-          userId,
-          skillNode: { competencyArea: area },
-          weightedScore: { gte: 8.0 },
-        },
-      });
-
-      if (!skillScore) {
-        throw new BadRequestException(
-          'Certificate issuance requires at least a Gold Badge or a score >= 8.0 in this competency area.',
-        );
-      }
-      score = skillScore.weightedScore;
+    if (!badge) {
+      throw new BadRequestException(
+        'Certificate issuance requires a Gold or Platinum badge backed by authoritative evaluation evidence.',
+      );
     }
+    const score = badge.score;
 
     const certId = uuidv4();
     const issuedAt = new Date();

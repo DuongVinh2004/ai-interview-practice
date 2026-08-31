@@ -328,7 +328,20 @@ export class XpService {
     if (totalXp === 0 && this.prisma.interviewSession) {
       try {
         const completedSessions = await this.prisma.interviewSession.findMany({
-          where: { userId, state: 'COMPLETED' as any },
+          where: {
+            userId,
+            state: 'COMPLETED' as any,
+            overallScore: { not: null },
+            turns: {
+              some: {
+                answer: {
+                  evaluation: {
+                    is: { authorityState: 'AUTHORITATIVE', needsReview: false },
+                  },
+                },
+              },
+            },
+          },
           select: { overallScore: true },
         });
         if (completedSessions && completedSessions.length > 0) {

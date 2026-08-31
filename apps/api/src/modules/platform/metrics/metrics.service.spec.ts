@@ -65,4 +65,21 @@ describe('MetricsService', () => {
     expect(metrics).toContain('job_name="evaluate_answer"');
     expect(metrics).toContain('status="completed"');
   });
+
+  it('should record storage and deletion observability metrics (PRD-1004)', async () => {
+    service.storageUploadIntentsTotal.inc({ category: 'documents', status: 'issued' });
+    service.storageConfirmedBytesTotal.inc({ category: 'documents' }, 102400);
+    service.storageDeletionEventsTotal.inc({ status: 'succeeded' });
+    service.storageQuotaRejectionsTotal.inc({ reason: 'category_bytes_exceeded' });
+
+    const metrics = await service.getMetrics();
+    expect(metrics).toContain('storage_upload_intents_total');
+    expect(metrics).toContain('category="documents"');
+    expect(metrics).toContain('status="issued"');
+    expect(metrics).toContain('storage_confirmed_bytes_total');
+    expect(metrics).toContain('storage_deletion_events_total');
+    expect(metrics).toContain('status="succeeded"');
+    expect(metrics).toContain('storage_quota_rejections_total');
+    expect(metrics).toContain('reason="category_bytes_exceeded"');
+  });
 });

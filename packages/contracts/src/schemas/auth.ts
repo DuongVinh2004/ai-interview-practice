@@ -23,12 +23,6 @@ export const LoginDtoSchema = z.object({
 
 export type LoginDto = z.infer<typeof LoginDtoSchema>;
 
-export const RefreshTokenDtoSchema = z.object({
-  refreshToken: z.string().min(1, 'Refresh token is required'),
-});
-
-export type RefreshTokenDto = z.infer<typeof RefreshTokenDtoSchema>;
-
 export const ChangePasswordDtoSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required'),
   newPassword: z
@@ -67,7 +61,6 @@ export type UserDto = z.infer<typeof UserDtoSchema>;
 export const AuthResponseSchema = z.object({
   user: UserDtoSchema.optional(),
   accessToken: z.string().optional(),
-  refreshToken: z.string().optional(),
   expiresIn: z.number().optional(),
   mfaRequired: z.boolean().optional(),
   mfaSessionToken: z.string().optional(),
@@ -114,7 +107,6 @@ export const MfaEnableResponseSchema = z.object({
   recoveryCodes: z.array(z.string()),
   user: UserDtoSchema,
   accessToken: z.string().min(1),
-  refreshToken: z.string().min(1),
   expiresIn: z.number().positive(),
   message: z.string(),
 });

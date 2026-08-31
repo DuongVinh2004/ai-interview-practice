@@ -183,7 +183,7 @@ describe('InterviewService (Unit)', () => {
       expect(sseService.emitSessionEvent).toHaveBeenCalled();
     });
 
-    it('falls back to NEEDS_REVIEW evaluations when no authoritative evaluation exists', async () => {
+    it('never promotes NEEDS_REVIEW evaluations when no authoritative evaluation exists', async () => {
       prisma.interviewSession.findUnique.mockResolvedValue({
         id: 'session-123',
         userId: 'owner-1',
@@ -213,10 +213,7 @@ describe('InterviewService (Unit)', () => {
         evidence: [],
         createdAt: new Date(),
       });
-      prisma.evaluation.findMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
-        { id: 'eval-1', score: 9.0, authorityState: 'NEEDS_REVIEW' },
-        { id: 'eval-2', score: 7.0, authorityState: 'NEEDS_REVIEW' },
-      ]);
+      prisma.evaluation.findMany.mockResolvedValueOnce([]);
 
       const result = await service.reEvaluateTurn(
         'owner-1',
@@ -226,9 +223,14 @@ describe('InterviewService (Unit)', () => {
         {},
       );
 
-      expect(result.overallScore).toBe(8.0);
-      expect(prisma.evaluation.findMany).toHaveBeenNthCalledWith(2, {
-        where: { answer: { turn: { sessionId: 'session-123' } } },
+      expect(result.overallScore).toBeNull();
+      expect(prisma.evaluation.findMany).toHaveBeenCalledTimes(1);
+      expect(prisma.evaluation.findMany).toHaveBeenCalledWith({
+        where: {
+          answer: { turn: { sessionId: 'session-123' } },
+          authorityState: 'AUTHORITATIVE',
+          needsReview: false,
+        },
       });
     });
   });

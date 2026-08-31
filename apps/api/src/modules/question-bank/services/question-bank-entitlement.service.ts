@@ -33,7 +33,16 @@ export class QuestionBankEntitlementService {
     sub: any | null,
     now: Date = new Date(),
   ): { periodKey: string; resetsAt: string } {
-    if (sub && sub.status === 'ACTIVE' && sub.id !== '00000000-0000-0000-0000-000000000000') {
+    const configuredPlanSlug = String(sub?.plan?.slug || '').toLowerCase();
+    // Persisted free subscriptions are display records, not paid entitlement
+    // periods. A legacy subscription without a joined plan retains its existing
+    // subscription-period behavior until its plan data is available.
+    if (
+      sub &&
+      sub.status === 'ACTIVE' &&
+      sub.id !== '00000000-0000-0000-0000-000000000000' &&
+      configuredPlanSlug !== 'free'
+    ) {
       const periodStartStr = sub.currentPeriodStart
         ? new Date(sub.currentPeriodStart).toISOString().slice(0, 10)
         : now.toISOString().slice(0, 10);

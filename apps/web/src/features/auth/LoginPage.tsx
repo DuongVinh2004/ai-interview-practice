@@ -31,6 +31,7 @@ import {
 export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore(state => state.setAuth);
+  const setMfaEnrollmentAuth = useAuthStore(state => state.setMfaEnrollmentAuth);
   const { language } = useI18nStore();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
@@ -65,7 +66,7 @@ export function LoginPage() {
       });
 
       if (response.forceMfaSetup) {
-        setAuth(response.user, response.accessToken, response.refreshToken);
+        setMfaEnrollmentAuth(response.user, response.accessToken);
         navigate('/profile?setupMfa=1');
         return;
       }
@@ -76,7 +77,7 @@ export function LoginPage() {
         return;
       }
 
-      setAuth(response.user, response.accessToken, response.refreshToken);
+      setAuth(response.user, response.accessToken);
       navigate('/');
     } catch (err: any) {
       if (err instanceof ApiError) {
@@ -110,7 +111,7 @@ export function LoginPage() {
         skipAuth: true,
       });
 
-      setAuth(response.user, response.accessToken, response.refreshToken);
+      setAuth(response.user, response.accessToken);
       navigate('/');
     } catch (err: any) {
       if (err instanceof ApiError) {

@@ -1,48 +1,367 @@
-name: CD Deploy to AWS EC2
+name: CD Build Once, Verify Staging, Promote Production
 
 on:
-  push:
-    branches: [main, master]
-  workflow_dispatch:
+  workflow_run:
+    workflows: [CI Pipeline]
+    types: [completed]
+
+permissions:
+  contents: read
 
 jobs:
-  deploy:
-    name: Deploy to EC2
+  release:
+    name: Build immutable release once
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      contains(fromJSON('["main","master"]'), github.event.workflow_run.head_branch)
     runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: release-${{ github.event.workflow_run.head_sha }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+      API_ECR_REPOSITORY: ai-interview-api
+      WEB_ECR_REPOSITORY: ai-interview-web
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+    outputs:
+      api_image: ${{ steps.images.outputs.api_image }}
+      web_image: ${{ steps.images.outputs.web_image }}
+      api_digest: ${{ steps.images.outputs.api_digest }}
+      web_digest: ${{ steps.images.outputs.web_digest }}
+      manifest_sha256: ${{ steps.manifest.outputs.manifest_sha256 }}
+      migration_set_sha256: ${{ steps.manifest.outputs.migration_set_sha256 }}
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
-
-      - name: Deploy via SSH to EC2
-        uses: appleboy/ssh-action@7eaf76671a0d7e35d6892e4b73192329195327c5 # v1.2.0
+      - name: Checkout exact CI-approved source revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER || 'ubuntu' }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          port: ${{ secrets.EC2_PORT || 22 }}
-          script_stop: true
-          script: |
-            echo "🚀 Starting Automated Deployment on EC2..."
+          ref: ${{ env.SOURCE_SHA }}
 
-            # 1. Navigate to project directory
-            cd /home/ubuntu/ai-interview-practice || { echo "Directory not found"; exit 1; }
+      - name: Verify checked-out release identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${SOURCE_SHA}"
+          test "${SOURCE_SHA}" = '${{ github.event.workflow_run.head_sha }}'
 
-            # 2. Fetch latest changes from repository
-            echo "📦 Pulling latest commits..."
-            git fetch --all
-            git reset --hard origin/${{ github.ref_name }}
+      - name: Configure short-lived staging release credentials
+        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-            # 3. Build & Recreate containers
-            echo "🔨 Building and launching Docker containers..."
-            docker compose up -d --build
+      - name: Build or verify source-addressed images
+        id: images
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          REGISTRY="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+          aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${REGISTRY}"
 
-            # 4. Run database migrations safely
-            echo "🗄️ Executing Prisma database migrations..."
-            docker compose exec -T api npx prisma migrate deploy
+          publish_or_reuse() {
+            local repository="$1"
+            local dockerfile="$2"
+            local output_prefix="$3"
+            local existing_digest
+            local image_revision
+            existing_digest="$(aws ecr describe-images \
+              --repository-name "${repository}" \
+              --image-ids imageTag="${SOURCE_SHA}" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text 2>/dev/null || true)"
 
-            # 5. Clean up unused old Docker images to preserve disk space
-            echo "🧹 Cleaning up dangling images..."
-            docker image prune -f
+            if [[ -z "${existing_digest}" || "${existing_digest}" == "None" ]]; then
+              docker build \
+                --label "org.opencontainers.image.revision=${SOURCE_SHA}" \
+                --tag "${REGISTRY}/${repository}:${SOURCE_SHA}" \
+                --file "${dockerfile}" .
+              docker push "${REGISTRY}/${repository}:${SOURCE_SHA}"
+              existing_digest="$(aws ecr describe-images \
+                --repository-name "${repository}" \
+                --image-ids imageTag="${SOURCE_SHA}" \
+                --query 'imageDetails[0].imageDigest' \
+                --output text)"
+            fi
 
-            echo "✅ Deployment completed successfully!"
+            if [[ ! "${existing_digest}" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+              echo "ERROR: ${repository} did not resolve to an immutable digest" >&2
+              exit 1
+            fi
+
+            docker pull "${REGISTRY}/${repository}@${existing_digest}" >/dev/null
+            image_revision="$(docker image inspect \
+              "${REGISTRY}/${repository}@${existing_digest}" \
+              --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')"
+            if [[ "${image_revision}" != "${SOURCE_SHA}" ]]; then
+              echo "ERROR: ${repository} digest revision label does not match SOURCE_SHA" >&2
+              exit 1
+            fi
+
+            aws ecr wait image-scan-complete \
+              --repository-name "${repository}" \
+              --image-id imageDigest="${existing_digest}"
+            # The JMESPath numeric fallback is intentionally single-quoted so
+            # Bash does not interpret its backticks.
+            # shellcheck disable=SC2016
+            critical_findings="$(aws ecr describe-image-scan-findings \
+              --repository-name "${repository}" \
+              --image-id imageDigest="${existing_digest}" \
+              --query 'imageScanFindings.findingSeverityCounts.CRITICAL || `0`' \
+              --output text)"
+            # shellcheck disable=SC2016
+            high_findings="$(aws ecr describe-image-scan-findings \
+              --repository-name "${repository}" \
+              --image-id imageDigest="${existing_digest}" \
+              --query 'imageScanFindings.findingSeverityCounts.HIGH || `0`' \
+              --output text)"
+            if [[ "${critical_findings}" != "0" || "${high_findings}" != "0" ]]; then
+              echo "ERROR: ${repository}@${existing_digest} has ${critical_findings} critical and ${high_findings} high image findings" >&2
+              exit 1
+            fi
+
+            printf -v "${output_prefix}_digest" '%s' "${existing_digest}"
+          }
+
+          publish_or_reuse "${API_ECR_REPOSITORY}" apps/api/Dockerfile api
+          publish_or_reuse "${WEB_ECR_REPOSITORY}" apps/web/Dockerfile web
+
+          {
+            echo "api_image=${REGISTRY}/${API_ECR_REPOSITORY}@${api_digest}"
+            echo "web_image=${REGISTRY}/${WEB_ECR_REPOSITORY}@${web_digest}"
+            echo "api_digest=${api_digest}"
+            echo "web_digest=${web_digest}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Create immutable release manifest
+        id: manifest
+        shell: bash
+        env:
+          API_IMAGE: ${{ steps.images.outputs.api_image }}
+          WEB_IMAGE: ${{ steps.images.outputs.web_image }}
+          API_DIGEST: ${{ steps.images.outputs.api_digest }}
+          WEB_DIGEST: ${{ steps.images.outputs.web_digest }}
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            anchore/syft@sha256:844ed6a928ef9396fac26d1de374e71dcaf80df14f05841670ed41619c5a718f \
+            "${API_IMAGE}" --output cyclonedx-json=api-image-sbom.cdx.json
+          docker run --rm \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            anchore/syft@sha256:844ed6a928ef9396fac26d1de374e71dcaf80df14f05841670ed41619c5a718f \
+            "${WEB_IMAGE}" --output cyclonedx-json=web-image-sbom.cdx.json
+          api_sbom_sha256="$(sha256sum api-image-sbom.cdx.json | cut -d ' ' -f 1)"
+          web_sbom_sha256="$(sha256sum web-image-sbom.cdx.json | cut -d ' ' -f 1)"
+          migration_set_sha256="$(node infra/scripts/check-migration-safety.mjs --print-migration-set-sha256)"
+          jq -n \
+            --arg source_sha "${SOURCE_SHA}" \
+            --arg migration_set_sha256 "${migration_set_sha256}" \
+            --arg ci_run_id '${{ github.event.workflow_run.id }}' \
+            --arg ci_run_url '${{ github.event.workflow_run.html_url }}' \
+            --arg api_image "${API_IMAGE}" \
+            --arg web_image "${WEB_IMAGE}" \
+            --arg api_digest "${API_DIGEST}" \
+            --arg web_digest "${WEB_DIGEST}" \
+            --arg api_sbom_sha256 "${api_sbom_sha256}" \
+            --arg web_sbom_sha256 "${web_sbom_sha256}" \
+            --arg created_at "$(date -u +'%Y-%m-%dT%H:%M:%SZ')" \
+            '{
+              schemaVersion: 2,
+              sourceSha: $source_sha,
+              migrationSetSha256: $migration_set_sha256,
+              approvedCiRun: { id: $ci_run_id, url: $ci_run_url },
+              apiImage: $api_image,
+              webImage: $web_image,
+              apiDigest: $api_digest,
+              webDigest: $web_digest,
+              sbom: {
+                apiCycloneDxSha256: $api_sbom_sha256,
+                webCycloneDxSha256: $web_sbom_sha256
+              },
+              createdAt: $created_at
+            }' > release-manifest.json
+          sha256sum release-manifest.json > release-manifest.json.sha256
+          printf '%s\n' "${migration_set_sha256}" > migration-set-sha256.txt
+          manifest_sha256="$(cut -d ' ' -f 1 release-manifest.json.sha256)"
+          echo "manifest_sha256=${manifest_sha256}" >> "${GITHUB_OUTPUT}"
+          echo "migration_set_sha256=${migration_set_sha256}" >> "${GITHUB_OUTPUT}"
+
+      - name: Upload immutable release evidence
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        with:
+          name: release-manifest-${{ env.SOURCE_SHA }}
+          path: |
+            release-manifest.json
+            release-manifest.json.sha256
+            migration-set-sha256.txt
+            api-image-sbom.cdx.json
+            web-image-sbom.cdx.json
+          retention-days: 180
+          if-no-files-found: error
+
+  deploy-staging:
+    name: Deploy and verify staging
+    needs: release
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: staging-ecs
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      API_IMAGE: ${{ needs.release.outputs.api_image }}
+      WEB_IMAGE: ${{ needs.release.outputs.web_image }}
+      MIGRATION_SET_SHA256: ${{ needs.release.outputs.migration_set_sha256 }}
+      ECS_CLUSTER: ai-interview-cluster-staging
+      API_SERVICE: ai-interview-api-service-staging
+      WORKER_SERVICE: ai-interview-worker-service-staging
+      WEB_SERVICE: ai-interview-web-service-staging
+      API_TASK_FAMILY: ai-interview-api-staging
+      WORKER_TASK_FAMILY: ai-interview-worker-staging
+      WEB_TASK_FAMILY: ai-interview-web-staging
+      TARGET_ENVIRONMENT: staging
+      EVIDENCE_FILE: staging-release-evidence.json
+      BASE_URL: ${{ vars.STAGING_BASE_URL }}
+
+    steps:
+      - name: Checkout exact release revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Validate release identity and immutable references
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${SOURCE_SHA}"
+          [[ "${API_IMAGE}" =~ @sha256:[0-9a-f]{64}$ ]]
+          [[ "${WEB_IMAGE}" =~ @sha256:[0-9a-f]{64}$ ]]
+          test '${{ needs.release.outputs.manifest_sha256 }}' != ''
+
+      - name: Verify migration set before staging database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${MIGRATION_SET_SHA256}"
+          current_migration_set_sha256="$(node infra/scripts/check-migration-safety.mjs --print-migration-set-sha256)"
+          test "${current_migration_set_sha256}" = "${MIGRATION_SET_SHA256}"
+
+      - name: Configure short-lived staging credentials
+        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Promote release digest to staging
+        id: rollout
+        shell: bash
+        run: bash infra/scripts/promote-ecs-release.sh
+
+      - name: Run strict staging smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${BASE_URL}"
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${BASE_URL}/api/v1/health/live" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${BASE_URL}/api/v1/health/ready" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${BASE_URL}/" >/dev/null
+          metrics_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "${BASE_URL}/api/v1/metrics")"
+          test "${metrics_status}" = "404"
+
+      - name: Upload staging rollout evidence
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        with:
+          name: staging-release-${{ env.SOURCE_SHA }}
+          path: staging-release-evidence.json
+          retention-days: 180
+          if-no-files-found: error
+
+  promote-production:
+    name: Approve and promote exact staging release
+    needs: [release, deploy-staging]
+    runs-on: ubuntu-latest
+    environment: production
+    concurrency:
+      group: production-ecs
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ap-southeast-1
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+      API_IMAGE: ${{ needs.release.outputs.api_image }}
+      WEB_IMAGE: ${{ needs.release.outputs.web_image }}
+      MIGRATION_SET_SHA256: ${{ needs.release.outputs.migration_set_sha256 }}
+      ECS_CLUSTER: ai-interview-cluster-production
+      API_SERVICE: ai-interview-api-service-production
+      WORKER_SERVICE: ai-interview-worker-service-production
+      WEB_SERVICE: ai-interview-web-service-production
+      API_TASK_FAMILY: ai-interview-api-production
+      WORKER_TASK_FAMILY: ai-interview-worker-production
+      WEB_TASK_FAMILY: ai-interview-web-production
+      TARGET_ENVIRONMENT: production
+      EVIDENCE_FILE: production-release-evidence.json
+      BASE_URL: ${{ vars.PRODUCTION_BASE_URL }}
+
+    steps:
+      - name: Checkout exact staging-approved release revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+
+      - name: Verify production promotion provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${SOURCE_SHA}"
+          [[ "${API_IMAGE}" =~ @sha256:[0-9a-f]{64}$ ]]
+          [[ "${WEB_IMAGE}" =~ @sha256:[0-9a-f]{64}$ ]]
+          test '${{ needs.release.outputs.manifest_sha256 }}' != ''
+
+      - name: Verify migration set before production database access
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${MIGRATION_SET_SHA256}"
+          current_migration_set_sha256="$(node infra/scripts/check-migration-safety.mjs --print-migration-set-sha256)"
+          test "${current_migration_set_sha256}" = "${MIGRATION_SET_SHA256}"
+
+      - name: Configure short-lived production credentials
+        uses: aws-actions/configure-aws-credentials@a03048d87541d1d9fcf2ecf528a4a65ba9bd7838 # v5.0.0
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Promote exact staging digest to production
+        shell: bash
+        run: bash infra/scripts/promote-ecs-release.sh
+
+      - name: Run strict production smoke tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${BASE_URL}"
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${BASE_URL}/api/v1/health/live" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${BASE_URL}/api/v1/health/ready" >/dev/null
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "${BASE_URL}/" >/dev/null
+          metrics_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "${BASE_URL}/api/v1/metrics")"
+          test "${metrics_status}" = "404"
+
+      - name: Upload production rollout evidence
+        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        with:
+          name: production-release-${{ env.SOURCE_SHA }}
+          path: production-release-evidence.json
+          retention-days: 180
+          if-no-files-found: error

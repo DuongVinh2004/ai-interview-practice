@@ -432,4 +432,137 @@ describe('StorageService (Module B1 / SEC-005)', () => {
       expect(result.key).toBe(expectedNormalized);
     });
   });
+
+  describe('PRD-1002 Production Redis intent store invariants', () => {
+    it('throws 503 SERVICE_UNAVAILABLE when in production and Redis is unavailable at presign', async () => {
+      const originalEnv = process.env.NODE_ENV;
+      const originalMock = process.env.ALLOW_MOCK_PROVIDERS;
+      process.env.NODE_ENV = 'production';
+      process.env.ALLOW_MOCK_PROVIDERS = 'true';
+
+      try {
+        await expect(
+          service.createUploadIntent(ownerUserId, {
+            filename: 'resume.pdf',
+            mimeType: 'application/pdf',
+            category: 'documents',
+          }),
+        ).rejects.toThrow(
+          new DomainException(
+            ErrorCode.INTERNAL_SERVER_ERROR,
+            'Upload intent store is currently unavailable.',
+            HttpStatus.SERVICE_UNAVAILABLE,
+          ),
+        );
+      } finally {
+        process.env.NODE_ENV = originalEnv;
+        process.env.ALLOW_MOCK_PROVIDERS = originalMock;
+      }
+    });
+
+    it('preserves database metadata and retry reference when cloud provider deletion fails', async () => {
+      const registeredKey = `documents/${ownerUserId}/retry-target.pdf`;
+      mockPrisma.fileAsset.findUnique.mockResolvedValue({
+        id: 'asset-retry-1',
+        key: registeredKey,
+        userId: ownerUserId,
+        isPublic: false,
+      });
+
+      jest.spyOn(mockProvider, 'deleteObject').mockRejectedValueOnce(new Error('Cloud S3 network timeout'));
+
+      await expect(
+        service.deleteFile(ownerUserId, registeredKey, UserRole.CANDIDATE),
+      ).rejects.toThrow('Cloud S3 network timeout');
+
+      // Database metadata is NOT deleted, retaining retry reference
+      expect(mockPrisma.fileAsset.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('PRD-1003 Runtime upload validation and category byte limits', () => {
+    it('rejects filename with path separators or control characters', async () => {
+      await expect(
+        service.createUploadIntent(ownerUserId, {
+          filename: 'nested/dir/resume.pdf',
+          mimeType: 'application/pdf',
+          category: 'documents',
+        }),
+      ).rejects.toThrow('Invalid filename format or length.');
+    });
+
+    it('rejects filename exceeding 128 characters', async () => {
+      const longFilename = `${'a'.repeat(129)}.pdf`;
+      await expect(
+        service.createUploadIntent(ownerUserId, {
+          filename: longFilename,
+          mimeType: 'application/pdf',
+          category: 'documents',
+        }),
+      ).rejects.toThrow('Invalid filename format or length.');
+    });
+
+    it('rejects MIME type not allowed for category (e.g. executable/script in documents)', async () => {
+      await expect(
+        service.createUploadIntent(ownerUserId, {
+          filename: 'malicious.sh',
+          mimeType: 'application/x-sh',
+          category: 'documents',
+        }),
+      ).rejects.toThrow("MIME type 'application/x-sh' is not allowed for category 'documents'.");
+    });
+
+    it('rejects confirmUpload when actual object size exceeds category byte limit (5MB for documents)', async () => {
+      const intent = await service.createUploadIntent(ownerUserId, {
+        filename: 'oversized.pdf',
+        mimeType: 'application/pdf',
+        category: 'documents',
+      });
+
+      mockPrisma.fileAsset.findUnique.mockResolvedValue(null);
+      // Simulate uploaded cloud object is 6MB (over 5MB limit)
+      jest.spyOn(mockProvider, 'getObjectMetadata').mockResolvedValueOnce({
+        size: 6 * 1024 * 1024,
+        contentType: 'application/pdf',
+        lastModified: new Date(),
+      });
+
+      await expect(
+        service.confirmUpload(ownerUserId, {
+          key: intent.key,
+          filename: 'oversized.pdf',
+          mimeType: 'application/pdf',
+          isPublic: false,
+        }),
+      ).rejects.toThrow(/exceeds the maximum allowed/);
+    });
+
+    it('enforces server-owned visibility and prevents client from turning private category into public', async () => {
+      const intent = await service.createUploadIntent(ownerUserId, {
+        filename: 'private-doc.pdf',
+        mimeType: 'application/pdf',
+        category: 'documents',
+      });
+
+      mockPrisma.fileAsset.findUnique.mockResolvedValue(null);
+      mockPrisma.fileAsset.create.mockImplementation(({ data }) =>
+        Promise.resolve({ id: 'asset-priv', ...data, createdAt: new Date(), updatedAt: new Date() }),
+      );
+      jest.spyOn(mockProvider, 'getObjectMetadata').mockResolvedValueOnce({
+        size: 1024,
+        contentType: 'application/pdf',
+        lastModified: new Date(),
+      });
+
+      const confirmed = await service.confirmUpload(ownerUserId, {
+        key: intent.key,
+        filename: 'private-doc.pdf',
+        mimeType: 'application/pdf',
+        isPublic: true, // Client tries to override to public
+      });
+
+      // Server-owned visibility derived from category 'documents' (must remain private)
+      expect(confirmed.isPublic).toBe(false);
+    });
+  });
 });

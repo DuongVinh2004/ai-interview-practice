@@ -647,7 +647,15 @@ export class InterviewService {
         : { id: turn.answer.id, answerId: turn.answer.id, score: evalResult.score });
 
     const triggeredBy = isReviewerAdmin ? 'REVIEWER' : 'CANDIDATE';
-    const authorityState = isReviewerAdmin ? 'AUTHORITATIVE' : 'NEEDS_REVIEW';
+    const isAuthoritativeReview =
+      isReviewerAdmin &&
+      !evalResult.needsReview &&
+      Boolean((evalResult as any).provider) &&
+      ['gemini', 'openai', 'anthropic'].includes(
+        String((evalResult as any).provider).toLowerCase(),
+      ) &&
+      evalResult.evidence.length > 0;
+    const authorityState = isAuthoritativeReview ? 'AUTHORITATIVE' : 'NEEDS_REVIEW';
 
     const run = this.prisma.evaluationRun?.create
       ? await this.prisma.evaluationRun.create({
@@ -660,7 +668,7 @@ export class InterviewService {
             improvements: evalResult.improvements,
             conciseFeedback: evalResult.conciseFeedback,
             evidence: evalResult.evidence,
-            needsReview: !isReviewerAdmin,
+            needsReview: !isAuthoritativeReview,
             authorityState,
             provider: (evalResult as any).provider || undefined,
             fallbackReason: (evalResult as any).fallbackReason || undefined,
@@ -672,7 +680,7 @@ export class InterviewService {
 
     // Only authorized reviewer/admin can overwrite canonical projection score
     let updatedEval: any = evalRecord;
-    if (isReviewerAdmin) {
+    if (isAuthoritativeReview) {
       updatedEval = await this.prisma.evaluation.update({
         where: { answerId: turn.answer.id },
         data: {
@@ -693,18 +701,13 @@ export class InterviewService {
     }
 
     // Recalculate overall score across completed evaluations
-    let allEvaluations = await this.prisma.evaluation.findMany({
+    const allEvaluations = await this.prisma.evaluation.findMany({
       where: {
         answer: { turn: { sessionId } },
         authorityState: 'AUTHORITATIVE',
+        needsReview: false,
       },
     });
-
-    if (allEvaluations.length === 0) {
-      allEvaluations = await this.prisma.evaluation.findMany({
-        where: { answer: { turn: { sessionId } } },
-      });
-    }
 
     overallScore =
       allEvaluations.length > 0
@@ -715,7 +718,7 @@ export class InterviewService {
           )
         : null;
 
-    if (isReviewerAdmin && overallScore !== null) {
+    if (isAuthoritativeReview && overallScore !== null) {
       await this.prisma.interviewSession.update({
         where: { id: sessionId },
         data: { overallScore },

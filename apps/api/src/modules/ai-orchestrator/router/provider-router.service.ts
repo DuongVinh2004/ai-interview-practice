@@ -25,6 +25,10 @@ import { MetricsService } from '../../platform/metrics/metrics.service';
 import { TelemetryService } from '../../platform/telemetry/telemetry.service';
 import { SemanticCacheService } from '../cache/semantic-cache.service';
 import { PrismaService } from '../../platform/prisma/prisma.service';
+import {
+  BudgetReservation,
+  DistributedBudgetService,
+} from '../../platform/budget/distributed-budget.service';
 
 @Injectable()
 export class ProviderRouterService {
@@ -32,6 +36,9 @@ export class ProviderRouterService {
   private readonly providersMap = new Map<string, AiProvider>();
   private readonly circuitBreaker: CircuitBreaker;
   private readonly dailyBudgetUsd: number;
+  private readonly maxProviderCallCostUsd: number;
+  private readonly maxRetries: number;
+  private readonly timeoutMs: number;
   private currentDailyCostUsd = 0;
   private lastBudgetResetDay = new Date().getUTCDate();
 
@@ -42,6 +49,7 @@ export class ProviderRouterService {
     private readonly anthropicProvider: AnthropicProvider,
     private readonly mockProvider: MockAiProvider,
     private readonly semanticCacheService: SemanticCacheService,
+    @Optional() private readonly distributedBudget?: DistributedBudgetService,
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly metricsService?: MetricsService,
     @Optional() private readonly telemetryService?: TelemetryService,
@@ -58,6 +66,9 @@ export class ProviderRouterService {
     this.providersMap.set('mock', this.mockProvider);
 
     this.dailyBudgetUsd = this.configService.get<number>('ai.dailyBudgetUsd', 50.0);
+    this.maxProviderCallCostUsd = this.configService.get<number>('ai.maxProviderCallCostUsd', 2.0);
+    this.maxRetries = this.configService.get<number>('ai.maxRetries', 2);
+    this.timeoutMs = this.configService.get<number>('ai.timeoutMs', 10_000);
   }
 
   getCircuitBreaker(): CircuitBreaker {
@@ -72,7 +83,15 @@ export class ProviderRouterService {
     return this.dailyBudgetUsd;
   }
 
-  getCurrentDailyCostUsd(): number {
+  async getCurrentDailyCostUsd(): Promise<number> {
+    if (this.distributedBudget) {
+      try {
+        return await this.distributedBudget.getCurrentUsd('ai-provider-global');
+      } catch (error: any) {
+        this.logger.error(`Unable to read distributed AI budget: ${error.message}`);
+        if (process.env.NODE_ENV === 'production') throw error;
+      }
+    }
     this.checkDailyBudget(0);
     return this.currentDailyCostUsd;
   }
@@ -204,12 +223,6 @@ export class ProviderRouterService {
 
       if (!provider) continue;
 
-      // Check daily budget limit for paid providers
-      if (providerName !== 'mock' && !this.checkDailyBudget(0)) {
-        this.logger.warn(`Skipping paid provider [${providerName}] due to budget cap.`);
-        continue;
-      }
-
       // Check circuit breaker status
       if (!this.circuitBreaker.canExecute(providerName, operation)) {
         this.logger.warn(
@@ -221,8 +234,17 @@ export class ProviderRouterService {
 
       attemptedProviders++;
       const startTime = Date.now();
+      let budgetReservation: BudgetReservation | null | undefined;
 
       try {
+        if (providerName !== 'mock') {
+          budgetReservation = await this.reserveDistributedBudget(operation, providerName);
+          if (budgetReservation === null) {
+            this.logger.warn(`Skipping paid provider [${providerName}] due to global budget cap.`);
+            continue;
+          }
+        }
+
         const result = await this.circuitBreaker.execute(providerName, operation, async () => {
           return await this.executeWithRetry(() => invokeFn(provider));
         });
@@ -255,7 +277,11 @@ export class ProviderRouterService {
           }
         }
 
-        if (result.costEstimate) {
+        if (budgetReservation) {
+          await this.distributedBudget!.settle(budgetReservation, result.costEstimate || 0);
+          this.checkDailyBudget(result.costEstimate || 0);
+          budgetReservation = undefined;
+        } else if (result.costEstimate) {
           this.checkDailyBudget(result.costEstimate);
           this.metricsService?.aiCostUsdTotal.inc(
             { provider: providerName, model: result.model || 'default' },
@@ -275,6 +301,9 @@ export class ProviderRouterService {
 
         return result;
       } catch (error: any) {
+        // The upstream request may have been billed even when its response was
+        // lost. Keep the maximum reservation on ambiguous provider failures;
+        // releasing it would let retries overspend the global daily cap.
         lastError = error;
         const durationSec = (Date.now() - startTime) / 1000;
         this.metricsService?.aiProviderRequestsTotal.inc({
@@ -311,7 +340,53 @@ export class ProviderRouterService {
     );
   }
 
-  private async executeWithRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  private async reserveDistributedBudget(
+    operation: string,
+    providerName: string,
+  ): Promise<BudgetReservation | undefined | null> {
+    if (!this.distributedBudget) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Distributed AI budget enforcement is unavailable');
+      }
+      return this.checkDailyBudget(0) ? undefined : null;
+    }
+
+    try {
+      return await this.distributedBudget.reserve(
+        'ai-provider-global',
+        this.dailyBudgetUsd,
+        this.maxProviderCallCostUsd,
+      );
+    } catch (error: any) {
+      this.logger.error(
+        `Global AI budget reservation failed for [${providerName}:${operation}]: ${error.message}`,
+      );
+      if (process.env.NODE_ENV === 'production') throw error;
+      return this.checkDailyBudget(0) ? undefined : null;
+    }
+  }
+
+  private isNonRetryableError(error: any): boolean {
+    const status = error.status || error.statusCode || error.response?.status;
+    if (status && [400, 401, 403, 404, 409, 422].includes(status)) {
+      return true;
+    }
+    const message = (error.message || '').toLowerCase();
+    if (
+      message.includes('api key') ||
+      message.includes('authentication') ||
+      message.includes('unauthorized') ||
+      message.includes('forbidden') ||
+      message.includes('quota') ||
+      message.includes('budget') ||
+      message.includes('invalid schema')
+    ) {
+      return true;
+    }
+    return false;
+  }
+
+  private async executeWithRetry<T>(fn: () => Promise<T>, maxRetries = this.maxRetries): Promise<T> {
     let lastError: any;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       try {
@@ -319,14 +394,8 @@ export class ProviderRouterService {
       } catch (error: any) {
         lastError = error;
 
-        // Immediately throw on 401/403 authentication/credential errors (no retry)
-        const isAuthError =
-          error.status === 401 ||
-          error.status === 403 ||
-          error.message?.includes('API key') ||
-          error.message?.includes('authentication');
-
-        if (isAuthError) {
+        // Immediately throw on 400/401/403/404/409/422 or auth/quota/validation errors (no retry per DEC-007)
+        if (this.isNonRetryableError(error)) {
           throw error;
         }
 

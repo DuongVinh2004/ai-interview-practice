@@ -7,6 +7,9 @@ on:
   pull_request:
     branches: [main, master, develop]
 
+permissions:
+  contents: read
+
 jobs:
   validate-and-test:
     name: Lint, Typecheck, Test & Build
@@ -55,7 +58,7 @@ jobs:
       - name: Get pnpm store directory
         shell: bash
         run: |
-          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+          echo "STORE_PATH=$(pnpm store path --silent)" >> "${GITHUB_ENV}"
 
       - name: Setup pnpm cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
@@ -75,6 +78,48 @@ jobs:
         run: |
           mkdir -p ./artifacts/sbom
           pnpm list --json --recursive > ./artifacts/sbom/pnpm-dependency-tree.json
+
+      - name: Block committed secrets in the release source tree
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo:ro" \
+            docker.io/zricethezav/gitleaks@sha256:bf00b5e039f0fad4b32935dc5ec1e358f227ccd097bcb64b971f0331072fe2ae \
+            dir /repo --config /repo/.gitleaks.toml \
+            --gitleaks-ignore-path /repo/.gitleaksignore \
+            --redact --no-banner --verbose --exit-code 1
+
+      - name: Block high and critical dependency vulnerabilities
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: 'fs'
+          scan-ref: 'pnpm-lock.yaml'
+          scanners: 'vuln'
+          ignore-unfixed: true
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Block high and critical Terraform findings
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: 'config'
+          scan-ref: 'infra/terraform'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '1'
+
+      - name: Block moderate-or-higher production dependency advisories
+        run: pnpm audit --prod --audit-level moderate
+
+      - name: Block static application security findings
+        run: |
+          docker run --rm \
+            -v "$PWD:/src:ro" \
+            semgrep/semgrep@sha256:f1f7b71861c7b28b6e0f661225a2c4f58a484f5d0f182465c6d6b3b22f972ade \
+            semgrep scan --config auto --config p/security-audit --config p/owasp-top-ten --error /src
+
+      - name: Validate release workflow invariants
+        run: node infra/scripts/check-release-workflows.mjs
 
       - name: Check Formatting
         run: pnpm format:check
@@ -96,6 +141,7 @@ jobs:
           DEMO_CANDIDATE_EMAIL: 'candidate@example.com'
           DEMO_CANDIDATE_PASSWORD: 'Candidate@123456'
         run: |
+          node infra/scripts/check-migration-safety.mjs
           pnpm --filter api db:migrate:deploy
           pnpm --filter api db:seed
 
@@ -130,7 +176,6 @@ jobs:
           JWT_ACCESS_SECRET: 'ci-test-jwt-access-secret-32-chars-long'
           JWT_REFRESH_SECRET: 'ci-test-jwt-refresh-secret-32-chars-long'
           ALLOW_MOCK_PROVIDERS: 'true'
-          BYPASS_ADMIN_MFA: 'true'
         run: |
           pnpm --filter web exec playwright install --with-deps chromium
           pnpm --filter web test:e2e
@@ -173,8 +218,32 @@ jobs:
             -e ALLOW_MOCK_PROVIDERS=true \
             -e AI_ALLOW_MOCK=true \
             --entrypoint sh ai-interview-api:ci -c '
-              timeout 15 node apps/api/dist/worker.js || true;
-              code=$?; test "$code" -eq 124 || test "$code" -eq 0 || test "$code" -eq 143 || test "$code" -eq 137
+              node apps/api/dist/worker.js & pid=$!;
+              for attempt in 1 2 3 4 5 6; do
+                if wget --quiet --spider http://127.0.0.1:9090/health/ready; then
+                  if ! kill "$pid"; then
+                    echo "Worker could not be stopped after readiness" >&2;
+                    exit 1;
+                  fi;
+                  wait "$pid";
+                  code=$?;
+                  if [ "$code" -ne 0 ]; then
+                    echo "Worker shutdown failed with exit code $code" >&2;
+                    exit 1;
+                  fi;
+                  exit 0;
+                fi;
+                if ! kill -0 "$pid" 2>/dev/null; then
+                  wait "$pid";
+                  echo "Worker exited before readiness" >&2;
+                  exit 1;
+                fi;
+                sleep 5;
+              done;
+              kill "$pid" 2>/dev/null || true;
+              wait "$pid" || true;
+              echo "Worker did not become ready" >&2;
+              exit 1
             '
           docker run --rm ai-interview-web:ci nginx -t
           docker run --rm --add-host api:127.0.0.1 --add-host web:127.0.0.1 ai-interview-nginx:ci nginx -t

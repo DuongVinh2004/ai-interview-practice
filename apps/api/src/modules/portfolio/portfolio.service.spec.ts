@@ -150,13 +150,12 @@ describe('Track F010: Portfolio & Certificate Module', () => {
 
     it('syncs user badges and returns 5-axis competency progress', async () => {
       const userId = 'user-123';
-      mockPrisma.skillScore.findMany.mockResolvedValue([
-        {
-          weightedScore: 8.5,
-          evidenceCount: 10,
-          skillNode: { competencyArea: CompetencyArea.SYSTEM_DESIGN, weight: 1.0 },
-        },
-      ]);
+      mockPrisma.interviewTurn.findMany.mockResolvedValue(
+        Array.from({ length: 10 }, () => ({
+          session: { competencyArea: CompetencyArea.SYSTEM_DESIGN },
+          answer: { evaluation: { score: 8.5 } },
+        })),
+      );
 
       mockPrisma.userBadge.upsert.mockResolvedValue({
         id: 'badge-1',
@@ -181,6 +180,18 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       ]);
 
       const progress = await badgeService.getUserBadgeProgress(userId);
+      expect(mockPrisma.interviewTurn.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            answer: {
+              evaluation: {
+                is: { authorityState: 'AUTHORITATIVE', needsReview: false },
+              },
+            },
+          }),
+        }),
+      );
+      expect(mockPrisma.skillScore.findMany).not.toHaveBeenCalled();
       expect(progress.length).toBe(5);
 
       const sysDesign = progress.find(p => p.competencyArea === CompetencyArea.SYSTEM_DESIGN);
