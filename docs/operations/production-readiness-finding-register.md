@@ -1,13 +1,13 @@
 # Production Readiness Audit Finding Register
 
-| Field | Value |
-| --- | --- |
-| Register status | `INITIALIZED` — no finding is closed by this register |
-| Source contract | Plan v2.0, SHA-256 `3167c6252aa03c8465c30f8c1bbd0d44c381705d97e678dfe4500af5bb81cc97` |
-| Snapshot | `main` / `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895`; no immutable candidate |
-| Owner | Duong Vinh, Evidence Custodian |
-| Review model | `sol high` coordinator direct-evidence self-review under Execution Model Amendment 002; `luna xhigh` workers cannot close tasks or gates; independent AI review is optional and non-blocking. |
-| Update rule | Preserve historical finding/review records. A finding can close only with direct evidence, coordinator self-review, and accountable-human authorization whenever its permission class or gate requires it. |
+| Field           | Value                                                                                                                                                                                                      |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Register status | `INITIALIZED` — no finding is closed by this register                                                                                                                                                      |
+| Source contract | Plan v2.0, SHA-256 `3167c6252aa03c8465c30f8c1bbd0d44c381705d97e678dfe4500af5bb81cc97`                                                                                                                      |
+| Snapshot        | `main` / `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895`; no immutable candidate                                                                                                                                |
+| Owner           | Duong Vinh, Evidence Custodian                                                                                                                                                                             |
+| Review model    | `sol high` coordinator direct-evidence self-review under Execution Model Amendment 002; `luna xhigh` workers cannot close tasks or gates; independent AI review is optional and non-blocking.              |
+| Update rule     | Preserve historical finding/review records. A finding can close only with direct evidence, coordinator self-review, and accountable-human authorization whenever its permission class or gate requires it. |
 
 ## Open audit findings
 

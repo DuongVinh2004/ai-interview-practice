@@ -469,7 +469,9 @@ describe('StorageService (Module B1 / SEC-005)', () => {
         isPublic: false,
       });
 
-      jest.spyOn(mockProvider, 'deleteObject').mockRejectedValueOnce(new Error('Cloud S3 network timeout'));
+      jest
+        .spyOn(mockProvider, 'deleteObject')
+        .mockRejectedValueOnce(new Error('Cloud S3 network timeout'));
 
       await expect(
         service.deleteFile(ownerUserId, registeredKey, UserRole.CANDIDATE),
@@ -546,7 +548,12 @@ describe('StorageService (Module B1 / SEC-005)', () => {
 
       mockPrisma.fileAsset.findUnique.mockResolvedValue(null);
       mockPrisma.fileAsset.create.mockImplementation(({ data }) =>
-        Promise.resolve({ id: 'asset-priv', ...data, createdAt: new Date(), updatedAt: new Date() }),
+        Promise.resolve({
+          id: 'asset-priv',
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }),
       );
       jest.spyOn(mockProvider, 'getObjectMetadata').mockResolvedValueOnce({
         size: 1024,

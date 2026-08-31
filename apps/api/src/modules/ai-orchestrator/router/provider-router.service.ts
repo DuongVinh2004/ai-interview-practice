@@ -386,7 +386,10 @@ export class ProviderRouterService {
     return false;
   }
 
-  private async executeWithRetry<T>(fn: () => Promise<T>, maxRetries = this.maxRetries): Promise<T> {
+  private async executeWithRetry<T>(
+    fn: () => Promise<T>,
+    maxRetries = this.maxRetries,
+  ): Promise<T> {
     let lastError: any;
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       try {

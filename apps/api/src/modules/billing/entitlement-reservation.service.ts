@@ -577,10 +577,7 @@ export class EntitlementReservationService {
     if (!input.reservationId) {
       throw new ConflictException('Entitlement reconciliation requires a reservation');
     }
-    if (
-      input.outcome !== 'NO_PROVIDER_USAGE' &&
-      input.outcome !== 'CONFIRMED_PROVIDER_USAGE'
-    ) {
+    if (input.outcome !== 'NO_PROVIDER_USAGE' && input.outcome !== 'CONFIRMED_PROVIDER_USAGE') {
       throw new ConflictException('A valid reconciliation outcome is required');
     }
     if (

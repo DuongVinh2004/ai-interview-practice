@@ -102,7 +102,9 @@ describe('AuthController browser session boundary', () => {
   it('rejects a cookie-authenticated request without a trusted Origin', async () => {
     const req = request({
       headers: { cookie: 'refresh_token=secret' },
-      get: jest.fn((name: string) => (name.toLowerCase() === 'x-csrf-protection' ? '1' : undefined)),
+      get: jest.fn((name: string) =>
+        name.toLowerCase() === 'x-csrf-protection' ? '1' : undefined,
+      ),
     });
 
     await expect(controller.refresh(req, response)).rejects.toMatchObject({

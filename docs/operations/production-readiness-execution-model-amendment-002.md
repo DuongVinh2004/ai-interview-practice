@@ -1,10 +1,10 @@
 # Execution Model Amendment 002
 
-| Field | Value |
-| --- | --- |
-| Status | `APPROVED` by direct user authorization in this task conversation |
-| Effective scope | Production Readiness Execution Plan v2.0 and all task records created for it |
-| Supersedes | Reviewer-blocking portions of DEC-001 and plan v2.0 only; historical review evidence remains immutable history |
+| Field              | Value                                                                                                                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| Status             | `APPROVED` by direct user authorization in this task conversation                                                        |
+| Effective scope    | Production Readiness Execution Plan v2.0 and all task records created for it                                             |
+| Supersedes         | Reviewer-blocking portions of DEC-001 and plan v2.0 only; historical review evidence remains immutable history           |
 | Does not authorize | L2-L6 actions, external writes, production GO, or a change to evidence, test, approval, rollback, or safety requirements |
 
 ## Operating model
@@ -29,4 +29,3 @@ This amendment knowingly removes independent AI-review separation. The compensat
 ## PRD-0002 continuation
 
 The fresh independent review previously required after register hash `2eaf829cd410d34bda82e32fdc8d486b492c17fa286d9b79992bd81cc3590ce1` is no longer a blocker. The coordinator must self-review that exact register before closing PRD-0002.
-

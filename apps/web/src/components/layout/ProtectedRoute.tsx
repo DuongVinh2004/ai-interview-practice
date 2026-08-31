@@ -11,7 +11,11 @@ export function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {
   const location = useLocation();
 
   if (isSessionRestoring) {
-    return <div role="status" aria-live="polite" className="p-6 text-center">Restoring session…</div>;
+    return (
+      <div role="status" aria-live="polite" className="p-6 text-center">
+        Restoring session…
+      </div>
+    );
   }
 
   if (!isAuthenticated) {

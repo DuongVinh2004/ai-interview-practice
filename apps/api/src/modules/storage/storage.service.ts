@@ -189,7 +189,15 @@ export class StorageService {
     userId: string,
     dto: PresignUploadDto,
   ): Promise<PresignUploadResponseDto> {
-    if (!dto.filename || dto.filename.length > 128 || /[\x00-\x1f\x7f\\\/]/.test(dto.filename)) {
+    const isInvalidFilename =
+      !dto.filename ||
+      dto.filename.length > 128 ||
+      Array.from(dto.filename).some((char) => {
+        const code = char.charCodeAt(0);
+        return (code >= 0 && code <= 31) || code === 127 || char === '\\' || char === '/';
+      });
+
+    if (isInvalidFilename) {
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
         'Invalid filename format or length.',

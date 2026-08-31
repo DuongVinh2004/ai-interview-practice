@@ -135,7 +135,17 @@ export class LoggingInterceptor implements NestInterceptor {
       }
 
       const params = new URLSearchParams(queryString);
-      const sensitiveKeys = ['passcode', 'token', 'key', 'secret', 'password', 'authorization', 'auth', 'apiKey', 'api_key'];
+      const sensitiveKeys = [
+        'passcode',
+        'token',
+        'key',
+        'secret',
+        'password',
+        'authorization',
+        'auth',
+        'apiKey',
+        'api_key',
+      ];
       for (const [key] of Array.from(params.entries())) {
         if (
           sensitiveKeys.includes(key.toLowerCase()) ||

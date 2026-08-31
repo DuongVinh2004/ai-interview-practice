@@ -14,15 +14,15 @@ This manifest defines the exact provisional file scope for the P1 production-rea
 
 ## Snapshot summary
 
-| Category | Count | Treatment |
-| --- | ---: | --- |
-| Tracked files with a real content diff | 103 | Include in final local P1 candidate |
-| New P1/code/test/operations files before this manifest | 43 | Include |
-| This manifest | 1 | Include, but exclude from its own snapshot fingerprint |
-| Total candidate paths | 147 | Review required |
-| Untracked root utilities | 25 | Exclude and preserve unchanged |
-| Ignored sensitive/build/tool state explicitly checked | 5 path groups | Exclude and preserve unchanged |
-| Staged paths | 0 | None |
+| Category                                               |         Count | Treatment                                              |
+| ------------------------------------------------------ | ------------: | ------------------------------------------------------ |
+| Tracked files with a real content diff                 |           103 | Include in final local P1 candidate                    |
+| New P1/code/test/operations files before this manifest |            43 | Include                                                |
+| This manifest                                          |             1 | Include, but exclude from its own snapshot fingerprint |
+| Total candidate paths                                  |           147 | Review required                                        |
+| Untracked root utilities                               |            25 | Exclude and preserve unchanged                         |
+| Ignored sensitive/build/tool state explicitly checked  | 5 path groups | Exclude and preserve unchanged                         |
+| Staged paths                                           |             0 | None                                                   |
 
 Git reports core.autocrlf=true. Candidate construction must use the exact paths below and a content diff check, never a broad git add -A or wildcard.
 
@@ -128,8 +128,8 @@ The provisional scope is a single cohesive production-readiness change set:
 - apps/api/src/modules/portfolio/services/badge.service.ts
 - apps/api/src/modules/portfolio/services/certificate.service.ts
 - apps/api/src/modules/profile/profile.service.ts
-- apps/api/src/modules/question-bank/__tests__/period-key.spec.ts
-- apps/api/src/modules/question-bank/__tests__/response-mapper.spec.ts
+- apps/api/src/modules/question-bank/**tests**/period-key.spec.ts
+- apps/api/src/modules/question-bank/**tests**/response-mapper.spec.ts
 - apps/api/src/modules/question-bank/services/question-bank-entitlement.service.ts
 - apps/api/src/modules/readiness/services/readiness.service.ts
 - apps/api/src/modules/share/share.service.spec.ts
@@ -150,8 +150,8 @@ The provisional scope is a single cohesive production-readiness change set:
 - apps/web/package.json
 - apps/web/playwright.config.ts
 - apps/web/src/App.tsx
-- apps/web/src/__tests__/CacheIsolation.test.tsx
-- apps/web/src/__tests__/Epic8MfaAuthentication.test.tsx
+- apps/web/src/**tests**/CacheIsolation.test.tsx
+- apps/web/src/**tests**/Epic8MfaAuthentication.test.tsx
 - apps/web/src/components/layout/ProtectedRoute.tsx
 - apps/web/src/features/auth/LoginPage.tsx
 - apps/web/src/features/auth/RegisterPage.tsx
@@ -161,7 +161,7 @@ The provisional scope is a single cohesive production-readiness change set:
 - apps/web/src/hooks/use-interview-sse.ts
 - apps/web/src/hooks/useTutor.ts
 - apps/web/src/lib/api-client.ts
-- apps/web/src/stores/__tests__/auth.store.test.ts
+- apps/web/src/stores/**tests**/auth.store.test.ts
 - apps/web/src/stores/auth.store.ts
 - apps/web/vite.config.ts
 
@@ -200,7 +200,7 @@ The provisional scope is a single cohesive production-readiness change set:
 
 ### Contracts
 
-- packages/contracts/src/__tests__/schemas.test.ts
+- packages/contracts/src/**tests**/schemas.test.ts
 - packages/contracts/src/schemas/auth.ts
 - packages/contracts/src/schemas/storage.ts
 
@@ -248,8 +248,8 @@ The following 25 files are pre-existing local investigation/simulation utilities
 - inspect_update_fn.py
 - inspect_update_fn2.py
 - inspect_upstream.py
-- 	est_account_tokens.py
-- 	est_node.js
+- est_account_tokens.py
+- est_node.js
 - erify_round_robin.py
 - erify_simulation_exact.py
 
@@ -274,10 +274,10 @@ The following 25 files are pre-existing local investigation/simulation utilities
 
 ## Approval record
 
-| Decision | Status | Approver/evidence |
-| --- | --- | --- |
-| Candidate path scope | Pending | User review required |
-| Local release gates | Pass (working tree) | Full local verification passed 2026-09-01 |
-| Commit creation | Not authorized | Separate direct user instruction required (L2) |
-| Push/PR creation | Not authorized | Separate direct user instruction required (L3) |
-| Production promotion | NO_GO | External gates not complete |
+| Decision             | Status              | Approver/evidence                              |
+| -------------------- | ------------------- | ---------------------------------------------- |
+| Candidate path scope | Pending             | User review required                           |
+| Local release gates  | Pass (working tree) | Full local verification passed 2026-09-01      |
+| Commit creation      | Not authorized      | Separate direct user instruction required (L2) |
+| Push/PR creation     | Not authorized      | Separate direct user instruction required (L3) |
+| Production promotion | NO_GO               | External gates not complete                    |

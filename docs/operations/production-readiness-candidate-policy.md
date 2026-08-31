@@ -22,19 +22,19 @@ PRD-2002 must apply later.
 
 ## Current reviewed snapshot
 
-| Field                                | Value                                                                                                                   |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| Repository                           | `C:\\Users\\Duong Vinh\\ai-interview-practice`                                                                          |
-| Branch                               | `main`                                                                                                                  |
-| HEAD                                 | `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895`                                                                              |
-| Source scope                         | `docs/operations/p1-candidate-manifest.md` exact included-path list                                                     |
-| Explicit reviewed paths              | `147` total: `102` `tracked-modified`, `44` `untracked-new` release paths, plus the source manifest record               |
-| Fingerprint records                  | `146`; the source manifest is self-excluded from its own fingerprint                                                    |
-| Prior declared fingerprint           | `sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24`                                               |
-| Plan baseline recomputed fingerprint | `sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c`                                               |
-| Current recomputed fingerprint       | `sha256:f5c231734efca97ffa5b9bb21d9f618f92238768ccf1c784b4afed2c57551309`                                               |
-| Fingerprint state                    | `MATCH` against current candidate manifest; verified 2026-09-01                                                        |
-| Release verdict                      | `NO_GO`                                                                                                                 |
+| Field                                | Value                                                                                                      |
+| ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| Repository                           | `C:\\Users\\Duong Vinh\\ai-interview-practice`                                                             |
+| Branch                               | `main`                                                                                                     |
+| HEAD                                 | `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895`                                                                 |
+| Source scope                         | `docs/operations/p1-candidate-manifest.md` exact included-path list                                        |
+| Explicit reviewed paths              | `147` total: `102` `tracked-modified`, `44` `untracked-new` release paths, plus the source manifest record |
+| Fingerprint records                  | `146`; the source manifest is self-excluded from its own fingerprint                                       |
+| Prior declared fingerprint           | `sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24`                                  |
+| Plan baseline recomputed fingerprint | `sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c`                                  |
+| Current recomputed fingerprint       | `sha256:f5c231734efca97ffa5b9bb21d9f618f92238768ccf1c784b4afed2c57551309`                                  |
+| Fingerprint state                    | `MATCH` against current candidate manifest; verified 2026-09-01                                            |
+| Release verdict                      | `NO_GO`                                                                                                    |
 
 The current hash is recorded to make the computation reproducible, not to claim
 that the candidate is approved. A path-set, status, byte, review, or candidate

@@ -1,16 +1,16 @@
 # Production Readiness Execution Plan
 
-| Thuộc tính | Giá trị |
-| --- | --- |
-| Project | AI Interview Practice |
-| Repository | `C:\Users\Duong Vinh\ai-interview-practice` |
-| Plan version | `2.0 — TERRA_HIGH_EXECUTION_CONTRACT` |
-| Plan status | `DRAFT_FOR_OWNER_APPROVAL` |
-| Execution profile | Thiết kế để một coding agent chạy `terra high` thực hiện từng task có kiểm soát; mọi quyết định vượt boundary phải được human owner phê duyệt. |
-| Initial audit baseline | branch `main`, HEAD `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895` |
-| Initial audit date | 2026-08-31, Asia/Bangkok |
+| Thuộc tính                    | Giá trị                                                                                                                                                                                                                                 |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Project                       | AI Interview Practice                                                                                                                                                                                                                   |
+| Repository                    | `C:\Users\Duong Vinh\ai-interview-practice`                                                                                                                                                                                             |
+| Plan version                  | `2.0 — TERRA_HIGH_EXECUTION_CONTRACT`                                                                                                                                                                                                   |
+| Plan status                   | `DRAFT_FOR_OWNER_APPROVAL`                                                                                                                                                                                                              |
+| Execution profile             | Thiết kế để một coding agent chạy `terra high` thực hiện từng task có kiểm soát; mọi quyết định vượt boundary phải được human owner phê duyệt.                                                                                          |
+| Initial audit baseline        | branch `main`, HEAD `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895`                                                                                                                                                                          |
+| Initial audit date            | 2026-08-31, Asia/Bangkok                                                                                                                                                                                                                |
 | Baseline evidence fingerprint | Declared `sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24`; recomputed `sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c`; mismatch này là blocker, không phải current release identity. |
-| Target outcome | Project chỉ được tuyên bố `PRODUCTION_READY = GO` sau khi toàn bộ definition of done và mandatory evidence trong tài liệu này được hoàn thành trên cùng một immutable release candidate. |
+| Target outcome                | Project chỉ được tuyên bố `PRODUCTION_READY = GO` sau khi toàn bộ definition of done và mandatory evidence trong tài liệu này được hoàn thành trên cùng một immutable release candidate.                                                |
 
 ---
 
@@ -90,15 +90,15 @@ Không được nhảy từ `IN_PROGRESS` thẳng sang `CLOSED`. `BLOCKED` và `
 
 ### 2.3 Permission và authorization classes
 
-| Class | Phạm vi | Ví dụ | Quy tắc |
-| --- | --- | --- | --- |
-| `L0_READ` | Read-only local | đọc source, `git status`, test discovery, diff inspection | Được phép trong task phân tích/thực thi; không đổi state |
-| `L1_REPO_WRITE` | Sửa/tạo file bên trong exact workspace | patch source, test, doc, IaC | Chỉ khi task yêu cầu implementation; phải preflight, patch nhỏ, giữ pre-existing work |
-| `L2_GIT_RECORD` | Stage/commit/tag local | explicit `git add <paths>`, commit candidate | Cần user authorization trong task hiện tại; cấm broad add, amend hoặc thao tác mất dữ liệu |
-| `L3_REMOTE_CHANGE` | Push/PR/GitHub setting | push, tạo PR, sửa environment/protection | Cần user authorization; mọi target phải ghi rõ trước mutation |
-| `L4_CLOUD_READ` | Cloud/GitHub read-only | describe ECS/IAM/ECR, xem Terraform state/plan prerequisites | Cần credentials/environment rõ; không đọc secret value; output phải redact |
-| `L5_NONPROD_WRITE` | Mutation staging/disposable target | Terraform apply staging, migrate deploy, load/chaos/restore drill | Cần approval của environment/data owner, exact target, rollback/abort plan và preflight |
-| `L6_PROD_WRITE` | Mutation production | production apply, migration, ECS promotion/rollback | Chỉ sau G5 PASS và independent production approval; từng lệnh phải map promotion record |
+| Class              | Phạm vi                                | Ví dụ                                                             | Quy tắc                                                                                    |
+| ------------------ | -------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `L0_READ`          | Read-only local                        | đọc source, `git status`, test discovery, diff inspection         | Được phép trong task phân tích/thực thi; không đổi state                                   |
+| `L1_REPO_WRITE`    | Sửa/tạo file bên trong exact workspace | patch source, test, doc, IaC                                      | Chỉ khi task yêu cầu implementation; phải preflight, patch nhỏ, giữ pre-existing work      |
+| `L2_GIT_RECORD`    | Stage/commit/tag local                 | explicit `git add <paths>`, commit candidate                      | Cần user authorization trong task hiện tại; cấm broad add, amend hoặc thao tác mất dữ liệu |
+| `L3_REMOTE_CHANGE` | Push/PR/GitHub setting                 | push, tạo PR, sửa environment/protection                          | Cần user authorization; mọi target phải ghi rõ trước mutation                              |
+| `L4_CLOUD_READ`    | Cloud/GitHub read-only                 | describe ECS/IAM/ECR, xem Terraform state/plan prerequisites      | Cần credentials/environment rõ; không đọc secret value; output phải redact                 |
+| `L5_NONPROD_WRITE` | Mutation staging/disposable target     | Terraform apply staging, migrate deploy, load/chaos/restore drill | Cần approval của environment/data owner, exact target, rollback/abort plan và preflight    |
+| `L6_PROD_WRITE`    | Mutation production                    | production apply, migration, ECS promotion/rollback               | Chỉ sau G5 PASS và independent production approval; từng lệnh phải map promotion record    |
 
 Quyền kỹ thuật hoặc chế độ full access không phải authorization. Task đang ở `L0`/`L1` không được tự nâng lên `L2`–`L6`. Bất kỳ lệnh nào có thể destroy/replace resource, reset/drop/truncate data, xoá untracked/dirty work hoặc discard Git state phải dừng theo safety policy, kể cả khi task mang class cao hơn.
 
@@ -106,23 +106,23 @@ Quyền kỹ thuật hoặc chế độ full access không phải authorization.
 
 Mỗi task ID PHẢI được thực thi như một work packet độc lập. Nếu task body không ghi lại một field dưới đây, default trong mục này vẫn bắt buộc:
 
-| Field | Nội dung bắt buộc |
-| --- | --- |
-| `taskId` | ID duy nhất `PRD-NNNN`; không gộp đóng nhiều ID nếu evidence không tách được |
-| `objective` | Một outcome có thể kiểm chứng, không dùng từ mơ hồ như “cải thiện” |
-| `findingIds` | Finding/gap được đóng; có thể rỗng với task governance/deploy |
-| `owner/reviewer` | Người/team accountable và reviewer độc lập khi được yêu cầu |
-| `permissionClass` | Mức cao nhất task được phép dùng; nâng mức cần approval mới |
-| `dependencies` | Task/gate/input phải `CLOSED`/`PASS`, không chỉ “đã làm” |
-| `readScope` | File/evidence/environment cần đọc để xác định hiện trạng |
-| `writeScope` | Exact path/resource được phép đổi; ngoài scope phải dừng hoặc mở scope change |
-| `forbiddenScope` | Pre-existing unrelated work, protected data và actions bị cấm |
-| `designInvariants` | Tính chất phải luôn đúng cả happy path lẫn failure path |
-| `implementationSteps` | Thứ tự mutation nhỏ nhất, reviewable, có checkpoint |
-| `tests` | Positive, negative, concurrency, restart/failure injection tương ứng risk |
-| `evidence` | File/log/JSON/report thô, identity, checksum và nơi lưu |
-| `stopConditions` | Condition phải dừng, rollback hoặc escalation |
-| `DoR/DoD` | Definition of Ready và Definition of Done theo mục 2.5 |
+| Field                 | Nội dung bắt buộc                                                             |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `taskId`              | ID duy nhất `PRD-NNNN`; không gộp đóng nhiều ID nếu evidence không tách được  |
+| `objective`           | Một outcome có thể kiểm chứng, không dùng từ mơ hồ như “cải thiện”            |
+| `findingIds`          | Finding/gap được đóng; có thể rỗng với task governance/deploy                 |
+| `owner/reviewer`      | Người/team accountable và reviewer độc lập khi được yêu cầu                   |
+| `permissionClass`     | Mức cao nhất task được phép dùng; nâng mức cần approval mới                   |
+| `dependencies`        | Task/gate/input phải `CLOSED`/`PASS`, không chỉ “đã làm”                      |
+| `readScope`           | File/evidence/environment cần đọc để xác định hiện trạng                      |
+| `writeScope`          | Exact path/resource được phép đổi; ngoài scope phải dừng hoặc mở scope change |
+| `forbiddenScope`      | Pre-existing unrelated work, protected data và actions bị cấm                 |
+| `designInvariants`    | Tính chất phải luôn đúng cả happy path lẫn failure path                       |
+| `implementationSteps` | Thứ tự mutation nhỏ nhất, reviewable, có checkpoint                           |
+| `tests`               | Positive, negative, concurrency, restart/failure injection tương ứng risk     |
+| `evidence`            | File/log/JSON/report thô, identity, checksum và nơi lưu                       |
+| `stopConditions`      | Condition phải dừng, rollback hoặc escalation                                 |
+| `DoR/DoD`             | Definition of Ready và Definition of Done theo mục 2.5                        |
 
 Một agent chỉ được lấy một task hoặc một nhóm task được ghi rõ là atomic. Nếu phát hiện fix của task A buộc đổi contract của task B, agent phải ghi dependency/scope change; không lặng lẽ mở rộng diff.
 
@@ -193,21 +193,21 @@ ADR tối thiểu ghi context, options, decision, rejected options, security/dat
 
 ### 3.1 Git và candidate
 
-| Thuộc tính | Giá trị baseline |
-| --- | --- |
-| Branch | `main` |
-| HEAD | `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895` |
-| Upstream | `origin/main` |
-| Ahead/behind | `0/0` |
-| Tracked files | 992 |
-| Porcelain status entries | 496 |
-| Tracked unstaged | 438 |
-| Untracked | 58 |
-| Staged | 0 |
-| Candidate manifest paths | 121 |
-| Fingerprinted paths | 120: 90 tracked + 30 untracked |
-| Declared fingerprint | `sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24` |
-| Recomputed fingerprint | `sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c` |
+| Thuộc tính               | Giá trị baseline                                                          |
+| ------------------------ | ------------------------------------------------------------------------- |
+| Branch                   | `main`                                                                    |
+| HEAD                     | `d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895`                                |
+| Upstream                 | `origin/main`                                                             |
+| Ahead/behind             | `0/0`                                                                     |
+| Tracked files            | 992                                                                       |
+| Porcelain status entries | 496                                                                       |
+| Tracked unstaged         | 438                                                                       |
+| Untracked                | 58                                                                        |
+| Staged                   | 0                                                                         |
+| Candidate manifest paths | 121                                                                       |
+| Fingerprinted paths      | 120: 90 tracked + 30 untracked                                            |
+| Declared fingerprint     | `sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24` |
+| Recomputed fingerprint   | `sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c` |
 
 Kết luận baseline:
 
@@ -219,18 +219,18 @@ Kết luận baseline:
 
 ### 3.2 Findings phải được đóng
 
-| ID | Mức | Finding | Gate bị chặn |
-| --- | --- | --- | --- |
-| RLS-001 | P1 BLOCKER | Candidate fingerprint không khớp bytes hiện tại | Candidate |
-| DATA-001 | P1 BLOCKER | Xóa DB metadata trước object cloud, có thể tạo orphan không retry được | Local code, staging, production |
-| REL-001 | P1 BLOCKER | Upload intent fallback vào process memory trong production multi-replica | Local code, staging, production |
-| SEC-001 | P1 / Security Medium | Presigned upload thiếu runtime validation, byte cap và lifecycle đúng prefix | Local code, staging, production |
-| OPS-001 | P1 production blocker | Dashboard/alert config chưa có deployment và notification path được chứng minh | Staging acceptance, production |
-| SEC-002 | P2 / Security Medium | Public web task dùng chung S3/KMS task role với API/worker | Local code, staging, production |
-| REL-002 | P2 | `AI_TIMEOUT_MS` và `AI_MAX_RETRIES` không điều khiển runtime | Local code, staging |
-| CD-001 | P2 | Release manifest thiếu deterministic migration-set hash | Candidate CI, staging, production |
-| SEC-003 | P3 / Security Low | SSE vẫn nhận reusable bearer token qua query URL | Local code, security smoke |
-| DOC-001 | P3 | Readiness documents có kết luận stale/superseded | Candidate review |
+| ID       | Mức                   | Finding                                                                        | Gate bị chặn                      |
+| -------- | --------------------- | ------------------------------------------------------------------------------ | --------------------------------- |
+| RLS-001  | P1 BLOCKER            | Candidate fingerprint không khớp bytes hiện tại                                | Candidate                         |
+| DATA-001 | P1 BLOCKER            | Xóa DB metadata trước object cloud, có thể tạo orphan không retry được         | Local code, staging, production   |
+| REL-001  | P1 BLOCKER            | Upload intent fallback vào process memory trong production multi-replica       | Local code, staging, production   |
+| SEC-001  | P1 / Security Medium  | Presigned upload thiếu runtime validation, byte cap và lifecycle đúng prefix   | Local code, staging, production   |
+| OPS-001  | P1 production blocker | Dashboard/alert config chưa có deployment và notification path được chứng minh | Staging acceptance, production    |
+| SEC-002  | P2 / Security Medium  | Public web task dùng chung S3/KMS task role với API/worker                     | Local code, staging, production   |
+| REL-002  | P2                    | `AI_TIMEOUT_MS` và `AI_MAX_RETRIES` không điều khiển runtime                   | Local code, staging               |
+| CD-001   | P2                    | Release manifest thiếu deterministic migration-set hash                        | Candidate CI, staging, production |
+| SEC-003  | P3 / Security Low     | SSE vẫn nhận reusable bearer token qua query URL                               | Local code, security smoke        |
+| DOC-001  | P3                    | Readiness documents có kết luận stale/superseded                               | Candidate review                  |
 
 ### 3.3 External evidence bắt buộc còn thiếu
 
@@ -312,30 +312,30 @@ Các hành động sau cần user/platform authorization riêng tại thời đi
 
 Tên người cụ thể phải được điền trước khi bắt đầu Phase 4.
 
-| Role | Trách nhiệm bắt buộc | Không được tự phê duyệt |
-| --- | --- | --- |
-| Repository Owner | Scope, code changes, candidate manifest, commit provenance | Production approval cho chính thay đổi của mình |
-| Application Owner | API/web/worker correctness, auth, storage, AI runtime | Security exception do mình tạo |
-| Security Reviewer | Threat paths, authz, signed URL, IAM, scanners, browser negative tests | Waive P1 không có compensating control |
-| Data/DB Owner | Migration compatibility, backup, PITR, restore drill, RPO/RTO | Restore vào target chưa xác nhận disposable |
-| Platform/IaC Owner | Terraform plan, AWS networking/IAM/KMS/ECS/RDS/Redis, OIDC | Approve persistent replacement một mình |
-| CI/CD Owner | Exact-SHA CI, workflow protection, SBOM/manifest retention | Bypass required checks |
-| SRE/Operations Owner | SLO, dashboards, alerts, load/soak, rollback, incident readiness | Declare alerts PASS chỉ từ config file |
-| Staging Approver | Cho phép staging execution sau Candidate Gate | Production approval |
-| Production Approver | Final independent decision sau evidence review | Approve khi còn mandatory UNKNOWN |
-| Evidence Custodian | Evidence index, checksums, retention, chain of custody | Thay đổi evidence sau approval |
+| Role                 | Trách nhiệm bắt buộc                                                   | Không được tự phê duyệt                         |
+| -------------------- | ---------------------------------------------------------------------- | ----------------------------------------------- |
+| Repository Owner     | Scope, code changes, candidate manifest, commit provenance             | Production approval cho chính thay đổi của mình |
+| Application Owner    | API/web/worker correctness, auth, storage, AI runtime                  | Security exception do mình tạo                  |
+| Security Reviewer    | Threat paths, authz, signed URL, IAM, scanners, browser negative tests | Waive P1 không có compensating control          |
+| Data/DB Owner        | Migration compatibility, backup, PITR, restore drill, RPO/RTO          | Restore vào target chưa xác nhận disposable     |
+| Platform/IaC Owner   | Terraform plan, AWS networking/IAM/KMS/ECS/RDS/Redis, OIDC             | Approve persistent replacement một mình         |
+| CI/CD Owner          | Exact-SHA CI, workflow protection, SBOM/manifest retention             | Bypass required checks                          |
+| SRE/Operations Owner | SLO, dashboards, alerts, load/soak, rollback, incident readiness       | Declare alerts PASS chỉ từ config file          |
+| Staging Approver     | Cho phép staging execution sau Candidate Gate                          | Production approval                             |
+| Production Approver  | Final independent decision sau evidence review                         | Approve khi còn mandatory UNKNOWN               |
+| Evidence Custodian   | Evidence index, checksums, retention, chain of custody                 | Thay đổi evidence sau approval                  |
 
 ### 6.1 RACI tối thiểu
 
-| Workstream | Responsible | Accountable | Consulted | Informed |
-| --- | --- | --- | --- | --- |
-| Storage/data fixes | Application Owner | Repository Owner | Security, Data Owner | SRE |
-| IAM separation | Platform Owner | Security Reviewer | Application Owner | Repository Owner |
-| CI/release manifest | CI/CD Owner | Repository Owner | Security, Data Owner | Platform Owner |
-| Observability | SRE Owner | Platform Owner | Application Owner | Production Approver |
-| Migration rehearsal | Data Owner | Platform Owner | Application Owner | Security Reviewer |
-| Staging acceptance | SRE + Application + Security | Staging Approver | Data/Platform | Production Approver |
-| Production release | Platform/CI Owner | Production Approver | All owners | Stakeholders |
+| Workstream          | Responsible                  | Accountable         | Consulted            | Informed            |
+| ------------------- | ---------------------------- | ------------------- | -------------------- | ------------------- |
+| Storage/data fixes  | Application Owner            | Repository Owner    | Security, Data Owner | SRE                 |
+| IAM separation      | Platform Owner               | Security Reviewer   | Application Owner    | Repository Owner    |
+| CI/release manifest | CI/CD Owner                  | Repository Owner    | Security, Data Owner | Platform Owner      |
+| Observability       | SRE Owner                    | Platform Owner      | Application Owner    | Production Approver |
+| Migration rehearsal | Data Owner                   | Platform Owner      | Application Owner    | Security Reviewer   |
+| Staging acceptance  | SRE + Application + Security | Staging Approver    | Data/Platform        | Production Approver |
+| Production release  | Platform/CI Owner            | Production Approver | All owners           | Stakeholders        |
 
 ## 7. Evidence hierarchy và chain of custody
 
@@ -924,29 +924,29 @@ Không được bypass engine enforcement bằng direct binary để tạo relea
 
 ### 11.2 Mandatory local gates
 
-| Gate | Requirement |
-| --- | --- |
-| Format | Prettier check PASS, không auto-format unrelated files |
-| Lint | Full lint PASS |
-| Typecheck | contracts, API, web PASS với no-emit |
-| Contracts | Full test PASS |
-| API unit | Full PASS, retries 0 |
-| API integration | Full PASS trên disposable DB/Redis |
-| Web unit | Full PASS |
-| Migration checker | PASS |
-| Migration deploy | PASS trên clean disposable DB và production-like upgraded copy |
-| Release workflow checker | PASS |
-| Actionlint | PASS |
-| ShellCheck | PASS |
-| Terraform fmt | PASS |
-| Terraform init/validate | PASS trên disposable copy, backend disabled |
-| Secret scan | Exact-scope Gitleaks PASS |
-| SAST | Exact-scope Semgrep PASS |
-| SCA | Lockfile/production dependency policy PASS |
-| IaC scan | Terraform/container config policy PASS |
-| Image scan | API/web image policy PASS |
-| Docker E2E | Full PASS, retries 0, audit-specific disposable resources |
-| Git whitespace | `git diff --check` PASS |
+| Gate                     | Requirement                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| Format                   | Prettier check PASS, không auto-format unrelated files         |
+| Lint                     | Full lint PASS                                                 |
+| Typecheck                | contracts, API, web PASS với no-emit                           |
+| Contracts                | Full test PASS                                                 |
+| API unit                 | Full PASS, retries 0                                           |
+| API integration          | Full PASS trên disposable DB/Redis                             |
+| Web unit                 | Full PASS                                                      |
+| Migration checker        | PASS                                                           |
+| Migration deploy         | PASS trên clean disposable DB và production-like upgraded copy |
+| Release workflow checker | PASS                                                           |
+| Actionlint               | PASS                                                           |
+| ShellCheck               | PASS                                                           |
+| Terraform fmt            | PASS                                                           |
+| Terraform init/validate  | PASS trên disposable copy, backend disabled                    |
+| Secret scan              | Exact-scope Gitleaks PASS                                      |
+| SAST                     | Exact-scope Semgrep PASS                                       |
+| SCA                      | Lockfile/production dependency policy PASS                     |
+| IaC scan                 | Terraform/container config policy PASS                         |
+| Image scan               | API/web image policy PASS                                      |
+| Docker E2E               | Full PASS, retries 0, audit-specific disposable resources      |
+| Git whitespace           | `git diff --check` PASS                                        |
 
 ### 11.3 Focused closure suites
 
@@ -1492,121 +1492,121 @@ Duration phải được SRE/Production Approver định nghĩa theo risk và tr
 
 ### G0 — Governance Gate
 
-| Control | PASS condition |
-| --- | --- |
-| Owners | Mọi mandatory role có owner |
+| Control          | PASS condition                                  |
+| ---------------- | ----------------------------------------------- |
+| Owners           | Mọi mandatory role có owner                     |
 | Finding register | Mọi audit finding có task/test/evidence mapping |
-| Candidate policy | Explicit path/fingerprint rules approved |
-| Safety | No destructive/broad staging shortcuts |
+| Candidate policy | Explicit path/fingerprint rules approved        |
+| Safety           | No destructive/broad staging shortcuts          |
 
 ### G1 — Local Code Gate
 
-| Control | PASS condition |
-| --- | --- |
-| DATA-001 | Durable deletion state machine + failure injection PASS |
-| REL-001 | Multi-replica shared intent/fail-closed PASS |
-| SEC-001 | Runtime validation/byte cap/intent binding/lifecycle PASS |
-| SEC-002 | Separate task roles static policy PASS |
-| REL-002 | Config-driven timeout/retry tests PASS |
-| CD-001 | Migration hash implementation/invariant tests PASS |
-| SEC-003 | No reusable query bearer PASS |
-| OPS-001 | Deployable observability design/config and CI validation PASS |
-| Full gates | Exact-toolchain format/lint/type/test/build/scanners PASS |
+| Control    | PASS condition                                                |
+| ---------- | ------------------------------------------------------------- |
+| DATA-001   | Durable deletion state machine + failure injection PASS       |
+| REL-001    | Multi-replica shared intent/fail-closed PASS                  |
+| SEC-001    | Runtime validation/byte cap/intent binding/lifecycle PASS     |
+| SEC-002    | Separate task roles static policy PASS                        |
+| REL-002    | Config-driven timeout/retry tests PASS                        |
+| CD-001     | Migration hash implementation/invariant tests PASS            |
+| SEC-003    | No reusable query bearer PASS                                 |
+| OPS-001    | Deployable observability design/config and CI validation PASS |
+| Full gates | Exact-toolchain format/lint/type/test/build/scanners PASS     |
 
 ### G2 — Candidate/CI Gate
 
-| Control | PASS condition |
-| --- | --- |
-| Manifest | Exact path set reviewed |
-| Fingerprint | Current/staged/commit fingerprints match |
-| Git | Immutable candidate SHA, no unexpected staged path |
-| CI | Protected push CI PASS exact SHA |
-| Supply chain | Pinned actions/images, SBOM, scans, checksums |
-| Release manifest | Source/digests/SBOM/migration hash present |
+| Control          | PASS condition                                     |
+| ---------------- | -------------------------------------------------- |
+| Manifest         | Exact path set reviewed                            |
+| Fingerprint      | Current/staged/commit fingerprints match           |
+| Git              | Immutable candidate SHA, no unexpected staged path |
+| CI               | Protected push CI PASS exact SHA                   |
+| Supply chain     | Pinned actions/images, SBOM, scans, checksums      |
+| Release manifest | Source/digests/SBOM/migration hash present         |
 
 ### G3 — Staging Entry Gate
 
-| Control | PASS condition |
-| --- | --- |
-| Terraform | Staging/production plans reviewed |
-| Persistence | No unexpected destroy/replace |
-| IAM/OIDC | Environments, reviewers, trust, pass-role verified |
-| Secrets | Presence/source/validation verified without reading values |
-| Inputs | URLs/accounts/traffic/budget/RPO/RTO supplied |
+| Control     | PASS condition                                             |
+| ----------- | ---------------------------------------------------------- |
+| Terraform   | Staging/production plans reviewed                          |
+| Persistence | No unexpected destroy/replace                              |
+| IAM/OIDC    | Environments, reviewers, trust, pass-role verified         |
+| Secrets     | Presence/source/validation verified without reading values |
+| Inputs      | URLs/accounts/traffic/budget/RPO/RTO supplied              |
 
 ### G4 — Staging Acceptance Gate
 
-| Control | PASS condition |
-| --- | --- |
-| Deployment | Exact digests stable |
-| Migration | Exact hash deploy PASS |
-| Browser security | PASS |
-| BOLA/tenant | PASS |
-| S3/KMS/IAM | Positive/negative PASS |
-| AI trust/cost | PASS |
-| Load/soak | SLO/headroom PASS |
-| Failure/chaos | Recovery/no-duplicate PASS |
-| Alerts | Synthetic delivery PASS |
-| Rollback | Exact ARN rehearsal PASS |
-| Restore | Checksum/RPO/RTO PASS |
+| Control          | PASS condition             |
+| ---------------- | -------------------------- |
+| Deployment       | Exact digests stable       |
+| Migration        | Exact hash deploy PASS     |
+| Browser security | PASS                       |
+| BOLA/tenant      | PASS                       |
+| S3/KMS/IAM       | Positive/negative PASS     |
+| AI trust/cost    | PASS                       |
+| Load/soak        | SLO/headroom PASS          |
+| Failure/chaos    | Recovery/no-duplicate PASS |
+| Alerts           | Synthetic delivery PASS    |
+| Rollback         | Exact ARN rehearsal PASS   |
+| Restore          | Checksum/RPO/RTO PASS      |
 
 ### G5 — Production Approval Gate
 
-| Control | PASS condition |
-| --- | --- |
-| All previous gates | Remain valid |
-| Production plan | Approved and unchanged |
-| Open findings | No P1/P2; P3 explicitly accepted if any |
-| Evidence | Complete, checksummed, exact release |
-| Approval | Independent environment approval after staging |
+| Control            | PASS condition                                 |
+| ------------------ | ---------------------------------------------- |
+| All previous gates | Remain valid                                   |
+| Production plan    | Approved and unchanged                         |
+| Open findings      | No P1/P2; P3 explicitly accepted if any        |
+| Evidence           | Complete, checksummed, exact release           |
+| Approval           | Independent environment approval after staging |
 
 ### G6 — Production Closure Gate
 
-| Control | PASS condition |
-| --- | --- |
+| Control       | PASS condition                          |
+| ------------- | --------------------------------------- |
 | Running state | Exact manifest digests/task definitions |
-| Smoke | PASS |
-| Observation | No stop-threshold breach |
-| Operations | Alerts/on-call healthy |
-| Records | Promotion/approval/evidence retained |
+| Smoke         | PASS                                    |
+| Observation   | No stop-threshold breach                |
+| Operations    | Alerts/on-call healthy                  |
+| Records       | Promotion/approval/evidence retained    |
 
 ## 19. Traceability matrix
 
-| Finding/gap | Implementation tasks | Required tests | Closure gate | Evidence |
-| --- | --- | --- | --- | --- |
-| RLS-001 | PRD-2001, PRD-2002 | Fingerprint/staged tree verification | G2 | Candidate manifest/fingerprint/source SHA |
-| DATA-001 | PRD-1001 | Provider/DB failure, retry, reconcile | G1 + G4 | Unit/integration/staging deletion trace |
-| REL-001 | PRD-1002 | Multi-replica, Redis outage, replay | G1 + G4 | Multi-replica result |
-| SEC-001 | PRD-1003 | Runtime validation, byte cap, metadata binding | G1 + G4 | Security tests + live S3 result |
-| OPS-001 | PRD-1401–1404 | Rule lint + synthetic alerts | G4 | Alert/destination/runbook evidence |
-| SEC-002 | PRD-1101 | Policy tests + live AccessDenied | G1 + G4 | Plan, IAM simulation, task tests |
-| REL-002 | PRD-1201 | Timeout/retry/fallback/circuit tests | G1 + G4 | Focused tests + provider failure trace |
-| CD-001 | PRD-1301–1302 | Migration hash invariants | G2 + G4 | Release manifest + migration task evidence |
-| SEC-003 | PRD-1102 | Query denial/header or ticket tests | G1 + G4 | API/browser/log evidence |
-| DOC-001 | PRD-1404 | Link/status review | G2 | Reviewed docs diff |
-| Exact toolchain | Section 11 | Full gates | G1/G2 | CI/test artifacts |
-| Terraform replacement risk | PRD-3002–3003 | Plan review | G3/G5 | Approved plan summaries |
-| Live AWS prerequisites | PRD-3004, PRD-5003 | Read-only/live positive/negative | G3/G4 | IAM/OIDC/S3/KMS evidence |
-| Load/capacity | PRD-5005 | Load/soak | G4 | Load/soak report |
-| Rollback | PRD-5007 | Rehearsal | G4 | Exact ARN rollback record |
-| Restore | PRD-5008 | Disposable restore drill | G4 | Drill JSON/checksum/RPO/RTO |
+| Finding/gap                | Implementation tasks | Required tests                                 | Closure gate | Evidence                                   |
+| -------------------------- | -------------------- | ---------------------------------------------- | ------------ | ------------------------------------------ |
+| RLS-001                    | PRD-2001, PRD-2002   | Fingerprint/staged tree verification           | G2           | Candidate manifest/fingerprint/source SHA  |
+| DATA-001                   | PRD-1001             | Provider/DB failure, retry, reconcile          | G1 + G4      | Unit/integration/staging deletion trace    |
+| REL-001                    | PRD-1002             | Multi-replica, Redis outage, replay            | G1 + G4      | Multi-replica result                       |
+| SEC-001                    | PRD-1003             | Runtime validation, byte cap, metadata binding | G1 + G4      | Security tests + live S3 result            |
+| OPS-001                    | PRD-1401–1404        | Rule lint + synthetic alerts                   | G4           | Alert/destination/runbook evidence         |
+| SEC-002                    | PRD-1101             | Policy tests + live AccessDenied               | G1 + G4      | Plan, IAM simulation, task tests           |
+| REL-002                    | PRD-1201             | Timeout/retry/fallback/circuit tests           | G1 + G4      | Focused tests + provider failure trace     |
+| CD-001                     | PRD-1301–1302        | Migration hash invariants                      | G2 + G4      | Release manifest + migration task evidence |
+| SEC-003                    | PRD-1102             | Query denial/header or ticket tests            | G1 + G4      | API/browser/log evidence                   |
+| DOC-001                    | PRD-1404             | Link/status review                             | G2           | Reviewed docs diff                         |
+| Exact toolchain            | Section 11           | Full gates                                     | G1/G2        | CI/test artifacts                          |
+| Terraform replacement risk | PRD-3002–3003        | Plan review                                    | G3/G5        | Approved plan summaries                    |
+| Live AWS prerequisites     | PRD-3004, PRD-5003   | Read-only/live positive/negative               | G3/G4        | IAM/OIDC/S3/KMS evidence                   |
+| Load/capacity              | PRD-5005             | Load/soak                                      | G4           | Load/soak report                           |
+| Rollback                   | PRD-5007             | Rehearsal                                      | G4           | Exact ARN rollback record                  |
+| Restore                    | PRD-5008             | Disposable restore drill                       | G4           | Drill JSON/checksum/RPO/RTO                |
 
 ## 20. Risk register tối thiểu
 
-| Risk | Trigger | Preventive control | Detection | Response | Owner |
-| --- | --- | --- | --- | --- | --- |
-| Candidate evidence drift | Included byte thay đổi | Freeze/fingerprint/immutable SHA | Hash mismatch | Invalidate evidence, create new candidate | Repository Owner |
-| Storage orphan | Provider/DB split failure | Durable deletion/outbox | Pending age/reconcile metric | Retry/reconcile, incident if threshold | Application/Data Owner |
-| Unbounded upload cost | Repeated large signed PUT | Byte cap/quota/lifecycle | Bytes/quota/cost alerts | Revoke/limit account, clean via approved process | Security/SRE |
-| Cross-replica intent loss | Redis unavailable | Shared store/fail closed | Presign 503/intents metric | Restore Redis, no capability issuance | Application/SRE |
-| Web compromise reaches data | Shared task role | Separate least privilege roles | IAM/Access Analyzer | Revoke task/redeploy/incident | Platform/Security |
-| Token leakage in URL/log | SSE query token | Header/single-use ticket | Secret/log scan | Revoke family/token, log access incident | Security |
-| AI retry storm/cost overspend | Provider degradation | Config timeout/retry/circuit/budget | Retry/cost/burn alerts | Circuit/open/disable provider | Application/SRE |
-| Hidden migration drift | Migration set differs | Deterministic migration hash | Pre-deploy mismatch | Stop release | CI/Data Owner |
-| Undetected outage | Collector/alert missing | Deployed monitoring/synthetic drill | Heartbeat/no-data alert | Incident/manual rollback | SRE |
-| Persistent resource loss | Terraform replacement | Dual plan review/deletion protection | Plan diff | Stop apply | Platform/Data Owner |
-| Rollback incompatibility | Schema/app mismatch | Expand/contract + rehearsal | Rollback smoke | Stop release/incident | Application/Data Owner |
-| Restore failure | Backup corrupt/stale | Checksum/PITR/drills | Backup age/drill alert | DR incident | Data Owner |
+| Risk                          | Trigger                   | Preventive control                   | Detection                    | Response                                         | Owner                  |
+| ----------------------------- | ------------------------- | ------------------------------------ | ---------------------------- | ------------------------------------------------ | ---------------------- |
+| Candidate evidence drift      | Included byte thay đổi    | Freeze/fingerprint/immutable SHA     | Hash mismatch                | Invalidate evidence, create new candidate        | Repository Owner       |
+| Storage orphan                | Provider/DB split failure | Durable deletion/outbox              | Pending age/reconcile metric | Retry/reconcile, incident if threshold           | Application/Data Owner |
+| Unbounded upload cost         | Repeated large signed PUT | Byte cap/quota/lifecycle             | Bytes/quota/cost alerts      | Revoke/limit account, clean via approved process | Security/SRE           |
+| Cross-replica intent loss     | Redis unavailable         | Shared store/fail closed             | Presign 503/intents metric   | Restore Redis, no capability issuance            | Application/SRE        |
+| Web compromise reaches data   | Shared task role          | Separate least privilege roles       | IAM/Access Analyzer          | Revoke task/redeploy/incident                    | Platform/Security      |
+| Token leakage in URL/log      | SSE query token           | Header/single-use ticket             | Secret/log scan              | Revoke family/token, log access incident         | Security               |
+| AI retry storm/cost overspend | Provider degradation      | Config timeout/retry/circuit/budget  | Retry/cost/burn alerts       | Circuit/open/disable provider                    | Application/SRE        |
+| Hidden migration drift        | Migration set differs     | Deterministic migration hash         | Pre-deploy mismatch          | Stop release                                     | CI/Data Owner          |
+| Undetected outage             | Collector/alert missing   | Deployed monitoring/synthetic drill  | Heartbeat/no-data alert      | Incident/manual rollback                         | SRE                    |
+| Persistent resource loss      | Terraform replacement     | Dual plan review/deletion protection | Plan diff                    | Stop apply                                       | Platform/Data Owner    |
+| Rollback incompatibility      | Schema/app mismatch       | Expand/contract + rehearsal          | Rollback smoke               | Stop release/incident                            | Application/Data Owner |
+| Restore failure               | Backup corrupt/stale      | Checksum/PITR/drills                 | Backup age/drill alert       | DR incident                                      | Data Owner             |
 
 ## 21. Stop, abort và rollback policy
 
@@ -1845,15 +1845,15 @@ Mỗi lần cập nhật phải giữ traceability từ finding đến task, tes
 
 ## 27. Trạng thái hiện tại của plan
 
-| Gate | Trạng thái ban đầu | Điều kiện để đổi trạng thái |
-| --- | --- | --- |
-| Governance Gate | `PENDING` | Owner matrix/finding register/candidate policy approved |
-| Local Code Gate | `NO_GO` | Phase 1 remediation và exact-toolchain gates PASS |
-| Candidate/CI Gate | `NO_GO` | Current fingerprint, immutable SHA và exact-SHA CI PASS |
-| Staging Entry Gate | `NO_GO` | Reviewed plans và external prerequisites PASS |
-| Staging Acceptance Gate | `NOT_STARTED` | Exact-digest staging suite/rollback/restore PASS |
-| Production Approval Gate | `NO_GO` | Tất cả mandatory evidence complete, independent approval |
-| Production Closure Gate | `NOT_STARTED` | Promotion, smoke và observation PASS |
+| Gate                     | Trạng thái ban đầu | Điều kiện để đổi trạng thái                              |
+| ------------------------ | ------------------ | -------------------------------------------------------- |
+| Governance Gate          | `PENDING`          | Owner matrix/finding register/candidate policy approved  |
+| Local Code Gate          | `NO_GO`            | Phase 1 remediation và exact-toolchain gates PASS        |
+| Candidate/CI Gate        | `NO_GO`            | Current fingerprint, immutable SHA và exact-SHA CI PASS  |
+| Staging Entry Gate       | `NO_GO`            | Reviewed plans và external prerequisites PASS            |
+| Staging Acceptance Gate  | `NOT_STARTED`      | Exact-digest staging suite/rollback/restore PASS         |
+| Production Approval Gate | `NO_GO`            | Tất cả mandatory evidence complete, independent approval |
+| Production Closure Gate  | `NOT_STARTED`      | Promotion, smoke và observation PASS                     |
 
 **Current authoritative verdict:**
 
@@ -1872,48 +1872,48 @@ Không verdict nào được nâng chỉ bằng việc hoàn thành checklist th
 
 Ma trận này chuẩn hóa boundary cho từng task. `Write scope` là vùng tối đa được cân nhắc, không phải quyền sửa tất cả file trong vùng. Trước mutation, executor PHẢI thu hẹp thành danh sách exact file trong task packet. Mọi task mặc định cấm sửa/xóa pre-existing unrelated work, file ngoài workspace, `.git`, secret store, production data và historical inactive material dưới `ai-it-interview-project-kit/_archived/16-codex/` hoặc `.codex-quarantine/`.
 
-| Task | Max permission | Ready khi | Write scope tối đa | Evidence tối thiểu để Done | Stop/escalate khi |
-| --- | --- | --- | --- | --- | --- |
-| PRD-0001 | `L1_REPO_WRITE` | role list và approver candidates có sẵn | owner/finding/evidence records trong `docs/operations/` hoặc active project-kit records được owner chọn | approved owner matrix, separation-of-duty check | không xác định approver độc lập, Data/SRE/Security owner |
-| PRD-0002 | `L1_REPO_WRITE` | PRD-0001 closed | finding register/evidence index | đủ 10 audit IDs, owner/task/test/gate/evidence/status/reviewer | finding ID/severity/root cause mâu thuẫn audit |
-| PRD-0003 | `L1_REPO_WRITE` | finding register tồn tại | candidate policy/manifest tooling/tests | policy được review; fixture chứng minh path set/hash deterministic | candidate scope chưa được owner xác nhận |
-| PRD-1001 | `L1_REPO_WRITE` | deletion ADR quyết định; schema/queue strategy rõ | `apps/api/src/modules/storage/**`, `apps/api/prisma/schema.prisma`, additive migration mới, focused tests/metrics | unit/integration/failure/restart/concurrency evidence; migration safety; reconcile trace | cần destructive migration, key reuse invariant không giải được, dirty file overlap |
-| PRD-1002 | `L1_REPO_WRITE` | Redis intent model/TTL/atomic primitive được chốt | storage module, platform Redis/config/readiness, focused tests | cross-replica/replay/outage/restart tests; production memory fallback rejected | phải đổi Redis topology/contract ngoài scope hoặc fail-open còn tồn tại |
-| PRD-1003 | `L1_REPO_WRITE` | upload mechanism/category limits/quota quyết định | storage controller/service/provider, `packages/contracts/src/schemas/storage.ts`, web upload caller nếu contract đổi, storage Terraform lifecycle, tests | runtime parse; provider-enforced byte cap; metadata/visibility binding; prefix inventory test | presigned mechanism không enforce được limit; public content policy chưa có owner |
-| PRD-1004 | `L1_REPO_WRITE` | PRD-1001–1003 behavior/terminal states ổn định | storage metrics/logs, `apps/api/src/modules/platform/metrics/**`, alert/dashboard config, tests | metric unit tests; no-secret label review; staging alert evidence liên kết PRD-5009 | cardinality/PII risk hoặc alert backend chưa được chọn |
-| PRD-1101 | `L1_REPO_WRITE` | IAM action/prefix inventory cho web/API/worker được duyệt | `infra/terraform/modules/compute/**`, relevant root/env variables/outputs, IaC tests/workflow references | Terraform/static policy PASS; reviewed plan; live web deny/API-worker allow evidence | unexpected role replacement/pass-role expansion/KMS wildcard |
-| PRD-1102 | `L1_REPO_WRITE` | header-only hoặc ticket ADR quyết định | interview controller/SSE service, `apps/web/src/hooks/use-interview-sse.ts`, contracts/tests/docs | query token 401; approved transport PASS; ownership/replay/log-redaction evidence | browser/client constraint buộc reusable URL credential |
-| PRD-1201 | `L1_REPO_WRITE` | timeout/retry semantics và retryable taxonomy rõ | platform config, AI providers/router/circuit breaker, tests | config 0/1/N, abort deadline, no-retry auth/quota, 429/backoff, circuit/fallback tests | SDK không hỗ trợ abort hoặc ambiguous side effect chưa có idempotency |
-| PRD-1202 | `L1_REPO_WRITE` | pricing/model mapping và cap inputs approved | AI orchestration/budget/config/metrics/tests và active cost governance docs | distributed concurrency/cap/settlement/reconciliation tests; budget alert | giá/model/cost ceiling chưa được owner cung cấp |
-| PRD-1301 | `L1_REPO_WRITE` | migration enumeration contract chốt | `.github/workflows/deploy.yml`, `infra/scripts/check-migration-safety.mjs`, release checker/tests/docs | deterministic fixtures; raw-byte behavior; pre-DB mismatch failure | historical migration file dirty/modified không được giải thích |
-| PRD-1302 | `L1_REPO_WRITE` | PRD-1301 verified; manifest consumer inventory đầy đủ | deploy workflow, release-manifest generator/schema/checker/docs/tests | schema validation/checksum; producer-consumer exact artifact test | staging/prod còn tự tái tạo field/digest |
-| PRD-1303 | `L1_REPO_WRITE` | branch/CD threat model và current workflow được đọc | `.github/workflows/**`, `infra/scripts/check-release-workflows.mjs`, tests/docs | invariant checker, exact-SHA/provenance/artifact-failure tests, action/image pin audit | security control cần GitHub mutation nhưng chưa có `L3` approval |
-| PRD-1401 | `L1_REPO_WRITE` local; `L5_NONPROD_WRITE` deploy | observability ADR, retention, notification owner approved | `infra/prometheus/**`, `infra/grafana/**`, Terraform/modules hoặc approved collector config, metrics auth/tests | deployable IaC/config, private scrape test, staging collector/notification proof | provider/account/cost/HA choice chưa quyết định |
-| PRD-1402 | `L1_REPO_WRITE` | traffic/SLO/RPO/RTO/budget inputs có owner | active SLO/alert docs, alert rules/dashboards/tests | approved numeric SLI/SLO/threshold/window/severity/runbook matrix | target chỉ là placeholder hoặc không có threshold rationale |
-| PRD-1403 | `L5_NONPROD_WRITE` | PRD-1401–1402 verified; staging exact release healthy | controlled staging signals và evidence store; code chỉ khi defect được mở task riêng | fire/deliver/ack/resolve timestamps cho mọi mandatory signal | signal có thể ảnh hưởng production/shared data hoặc thiếu abort control |
-| PRD-1404 | `L1_REPO_WRITE` | active docs inventory và owners xác định | `ai-it-interview-project-kit/13-operations/**`, active readiness/evidence docs; không chạm archived protocols | stale claims removed/superseded, link/owner/date review PASS | tài liệu historical cần bảo tồn bị nhầm là active |
-| PRD-2001 | `L1_REPO_WRITE` | G1 PASS trên stable fingerprint | candidate manifest/evidence records và deterministic tooling | exact explicit path list, per-file/aggregate hashes, exclusions, second review | source/status đổi trong inventory hoặc secret/ignored output xuất hiện |
-| PRD-2002 | `L2_GIT_RECORD` | user authorizes exact displayed path list; PRD-2001 reviewed | Git index và candidate commit chỉ với approved paths | staged tree/path/hash match; immutable commit SHA; no unrelated path | path/status/digest đổi, dirty overlap, broad add cần thiết |
-| PRD-2003 | `L3_REMOTE_CHANGE` nếu push/run cần thiết | exact candidate SHA; protected CI config/authorization | remote push/PR/run và CI artifacts; repo workflow fix phải là task mới | protected exact-SHA CI PASS; manifest/digests/SBOM/scans retained | skipped/cancelled/flaky job, mutable artifact, protection bypass |
-| PRD-3001 | `L1_REPO_WRITE` cho local fix; `L4_CLOUD_READ` cho backend-aware validation | G2 PASS; pinned Terraform/provider tools | Terraform source only if validation defect is in approved scope; evidence otherwise | fmt/init/validate/lock/IaC scan for exact SHA | backend/account/workspace identity mơ hồ |
-| PRD-3002 | `L4_CLOUD_READ` | exact candidate, staging inputs/backend/account/region | plan artifact/evidence only | reviewed plan summary, raw plan checksum, no unexplained persistent replacement | destroy/replace stateful resource, drift/import ambiguity |
-| PRD-3003 | `L4_CLOUD_READ` | exact candidate, production inputs/backend/account/region | plan artifact/evidence only | independent production plan review, security/data checklist | bất kỳ unapproved persistent destroy/replace hoặc topology mismatch |
-| PRD-3004 | `L4_CLOUD_READ` | authorized GitHub/AWS identity | evidence only; settings mutation là task `L3` riêng | redacted environment/OIDC/pass-role/ECR/secret-presence/URL evidence | cần đọc secret value, trust quá rộng, setting thiếu nhưng chưa authorized fix |
-| PRD-4001 | `L5_NONPROD_WRITE` | G3 PASS và DoR riêng ở Phase 4 | exact staging migration/ECS services trong approved target | deployment events, migration result, running digests, prior/current ARNs | target/plan/hash/digest mismatch, migration/circuit breaker failure |
-| PRD-4002 | `L4_CLOUD_READ`; rollback `L5_NONPROD_WRITE` | PRD-4001 verified | non-destructive smoke; exact rollback nếu approved | smoke/log/redaction/digest report; rollback record nếu fail | critical smoke fail, secret/token log, monitoring unavailable |
-| PRD-5001 | `L5_NONPROD_WRITE` | test users/data disposable; exact staging release | staging test data/actions và evidence, không sửa source trong cùng task | browser trace/screenshots redacted; auth/MFA/cookie/CSRF/CORS result | real user/secret/PII risk hoặc test isolation thiếu |
-| PRD-5002 | `L5_NONPROD_WRITE` | tenant/account fixture map approved | disposable staging test records/actions | negative matrix có expected/actual/status/identity; zero cross-boundary success | shared/non-disposable tenant hoặc destructive cleanup cần thiết |
-| PRD-5003 | `L5_NONPROD_WRITE` | disposable bucket prefixes/objects và task identities rõ | approved staging object prefixes/actions | ECS credential identity, KMS/S3 positive-negative, limit/lifecycle/delete trace | account/bucket/prefix mismatch hoặc object không disposable |
-| PRD-5004 | `L5_NONPROD_WRITE` | provider test mode, cost ceiling, abort threshold approved | controlled staging AI calls/data | authority/adversarial/timeout/retry/cost/concurrency/alert evidence | real financial exposure vượt ceiling hoặc provider mode mơ hồ |
-| PRD-5005 | `L5_NONPROD_WRITE` | expected peak/mix/headroom/duration/cost/abort inputs approved | approved load generators và staging traffic | raw results + summary đủ p50/p95/p99/error/resource/queue/cost; no threshold breach | target production/shared hoặc abort/cost threshold đạt |
-| PRD-5006 | `L5_NONPROD_WRITE` | blast radius, recovery, steady-state, observers approved | exact staging components đã enumerate | before/during/after signals; recovery/no-loss/no-duplicate/alerts | blast radius lan ngoài staging, health không hồi phục trong threshold |
-| PRD-5007 | `L5_NONPROD_WRITE` | prior/candidate ARNs và schema compatibility proven | exact staging ECS services | timed rollback steps, prior digests, critical smoke, no data reset | prior ARN/digest thiếu hoặc schema không backward-compatible |
-| PRD-5008 | `L5_NONPROD_WRITE` | Data Owner xác nhận exact isolated empty disposable target | approved backup artifacts và isolated drill DB only | encrypted backup/checksum/restore/RPO/RTO/app sanity evidence | target không empty/disposable, identity mismatch, destructive command ngoài target |
-| PRD-5009 | `L5_NONPROD_WRITE` | PRD-1403 ready; routes/on-call in test mode | controlled alert signals/evidence | fire/deliver/ack/runbook/resolve chronology | alert có thể page production ngoài approved drill hoặc không thể isolate |
-| PRD-6001 | `L4_CLOUD_READ` | G4 sealed, plans/evidence current | approval/evidence records only | signed, scoped, expiring G5 decision | any automatic NO_GO condition hoặc conflict of interest |
-| PRD-6002 | `L6_PROD_WRITE` | exact G5 approval; operator identity/on-call/window reverified | exact approved production migration/ECS services | apply/deploy events, running identity, smoke, prior/current ARNs | identity/plan/hash/digest mismatch, threshold breach, monitoring loss |
-| PRD-7001 | `L4_CLOUD_READ`; rollback `L6_PROD_WRITE` | production running exact release; alerts healthy | read-only observation và exact approved rollback | window/traffic coverage, metrics/log/alert/smoke record | stop threshold, data-integrity/auth failure, blind monitoring |
-| PRD-7002 | `L1_REPO_WRITE` | PRD-7001 closed và deviations dispositioned | task/finding/gate/evidence/release records | sealed evidence index, G6 decision, retention/next drill, final verdict | evidence mismatch/missing checksum/open mandatory finding |
+| Task     | Max permission                                                              | Ready khi                                                      | Write scope tối đa                                                                                                                                       | Evidence tối thiểu để Done                                                                    | Stop/escalate khi                                                                  |
+| -------- | --------------------------------------------------------------------------- | -------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| PRD-0001 | `L1_REPO_WRITE`                                                             | role list và approver candidates có sẵn                        | owner/finding/evidence records trong `docs/operations/` hoặc active project-kit records được owner chọn                                                  | approved owner matrix, separation-of-duty check                                               | không xác định approver độc lập, Data/SRE/Security owner                           |
+| PRD-0002 | `L1_REPO_WRITE`                                                             | PRD-0001 closed                                                | finding register/evidence index                                                                                                                          | đủ 10 audit IDs, owner/task/test/gate/evidence/status/reviewer                                | finding ID/severity/root cause mâu thuẫn audit                                     |
+| PRD-0003 | `L1_REPO_WRITE`                                                             | finding register tồn tại                                       | candidate policy/manifest tooling/tests                                                                                                                  | policy được review; fixture chứng minh path set/hash deterministic                            | candidate scope chưa được owner xác nhận                                           |
+| PRD-1001 | `L1_REPO_WRITE`                                                             | deletion ADR quyết định; schema/queue strategy rõ              | `apps/api/src/modules/storage/**`, `apps/api/prisma/schema.prisma`, additive migration mới, focused tests/metrics                                        | unit/integration/failure/restart/concurrency evidence; migration safety; reconcile trace      | cần destructive migration, key reuse invariant không giải được, dirty file overlap |
+| PRD-1002 | `L1_REPO_WRITE`                                                             | Redis intent model/TTL/atomic primitive được chốt              | storage module, platform Redis/config/readiness, focused tests                                                                                           | cross-replica/replay/outage/restart tests; production memory fallback rejected                | phải đổi Redis topology/contract ngoài scope hoặc fail-open còn tồn tại            |
+| PRD-1003 | `L1_REPO_WRITE`                                                             | upload mechanism/category limits/quota quyết định              | storage controller/service/provider, `packages/contracts/src/schemas/storage.ts`, web upload caller nếu contract đổi, storage Terraform lifecycle, tests | runtime parse; provider-enforced byte cap; metadata/visibility binding; prefix inventory test | presigned mechanism không enforce được limit; public content policy chưa có owner  |
+| PRD-1004 | `L1_REPO_WRITE`                                                             | PRD-1001–1003 behavior/terminal states ổn định                 | storage metrics/logs, `apps/api/src/modules/platform/metrics/**`, alert/dashboard config, tests                                                          | metric unit tests; no-secret label review; staging alert evidence liên kết PRD-5009           | cardinality/PII risk hoặc alert backend chưa được chọn                             |
+| PRD-1101 | `L1_REPO_WRITE`                                                             | IAM action/prefix inventory cho web/API/worker được duyệt      | `infra/terraform/modules/compute/**`, relevant root/env variables/outputs, IaC tests/workflow references                                                 | Terraform/static policy PASS; reviewed plan; live web deny/API-worker allow evidence          | unexpected role replacement/pass-role expansion/KMS wildcard                       |
+| PRD-1102 | `L1_REPO_WRITE`                                                             | header-only hoặc ticket ADR quyết định                         | interview controller/SSE service, `apps/web/src/hooks/use-interview-sse.ts`, contracts/tests/docs                                                        | query token 401; approved transport PASS; ownership/replay/log-redaction evidence             | browser/client constraint buộc reusable URL credential                             |
+| PRD-1201 | `L1_REPO_WRITE`                                                             | timeout/retry semantics và retryable taxonomy rõ               | platform config, AI providers/router/circuit breaker, tests                                                                                              | config 0/1/N, abort deadline, no-retry auth/quota, 429/backoff, circuit/fallback tests        | SDK không hỗ trợ abort hoặc ambiguous side effect chưa có idempotency              |
+| PRD-1202 | `L1_REPO_WRITE`                                                             | pricing/model mapping và cap inputs approved                   | AI orchestration/budget/config/metrics/tests và active cost governance docs                                                                              | distributed concurrency/cap/settlement/reconciliation tests; budget alert                     | giá/model/cost ceiling chưa được owner cung cấp                                    |
+| PRD-1301 | `L1_REPO_WRITE`                                                             | migration enumeration contract chốt                            | `.github/workflows/deploy.yml`, `infra/scripts/check-migration-safety.mjs`, release checker/tests/docs                                                   | deterministic fixtures; raw-byte behavior; pre-DB mismatch failure                            | historical migration file dirty/modified không được giải thích                     |
+| PRD-1302 | `L1_REPO_WRITE`                                                             | PRD-1301 verified; manifest consumer inventory đầy đủ          | deploy workflow, release-manifest generator/schema/checker/docs/tests                                                                                    | schema validation/checksum; producer-consumer exact artifact test                             | staging/prod còn tự tái tạo field/digest                                           |
+| PRD-1303 | `L1_REPO_WRITE`                                                             | branch/CD threat model và current workflow được đọc            | `.github/workflows/**`, `infra/scripts/check-release-workflows.mjs`, tests/docs                                                                          | invariant checker, exact-SHA/provenance/artifact-failure tests, action/image pin audit        | security control cần GitHub mutation nhưng chưa có `L3` approval                   |
+| PRD-1401 | `L1_REPO_WRITE` local; `L5_NONPROD_WRITE` deploy                            | observability ADR, retention, notification owner approved      | `infra/prometheus/**`, `infra/grafana/**`, Terraform/modules hoặc approved collector config, metrics auth/tests                                          | deployable IaC/config, private scrape test, staging collector/notification proof              | provider/account/cost/HA choice chưa quyết định                                    |
+| PRD-1402 | `L1_REPO_WRITE`                                                             | traffic/SLO/RPO/RTO/budget inputs có owner                     | active SLO/alert docs, alert rules/dashboards/tests                                                                                                      | approved numeric SLI/SLO/threshold/window/severity/runbook matrix                             | target chỉ là placeholder hoặc không có threshold rationale                        |
+| PRD-1403 | `L5_NONPROD_WRITE`                                                          | PRD-1401–1402 verified; staging exact release healthy          | controlled staging signals và evidence store; code chỉ khi defect được mở task riêng                                                                     | fire/deliver/ack/resolve timestamps cho mọi mandatory signal                                  | signal có thể ảnh hưởng production/shared data hoặc thiếu abort control            |
+| PRD-1404 | `L1_REPO_WRITE`                                                             | active docs inventory và owners xác định                       | `ai-it-interview-project-kit/13-operations/**`, active readiness/evidence docs; không chạm archived protocols                                            | stale claims removed/superseded, link/owner/date review PASS                                  | tài liệu historical cần bảo tồn bị nhầm là active                                  |
+| PRD-2001 | `L1_REPO_WRITE`                                                             | G1 PASS trên stable fingerprint                                | candidate manifest/evidence records và deterministic tooling                                                                                             | exact explicit path list, per-file/aggregate hashes, exclusions, second review                | source/status đổi trong inventory hoặc secret/ignored output xuất hiện             |
+| PRD-2002 | `L2_GIT_RECORD`                                                             | user authorizes exact displayed path list; PRD-2001 reviewed   | Git index và candidate commit chỉ với approved paths                                                                                                     | staged tree/path/hash match; immutable commit SHA; no unrelated path                          | path/status/digest đổi, dirty overlap, broad add cần thiết                         |
+| PRD-2003 | `L3_REMOTE_CHANGE` nếu push/run cần thiết                                   | exact candidate SHA; protected CI config/authorization         | remote push/PR/run và CI artifacts; repo workflow fix phải là task mới                                                                                   | protected exact-SHA CI PASS; manifest/digests/SBOM/scans retained                             | skipped/cancelled/flaky job, mutable artifact, protection bypass                   |
+| PRD-3001 | `L1_REPO_WRITE` cho local fix; `L4_CLOUD_READ` cho backend-aware validation | G2 PASS; pinned Terraform/provider tools                       | Terraform source only if validation defect is in approved scope; evidence otherwise                                                                      | fmt/init/validate/lock/IaC scan for exact SHA                                                 | backend/account/workspace identity mơ hồ                                           |
+| PRD-3002 | `L4_CLOUD_READ`                                                             | exact candidate, staging inputs/backend/account/region         | plan artifact/evidence only                                                                                                                              | reviewed plan summary, raw plan checksum, no unexplained persistent replacement               | destroy/replace stateful resource, drift/import ambiguity                          |
+| PRD-3003 | `L4_CLOUD_READ`                                                             | exact candidate, production inputs/backend/account/region      | plan artifact/evidence only                                                                                                                              | independent production plan review, security/data checklist                                   | bất kỳ unapproved persistent destroy/replace hoặc topology mismatch                |
+| PRD-3004 | `L4_CLOUD_READ`                                                             | authorized GitHub/AWS identity                                 | evidence only; settings mutation là task `L3` riêng                                                                                                      | redacted environment/OIDC/pass-role/ECR/secret-presence/URL evidence                          | cần đọc secret value, trust quá rộng, setting thiếu nhưng chưa authorized fix      |
+| PRD-4001 | `L5_NONPROD_WRITE`                                                          | G3 PASS và DoR riêng ở Phase 4                                 | exact staging migration/ECS services trong approved target                                                                                               | deployment events, migration result, running digests, prior/current ARNs                      | target/plan/hash/digest mismatch, migration/circuit breaker failure                |
+| PRD-4002 | `L4_CLOUD_READ`; rollback `L5_NONPROD_WRITE`                                | PRD-4001 verified                                              | non-destructive smoke; exact rollback nếu approved                                                                                                       | smoke/log/redaction/digest report; rollback record nếu fail                                   | critical smoke fail, secret/token log, monitoring unavailable                      |
+| PRD-5001 | `L5_NONPROD_WRITE`                                                          | test users/data disposable; exact staging release              | staging test data/actions và evidence, không sửa source trong cùng task                                                                                  | browser trace/screenshots redacted; auth/MFA/cookie/CSRF/CORS result                          | real user/secret/PII risk hoặc test isolation thiếu                                |
+| PRD-5002 | `L5_NONPROD_WRITE`                                                          | tenant/account fixture map approved                            | disposable staging test records/actions                                                                                                                  | negative matrix có expected/actual/status/identity; zero cross-boundary success               | shared/non-disposable tenant hoặc destructive cleanup cần thiết                    |
+| PRD-5003 | `L5_NONPROD_WRITE`                                                          | disposable bucket prefixes/objects và task identities rõ       | approved staging object prefixes/actions                                                                                                                 | ECS credential identity, KMS/S3 positive-negative, limit/lifecycle/delete trace               | account/bucket/prefix mismatch hoặc object không disposable                        |
+| PRD-5004 | `L5_NONPROD_WRITE`                                                          | provider test mode, cost ceiling, abort threshold approved     | controlled staging AI calls/data                                                                                                                         | authority/adversarial/timeout/retry/cost/concurrency/alert evidence                           | real financial exposure vượt ceiling hoặc provider mode mơ hồ                      |
+| PRD-5005 | `L5_NONPROD_WRITE`                                                          | expected peak/mix/headroom/duration/cost/abort inputs approved | approved load generators và staging traffic                                                                                                              | raw results + summary đủ p50/p95/p99/error/resource/queue/cost; no threshold breach           | target production/shared hoặc abort/cost threshold đạt                             |
+| PRD-5006 | `L5_NONPROD_WRITE`                                                          | blast radius, recovery, steady-state, observers approved       | exact staging components đã enumerate                                                                                                                    | before/during/after signals; recovery/no-loss/no-duplicate/alerts                             | blast radius lan ngoài staging, health không hồi phục trong threshold              |
+| PRD-5007 | `L5_NONPROD_WRITE`                                                          | prior/candidate ARNs và schema compatibility proven            | exact staging ECS services                                                                                                                               | timed rollback steps, prior digests, critical smoke, no data reset                            | prior ARN/digest thiếu hoặc schema không backward-compatible                       |
+| PRD-5008 | `L5_NONPROD_WRITE`                                                          | Data Owner xác nhận exact isolated empty disposable target     | approved backup artifacts và isolated drill DB only                                                                                                      | encrypted backup/checksum/restore/RPO/RTO/app sanity evidence                                 | target không empty/disposable, identity mismatch, destructive command ngoài target |
+| PRD-5009 | `L5_NONPROD_WRITE`                                                          | PRD-1403 ready; routes/on-call in test mode                    | controlled alert signals/evidence                                                                                                                        | fire/deliver/ack/runbook/resolve chronology                                                   | alert có thể page production ngoài approved drill hoặc không thể isolate           |
+| PRD-6001 | `L4_CLOUD_READ`                                                             | G4 sealed, plans/evidence current                              | approval/evidence records only                                                                                                                           | signed, scoped, expiring G5 decision                                                          | any automatic NO_GO condition hoặc conflict of interest                            |
+| PRD-6002 | `L6_PROD_WRITE`                                                             | exact G5 approval; operator identity/on-call/window reverified | exact approved production migration/ECS services                                                                                                         | apply/deploy events, running identity, smoke, prior/current ARNs                              | identity/plan/hash/digest mismatch, threshold breach, monitoring loss              |
+| PRD-7001 | `L4_CLOUD_READ`; rollback `L6_PROD_WRITE`                                   | production running exact release; alerts healthy               | read-only observation và exact approved rollback                                                                                                         | window/traffic coverage, metrics/log/alert/smoke record                                       | stop threshold, data-integrity/auth failure, blind monitoring                      |
+| PRD-7002 | `L1_REPO_WRITE`                                                             | PRD-7001 closed và deviations dispositioned                    | task/finding/gate/evidence/release records                                                                                                               | sealed evidence index, G6 decision, retention/next drill, final verdict                       | evidence mismatch/missing checksum/open mandatory finding                          |
 
 ### 28.1 Atomic grouping được phép
 
@@ -1931,23 +1931,23 @@ Mọi nhóm khác cần rationale và approval trong task ledger. Grouping khôn
 
 Evidence không “PASS vĩnh viễn”. Executor phải kiểm trigger dưới đây trước khi reuse. Khi invalidated, giữ artifact cũ với trạng thái `SUPERSEDED`; không xóa hoặc sửa nội dung lịch sử.
 
-| Trigger thay đổi | Evidence bị invalid ngay | Evidence có thể giữ nếu chứng minh không ảnh hưởng | Hành động bắt buộc |
-| --- | --- | --- | --- |
-| Bất kỳ included source/test/config byte | local test, fingerprint, candidate, CI, image, SBOM, staging acceptance, approvals | owner matrix thuần governance | tạo fingerprint/candidate mới; chạy lại từ gate thấp nhất bị ảnh hưởng |
-| Lockfile/package manifest/toolchain | install, SCA, unit/integration/build, SBOM, image, performance | Terraform plan nếu source IaC hoàn toàn không đổi và policy cho phép | full exact-toolchain CI + supply-chain regeneration |
-| Dockerfile/build workflow/base image | image scan, digest, SBOM, container smoke, staging/prod approval | pure source tests nếu không phụ thuộc image runtime | rebuild một lần; new digests; redeploy/retest staging |
-| Migration add/remove/modify | migration hash, DB tests, rollback compatibility, restore/application smoke, plans/approvals | browser tests không chạm DB chỉ khi reviewer xác nhận | new hash; migration checks; staging migration; rollback/restore impact review |
-| Terraform/provider lock/IAM/observability config | fmt/validate/scan/plan, IAM/alert live evidence, staging acceptance, production approval | app unit tests | regenerate and review both affected plans; rerun live controls |
-| Release workflow/manifest schema | workflow checker, CI provenance, manifest checksum, deployment approval | source-focused tests | new exact-SHA CI and manifest; reverify all consumers |
-| Secret value rotation không đổi interface | provider/auth connectivity and smoke using secret | source/CI static evidence | rerun affected connectivity/security smoke; never capture value |
-| Environment variable/config value | runtime behavior, health, load, AI cost/retry, staging acceptance | source compile/test only if config-independent | capture config identity/redacted diff; rerun affected suite |
-| Staging task definition/digest | mọi live staging evidence sau old identity | local/CI artifacts | redeploy exact candidate and rerun G4 suite |
-| Production task definition/digest | production smoke/observation/closure | sealed staging evidence | new release/deviation record; G6 cannot reuse old observation |
-| AWS account/region/VPC/cluster/service/bucket/KMS target | toàn bộ cloud plan/live IAM/storage/deploy evidence | local/CI evidence | re-run target identity preflight and all live gates |
-| SLO/RPO/RTO/peak/headroom/cost ceiling | load/soak, alert thresholds, rollback/restore acceptance, approval | raw prior measurements as historical data | reassess against new target; rerun if prior evidence không đủ |
-| Reviewer/approval scope hoặc change window hết hạn | gate approval | technical raw evidence nếu vẫn fresh | obtain new review/approval; không backdate |
-| Open incident, capacity degradation, monitoring outage | production approval/entry | sealed candidate artifacts | set `NO_GO`; reassess after recovery with current evidence |
-| Flaky test/rerun-assisted pass | test result và gate chứa nó | raw logs | giữ FAIL/FLAKY, root-cause và prove deterministic pass with retries 0 |
+| Trigger thay đổi                                         | Evidence bị invalid ngay                                                                     | Evidence có thể giữ nếu chứng minh không ảnh hưởng                   | Hành động bắt buộc                                                            |
+| -------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Bất kỳ included source/test/config byte                  | local test, fingerprint, candidate, CI, image, SBOM, staging acceptance, approvals           | owner matrix thuần governance                                        | tạo fingerprint/candidate mới; chạy lại từ gate thấp nhất bị ảnh hưởng        |
+| Lockfile/package manifest/toolchain                      | install, SCA, unit/integration/build, SBOM, image, performance                               | Terraform plan nếu source IaC hoàn toàn không đổi và policy cho phép | full exact-toolchain CI + supply-chain regeneration                           |
+| Dockerfile/build workflow/base image                     | image scan, digest, SBOM, container smoke, staging/prod approval                             | pure source tests nếu không phụ thuộc image runtime                  | rebuild một lần; new digests; redeploy/retest staging                         |
+| Migration add/remove/modify                              | migration hash, DB tests, rollback compatibility, restore/application smoke, plans/approvals | browser tests không chạm DB chỉ khi reviewer xác nhận                | new hash; migration checks; staging migration; rollback/restore impact review |
+| Terraform/provider lock/IAM/observability config         | fmt/validate/scan/plan, IAM/alert live evidence, staging acceptance, production approval     | app unit tests                                                       | regenerate and review both affected plans; rerun live controls                |
+| Release workflow/manifest schema                         | workflow checker, CI provenance, manifest checksum, deployment approval                      | source-focused tests                                                 | new exact-SHA CI and manifest; reverify all consumers                         |
+| Secret value rotation không đổi interface                | provider/auth connectivity and smoke using secret                                            | source/CI static evidence                                            | rerun affected connectivity/security smoke; never capture value               |
+| Environment variable/config value                        | runtime behavior, health, load, AI cost/retry, staging acceptance                            | source compile/test only if config-independent                       | capture config identity/redacted diff; rerun affected suite                   |
+| Staging task definition/digest                           | mọi live staging evidence sau old identity                                                   | local/CI artifacts                                                   | redeploy exact candidate and rerun G4 suite                                   |
+| Production task definition/digest                        | production smoke/observation/closure                                                         | sealed staging evidence                                              | new release/deviation record; G6 cannot reuse old observation                 |
+| AWS account/region/VPC/cluster/service/bucket/KMS target | toàn bộ cloud plan/live IAM/storage/deploy evidence                                          | local/CI evidence                                                    | re-run target identity preflight and all live gates                           |
+| SLO/RPO/RTO/peak/headroom/cost ceiling                   | load/soak, alert thresholds, rollback/restore acceptance, approval                           | raw prior measurements as historical data                            | reassess against new target; rerun if prior evidence không đủ                 |
+| Reviewer/approval scope hoặc change window hết hạn       | gate approval                                                                                | technical raw evidence nếu vẫn fresh                                 | obtain new review/approval; không backdate                                    |
+| Open incident, capacity degradation, monitoring outage   | production approval/entry                                                                    | sealed candidate artifacts                                           | set `NO_GO`; reassess after recovery with current evidence                    |
+| Flaky test/rerun-assisted pass                           | test result và gate chứa nó                                                                  | raw logs                                                             | giữ FAIL/FLAKY, root-cause và prove deterministic pass with retries 0         |
 
 ### 29.1 Freshness rule mặc định
 
@@ -1976,63 +1976,63 @@ Ledger dưới đây là snapshot khởi tạo của kế hoạch, có thể cop
 
 ```yaml
 schemaVersion: 1
-planVersion: "2.0"
-project: "ai-interview-practice"
+planVersion: '2.0'
+project: 'ai-interview-practice'
 baseline:
-  branch: "main"
-  head: "d0c09cef4f80cf7d4bcbb6c42328a65e55a5d895"
-  declaredFingerprint: "sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24"
-  recomputedFingerprint: "sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c"
-  fingerprintStatus: "MISMATCH"
+  branch: 'main'
+  head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+  declaredFingerprint: 'sha256:7d7f26b1e04923bfe06ca52c5346d5168e779d69ad065b935411117fd31cba24'
+  recomputedFingerprint: 'sha256:703f8b0082f4f2f55e467777c988b22f8d387ca19091af4e5d2ef1e1c3a5927c'
+  fingerprintStatus: 'MISMATCH'
 allowedStates:
-  - "NOT_READY"
-  - "READY"
-  - "IN_PROGRESS"
-  - "IMPLEMENTED"
-  - "VERIFIED"
-  - "REVIEWED"
-  - "CLOSED"
-  - "BLOCKED"
-  - "FAILED"
+  - 'NOT_READY'
+  - 'READY'
+  - 'IN_PROGRESS'
+  - 'IMPLEMENTED'
+  - 'VERIFIED'
+  - 'REVIEWED'
+  - 'CLOSED'
+  - 'BLOCKED'
+  - 'FAILED'
 allowedPermissionClasses:
-  - "L0_READ"
-  - "L1_REPO_WRITE"
-  - "L2_GIT_RECORD"
-  - "L3_REMOTE_CHANGE"
-  - "L4_CLOUD_READ"
-  - "L5_NONPROD_WRITE"
-  - "L6_PROD_WRITE"
+  - 'L0_READ'
+  - 'L1_REPO_WRITE'
+  - 'L2_GIT_RECORD'
+  - 'L3_REMOTE_CHANGE'
+  - 'L4_CLOUD_READ'
+  - 'L5_NONPROD_WRITE'
+  - 'L6_PROD_WRITE'
 requiredTaskFields:
-  - "id"
-  - "title"
-  - "phase"
-  - "state"
-  - "permissionClass"
-  - "findingIds"
-  - "dependencies"
-  - "owner"
-  - "reviewers"
-  - "writeScope"
-  - "acceptanceRefs"
-  - "evidenceRefs"
-  - "blockers"
-  - "updatedAtUtc"
-  - "updatedBy"
+  - 'id'
+  - 'title'
+  - 'phase'
+  - 'state'
+  - 'permissionClass'
+  - 'findingIds'
+  - 'dependencies'
+  - 'owner'
+  - 'reviewers'
+  - 'writeScope'
+  - 'acceptanceRefs'
+  - 'evidenceRefs'
+  - 'blockers'
+  - 'updatedAtUtc'
+  - 'updatedBy'
 invariants:
-  - "task IDs are unique"
-  - "a dependency must be CLOSED or a referenced gate must be PASS before READY"
-  - "CLOSED requires non-empty evidenceRefs and closure record"
-  - "permission escalation requires a new approval reference"
-  - "historical FAILED/BLOCKED transitions are append-only"
-  - "candidate-bound evidence must include source SHA or fingerprint"
-  - "environment-bound evidence must include account, region, environment and runtime identity"
+  - 'task IDs are unique'
+  - 'a dependency must be CLOSED or a referenced gate must be PASS before READY'
+  - 'CLOSED requires non-empty evidenceRefs and closure record'
+  - 'permission escalation requires a new approval reference'
+  - 'historical FAILED/BLOCKED transitions are append-only'
+  - 'candidate-bound evidence must include source SHA or fingerprint'
+  - 'environment-bound evidence must include account, region, environment and runtime identity'
 ```
 
 ### 30.2 Initial ledger
 
 ```yaml
 ledgerVersion: 1
-generatedFromPlanVersion: "2.0"
+generatedFromPlanVersion: '2.0'
 generatedAtUtc: null
 candidateSourceSha: null
 candidateFingerprint: null
@@ -2041,612 +2041,670 @@ apiImageDigest: null
 webImageDigest: null
 migrationSetSha256: null
 gates:
-  G0: "PENDING"
-  G1: "NO_GO"
-  G2: "NO_GO"
-  G3: "NO_GO"
-  G4: "NOT_STARTED"
-  G5: "NO_GO"
-  G6: "NOT_STARTED"
+  G0: 'PENDING'
+  G1: 'NO_GO'
+  G2: 'NO_GO'
+  G3: 'NO_GO'
+  G4: 'NOT_STARTED'
+  G5: 'NO_GO'
+  G6: 'NOT_STARTED'
 tasks:
-  - id: "PRD-0001"
-    title: "Assign owners and approval authority"
+  - id: 'PRD-0001'
+    title: 'Assign owners and approval authority'
     phase: 0
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
     findingIds: []
     dependencies: []
     owner: null
     reviewers: []
-    writeScope: ["owner matrix", "execution records"]
-    acceptanceRefs: ["section 9/PRD-0001", "section 2.5"]
+    writeScope: ['owner matrix', 'execution records']
+    acceptanceRefs: ['section 9/PRD-0001', 'section 2.5']
     evidenceRefs: []
-    blockers: ["human role assignment and independent approver are not recorded"]
+    blockers: ['human role assignment and independent approver are not recorded']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-0002"
-    title: "Create audit finding register"
+  - id: 'PRD-0002'
+    title: 'Create audit finding register'
     phase: 0
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["RLS-001", "DATA-001", "REL-001", "SEC-001", "OPS-001", "SEC-002", "REL-002", "CD-001", "SEC-003", "DOC-001"]
-    dependencies: ["PRD-0001"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds:
+      [
+        'RLS-001',
+        'DATA-001',
+        'REL-001',
+        'SEC-001',
+        'OPS-001',
+        'SEC-002',
+        'REL-002',
+        'CD-001',
+        'SEC-003',
+        'DOC-001',
+      ]
+    dependencies: ['PRD-0001']
     owner: null
     reviewers: []
-    writeScope: ["finding register", "evidence index"]
-    acceptanceRefs: ["section 9/PRD-0002"]
+    writeScope: ['finding register', 'evidence index']
+    acceptanceRefs: ['section 9/PRD-0002']
     evidenceRefs: []
-    blockers: ["PRD-0001 is not CLOSED"]
+    blockers: ['PRD-0001 is not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-0003"
-    title: "Lock candidate construction policy"
+  - id: 'PRD-0003'
+    title: 'Lock candidate construction policy'
     phase: 0
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["RLS-001"]
-    dependencies: ["PRD-0002"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['RLS-001']
+    dependencies: ['PRD-0002']
     owner: null
     reviewers: []
-    writeScope: ["candidate policy", "manifest tooling and tests"]
-    acceptanceRefs: ["section 9/PRD-0003"]
+    writeScope: ['candidate policy', 'manifest tooling and tests']
+    acceptanceRefs: ['section 9/PRD-0003']
     evidenceRefs: []
-    blockers: ["PRD-0002 is not CLOSED"]
+    blockers: ['PRD-0002 is not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1001"
-    title: "Durable file deletion state machine"
+  - id: 'PRD-1001'
+    title: 'Durable file deletion state machine'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["DATA-001"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['DATA-001']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["Data Owner", "Security Reviewer"]
-    writeScope: ["apps/api/src/modules/storage/**", "apps/api/prisma/schema.prisma", "new additive migration", "focused tests and metrics"]
-    acceptanceRefs: ["section 10/PRD-1001", "section 28/PRD-1001"]
+    reviewers: ['Data Owner', 'Security Reviewer']
+    writeScope:
+      [
+        'apps/api/src/modules/storage/**',
+        'apps/api/prisma/schema.prisma',
+        'new additive migration',
+        'focused tests and metrics',
+      ]
+    acceptanceRefs: ['section 10/PRD-1001', 'section 28/PRD-1001']
     evidenceRefs: []
-    blockers: ["deletion-state/outbox ADR is unresolved", "G0 is not PASS"]
+    blockers: ['deletion-state/outbox ADR is unresolved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1002"
-    title: "Shared durable production upload intents"
+  - id: 'PRD-1002'
+    title: 'Shared durable production upload intents'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["REL-001"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['REL-001']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["storage module", "platform Redis/config/readiness", "focused tests"]
-    acceptanceRefs: ["section 10/PRD-1002", "section 28/PRD-1002"]
+    reviewers: ['Security Reviewer']
+    writeScope: ['storage module', 'platform Redis/config/readiness', 'focused tests']
+    acceptanceRefs: ['section 10/PRD-1002', 'section 28/PRD-1002']
     evidenceRefs: []
-    blockers: ["shared-intent atomic model is unresolved", "G0 is not PASS"]
+    blockers: ['shared-intent atomic model is unresolved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1003"
-    title: "Runtime upload validation, byte cap and intent binding"
+  - id: 'PRD-1003'
+    title: 'Runtime upload validation, byte cap and intent binding'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["SEC-001"]
-    dependencies: ["PRD-1002"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['SEC-001']
+    dependencies: ['PRD-1002']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["storage controller/service/provider", "packages/contracts/src/schemas/storage.ts", "web upload caller if contract changes", "infra/terraform/modules/storage/**", "focused tests"]
-    acceptanceRefs: ["section 10/PRD-1003", "section 28/PRD-1003"]
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'storage controller/service/provider',
+        'packages/contracts/src/schemas/storage.ts',
+        'web upload caller if contract changes',
+        'infra/terraform/modules/storage/**',
+        'focused tests',
+      ]
+    acceptanceRefs: ['section 10/PRD-1003', 'section 28/PRD-1003']
     evidenceRefs: []
-    blockers: ["PRD-1002 is not CLOSED", "upload mechanism and category limits are unresolved"]
+    blockers: ['PRD-1002 is not CLOSED', 'upload mechanism and category limits are unresolved']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1004"
-    title: "Storage deletion and upload observability"
+  - id: 'PRD-1004'
+    title: 'Storage deletion and upload observability'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["DATA-001", "REL-001", "SEC-001", "OPS-001"]
-    dependencies: ["PRD-1001", "PRD-1002", "PRD-1003"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['DATA-001', 'REL-001', 'SEC-001', 'OPS-001']
+    dependencies: ['PRD-1001', 'PRD-1002', 'PRD-1003']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["storage metrics/logs", "apps/api/src/modules/platform/metrics/**", "alert/dashboard config", "tests"]
-    acceptanceRefs: ["section 10/PRD-1004", "section 28/PRD-1004"]
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'storage metrics/logs',
+        'apps/api/src/modules/platform/metrics/**',
+        'alert/dashboard config',
+        'tests',
+      ]
+    acceptanceRefs: ['section 10/PRD-1004', 'section 28/PRD-1004']
     evidenceRefs: []
-    blockers: ["storage behavior dependencies are not CLOSED"]
+    blockers: ['storage behavior dependencies are not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1101"
-    title: "Separate ECS task roles by component"
+  - id: 'PRD-1101'
+    title: 'Separate ECS task roles by component'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["SEC-002"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['SEC-002']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["infra/terraform/modules/compute/**", "relevant Terraform root/environment interfaces", "IaC tests and workflow references"]
-    acceptanceRefs: ["section 10/PRD-1101", "section 28/PRD-1101"]
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'infra/terraform/modules/compute/**',
+        'relevant Terraform root/environment interfaces',
+        'IaC tests and workflow references',
+      ]
+    acceptanceRefs: ['section 10/PRD-1101', 'section 28/PRD-1101']
     evidenceRefs: []
-    blockers: ["IAM action/prefix inventory is not approved", "G0 is not PASS"]
+    blockers: ['IAM action/prefix inventory is not approved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1102"
-    title: "Remove reusable SSE bearer token from query"
+  - id: 'PRD-1102'
+    title: 'Remove reusable SSE bearer token from query'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["SEC-003"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['SEC-003']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["interview controller and SSE service", "apps/web/src/hooks/use-interview-sse.ts", "contracts, tests and active docs"]
-    acceptanceRefs: ["section 10/PRD-1102", "section 28/PRD-1102"]
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'interview controller and SSE service',
+        'apps/web/src/hooks/use-interview-sse.ts',
+        'contracts, tests and active docs',
+      ]
+    acceptanceRefs: ['section 10/PRD-1102', 'section 28/PRD-1102']
     evidenceRefs: []
-    blockers: ["transport decision is not approved", "G0 is not PASS"]
+    blockers: ['transport decision is not approved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1201"
-    title: "Wire AI timeout and retry config end-to-end"
+  - id: 'PRD-1201'
+    title: 'Wire AI timeout and retry config end-to-end'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["REL-002"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['REL-002']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["SRE Owner"]
-    writeScope: ["platform config", "AI providers/router/circuit breaker", "focused tests"]
-    acceptanceRefs: ["section 10/PRD-1201", "section 28/PRD-1201"]
+    reviewers: ['SRE Owner']
+    writeScope: ['platform config', 'AI providers/router/circuit breaker', 'focused tests']
+    acceptanceRefs: ['section 10/PRD-1201', 'section 28/PRD-1201']
     evidenceRefs: []
-    blockers: ["retryable taxonomy and abort semantics are not approved", "G0 is not PASS"]
+    blockers: ['retryable taxonomy and abort semantics are not approved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1202"
-    title: "Prove per-call and daily AI cost caps"
+  - id: 'PRD-1202'
+    title: 'Prove per-call and daily AI cost caps'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
     findingIds: []
-    dependencies: ["PRD-1201"]
+    dependencies: ['PRD-1201']
     owner: null
-    reviewers: ["Security Reviewer", "SRE Owner"]
-    writeScope: ["AI orchestration/budget/config/metrics", "focused tests", "active cost governance docs"]
-    acceptanceRefs: ["section 10/PRD-1202", "section 28/PRD-1202"]
+    reviewers: ['Security Reviewer', 'SRE Owner']
+    writeScope:
+      ['AI orchestration/budget/config/metrics', 'focused tests', 'active cost governance docs']
+    acceptanceRefs: ['section 10/PRD-1202', 'section 28/PRD-1202']
     evidenceRefs: []
-    blockers: ["PRD-1201 is not CLOSED", "pricing/model/cost targets are not approved"]
+    blockers: ['PRD-1201 is not CLOSED', 'pricing/model/cost targets are not approved']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1301"
-    title: "Add deterministic migration-set hash"
+  - id: 'PRD-1301'
+    title: 'Add deterministic migration-set hash'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["CD-001"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['CD-001']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["Data Owner"]
-    writeScope: [".github/workflows/deploy.yml", "infra/scripts/check-migration-safety.mjs", "release checker/tests/docs"]
-    acceptanceRefs: ["section 10/PRD-1301", "section 28/PRD-1301"]
+    reviewers: ['Data Owner']
+    writeScope:
+      [
+        '.github/workflows/deploy.yml',
+        'infra/scripts/check-migration-safety.mjs',
+        'release checker/tests/docs',
+      ]
+    acceptanceRefs: ['section 10/PRD-1301', 'section 28/PRD-1301']
     evidenceRefs: []
-    blockers: ["migration enumeration contract is not approved", "G0 is not PASS"]
+    blockers: ['migration enumeration contract is not approved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1302"
-    title: "Release manifest schema v2"
+  - id: 'PRD-1302'
+    title: 'Release manifest schema v2'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["CD-001"]
-    dependencies: ["PRD-1301"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['CD-001']
+    dependencies: ['PRD-1301']
     owner: null
-    reviewers: ["Security Reviewer", "Data Owner"]
-    writeScope: ["deploy workflow", "release manifest generator/schema/checker", "tests and active docs"]
-    acceptanceRefs: ["section 10/PRD-1302", "section 28/PRD-1302"]
+    reviewers: ['Security Reviewer', 'Data Owner']
+    writeScope:
+      ['deploy workflow', 'release manifest generator/schema/checker', 'tests and active docs']
+    acceptanceRefs: ['section 10/PRD-1302', 'section 28/PRD-1302']
     evidenceRefs: []
-    blockers: ["PRD-1301 is not CLOSED"]
+    blockers: ['PRD-1301 is not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1303"
-    title: "Harden exact-SHA release gate"
+  - id: 'PRD-1303'
+    title: 'Harden exact-SHA release gate'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["RLS-001", "CD-001"]
-    dependencies: ["PRD-1302"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['RLS-001', 'CD-001']
+    dependencies: ['PRD-1302']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: [".github/workflows/**", "infra/scripts/check-release-workflows.mjs", "tests and active docs"]
-    acceptanceRefs: ["section 10/PRD-1303", "section 28/PRD-1303"]
+    reviewers: ['Security Reviewer']
+    writeScope:
+      ['.github/workflows/**', 'infra/scripts/check-release-workflows.mjs', 'tests and active docs']
+    acceptanceRefs: ['section 10/PRD-1303', 'section 28/PRD-1303']
     evidenceRefs: []
-    blockers: ["PRD-1302 is not CLOSED"]
+    blockers: ['PRD-1302 is not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1401"
-    title: "Deploy production metrics architecture"
+  - id: 'PRD-1401'
+    title: 'Deploy production metrics architecture'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["OPS-001"]
-    dependencies: ["G0"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['G0']
     owner: null
-    reviewers: ["Platform Owner", "Security Reviewer"]
-    writeScope: ["infra/prometheus/**", "infra/grafana/**", "approved Terraform/collector config", "metrics auth/tests"]
-    acceptanceRefs: ["section 10/PRD-1401", "section 28/PRD-1401"]
+    reviewers: ['Platform Owner', 'Security Reviewer']
+    writeScope:
+      [
+        'infra/prometheus/**',
+        'infra/grafana/**',
+        'approved Terraform/collector config',
+        'metrics auth/tests',
+      ]
+    acceptanceRefs: ['section 10/PRD-1401', 'section 28/PRD-1401']
     evidenceRefs: []
-    blockers: ["observability architecture ADR is not approved", "G0 is not PASS"]
+    blockers: ['observability architecture ADR is not approved', 'G0 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1402"
-    title: "Define SLI, SLO and alert policy"
+  - id: 'PRD-1402'
+    title: 'Define SLI, SLO and alert policy'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["OPS-001"]
-    dependencies: ["PRD-1401"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['PRD-1401']
     owner: null
-    reviewers: ["Product Owner", "Application Owner"]
-    writeScope: ["active SLO/alert docs", "alert rules", "dashboards and tests"]
-    acceptanceRefs: ["section 10/PRD-1402", "section 28/PRD-1402"]
+    reviewers: ['Product Owner', 'Application Owner']
+    writeScope: ['active SLO/alert docs', 'alert rules', 'dashboards and tests']
+    acceptanceRefs: ['section 10/PRD-1402', 'section 28/PRD-1402']
     evidenceRefs: []
-    blockers: ["PRD-1401 is not CLOSED", "numeric targets are not approved"]
+    blockers: ['PRD-1401 is not CLOSED', 'numeric targets are not approved']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1403"
-    title: "Verify alerts with synthetic signals"
+  - id: 'PRD-1403'
+    title: 'Verify alerts with synthetic signals'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["OPS-001"]
-    dependencies: ["PRD-1401", "PRD-1402", "PRD-4002"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['PRD-1401', 'PRD-1402', 'PRD-4002']
     owner: null
-    reviewers: ["Staging Approver"]
-    writeScope: ["controlled staging signals", "evidence store"]
-    acceptanceRefs: ["section 10/PRD-1403", "section 28/PRD-1403"]
+    reviewers: ['Staging Approver']
+    writeScope: ['controlled staging signals', 'evidence store']
+    acceptanceRefs: ['section 10/PRD-1403', 'section 28/PRD-1403']
     evidenceRefs: []
-    blockers: ["observability and staging dependencies are not CLOSED"]
+    blockers: ['observability and staging dependencies are not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-1404"
-    title: "Correct runbooks and bind owners"
+  - id: 'PRD-1404'
+    title: 'Correct runbooks and bind owners'
     phase: 1
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["DOC-001", "OPS-001"]
-    dependencies: ["PRD-0001", "PRD-1402"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['DOC-001', 'OPS-001']
+    dependencies: ['PRD-0001', 'PRD-1402']
     owner: null
-    reviewers: ["SRE Owner"]
-    writeScope: ["ai-it-interview-project-kit/13-operations/**", "active readiness/evidence docs"]
-    acceptanceRefs: ["section 10/PRD-1404", "section 28/PRD-1404"]
+    reviewers: ['SRE Owner']
+    writeScope: ['ai-it-interview-project-kit/13-operations/**', 'active readiness/evidence docs']
+    acceptanceRefs: ['section 10/PRD-1404', 'section 28/PRD-1404']
     evidenceRefs: []
-    blockers: ["owner and alert policy dependencies are not CLOSED"]
+    blockers: ['owner and alert policy dependencies are not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-2001"
-    title: "Rebuild candidate manifest"
+  - id: 'PRD-2001'
+    title: 'Rebuild candidate manifest'
     phase: 2
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
-    findingIds: ["RLS-001"]
-    dependencies: ["G1"]
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['RLS-001']
+    dependencies: ['G1']
     owner: null
-    reviewers: ["Independent Reviewer"]
-    writeScope: ["candidate manifest", "evidence records", "deterministic tooling"]
-    acceptanceRefs: ["section 12/PRD-2001", "section 28/PRD-2001"]
+    reviewers: ['Independent Reviewer']
+    writeScope: ['candidate manifest', 'evidence records', 'deterministic tooling']
+    acceptanceRefs: ['section 12/PRD-2001', 'section 28/PRD-2001']
     evidenceRefs: []
-    blockers: ["G1 is not PASS"]
+    blockers: ['G1 is not PASS']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-2002"
-    title: "Create explicitly staged immutable candidate"
+  - id: 'PRD-2002'
+    title: 'Create explicitly staged immutable candidate'
     phase: 2
-    state: "NOT_READY"
-    permissionClass: "L2_GIT_RECORD"
-    findingIds: ["RLS-001"]
-    dependencies: ["PRD-2001"]
+    state: 'NOT_READY'
+    permissionClass: 'L2_GIT_RECORD'
+    findingIds: ['RLS-001']
+    dependencies: ['PRD-2001']
     owner: null
-    reviewers: ["Independent Reviewer"]
-    writeScope: ["Git index", "candidate commit"]
-    acceptanceRefs: ["section 12/PRD-2002", "section 28/PRD-2002"]
+    reviewers: ['Independent Reviewer']
+    writeScope: ['Git index', 'candidate commit']
+    acceptanceRefs: ['section 12/PRD-2002', 'section 28/PRD-2002']
     evidenceRefs: []
-    blockers: ["PRD-2001 is not CLOSED", "explicit user authorization is absent"]
+    blockers: ['PRD-2001 is not CLOSED', 'explicit user authorization is absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-2003"
-    title: "Run protected exact-SHA CI"
+  - id: 'PRD-2003'
+    title: 'Run protected exact-SHA CI'
     phase: 2
-    state: "NOT_READY"
-    permissionClass: "L3_REMOTE_CHANGE"
-    findingIds: ["RLS-001", "CD-001"]
-    dependencies: ["PRD-2002"]
+    state: 'NOT_READY'
+    permissionClass: 'L3_REMOTE_CHANGE'
+    findingIds: ['RLS-001', 'CD-001']
+    dependencies: ['PRD-2002']
     owner: null
-    reviewers: ["Security Reviewer", "CI/CD Owner"]
-    writeScope: ["authorized remote push/PR/run", "CI artifacts"]
-    acceptanceRefs: ["section 12/PRD-2003", "section 28/PRD-2003"]
+    reviewers: ['Security Reviewer', 'CI/CD Owner']
+    writeScope: ['authorized remote push/PR/run', 'CI artifacts']
+    acceptanceRefs: ['section 12/PRD-2003', 'section 28/PRD-2003']
     evidenceRefs: []
-    blockers: ["immutable candidate and remote authorization are absent"]
+    blockers: ['immutable candidate and remote authorization are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-3001"
-    title: "Validate Terraform on exact candidate"
+  - id: 'PRD-3001'
+    title: 'Validate Terraform on exact candidate'
     phase: 3
-    state: "NOT_READY"
-    permissionClass: "L4_CLOUD_READ"
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
     findingIds: []
-    dependencies: ["G2"]
+    dependencies: ['G2']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["validation evidence", "approved Terraform fix only via scoped implementation task"]
-    acceptanceRefs: ["section 13/PRD-3001", "section 28/PRD-3001"]
+    reviewers: ['Security Reviewer']
+    writeScope:
+      ['validation evidence', 'approved Terraform fix only via scoped implementation task']
+    acceptanceRefs: ['section 13/PRD-3001', 'section 28/PRD-3001']
     evidenceRefs: []
-    blockers: ["G2 is not PASS", "cloud target identity is not recorded"]
+    blockers: ['G2 is not PASS', 'cloud target identity is not recorded']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-3002"
-    title: "Generate and review staging Terraform plan"
+  - id: 'PRD-3002'
+    title: 'Generate and review staging Terraform plan'
     phase: 3
-    state: "NOT_READY"
-    permissionClass: "L4_CLOUD_READ"
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
     findingIds: []
-    dependencies: ["PRD-3001"]
+    dependencies: ['PRD-3001']
     owner: null
-    reviewers: ["Platform Owner", "Data Owner"]
-    writeScope: ["staging plan artifact and evidence"]
-    acceptanceRefs: ["section 13/PRD-3002", "section 28/PRD-3002"]
+    reviewers: ['Platform Owner', 'Data Owner']
+    writeScope: ['staging plan artifact and evidence']
+    acceptanceRefs: ['section 13/PRD-3002', 'section 28/PRD-3002']
     evidenceRefs: []
-    blockers: ["PRD-3001 is not CLOSED", "staging backend/account/region inputs are absent"]
+    blockers: ['PRD-3001 is not CLOSED', 'staging backend/account/region inputs are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-3003"
-    title: "Generate and review production Terraform plan"
+  - id: 'PRD-3003'
+    title: 'Generate and review production Terraform plan'
     phase: 3
-    state: "NOT_READY"
-    permissionClass: "L4_CLOUD_READ"
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
     findingIds: []
-    dependencies: ["PRD-3001"]
+    dependencies: ['PRD-3001']
     owner: null
-    reviewers: ["Platform Owner", "Data Owner", "Security Reviewer"]
-    writeScope: ["production plan artifact and evidence"]
-    acceptanceRefs: ["section 13/PRD-3003", "section 28/PRD-3003"]
+    reviewers: ['Platform Owner', 'Data Owner', 'Security Reviewer']
+    writeScope: ['production plan artifact and evidence']
+    acceptanceRefs: ['section 13/PRD-3003', 'section 28/PRD-3003']
     evidenceRefs: []
-    blockers: ["PRD-3001 is not CLOSED", "production backend/account/region inputs are absent"]
+    blockers: ['PRD-3001 is not CLOSED', 'production backend/account/region inputs are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-3004"
-    title: "Verify GitHub and AWS prerequisites"
+  - id: 'PRD-3004'
+    title: 'Verify GitHub and AWS prerequisites'
     phase: 3
-    state: "NOT_READY"
-    permissionClass: "L4_CLOUD_READ"
-    findingIds: ["SEC-002", "OPS-001"]
-    dependencies: ["G2"]
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
+    findingIds: ['SEC-002', 'OPS-001']
+    dependencies: ['G2']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["redacted prerequisite evidence"]
-    acceptanceRefs: ["section 13/PRD-3004", "section 28/PRD-3004"]
+    reviewers: ['Security Reviewer']
+    writeScope: ['redacted prerequisite evidence']
+    acceptanceRefs: ['section 13/PRD-3004', 'section 28/PRD-3004']
     evidenceRefs: []
-    blockers: ["G2 is not PASS", "authorized identities are not recorded"]
+    blockers: ['G2 is not PASS', 'authorized identities are not recorded']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-4001"
-    title: "Deploy exact release to staging"
+  - id: 'PRD-4001'
+    title: 'Deploy exact release to staging'
     phase: 4
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["CD-001"]
-    dependencies: ["G3"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['CD-001']
+    dependencies: ['G3']
     owner: null
-    reviewers: ["Staging Approver"]
-    writeScope: ["approved staging migration task", "approved staging ECS services"]
-    acceptanceRefs: ["section 14/PRD-4001", "section 28/PRD-4001"]
+    reviewers: ['Staging Approver']
+    writeScope: ['approved staging migration task', 'approved staging ECS services']
+    acceptanceRefs: ['section 14/PRD-4001', 'section 28/PRD-4001']
     evidenceRefs: []
-    blockers: ["G3 is not PASS", "staging execution approval and target identity are absent"]
+    blockers: ['G3 is not PASS', 'staging execution approval and target identity are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-4002"
-    title: "Run staging post-deploy basic smoke"
+  - id: 'PRD-4002'
+    title: 'Run staging post-deploy basic smoke'
     phase: 4
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-4001"]
+    dependencies: ['PRD-4001']
     owner: null
-    reviewers: ["Staging Approver"]
-    writeScope: ["non-destructive staging smoke", "approved exact rollback if required"]
-    acceptanceRefs: ["section 14/PRD-4002", "section 28/PRD-4002"]
+    reviewers: ['Staging Approver']
+    writeScope: ['non-destructive staging smoke', 'approved exact rollback if required']
+    acceptanceRefs: ['section 14/PRD-4002', 'section 28/PRD-4002']
     evidenceRefs: []
-    blockers: ["PRD-4001 is not CLOSED"]
+    blockers: ['PRD-4001 is not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5001"
-    title: "Browser authentication and security smoke"
+  - id: 'PRD-5001'
+    title: 'Browser authentication and security smoke'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["SEC-003"]
-    dependencies: ["PRD-4002"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['SEC-003']
+    dependencies: ['PRD-4002']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["approved staging test users/data/actions", "redacted evidence"]
-    acceptanceRefs: ["section 15/PRD-5001", "section 28/PRD-5001"]
+    reviewers: ['Security Reviewer']
+    writeScope: ['approved staging test users/data/actions', 'redacted evidence']
+    acceptanceRefs: ['section 15/PRD-5001', 'section 28/PRD-5001']
     evidenceRefs: []
-    blockers: ["staging basic smoke and disposable test identities are absent"]
+    blockers: ['staging basic smoke and disposable test identities are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5002"
-    title: "Authorization, BOLA and tenant suite"
+  - id: 'PRD-5002'
+    title: 'Authorization, BOLA and tenant suite'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-4002"]
+    dependencies: ['PRD-4002']
     owner: null
-    reviewers: ["Security Reviewer"]
-    writeScope: ["approved disposable staging tenant/account fixtures and evidence"]
-    acceptanceRefs: ["section 15/PRD-5002", "section 28/PRD-5002"]
+    reviewers: ['Security Reviewer']
+    writeScope: ['approved disposable staging tenant/account fixtures and evidence']
+    acceptanceRefs: ['section 15/PRD-5002', 'section 28/PRD-5002']
     evidenceRefs: []
-    blockers: ["staging basic smoke and fixture ownership map are absent"]
+    blockers: ['staging basic smoke and fixture ownership map are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5003"
-    title: "Validate live S3, KMS and task roles"
+  - id: 'PRD-5003'
+    title: 'Validate live S3, KMS and task roles'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["DATA-001", "REL-001", "SEC-001", "SEC-002"]
-    dependencies: ["PRD-4002"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['DATA-001', 'REL-001', 'SEC-001', 'SEC-002']
+    dependencies: ['PRD-4002']
     owner: null
-    reviewers: ["Security Reviewer", "Data Owner"]
-    writeScope: ["approved disposable staging object prefixes and task actions"]
-    acceptanceRefs: ["section 15/PRD-5003", "section 28/PRD-5003"]
+    reviewers: ['Security Reviewer', 'Data Owner']
+    writeScope: ['approved disposable staging object prefixes and task actions']
+    acceptanceRefs: ['section 15/PRD-5003', 'section 28/PRD-5003']
     evidenceRefs: []
-    blockers: ["staging basic smoke and disposable object scope are absent"]
+    blockers: ['staging basic smoke and disposable object scope are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5004"
-    title: "Run AI trust, cost and provider failure suite"
+  - id: 'PRD-5004'
+    title: 'Run AI trust, cost and provider failure suite'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["REL-002"]
-    dependencies: ["PRD-4002"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['REL-002']
+    dependencies: ['PRD-4002']
     owner: null
-    reviewers: ["Security Reviewer", "SRE Owner"]
-    writeScope: ["controlled staging AI calls/data and evidence"]
-    acceptanceRefs: ["section 15/PRD-5004", "section 28/PRD-5004"]
+    reviewers: ['Security Reviewer', 'SRE Owner']
+    writeScope: ['controlled staging AI calls/data and evidence']
+    acceptanceRefs: ['section 15/PRD-5004', 'section 28/PRD-5004']
     evidenceRefs: []
-    blockers: ["provider test mode, budget and abort threshold are absent"]
+    blockers: ['provider test mode, budget and abort threshold are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5005"
-    title: "Run load, soak and capacity validation"
+  - id: 'PRD-5005'
+    title: 'Run load, soak and capacity validation'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-4002", "PRD-1402"]
+    dependencies: ['PRD-4002', 'PRD-1402']
     owner: null
-    reviewers: ["SRE Owner", "Product Owner"]
-    writeScope: ["approved staging load generation and evidence"]
-    acceptanceRefs: ["section 15/PRD-5005", "section 28/PRD-5005"]
+    reviewers: ['SRE Owner', 'Product Owner']
+    writeScope: ['approved staging load generation and evidence']
+    acceptanceRefs: ['section 15/PRD-5005', 'section 28/PRD-5005']
     evidenceRefs: []
-    blockers: ["peak/headroom/workload/duration/cost/abort inputs are absent"]
+    blockers: ['peak/headroom/workload/duration/cost/abort inputs are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5006"
-    title: "Run controlled dependency-failure suite"
+  - id: 'PRD-5006'
+    title: 'Run controlled dependency-failure suite'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["DATA-001", "REL-001", "REL-002", "OPS-001"]
-    dependencies: ["PRD-4002", "PRD-1402"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['DATA-001', 'REL-001', 'REL-002', 'OPS-001']
+    dependencies: ['PRD-4002', 'PRD-1402']
     owner: null
-    reviewers: ["SRE Owner", "Security Reviewer"]
-    writeScope: ["enumerated staging components and controlled signals"]
-    acceptanceRefs: ["section 15/PRD-5006", "section 28/PRD-5006"]
+    reviewers: ['SRE Owner', 'Security Reviewer']
+    writeScope: ['enumerated staging components and controlled signals']
+    acceptanceRefs: ['section 15/PRD-5006', 'section 28/PRD-5006']
     evidenceRefs: []
-    blockers: ["blast radius, recovery and abort plan are absent"]
+    blockers: ['blast radius, recovery and abort plan are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5007"
-    title: "Rehearse exact task-definition rollback"
+  - id: 'PRD-5007'
+    title: 'Rehearse exact task-definition rollback'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-4002"]
+    dependencies: ['PRD-4002']
     owner: null
-    reviewers: ["Data Owner", "Staging Approver"]
-    writeScope: ["approved staging ECS services"]
-    acceptanceRefs: ["section 15/PRD-5007", "section 28/PRD-5007"]
+    reviewers: ['Data Owner', 'Staging Approver']
+    writeScope: ['approved staging ECS services']
+    acceptanceRefs: ['section 15/PRD-5007', 'section 28/PRD-5007']
     evidenceRefs: []
-    blockers: ["prior ARNs/digests and schema compatibility are not proven"]
+    blockers: ['prior ARNs/digests and schema compatibility are not proven']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5008"
-    title: "Run backup, PITR and isolated restore drill"
+  - id: 'PRD-5008'
+    title: 'Run backup, PITR and isolated restore drill'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-4002"]
+    dependencies: ['PRD-4002']
     owner: null
-    reviewers: ["Data Owner", "Security Reviewer"]
-    writeScope: ["approved backup artifacts", "exact isolated empty disposable drill target"]
-    acceptanceRefs: ["section 15/PRD-5008", "section 28/PRD-5008"]
+    reviewers: ['Data Owner', 'Security Reviewer']
+    writeScope: ['approved backup artifacts', 'exact isolated empty disposable drill target']
+    acceptanceRefs: ['section 15/PRD-5008', 'section 28/PRD-5008']
     evidenceRefs: []
-    blockers: ["Data Owner has not authorized an exact disposable restore target"]
+    blockers: ['Data Owner has not authorized an exact disposable restore target']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-5009"
-    title: "Run synthetic alert and runbook drill"
+  - id: 'PRD-5009'
+    title: 'Run synthetic alert and runbook drill'
     phase: 5
-    state: "NOT_READY"
-    permissionClass: "L5_NONPROD_WRITE"
-    findingIds: ["OPS-001"]
-    dependencies: ["PRD-1403", "PRD-4002"]
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['PRD-1403', 'PRD-4002']
     owner: null
-    reviewers: ["Staging Approver"]
-    writeScope: ["controlled staging alert signals and evidence"]
-    acceptanceRefs: ["section 15/PRD-5009", "section 28/PRD-5009"]
+    reviewers: ['Staging Approver']
+    writeScope: ['controlled staging alert signals and evidence']
+    acceptanceRefs: ['section 15/PRD-5009', 'section 28/PRD-5009']
     evidenceRefs: []
-    blockers: ["alert architecture, policy and staging dependencies are not CLOSED"]
+    blockers: ['alert architecture, policy and staging dependencies are not CLOSED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-6001"
-    title: "Issue independent production pre-approval"
+  - id: 'PRD-6001'
+    title: 'Issue independent production pre-approval'
     phase: 6
-    state: "NOT_READY"
-    permissionClass: "L4_CLOUD_READ"
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
     findingIds: []
-    dependencies: ["G4"]
+    dependencies: ['G4']
     owner: null
-    reviewers: ["Security Reviewer", "Data Owner", "SRE Owner"]
-    writeScope: ["production gate decision and approval evidence"]
-    acceptanceRefs: ["section 16/PRD-6001", "section 28/PRD-6001"]
+    reviewers: ['Security Reviewer', 'Data Owner', 'SRE Owner']
+    writeScope: ['production gate decision and approval evidence']
+    acceptanceRefs: ['section 16/PRD-6001', 'section 28/PRD-6001']
     evidenceRefs: []
-    blockers: ["G4 is not PASS and evidence bundle is not sealed"]
+    blockers: ['G4 is not PASS and evidence bundle is not sealed']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-6002"
-    title: "Promote exact release to production"
+  - id: 'PRD-6002'
+    title: 'Promote exact release to production'
     phase: 6
-    state: "NOT_READY"
-    permissionClass: "L6_PROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L6_PROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-6001"]
+    dependencies: ['PRD-6001']
     owner: null
-    reviewers: ["Production Approver"]
-    writeScope: ["exact approved production migration task", "exact approved production ECS services"]
-    acceptanceRefs: ["section 16/PRD-6002", "section 28/PRD-6002"]
+    reviewers: ['Production Approver']
+    writeScope:
+      ['exact approved production migration task', 'exact approved production ECS services']
+    acceptanceRefs: ['section 16/PRD-6002', 'section 28/PRD-6002']
     evidenceRefs: []
-    blockers: ["independent G5 approval and production authorization are absent"]
+    blockers: ['independent G5 approval and production authorization are absent']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-7001"
-    title: "Run production smoke and observation window"
+  - id: 'PRD-7001'
+    title: 'Run production smoke and observation window'
     phase: 7
-    state: "NOT_READY"
-    permissionClass: "L6_PROD_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L6_PROD_WRITE'
     findingIds: []
-    dependencies: ["PRD-6002"]
+    dependencies: ['PRD-6002']
     owner: null
-    reviewers: ["Production Approver"]
-    writeScope: ["read-only production observation", "exact approved rollback if stop threshold is reached"]
-    acceptanceRefs: ["section 17/PRD-7001", "section 28/PRD-7001"]
+    reviewers: ['Production Approver']
+    writeScope:
+      ['read-only production observation', 'exact approved rollback if stop threshold is reached']
+    acceptanceRefs: ['section 17/PRD-7001', 'section 28/PRD-7001']
     evidenceRefs: []
-    blockers: ["production promotion is not VERIFIED"]
+    blockers: ['production promotion is not VERIFIED']
     updatedAtUtc: null
     updatedBy: null
-  - id: "PRD-7002"
-    title: "Seal evidence and close production release"
+  - id: 'PRD-7002'
+    title: 'Seal evidence and close production release'
     phase: 7
-    state: "NOT_READY"
-    permissionClass: "L1_REPO_WRITE"
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
     findingIds: []
-    dependencies: ["PRD-7001"]
+    dependencies: ['PRD-7001']
     owner: null
-    reviewers: ["Production Approver"]
-    writeScope: ["task/finding/gate/evidence/release records"]
-    acceptanceRefs: ["section 17/PRD-7002", "section 28/PRD-7002"]
+    reviewers: ['Production Approver']
+    writeScope: ['task/finding/gate/evidence/release records']
+    acceptanceRefs: ['section 17/PRD-7002', 'section 28/PRD-7002']
     evidenceRefs: []
-    blockers: ["production observation is not CLOSED"]
+    blockers: ['production observation is not CLOSED']
     updatedAtUtc: null
     updatedBy: null
 ```
@@ -2656,19 +2714,19 @@ tasks:
 Mỗi transition append một event, không chỉ đổi `state`:
 
 ```yaml
-- eventId: "<uuid>"
-  taskId: "PRD-NNNN"
-  from: "READY"
-  to: "IN_PROGRESS"
-  atUtc: "<RFC3339 UTC>"
-  actor: "<human or agent identity>"
+- eventId: '<uuid>'
+  taskId: 'PRD-NNNN'
+  from: 'READY'
+  to: 'IN_PROGRESS'
+  atUtc: '<RFC3339 UTC>'
+  actor: '<human or agent identity>'
   snapshot:
-    branch: "<branch>"
-    head: "<40-char SHA or null for uncommitted snapshot>"
-    fingerprint: "sha256:<64 hex>"
-    statusSummary: "<counts and exact scoped paths>"
-  authorizationRef: "<required for L2-L6; null otherwise>"
-  reason: "<why transition is valid>"
+    branch: '<branch>'
+    head: '<40-char SHA or null for uncommitted snapshot>'
+    fingerprint: 'sha256:<64 hex>'
+    statusSummary: '<counts and exact scoped paths>'
+  authorizationRef: '<required for L2-L6; null otherwise>'
+  reason: '<why transition is valid>'
   evidenceRefs: []
   blockers: []
 ```
@@ -2679,21 +2737,21 @@ Ledger validator phải reject: duplicate ID; unknown dependency; cycle; illegal
 
 Các row sau là input thực thi, không phải “việc có thể bổ sung sau”. Owner có thể yêu cầu executor đề xuất options/ADR, nhưng executor không được tự chuyển proposed option thành approved decision.
 
-| Decision ID | Quyết định cần chốt | Blocks | Decision owner | Input tối thiểu | Trạng thái ban đầu |
-| --- | --- | --- | --- | --- | --- |
-| DEC-001 | Tên/team cho Repository, Application, Platform, CI/CD, Security, Data, SRE, Evidence Custodian, Staging Approver, Production Approver | G0 và mọi task | Repository Owner | identities, escalation, timezone, separation of duties | `OPEN` |
-| DEC-002 | Durable deletion model: state machine/outbox/reconciler, terminal states, retention/legal-hold behavior | PRD-1001, PRD-1004 | Data Owner + Application Owner | current Prisma model, queue guarantees, S3 version semantics, retention policy | `OPEN` |
-| DEC-003 | Shared upload-intent representation, Redis atomic primitive, TTL, fail-closed/readiness semantics | PRD-1002–1003 | Application Owner + Security Reviewer | replica topology, Redis availability, expected upload UX/rate | `OPEN` |
-| DEC-004 | Upload enforcement: presigned POST hay controlled proxy; per-category MIME/size/public-content/quota/lifecycle policy | PRD-1003, PRD-5003 | Security Reviewer + Product/Data Owner | categories, max sizes, public risk, throughput/cost targets | `OPEN` |
-| DEC-005 | ECS API/worker action-prefix matrix và KMS encryption-context conditions | PRD-1101, PRD-5003 | Platform Owner + Security Reviewer | runtime call inventory, bucket taxonomy, deploy role constraints | `OPEN` |
-| DEC-006 | SSE transport: header-only hay single-use channel ticket | PRD-1102, PRD-5001 | Security Reviewer + Application Owner | supported browsers/client API, UX/reconnect requirements, proxy behavior | `OPEN` |
-| DEC-007 | AI retryable taxonomy, timeout scope, max retry, circuit/fallback interaction | PRD-1201, PRD-5004 | Application Owner + SRE Owner | provider SDK behavior, latency SLO, idempotency/ambiguity model | `OPEN` |
-| DEC-008 | Enabled model pricing map, per-call upper bound, daily cap, rounding/tolerance, alert thresholds | PRD-1202, PRD-5004–5005 | Product/Finance delegate + SRE Owner | model list, price source/version, budget ceiling, workload forecast | `OPEN` |
-| DEC-009 | Observability backend/topology, scrape auth, HA, retention, notification destination | PRD-1401–1403, PRD-5009 | Platform Owner + SRE Owner | cloud services, budget, on-call system, data classification | `OPEN` |
-| DEC-010 | Numeric SLO/SLI, error budget, alert windows, expected peak, headroom, load/soak duration | PRD-1402, PRD-5005–5006, G5 | Product Owner + SRE Owner | business critical journeys, traffic forecast, capacity budget | `OPEN` |
-| DEC-011 | RPO/RTO, backup/restore freshness, evidence retention | PRD-5008, G5/G6 | Data Owner + Production Approver | data criticality, compliance/retention, recovery budget | `OPEN` |
-| DEC-012 | Exact GitHub org/repo, AWS account/region, Terraform backend/workspace, ECS cluster/services, S3/KMS targets cho staging/prod | PRD-3001–7001 | Platform Owner | verified identifiers, credentials source, environment ownership | `OPEN` |
-| DEC-013 | Production change window, observation duration, rollback thresholds, on-call/escalation | PRD-6001–7001 | Production Approver + SRE Owner | release risk, traffic window, incident status, prior ARNs | `OPEN` |
+| Decision ID | Quyết định cần chốt                                                                                                                   | Blocks                      | Decision owner                         | Input tối thiểu                                                                | Trạng thái ban đầu |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- | -------------------------------------- | ------------------------------------------------------------------------------ | ------------------ |
+| DEC-001     | Tên/team cho Repository, Application, Platform, CI/CD, Security, Data, SRE, Evidence Custodian, Staging Approver, Production Approver | G0 và mọi task              | Repository Owner                       | identities, escalation, timezone, separation of duties                         | `OPEN`             |
+| DEC-002     | Durable deletion model: state machine/outbox/reconciler, terminal states, retention/legal-hold behavior                               | PRD-1001, PRD-1004          | Data Owner + Application Owner         | current Prisma model, queue guarantees, S3 version semantics, retention policy | `OPEN`             |
+| DEC-003     | Shared upload-intent representation, Redis atomic primitive, TTL, fail-closed/readiness semantics                                     | PRD-1002–1003               | Application Owner + Security Reviewer  | replica topology, Redis availability, expected upload UX/rate                  | `OPEN`             |
+| DEC-004     | Upload enforcement: presigned POST hay controlled proxy; per-category MIME/size/public-content/quota/lifecycle policy                 | PRD-1003, PRD-5003          | Security Reviewer + Product/Data Owner | categories, max sizes, public risk, throughput/cost targets                    | `OPEN`             |
+| DEC-005     | ECS API/worker action-prefix matrix và KMS encryption-context conditions                                                              | PRD-1101, PRD-5003          | Platform Owner + Security Reviewer     | runtime call inventory, bucket taxonomy, deploy role constraints               | `OPEN`             |
+| DEC-006     | SSE transport: header-only hay single-use channel ticket                                                                              | PRD-1102, PRD-5001          | Security Reviewer + Application Owner  | supported browsers/client API, UX/reconnect requirements, proxy behavior       | `OPEN`             |
+| DEC-007     | AI retryable taxonomy, timeout scope, max retry, circuit/fallback interaction                                                         | PRD-1201, PRD-5004          | Application Owner + SRE Owner          | provider SDK behavior, latency SLO, idempotency/ambiguity model                | `OPEN`             |
+| DEC-008     | Enabled model pricing map, per-call upper bound, daily cap, rounding/tolerance, alert thresholds                                      | PRD-1202, PRD-5004–5005     | Product/Finance delegate + SRE Owner   | model list, price source/version, budget ceiling, workload forecast            | `OPEN`             |
+| DEC-009     | Observability backend/topology, scrape auth, HA, retention, notification destination                                                  | PRD-1401–1403, PRD-5009     | Platform Owner + SRE Owner             | cloud services, budget, on-call system, data classification                    | `OPEN`             |
+| DEC-010     | Numeric SLO/SLI, error budget, alert windows, expected peak, headroom, load/soak duration                                             | PRD-1402, PRD-5005–5006, G5 | Product Owner + SRE Owner              | business critical journeys, traffic forecast, capacity budget                  | `OPEN`             |
+| DEC-011     | RPO/RTO, backup/restore freshness, evidence retention                                                                                 | PRD-5008, G5/G6             | Data Owner + Production Approver       | data criticality, compliance/retention, recovery budget                        | `OPEN`             |
+| DEC-012     | Exact GitHub org/repo, AWS account/region, Terraform backend/workspace, ECS cluster/services, S3/KMS targets cho staging/prod         | PRD-3001–7001               | Platform Owner                         | verified identifiers, credentials source, environment ownership                | `OPEN`             |
+| DEC-013     | Production change window, observation duration, rollback thresholds, on-call/escalation                                               | PRD-6001–7001               | Production Approver + SRE Owner        | release risk, traffic window, incident status, prior ARNs                      | `OPEN`             |
 
 ### 31.1 Decision resolution format
 
@@ -2875,7 +2933,7 @@ Mọi command có giá trị gate phải có record tối thiểu:
   "gate": "G1",
   "command": "<exact command without secret>",
   "workingDirectory": "<repository-relative or approved target>",
-  "toolVersions": {"node": "22.13.x", "pnpm": "11.0.9"},
+  "toolVersions": { "node": "22.13.x", "pnpm": "11.0.9" },
   "startedAtUtc": "<RFC3339>",
   "finishedAtUtc": "<RFC3339>",
   "exitCode": 0,
