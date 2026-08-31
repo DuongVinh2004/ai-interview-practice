@@ -192,7 +192,7 @@ export class StorageService {
     const isInvalidFilename =
       !dto.filename ||
       dto.filename.length > 128 ||
-      Array.from(dto.filename).some((char) => {
+      Array.from(dto.filename).some(char => {
         const code = char.charCodeAt(0);
         return (code >= 0 && code <= 31) || code === 127 || char === '\\' || char === '/';
       });

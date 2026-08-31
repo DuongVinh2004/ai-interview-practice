@@ -65,6 +65,7 @@ The provisional scope is a single cohesive production-readiness change set:
 - .github/workflows/deploy.yml
 - .github/workflows/security.yml
 - .gitignore
+- .prettierignore
 - .node-version
 - docker-compose.yml
 - package.json

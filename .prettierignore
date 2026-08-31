@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Cache & Temporary
+.cache/
+tmp/
+temp/
+.parallel-worktrees/
+.codex-runs/
+.terraform/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Coverage & Test Results
+coverage/
+.nyc_output/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+artifacts/
