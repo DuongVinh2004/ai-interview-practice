@@ -4,6 +4,7 @@ import { SkillAggregationService } from './services/skill-aggregation.service';
 import { PercentileService } from './services/percentile.service';
 import { GapAnalysisService } from './services/gap-analysis.service';
 import { BatchAggregationProcessor } from './services/batch-aggregation.processor';
+import { isWorkerProcess } from '../platform/process-role';
 
 @Module({
   controllers: [SkillGraphController],
@@ -11,7 +12,7 @@ import { BatchAggregationProcessor } from './services/batch-aggregation.processo
     SkillAggregationService,
     PercentileService,
     GapAnalysisService,
-    BatchAggregationProcessor,
+    ...(isWorkerProcess() ? [BatchAggregationProcessor] : []),
   ],
   exports: [SkillAggregationService, PercentileService, GapAnalysisService],
 })

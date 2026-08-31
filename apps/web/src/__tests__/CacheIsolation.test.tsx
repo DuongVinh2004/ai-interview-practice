@@ -113,7 +113,7 @@ describe('Query and Client Storage Cache Isolation (AG-PACKET-005 / PRIV-001)', 
       createdAt: new Date().toISOString(),
     };
 
-    useAuthStore.getState().setAuth(user, 'token-1', 'refresh-1');
+    useAuthStore.getState().setAuth(user, 'token-1');
     queryClient.setQueryData(['interviews', 'user-1'], [{ id: 'int-1' }]);
 
     expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -145,12 +145,12 @@ describe('Query and Client Storage Cache Isolation (AG-PACKET-005 / PRIV-001)', 
       createdAt: new Date().toISOString(),
     };
 
-    useAuthStore.getState().setAuth(userA, 'token-a', 'refresh-a');
+    useAuthStore.getState().setAuth(userA, 'token-a');
     queryClient.setQueryData(['interview', 'user-a-data'], { secret: 'user A secret' });
     expect(queryClient.getQueryData(['interview', 'user-a-data'])).toBeDefined();
 
     // Switch account to User B
-    useAuthStore.getState().setAuth(userB, 'token-b', 'refresh-b');
+    useAuthStore.getState().setAuth(userB, 'token-b');
 
     // Prior user A data is immediately purged from QueryClient
     expect(queryClient.getQueryData(['interview', 'user-a-data'])).toBeUndefined();

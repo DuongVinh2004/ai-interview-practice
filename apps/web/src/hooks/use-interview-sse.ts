@@ -10,6 +10,9 @@ interface UseInterviewSseOptions {
   onSessionUpdated?: () => void;
 }
 
+const SSE_RECONNECT_DELAY_MS = 1000;
+const SSE_MAX_RECONNECT_ATTEMPTS = 3;
+
 /**
  * Secure SSE hook for realtime interview feedback.
  * Authenticates via standard `Authorization: Bearer <token>` headers instead of
@@ -23,8 +26,8 @@ export function useInterviewSse({
 }: UseInterviewSseOptions) {
   const [isConnected, setIsConnected] = useState(false);
   const [usingFallbackPolling, setUsingFallbackPolling] = useState(false);
-  const eventSourceRef = useRef<EventSource | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const onEventRef = useRef(onEvent);
   const onSessionUpdatedRef = useRef(onSessionUpdated);
@@ -46,26 +49,47 @@ export function useInterviewSse({
 
   useEffect(() => {
     if (!sessionId || !enabled) {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-        eventSourceRef.current = null;
-      }
       if (pollingTimerRef.current) {
         clearInterval(pollingTimerRef.current);
         pollingTimerRef.current = null;
+      }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
       }
       setIsConnected(false);
       return;
     }
 
     const API_BASE = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-    const accessToken = useAuthStore.getState().accessToken;
     const sseUrl = `${API_BASE}/interviews/${sessionId}/events`;
     const abortController = new AbortController();
     let isCancelled = false;
+    let reconnectAttempts = 0;
+
+    function startPollingFallback() {
+      if (isCancelled || pollingTimerRef.current) return;
+      setUsingFallbackPolling(true);
+      pollingTimerRef.current = setInterval(pollStatus, 3000);
+    }
+
+    function scheduleReconnect() {
+      if (isCancelled) return;
+      if (reconnectAttempts >= SSE_MAX_RECONNECT_ATTEMPTS) {
+        startPollingFallback();
+        return;
+      }
+
+      reconnectAttempts += 1;
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
+        void startStream();
+      }, SSE_RECONNECT_DELAY_MS);
+    }
 
     async function startStream() {
       try {
+        const accessToken = useAuthStore.getState().accessToken;
         const headers: Record<string, string> = {
           Accept: 'text/event-stream',
         };
@@ -121,18 +145,12 @@ export function useInterviewSse({
 
         if (!isCancelled) {
           setIsConnected(false);
-          setUsingFallbackPolling(true);
-          if (!pollingTimerRef.current) {
-            pollingTimerRef.current = setInterval(pollStatus, 3000);
-          }
+          scheduleReconnect();
         }
       } catch (err: any) {
         if (err.name === 'AbortError' || isCancelled) return;
         setIsConnected(false);
-        setUsingFallbackPolling(true);
-        if (!pollingTimerRef.current) {
-          pollingTimerRef.current = setInterval(pollStatus, 3000);
-        }
+        scheduleReconnect();
       }
     }
 
@@ -141,6 +159,10 @@ export function useInterviewSse({
     return () => {
       isCancelled = true;
       abortController.abort();
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
       if (pollingTimerRef.current) {
         clearInterval(pollingTimerRef.current);
         pollingTimerRef.current = null;

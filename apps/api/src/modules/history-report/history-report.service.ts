@@ -2,6 +2,7 @@ import { Injectable, HttpStatus } from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { ErrorCode, UserRole, SessionState, SessionMode } from '@ai-interview/contracts';
+import { isPersistedAuthoritativeEvaluation } from '../evaluation/evaluation-authority';
 
 export interface HistoryFilterOptions {
   page?: number;
@@ -147,13 +148,11 @@ export class HistoryReportService {
       );
     }
 
-    // Prefer reviewed/authoritative evaluations, but keep mock/dev sessions useful when
-    // every evaluation is awaiting review.
     const turnsWithEval = session.turns.filter(t => t.answer?.evaluation);
-    const authoritativeTurns = turnsWithEval.filter(
-      t => t.answer!.evaluation!.authorityState === 'AUTHORITATIVE',
+    const authoritativeTurns = turnsWithEval.filter(t =>
+      isPersistedAuthoritativeEvaluation(t.answer!.evaluation),
     );
-    const scoreableTurns = authoritativeTurns.length > 0 ? authoritativeTurns : turnsWithEval;
+    const scoreableTurns = authoritativeTurns;
     let avgAccuracy = 0;
     let avgDepth = 0;
     let avgClarity = 0;
@@ -185,7 +184,7 @@ export class HistoryReportService {
               scoreableTurns.length
             ).toFixed(1),
           )
-        : session.overallScore;
+        : null;
 
     const learningPathSummary = session.learningPath?.summary?.replace(
       /overall performance score of \d+(?:\.\d+)?\/10/i,

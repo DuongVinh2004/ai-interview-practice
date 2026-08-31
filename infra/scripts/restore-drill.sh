@@ -1,80 +1,114 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ==============================================================================
-# Script: restore-drill.sh
-# Purpose: Automated Disaster Recovery Restore Drill & Validation (AIP-061)
-# Tier: Tier 1 (PostgreSQL Database & Data Integrity)
-# Target Objectives: RPO <= 15 minutes, RTO <= 60 minutes
-# ==============================================================================
+# Restores an existing backup into an operator-provisioned, empty disposable
+# database. This script never creates, drops, truncates, or cleans a database.
 
-START_TIME=$(date +%s)
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-DRILL_DB="ai_interview_restore_drill_${START_TIME}"
-SOURCE_DB="${DB_NAME:-ai_interview_practice}"
-DB_HOST="${DB_HOST:-localhost}"
-DB_PORT="${DB_PORT:-5432}"
-DB_USER="${DB_USER:-postgres}"
+required=(psql pg_restore sha256sum date openssl awk)
+for command_name in "${required[@]}"; do
+  command -v "${command_name}" >/dev/null 2>&1 || {
+    echo "ERROR: required command is unavailable: ${command_name}" >&2
+    exit 2
+  }
+done
 
-echo "=============================================================================="
-echo "🚨 [DR Restore Drill] Initiating Automated Recovery Drill at ${TIMESTAMP}"
-echo "🎯 Target Objectives: RPO ≤ 15 min | RTO ≤ 60 min"
-echo "=============================================================================="
+: "${BACKUP_FILE:?BACKUP_FILE must identify the backup archive under test}"
+: "${BACKUP_SHA256_FILE:?BACKUP_SHA256_FILE must identify its checksum file}"
+: "${DRILL_DATABASE_URL:?DRILL_DATABASE_URL must identify an empty disposable database}"
+: "${SOURCE_RECOVERY_POINT_UTC:?SOURCE_RECOVERY_POINT_UTC must be an ISO-8601 UTC timestamp}"
+: "${BACKUP_ENCRYPTION_KEY:?BACKUP_ENCRYPTION_KEY is required to decrypt the backup stream}"
 
-echo "Step 1: Creating isolated ephemeral database: ${DRILL_DB}..."
-if command -v psql &> /dev/null; then
-    PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -c "CREATE DATABASE ${DRILL_DB};" || true
-else
-    echo "ℹ️ (Emulated environment: verifying restore drill logic)"
+if [[ "${DRILL_ENVIRONMENT:-}" != "disposable" ]]; then
+  echo "ERROR: set DRILL_ENVIRONMENT=disposable after provisioning an isolated drill database" >&2
+  exit 2
 fi
 
-echo "Step 2: Restoring data snapshot into isolated database..."
-# Measure actual data restore execution time
-RESTORE_START=$(date +%s)
-sleep 1 # Simulated restore payload processing
-RESTORE_END=$(date +%s)
-RESTORE_DURATION=$((RESTORE_END - RESTORE_START))
+RPO_TARGET_MINUTES="${RPO_TARGET_MINUTES:-15}"
+RTO_TARGET_MINUTES="${RTO_TARGET_MINUTES:-60}"
+EVIDENCE_DIR="${EVIDENCE_DIR:-artifacts/restore-drill}"
+START_EPOCH="$(date +%s)"
+STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-echo "Step 3: Running schema migration check and row-count reconciliation..."
-cat << 'EOF' > /tmp/reconcile-check.json
-{
-  "entities": [
-    { "table": "User", "tier": 1, "status": "MATCHED", "reconciled_count": 5 },
-    { "table": "InterviewSession", "tier": 1, "status": "MATCHED", "reconciled_count": 12 },
-    { "table": "InterviewTurn", "tier": 1, "status": "MATCHED", "reconciled_count": 60 },
-    { "table": "Question", "tier": 1, "status": "MATCHED", "reconciled_count": 80 },
-    { "table": "Answer", "tier": 1, "status": "MATCHED", "reconciled_count": 60 },
-    { "table": "Evaluation", "tier": 1, "status": "MATCHED", "reconciled_count": 60 },
-    { "table": "LearningPath", "tier": 1, "status": "MATCHED", "reconciled_count": 12 },
-    { "table": "AuditLog", "tier": 1, "status": "MATCHED", "reconciled_count": 150 }
-  ]
+test -f "${BACKUP_FILE}" || { echo "ERROR: backup file does not exist" >&2; exit 2; }
+test -f "${BACKUP_SHA256_FILE}" || { echo "ERROR: checksum file does not exist" >&2; exit 2; }
+
+TARGET_DATABASE="$(psql "${DRILL_DATABASE_URL}" -XAtc 'SELECT current_database()')"
+if [[ ! "${TARGET_DATABASE}" =~ ^ai_interview_restore_drill_[a-zA-Z0-9_]+$ ]]; then
+  echo "ERROR: target database name is not an approved restore-drill name: ${TARGET_DATABASE}" >&2
+  exit 2
+fi
+
+EXISTING_TABLES="$(psql "${DRILL_DATABASE_URL}" -XAtc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")"
+if [[ "${EXISTING_TABLES}" != "0" ]]; then
+  echo "ERROR: restore target is not empty; refusing to overwrite existing data" >&2
+  exit 2
+fi
+
+echo "Verifying backup checksum..."
+EXPECTED_SHA256="$(awk 'NR == 1 { print $1 }' "${BACKUP_SHA256_FILE}")"
+ACTUAL_SHA256="$(sha256sum "${BACKUP_FILE}" | awk '{ print $1 }')"
+if [[ ! "${EXPECTED_SHA256}" =~ ^[0-9a-fA-F]{64}$ ]] || [[ "${ACTUAL_SHA256}" != "${EXPECTED_SHA256}" ]]; then
+  echo "ERROR: backup checksum verification failed" >&2
+  exit 1
+fi
+
+echo "Restoring ${BACKUP_FILE} into verified disposable database ${TARGET_DATABASE}..."
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+  -pass env:BACKUP_ENCRYPTION_KEY \
+  -in "${BACKUP_FILE}" \
+  | pg_restore \
+      --exit-on-error \
+      --no-owner \
+      --no-privileges \
+      --dbname "${DRILL_DATABASE_URL}"
+
+TABLE_COUNT="$(psql "${DRILL_DATABASE_URL}" -XAtc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")"
+if [[ "${TABLE_COUNT}" -lt 10 ]]; then
+  echo "ERROR: restored schema has an implausible table count: ${TABLE_COUNT}" >&2
+  exit 1
+fi
+
+MISSING_CRITICAL_TABLES="$(psql "${DRILL_DATABASE_URL}" -XAtc "
+  WITH required(name) AS (
+    VALUES ('users'), ('interview_sessions'), ('interview_turns'), ('evaluations'), ('evaluation_runs'), ('audit_logs')
+  )
+  SELECT count(*) FROM required
+  WHERE to_regclass('public.' || quote_ident(name)) IS NULL
+")"
+test "${MISSING_CRITICAL_TABLES}" = "0" || {
+  echo "ERROR: one or more critical tables are absent after restore" >&2
+  exit 1
 }
-EOF
 
-echo "Table reconciliation results:"
-cat /tmp/reconcile-check.json
+INVALID_CONSTRAINTS="$(psql "${DRILL_DATABASE_URL}" -XAtc "SELECT count(*) FROM pg_constraint WHERE NOT convalidated")"
+test "${INVALID_CONSTRAINTS}" = "0" || {
+  echo "ERROR: restored database contains unvalidated constraints" >&2
+  exit 1
+}
 
-echo "Step 4: Executing smoke queries on restored data..."
-echo "  - Checking candidate session continuity: OK"
-echo "  - Checking rubrics and scoring integrity: OK"
-echo "  - Checking foreign key constraints & indexes: OK"
-
-echo "Step 5: Safely tearing down isolated drill database..."
-if command -v psql &> /dev/null; then
-    PGPASSWORD="${DB_PASSWORD:-postgres}" psql -h "${DB_HOST}" -p "${DB_PORT}" -U "${DB_USER}" -c "DROP DATABASE IF EXISTS ${DRILL_DB};" || true
+RECOVERY_EPOCH="$(date -u -d "${SOURCE_RECOVERY_POINT_UTC}" +%s)"
+END_EPOCH="$(date +%s)"
+RTO_SECONDS="$((END_EPOCH - START_EPOCH))"
+RPO_SECONDS="$((START_EPOCH - RECOVERY_EPOCH))"
+if [[ "${RPO_SECONDS}" -lt 0 ]]; then
+  echo "ERROR: recovery point is in the future" >&2
+  exit 2
 fi
-rm -f /tmp/reconcile-check.json
 
-END_TIME=$(date +%s)
-TOTAL_RTO_SECONDS=$((END_TIME - START_TIME))
-MEASURED_RPO_MINUTES=5 # Based on 5-minute WAL archiving frequency
-MEASURED_RTO_MINUTES=$(( (TOTAL_RTO_SECONDS + 59) / 60 ))
+RTO_LIMIT_SECONDS="$((RTO_TARGET_MINUTES * 60))"
+RPO_LIMIT_SECONDS="$((RPO_TARGET_MINUTES * 60))"
+RTO_STATUS="FAIL"
+RPO_STATUS="FAIL"
+[[ "${RTO_SECONDS}" -le "${RTO_LIMIT_SECONDS}" ]] && RTO_STATUS="PASS"
+[[ "${RPO_SECONDS}" -le "${RPO_LIMIT_SECONDS}" ]] && RPO_STATUS="PASS"
 
-echo "=============================================================================="
-echo "📊 [DR Drill Results Summary]"
-echo "  - Date: ${TIMESTAMP}"
-echo "  - Measured RTO (Recovery Time): ${TOTAL_RTO_SECONDS}s (~${MEASURED_RTO_MINUTES} min) [Target: ≤ 60 min] -> PASS ✅"
-echo "  - Measured RPO (Recovery Point): ${MEASURED_RPO_MINUTES} min [Target: ≤ 15 min] -> PASS ✅"
-echo "  - Schema & Data Integrity: 100% Reconciled -> PASS ✅"
-echo "  - Isolation Verification: Zero impact on production -> PASS ✅"
-echo "=============================================================================="
+mkdir -p "${EVIDENCE_DIR}"
+EVIDENCE_FILE="${EVIDENCE_DIR}/restore-drill-${START_EPOCH}.json"
+printf '{\n  "startedAt": "%s",\n  "targetDatabase": "%s",\n  "backupFile": "%s",\n  "sourceRecoveryPointUtc": "%s",\n  "tableCount": %s,\n  "invalidConstraints": %s,\n  "rpoSeconds": %s,\n  "rpoTargetSeconds": %s,\n  "rpoStatus": "%s",\n  "rtoSeconds": %s,\n  "rtoTargetSeconds": %s,\n  "rtoStatus": "%s"\n}\n' \
+  "${STARTED_AT}" "${TARGET_DATABASE}" "${BACKUP_FILE}" "${SOURCE_RECOVERY_POINT_UTC}" \
+  "${TABLE_COUNT}" "${INVALID_CONSTRAINTS}" "${RPO_SECONDS}" "${RPO_LIMIT_SECONDS}" \
+  "${RPO_STATUS}" "${RTO_SECONDS}" "${RTO_LIMIT_SECONDS}" "${RTO_STATUS}" > "${EVIDENCE_FILE}"
+
+echo "Restore evidence written to ${EVIDENCE_FILE}"
+echo "RPO: ${RPO_SECONDS}s (${RPO_STATUS}); RTO: ${RTO_SECONDS}s (${RTO_STATUS})"
+test "${RPO_STATUS}" = "PASS" && test "${RTO_STATUS}" = "PASS"

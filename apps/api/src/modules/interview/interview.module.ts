@@ -8,11 +8,16 @@ import { BehavioralController } from './behavioral/behavioral.controller';
 import { AuthModule } from '../auth/auth.module';
 import { InterviewConfigurationModule } from '../interview-configuration/interview-configuration.module';
 import { MentorModule } from '../mentor/mentor.module';
+import { isWorkerProcess } from '../platform/process-role';
 
 @Module({
   imports: [AiOrchestratorModule, AuthModule, InterviewConfigurationModule, MentorModule],
   controllers: [InterviewController, BehavioralController],
-  providers: [InterviewService, QuestionProcessor, BehavioralService],
+  providers: [
+    InterviewService,
+    BehavioralService,
+    ...(isWorkerProcess() ? [QuestionProcessor] : []),
+  ],
   exports: [InterviewService, BehavioralService],
 })
 export class InterviewModule {}

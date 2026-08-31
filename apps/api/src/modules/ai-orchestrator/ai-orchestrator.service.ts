@@ -24,6 +24,13 @@ import {
 } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 
+export type EvaluatedAnswerExecution = EvaluatedAnswerAi & {
+  provider: string;
+  model: string;
+  promptVersionId?: string;
+  rubricVersion: string;
+};
+
 @Injectable()
 export class AiOrchestratorService {
   private readonly logger = new Logger(AiOrchestratorService.name);
@@ -98,7 +105,7 @@ export class AiOrchestratorService {
   async evaluateAnswer(
     sessionId: string,
     context: EvaluationPromptContext,
-  ): Promise<EvaluatedAnswerAi> {
+  ): Promise<EvaluatedAnswerExecution> {
     const startTime = Date.now();
 
     // 1. Pre-execution Safety Filter (Prompt injection, Protected traits, Verbosity spam)
@@ -113,7 +120,12 @@ export class AiOrchestratorService {
         status: AiRunStatus.SUCCESS,
         metadata: { safetyFlags: preFilterResult.safetyFlags },
       });
-      return filtered;
+      return {
+        ...filtered,
+        provider: 'security-filter',
+        model: 'heuristic-guard-v1',
+        rubricVersion: 'answer-evaluator-v1',
+      };
     }
 
     const promptRecord = await this.promptRegistry.getActivePrompt('answer_evaluator');
@@ -156,7 +168,13 @@ export class AiOrchestratorService {
           : undefined,
       });
 
-      return postProcessed;
+      return {
+        ...postProcessed,
+        provider: result.provider,
+        model: result.model,
+        promptVersionId: promptRecord.id,
+        rubricVersion: `answer-evaluator-v${promptRecord.version}`,
+      };
     } catch (error: any) {
       await this.auditRun({
         sessionId,

@@ -7,6 +7,7 @@ import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { TelemetryModule } from './telemetry/telemetry.module';
 import { IdempotencyService } from './guards/idempotency.service';
+import { DistributedBudgetService } from './budget/distributed-budget.service';
 import { validateEnv } from './config/env.validation';
 import {
   appConfig,
@@ -50,7 +51,7 @@ import {
     MetricsModule,
     TelemetryModule,
   ],
-  providers: [IdempotencyService],
+  providers: [IdempotencyService, DistributedBudgetService],
   exports: [
     ConfigModule,
     PrismaModule,
@@ -60,6 +61,7 @@ import {
     MetricsModule,
     TelemetryModule,
     IdempotencyService,
+    DistributedBudgetService,
   ],
 })
 export class PlatformModule {}

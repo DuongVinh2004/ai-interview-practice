@@ -45,6 +45,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
 
   const mockEntitlementReservations = {
     reserve: jest.fn(),
+    markProviderDispatchStarted: jest.fn().mockResolvedValue(undefined),
     commit: jest.fn(),
     markForReconciliation: jest.fn(),
   };
@@ -76,6 +77,10 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     gateway = module.get<VoiceStreamingGateway>(VoiceStreamingGateway);
     authService = module.get<AuthService>(AuthService);
     deepgramStt = module.get<DeepgramSttProvider>(DeepgramSttProvider);
+    const elevenLabsTts = module.get<ElevenLabsTtsProvider>(ElevenLabsTtsProvider);
+
+    jest.spyOn(deepgramStt, 'isPaidConfigured').mockReturnValue(false);
+    jest.spyOn(elevenLabsTts, 'isPaidConfigured').mockReturnValue(false);
     jest.clearAllMocks();
   });
 

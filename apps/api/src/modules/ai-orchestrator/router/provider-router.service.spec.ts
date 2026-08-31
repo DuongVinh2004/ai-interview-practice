@@ -283,4 +283,61 @@ describe('ProviderRouterService Spec', () => {
     expect(mockSemanticCache.get).not.toHaveBeenCalled();
     expect(mockSemanticCache.set).not.toHaveBeenCalled();
   });
+
+  it('immediately skips without retrying on 400, 403, 404, 409, 422, or quota errors (PRD-1201)', async () => {
+    for (const status of [400, 403, 404, 409, 422]) {
+      jest.clearAllMocks();
+      const nonRetryableError: any = new Error(`HTTP ${status} Client Error`);
+      nonRetryableError.status = status;
+
+      mockGemini.evaluateAnswer.mockRejectedValueOnce(nonRetryableError);
+      mockOpenAi.evaluateAnswer.mockResolvedValueOnce({
+        data: {
+          score: 8.0,
+          rubricScores: { technicalAccuracy: 8.0, depth: 8.0, clarity: 8.0 },
+          strengths: ['Good'],
+          improvements: ['None'],
+          conciseFeedback: 'Good',
+          evidence: [],
+          confidence: 0.9,
+          missingConcepts: [],
+          needsReview: false,
+        },
+        model: 'gpt-4o',
+        provider: 'openai',
+        latencyMs: 150,
+      });
+
+      const result = await routerService.evaluateAnswer(
+        { role: 'Dev', level: 'Senior', question: 'Q', answer: 'A' },
+        'System prompt',
+      );
+
+      expect(mockGemini.evaluateAnswer).toHaveBeenCalledTimes(1); // No retries
+      expect(result.provider).toBe('openai');
+    }
+  });
+
+  it('enforces daily budget cap and skips paid providers when budget is exceeded (PRD-1202)', async () => {
+    // Exceed daily budget
+    (routerService as any).currentDailyCostUsd = 55.0; // above 50.0 cap
+
+    mockGemini.evaluateAnswer.mockResolvedValueOnce({
+      data: { score: 9.0 } as any,
+      model: 'gemini-2.0-flash',
+      provider: 'gemini',
+      latencyMs: 50,
+      costEstimate: 0.01,
+    });
+
+    const result = await routerService.evaluateAnswer(
+      { role: 'Dev', level: 'Junior', question: 'Q', answer: 'A' },
+      'System prompt',
+    );
+
+    // Paid provider should be skipped due to daily budget exhaustion
+    expect(mockGemini.evaluateAnswer).not.toHaveBeenCalled();
+    expect(result.provider).toBe('mock');
+    expect(result.data.needsReview).toBe(true);
+  });
 });

@@ -34,13 +34,6 @@ export class LoginRequestDto {
   password!: string;
 }
 
-export class RefreshTokenRequestDto {
-  @ApiProperty({ example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' })
-  @IsString()
-  @IsNotEmpty({ message: 'Refresh token is required' })
-  refreshToken!: string;
-}
-
 export class ChangePasswordRequestDto {
   @ApiProperty({ example: 'OldPassword123' })
   @IsString()

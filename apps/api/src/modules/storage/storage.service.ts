@@ -12,10 +12,45 @@ import {
   ConfirmUploadDto,
   FileAssetDto,
   UserRole,
+  StorageCategory,
 } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { v4 as uuidv4 } from 'uuid';
 import * as path from 'path';
+
+export const CATEGORY_POLICIES: Record<
+  StorageCategory,
+  { maxBytes: number; allowedMimes: string[] }
+> = {
+  documents: {
+    maxBytes: 5 * 1024 * 1024,
+    allowedMimes: [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+    ],
+  },
+  'system-design': {
+    maxBytes: 2 * 1024 * 1024,
+    allowedMimes: ['image/png', 'image/jpeg', 'image/webp', 'application/json'],
+  },
+  public: {
+    maxBytes: 2 * 1024 * 1024,
+    allowedMimes: ['image/png', 'image/jpeg', 'image/webp'],
+  },
+  temp: {
+    maxBytes: 5 * 1024 * 1024,
+    allowedMimes: [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'application/json',
+    ],
+  },
+};
 
 interface UploadIntentData {
   key: string;
@@ -68,30 +103,62 @@ export class StorageService {
     return normalized;
   }
 
+  private isProduction(): boolean {
+    const env = this.configService.get<string>('nodeEnv') || process.env.NODE_ENV;
+    return env === 'production';
+  }
+
   private async saveIntent(key: string, data: UploadIntentData): Promise<void> {
     const redisKey = `upload_intent:${key}`;
-    try {
-      const client = this.redisService?.getClient();
-      if (client && client.status === 'ready') {
+    const client = this.redisService?.getClient();
+    if (client && client.status === 'ready') {
+      try {
         await client.set(redisKey, JSON.stringify(data), 'EX', this.INTENT_TTL_SECONDS);
         return;
+      } catch (err: any) {
+        this.logger.warn(`Redis saveIntent failed: ${err.message}`);
+        if (this.isProduction()) {
+          throw new DomainException(
+            ErrorCode.INTERNAL_SERVER_ERROR,
+            'Upload intent store is currently unavailable.',
+            HttpStatus.SERVICE_UNAVAILABLE,
+          );
+        }
       }
-    } catch (err: any) {
-      this.logger.warn(`Redis saveIntent failed, falling back to memory: ${err.message}`);
+    } else if (this.isProduction()) {
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Upload intent store is currently unavailable.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
     this.memoryIntents.set(redisKey, data);
   }
 
   private async getIntent(key: string): Promise<UploadIntentData | null> {
     const redisKey = `upload_intent:${key}`;
-    try {
-      const client = this.redisService?.getClient();
-      if (client && client.status === 'ready') {
+    const client = this.redisService?.getClient();
+    if (client && client.status === 'ready') {
+      try {
         const raw = await client.get(redisKey);
         if (raw) return JSON.parse(raw);
+        return null;
+      } catch (err: any) {
+        this.logger.warn(`Redis getIntent failed: ${err.message}`);
+        if (this.isProduction()) {
+          throw new DomainException(
+            ErrorCode.INTERNAL_SERVER_ERROR,
+            'Upload intent store is currently unavailable.',
+            HttpStatus.SERVICE_UNAVAILABLE,
+          );
+        }
       }
-    } catch (err: any) {
-      this.logger.warn(`Redis getIntent failed, checking memory: ${err.message}`);
+    } else if (this.isProduction()) {
+      throw new DomainException(
+        ErrorCode.INTERNAL_SERVER_ERROR,
+        'Upload intent store is currently unavailable.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
     }
 
     const memoryIntent = this.memoryIntents.get(redisKey);
@@ -107,13 +174,13 @@ export class StorageService {
 
   private async deleteIntent(key: string): Promise<void> {
     const redisKey = `upload_intent:${key}`;
-    try {
-      const client = this.redisService?.getClient();
-      if (client && client.status === 'ready') {
+    const client = this.redisService?.getClient();
+    if (client && client.status === 'ready') {
+      try {
         await client.del(redisKey);
+      } catch (err: any) {
+        this.logger.warn(`Redis deleteIntent failed: ${err.message}`);
       }
-    } catch (err: any) {
-      this.logger.warn(`Redis deleteIntent failed: ${err.message}`);
     }
     this.memoryIntents.delete(redisKey);
   }
@@ -122,9 +189,35 @@ export class StorageService {
     userId: string,
     dto: PresignUploadDto,
   ): Promise<PresignUploadResponseDto> {
+    const isInvalidFilename =
+      !dto.filename ||
+      dto.filename.length > 128 ||
+      Array.from(dto.filename).some(char => {
+        const code = char.charCodeAt(0);
+        return (code >= 0 && code <= 31) || code === 127 || char === '\\' || char === '/';
+      });
+
+    if (isInvalidFilename) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Invalid filename format or length.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const category = (dto.category || 'documents') as StorageCategory;
+    const policy = CATEGORY_POLICIES[category];
+    if (!policy || !policy.allowedMimes.includes(dto.mimeType)) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        `MIME type '${dto.mimeType}' is not allowed for category '${category}'.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const extension = path.extname(dto.filename);
     const sanitizedBase = path.basename(dto.filename, extension).replace(/[^a-zA-Z0-9_-]/g, '_');
-    const key = `${dto.category}/${userId}/${uuidv4()}-${sanitizedBase}${extension}`;
+    const key = `${category}/${userId}/${uuidv4()}-${sanitizedBase}${extension}`;
 
     const uploadUrl = await this.provider.generatePresignedUploadUrl(key, dto.mimeType);
 
@@ -134,13 +227,13 @@ export class StorageService {
       userId,
       filename: dto.filename,
       mimeType: dto.mimeType,
-      category: dto.category,
-      isPublic: dto.category === 'public',
+      category,
+      isPublic: category === 'public',
       expiresAt: Date.now() + this.INTENT_TTL_SECONDS * 1000,
     });
 
     let publicUrl: string | undefined = undefined;
-    if (dto.category === 'public') {
+    if (category === 'public') {
       const cdnUrl =
         this.configService.get<string>('storage.publicCdnUrl') || 'https://cdn.ai-interview.dev';
       publicUrl = `${cdnUrl}/${key}`;
@@ -208,13 +301,24 @@ export class StorageService {
       );
     }
 
+    // 6. Enforce category byte cap (SEC-001 / PRD-1003)
+    const categoryPolicy = CATEGORY_POLICIES[intent.category as StorageCategory];
+    if (categoryPolicy && metadata.size > categoryPolicy.maxBytes) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        `Uploaded file size (${metadata.size} bytes) exceeds the maximum allowed ${categoryPolicy.maxBytes} bytes for category '${intent.category}'.`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     const bucket =
       this.configService.get<string>('storage.awsS3Bucket') ||
       this.configService.get<string>('storage.r2Bucket') ||
       'ai-interview-storage';
 
+    const isPublic = intent.category === 'public';
     let publicUrl: string | undefined = undefined;
-    if (dto.isPublic || normalizedKey.startsWith('public/')) {
+    if (isPublic || normalizedKey.startsWith('public/')) {
       const cdnUrl =
         this.configService.get<string>('storage.publicCdnUrl') || 'https://cdn.ai-interview.dev';
       publicUrl = `${cdnUrl}/${normalizedKey}`;
@@ -228,12 +332,12 @@ export class StorageService {
         mimeType: dto.mimeType,
         sizeBytes: metadata.size,
         url: publicUrl,
-        isPublic: dto.isPublic || normalizedKey.startsWith('public/'),
+        isPublic,
         userId,
       },
     });
 
-    // 6. Invalidate/consume upload intent (single-use)
+    // 7. Invalidate/consume upload intent (single-use)
     await this.deleteIntent(normalizedKey);
 
     await this.prisma.auditLog.create({
@@ -319,8 +423,9 @@ export class StorageService {
       );
     }
 
-    await this.prisma.fileAsset.delete({ where: { id: asset.id } });
+    // Never delete database metadata before cloud provider confirmation
     await this.provider.deleteObject(normalizedKey);
+    await this.prisma.fileAsset.delete({ where: { id: asset.id } });
 
     await this.prisma.auditLog.create({
       data: {

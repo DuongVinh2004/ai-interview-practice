@@ -5,6 +5,7 @@ describe('QuestionBank Response Projection & Safe Preview', () => {
   let service: QuestionBankService;
   let mockPrisma: any;
   let mockEntitlement: any;
+  let mockReservations: any;
 
   beforeEach(() => {
     mockPrisma = {
@@ -28,7 +29,7 @@ describe('QuestionBank Response Projection & Safe Preview', () => {
         accessPeriodKey: 'month_2026-08',
       }),
     };
-    const mockReservations = {
+    mockReservations = {
       getPolicyInTransaction: jest.fn().mockResolvedValue({
         accessPeriodKey: 'month_2026-08',
       }),
@@ -105,6 +106,15 @@ describe('QuestionBank Response Projection & Safe Preview', () => {
     expect(detail.isRevealed).toBe(false);
     expect(detail.previewAvailable).toBe(true);
     expect(JSON.stringify(detail)).not.toContain('SUPER SECRET PREMIUM ANSWER');
+    expect(mockReservations.getPolicyInTransaction).toHaveBeenCalledWith(
+      mockPrisma,
+      'unauthorized_user',
+      'question_bank.answer_reveals',
+    );
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.objectContaining({ isolationLevel: 'Serializable' }),
+    );
   });
 
   it('getQuestionBySlug returns full answer when user has an active grant', async () => {

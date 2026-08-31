@@ -40,8 +40,12 @@ resource "aws_kms_alias" "app_secrets" {
 
 resource "aws_secretsmanager_secret" "app_secrets" {
   name        = "ai-interview-app-secrets-${var.environment}"
-  description = "Application configuration secrets for AI Interview Practice"
+  description = "Terraform-managed runtime secrets for AI Interview Practice"
   kms_key_id  = aws_kms_key.app_secrets.arn
+
+  lifecycle {
+    prevent_destroy = true
+  }
 
   tags = {
     Name = "ai-interview-app-secrets-${var.environment}"
@@ -56,15 +60,21 @@ resource "aws_secretsmanager_secret_version" "app_secrets_val" {
     MFA_ENCRYPTION_KEY = random_password.mfa_encryption_key.result
     CERTIFICATE_SECRET = random_password.certificate_secret.result
     METRICS_AUTH_TOKEN = random_password.metrics_auth_token.result
-    DATABASE_URL          = "postgresql://${var.db_username}:${urlencode(var.db_password)}@${var.db_endpoint}/${var.db_name}?schema=public&sslmode=require"
-    REDIS_PASSWORD        = var.redis_auth_token
-    OPENAI_API_KEY        = ""
-    ANTHROPIC_API_KEY     = ""
-    GEMINI_API_KEY        = ""
-    PAYOS_CLIENT_ID       = ""
-    PAYOS_API_KEY         = ""
-    PAYOS_CHECKSUM_KEY    = ""
-    STRIPE_SECRET_KEY     = ""
-    STRIPE_WEBHOOK_SECRET = ""
+    DATABASE_URL       = "postgresql://${var.db_username}:${urlencode(var.db_password)}@${var.db_endpoint}/${var.db_name}?schema=public&sslmode=require"
+    REDIS_PASSWORD     = var.redis_auth_token
   })
+}
+
+resource "aws_secretsmanager_secret" "provider_secrets" {
+  name        = "ai-interview-provider-secrets-${var.environment}"
+  description = "Operator-managed AI, payment, and webhook credentials"
+  kms_key_id  = aws_kms_key.app_secrets.arn
+
+  lifecycle {
+    prevent_destroy = true
+  }
+
+  tags = {
+    Name = "ai-interview-provider-secrets-${var.environment}"
+  }
 }

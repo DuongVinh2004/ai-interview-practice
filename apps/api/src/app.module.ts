@@ -38,18 +38,21 @@ import { TransformInterceptor } from './modules/platform/interceptors/transform.
 import { LoggingInterceptor } from './modules/platform/interceptors/logging.interceptor';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
+const throttleTtlMs = Number(process.env.THROTTLE_TTL || 60) * 1000;
+const throttleLimit = Number(process.env.THROTTLE_LIMIT || 100);
+
 @Module({
   imports: [
     ThrottlerModule.forRoot([
       {
         name: 'default',
-        ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per min
+        ttl: throttleTtlMs,
+        limit: throttleLimit,
       },
       {
         name: 'short',
-        ttl: 60000,
-        limit: 100,
+        ttl: throttleTtlMs,
+        limit: throttleLimit,
       },
     ]),
     PlatformModule,

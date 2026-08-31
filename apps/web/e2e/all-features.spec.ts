@@ -1,7 +1,42 @@
 import { test, expect } from '@playwright/test';
+import { createHmac } from 'node:crypto';
+
+function generateTotp(base32Secret: string, timestamp = Date.now()): string {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const bits = base32Secret
+    .replace(/=+$/u, '')
+    .toUpperCase()
+    .split('')
+    .map(character => alphabet.indexOf(character).toString(2).padStart(5, '0'))
+    .join('');
+  const key = Buffer.from(
+    (bits.match(/.{8}/gu) || [])
+      .map(byte => String.fromCharCode(Number.parseInt(byte, 2)))
+      .join(''),
+    'binary',
+  );
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(timestamp / 30_000)));
+  const digest = createHmac('sha1', key).update(counter).digest();
+  const offset = digest[digest.length - 1] & 0x0f;
+  const binary =
+    ((digest[offset] & 0x7f) << 24) |
+    ((digest[offset + 1] & 0xff) << 16) |
+    ((digest[offset + 2] & 0xff) << 8) |
+    (digest[offset + 3] & 0xff);
+  return (binary % 1_000_000).toString().padStart(6, '0');
+}
 
 test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => {
   test.beforeEach(async ({ page }) => {
+    page.on('pageerror', error => console.error(`[browser pageerror] ${error.message}`));
+    page.on('response', response => {
+      if (response.status() >= 400) {
+        console.error(
+          `[browser http ${response.status()}] ${response.request().method()} ${response.url()}`,
+        );
+      }
+    });
     await page.goto('/login');
     await page.evaluate(() => {
       localStorage.clear();
@@ -10,8 +45,7 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
   });
 
   test('1. Candidate Auth, Navigation & Core Modules Walkthrough', async ({ page }) => {
-    // 1. Visit Login
-    await page.goto('/login');
+    // 1. Visit Login (prepared by beforeEach)
     await expect(page.getByRole('heading', { name: /(sign in|đăng nhập)/i })).toBeVisible();
 
     // 2. Sign in as Candidate
@@ -29,7 +63,8 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 5. Navigate to Career Readiness
     await page.goto('/readiness');
-    await expect(page.getByText(/(readiness|sẵn sàng)/i).first()).toBeVisible();
+    await expect(page).toHaveURL('/readiness');
+    await expect(page.getByTestId('readiness-page')).toBeVisible({ timeout: 15000 });
 
     // 6. Navigate to Flashcards Decks
     await page.goto('/flashcards');
@@ -45,7 +80,8 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 9. Navigate to Profile & Settings
     await page.goto('/profile');
-    await expect(page.getByText(/(hồ sơ|profile|mục tiêu)/i).first()).toBeVisible();
+    await expect(page).toHaveURL('/profile');
+    await expect(page.getByTestId('profile-page')).toBeVisible({ timeout: 15000 });
 
     // 10. Navigate to Mentors
     await page.goto('/mentors');
@@ -53,40 +89,57 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
   });
 
   test('2. Admin Operations & Governance Walkthrough', async ({ page }) => {
-    // 1. Visit Login
-    await page.goto('/login');
-
-    // 2. Sign in with Admin credentials
+    // 1. Sign in with Admin credentials
     await page.fill('#email', 'admin@example.com');
     await page.fill('#password', 'Admin@123456');
+    const setupResponsePromise = page.waitForResponse(
+      response =>
+        response.url().endsWith('/auth/mfa/setup') && response.request().method() === 'POST',
+    );
     await page.click('button[type="submit"]');
     await page.waitForURL(url => !url.pathname.endsWith('/login'), { timeout: 15000 });
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await expect(page).toHaveURL(/\/profile\?setupMfa=1$/);
 
-    // 3. Admin Users Management
+    // 2. Complete the mandatory admin MFA enrollment with a real RFC 6238 TOTP.
+    const setupResponse = await setupResponsePromise;
+    expect(setupResponse.status()).toBe(200);
+    const setupBody = await setupResponse.json();
+    const secret = (setupBody.data || setupBody).secret as string | undefined;
+    expect(secret).toBeTruthy();
+    const mfaForm = page.locator('form').filter({ has: page.locator('input[maxlength="6"]') });
+    await mfaForm.locator('input[maxlength="6"]').fill(generateTotp(secret!));
+    const enableResponse = page.waitForResponse(
+      response =>
+        response.url().endsWith('/auth/mfa/enable') && response.request().method() === 'POST',
+    );
+    await mfaForm.locator('button[type="submit"]').click();
+    expect((await enableResponse).status()).toBe(200);
+
+    // 3. Admin Users Management (hard reload also verifies the MFA-bound refresh cookie).
     await page.goto('/admin/users');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('h1, table, .max-w-5xl').first()).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL('/admin/users');
+    await expect(page.getByRole('heading', { name: 'User Administration' })).toBeVisible({
+      timeout: 15000,
+    });
 
     // 4. Admin AI Telemetry & Circuit Breaker
     await page.goto('/admin/ai-runs');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('h1, .max-w-6xl').first()).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL('/admin/ai-runs');
+    await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
 
     // 5. Admin Prompts Version Management
     await page.goto('/admin/prompts');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('h1, .max-w-6xl').first()).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL('/admin/prompts');
+    await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
 
     // 6. Admin Golden Benchmark AI Evaluation Suite
     await page.goto('/admin/ai-eval');
-    await page.waitForLoadState('domcontentloaded');
-    await expect(page.locator('h1, .max-w-6xl').first()).toBeVisible({ timeout: 15000 });
+    await expect(page).toHaveURL('/admin/ai-eval');
+    await expect(page.locator('h1')).toBeVisible({ timeout: 15000 });
   });
 
   test('3. Setup Interview Modes & Customization', async ({ page }) => {
     // 1. Login
-    await page.goto('/login');
     await page.fill('#email', 'candidate@example.com');
     await page.fill('#password', 'Candidate@123456');
     await page.click('button[type="submit"]');
@@ -94,11 +147,8 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 2. Go to Setup page
     await page.goto('/interviews/new');
-    await expect(
-      page.getByRole('heading', {
-        name: /(configure your interview|cấu hình phỏng vấn|thiết lập phỏng vấn)/i,
-      }),
-    ).toBeVisible();
+    await expect(page).toHaveURL('/interviews/new');
+    await expect(page.getByTestId('interview-setup-page')).toBeVisible({ timeout: 15000 });
 
     // 3. Select Remediation Mode
     await page.click(
@@ -135,7 +185,6 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
   test('4. Profile Management & Flashcards Review Flow', async ({ page }) => {
     // 1. Login
-    await page.goto('/login');
     await page.fill('#email', 'candidate@example.com');
     await page.fill('#password', 'Candidate@123456');
     await page.click('button[type="submit"]');
@@ -143,9 +192,8 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 2. Profile Page
     await page.goto('/profile');
-    await expect(
-      page.getByRole('heading', { name: /(hồ sơ|profile|mục tiêu)/i }).first(),
-    ).toBeVisible();
+    await expect(page).toHaveURL('/profile');
+    await expect(page.getByTestId('profile-page')).toBeVisible({ timeout: 15000 });
 
     // 3. Save profile changes
     const nameInput = page
@@ -162,8 +210,7 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
     // 5. Readiness Page
     await page.goto('/readiness');
-    await expect(
-      page.getByText(/(mức độ sẵn sàng|readiness score|overall readiness|readiness)/i).first(),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page).toHaveURL('/readiness');
+    await expect(page.getByTestId('readiness-page')).toBeVisible({ timeout: 15000 });
   });
 });

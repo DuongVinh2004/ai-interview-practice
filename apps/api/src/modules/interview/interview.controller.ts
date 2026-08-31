@@ -32,6 +32,14 @@ import {
   ReEvaluateTurnRequestDto,
 } from './dto/interview.dto';
 
+const SSE_QUERY_CREDENTIAL_KEYS = new Set([
+  'access_token',
+  'auth',
+  'authorization',
+  'refresh_token',
+  'token',
+]);
+
 @ApiTags('Interviews')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -178,9 +186,21 @@ export class InterviewController {
     @Query('token') queryToken?: string,
     @Req() req?: Request,
   ): Promise<Observable<{ data: SseSessionEvent }>> {
+    const hasQueryCredential =
+      queryToken !== undefined ||
+      Object.keys(req?.query ?? {}).some(key => SSE_QUERY_CREDENTIAL_KEYS.has(key.toLowerCase()));
+
+    if (hasQueryCredential) {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'Query credentials are not supported for SSE streams',
+        HttpStatus.UNAUTHORIZED,
+      );
+    }
+
     const authHeader = req?.headers['authorization'];
     const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    const token = bearerToken || queryToken;
+    const token = bearerToken;
 
     if (!token) {
       throw new DomainException(

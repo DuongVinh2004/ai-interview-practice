@@ -77,7 +77,11 @@ export class ReadinessService {
     const turns = await this.prisma.interviewTurn.findMany({
       where: {
         session: { userId },
-        answer: { evaluation: { isNot: null } },
+        answer: {
+          evaluation: {
+            is: { authorityState: 'AUTHORITATIVE', needsReview: false },
+          },
+        },
       },
       include: {
         question: true,

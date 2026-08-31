@@ -4,8 +4,9 @@ import { AudioOrchestratorService } from './audio-orchestrator.service';
 import { OpenAiAudioProvider } from './providers/openai-audio.provider';
 import { MockAudioProvider } from './providers/mock-audio.provider';
 import { PrismaService } from '../platform/prisma/prisma.service';
-import { AudioVoice, AiRunStatus, ErrorCode } from '@ai-interview/contracts';
+import { AudioVoice, AiRunStatus } from '@ai-interview/contracts';
 import { EntitlementReservationService } from '../billing/entitlement-reservation.service';
+import { DistributedBudgetService } from '../platform/budget/distributed-budget.service';
 
 describe('AudioOrchestratorService', () => {
   let service: AudioOrchestratorService;
@@ -14,6 +15,7 @@ describe('AudioOrchestratorService', () => {
   let mockOpenAiProvider: any;
   let mockAudioProvider: any;
   let mockReservations: any;
+  let mockBudget: any;
 
   beforeEach(async () => {
     mockPrisma = {
@@ -48,6 +50,14 @@ describe('AudioOrchestratorService', () => {
       release: jest.fn(),
       markForReconciliation: jest.fn(),
     };
+    mockBudget = {
+      reserve: jest.fn().mockResolvedValue({
+        key: 'distributed-budget:ai-provider-global:2026-08-29',
+        reservedMicros: 2_000_000,
+      }),
+      settle: jest.fn().mockResolvedValue(undefined),
+      release: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -57,6 +67,7 @@ describe('AudioOrchestratorService', () => {
         { provide: OpenAiAudioProvider, useValue: mockOpenAiProvider },
         { provide: MockAudioProvider, useValue: mockAudioProvider },
         { provide: EntitlementReservationService, useValue: mockReservations },
+        { provide: DistributedBudgetService, useValue: mockBudget },
       ],
     }).compile();
 
@@ -190,6 +201,14 @@ describe('AudioOrchestratorService', () => {
       expect(mockReservations.reserve.mock.invocationCallOrder[0]).toBeLessThan(
         mockOpenAiProvider.synthesize.mock.invocationCallOrder[0],
       );
+      expect(mockReservations.markProviderDispatchStarted.mock.invocationCallOrder[0]).toBeLessThan(
+        mockOpenAiProvider.synthesize.mock.invocationCallOrder[0],
+      );
+      expect(mockBudget.reserve.mock.invocationCallOrder[0]).toBeLessThan(
+        mockOpenAiProvider.synthesize.mock.invocationCallOrder[0],
+      );
+      expect(mockBudget.reserve).toHaveBeenCalledWith('ai-provider-global', 50, 2);
+      expect(mockBudget.settle).toHaveBeenCalledWith(expect.any(Object), 0.01);
       expect(mockReservations.commit).toHaveBeenCalledWith(
         expect.objectContaining({
           reservationId: 'reservation_paid_audio',

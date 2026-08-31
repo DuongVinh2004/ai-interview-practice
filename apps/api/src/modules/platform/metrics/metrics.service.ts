@@ -28,6 +28,12 @@ export class MetricsService implements OnModuleInit {
   public readonly evaluationScoreDistribution: client.Histogram<string>;
   public readonly evaluationNeedsReviewTotal: client.Counter<string>;
 
+  // Storage & Deletion Observability Metrics (PRD-1004)
+  public readonly storageUploadIntentsTotal: client.Counter<string>;
+  public readonly storageConfirmedBytesTotal: client.Counter<string>;
+  public readonly storageDeletionEventsTotal: client.Counter<string>;
+  public readonly storageQuotaRejectionsTotal: client.Counter<string>;
+
   constructor() {
     this.registry = new client.Registry();
     this.registry.setDefaultLabels({
@@ -148,6 +154,35 @@ export class MetricsService implements OnModuleInit {
     this.evaluationNeedsReviewTotal = new client.Counter({
       name: 'interview_evaluation_needs_review_total',
       help: 'Total evaluations flagged for human review due to fallback or anomalies',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
+    // Storage & Deletion Observability Metrics (PRD-1004)
+    this.storageUploadIntentsTotal = new client.Counter({
+      name: 'storage_upload_intents_total',
+      help: 'Total upload intents issued, confirmed, or rejected',
+      labelNames: ['category', 'status'],
+      registers: [this.registry],
+    });
+
+    this.storageConfirmedBytesTotal = new client.Counter({
+      name: 'storage_confirmed_bytes_total',
+      help: 'Total confirmed upload bytes by category',
+      labelNames: ['category'],
+      registers: [this.registry],
+    });
+
+    this.storageDeletionEventsTotal = new client.Counter({
+      name: 'storage_deletion_events_total',
+      help: 'Total storage deletion events processed',
+      labelNames: ['status'],
+      registers: [this.registry],
+    });
+
+    this.storageQuotaRejectionsTotal = new client.Counter({
+      name: 'storage_quota_rejections_total',
+      help: 'Total storage quota or limit rejections',
       labelNames: ['reason'],
       registers: [this.registry],
     });

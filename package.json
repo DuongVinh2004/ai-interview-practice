@@ -5,8 +5,8 @@
   "description": "AI Interview Practice - Production-grade modular monolith and client",
   "packageManager": "pnpm@11.0.9",
   "engines": {
-    "node": ">=22.13.0",
-    "pnpm": ">=9.0.0"
+    "node": "22.13.x",
+    "pnpm": "11.0.9"
   },
   "scripts": {
     "dev": "pnpm --parallel --filter api --filter web dev",

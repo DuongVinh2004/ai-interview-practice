@@ -26,7 +26,7 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY packages ./packages
 COPY apps/api ./apps/api
 RUN pnpm --filter contracts build
-RUN cd apps/api && npx prisma generate
+RUN pnpm --filter api exec prisma generate
 RUN pnpm --filter api build
 
 # Stage 4: Production Runner

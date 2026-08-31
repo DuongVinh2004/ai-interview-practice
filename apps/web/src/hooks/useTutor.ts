@@ -7,6 +7,7 @@ import {
   QuestionRetryResponse,
   TutorRatingRequest,
 } from '@ai-interview/contracts';
+import { useAuthStore } from '../stores/auth.store';
 
 export function useTutor() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -45,11 +46,14 @@ export function useTutor() {
     setStreamedContent('');
 
     try {
-      const token = localStorage.getItem('access_token');
+      const token = useAuthStore.getState().accessToken;
+      if (!token) throw new Error('Authentication session is unavailable');
       const response = await fetch(`/api/v1/tutor/sessions/${activeSessionId}/chat`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
+          'X-CSRF-Protection': '1',
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ message: messageText }),

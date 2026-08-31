@@ -1,6 +1,5 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from '@nestjs/common';
-import { AppModule } from './app.module';
 import { MetricsService } from './modules/platform/metrics/metrics.service';
 import { serveAuthenticatedMetrics } from './modules/platform/metrics/metrics-exporter.service';
 import { PrismaService } from './modules/platform/prisma/prisma.service';
@@ -11,6 +10,8 @@ async function bootstrapWorker() {
   const logger = new Logger('WorkerBootstrap');
   logger.log('👷 Starting AI Interview Practice BullMQ Worker process...');
 
+  process.env.PROCESS_ROLE ??= 'worker';
+  const { AppModule } = await import('./app.module');
   const app = await NestFactory.createApplicationContext(AppModule, {
     bufferLogs: true,
   });

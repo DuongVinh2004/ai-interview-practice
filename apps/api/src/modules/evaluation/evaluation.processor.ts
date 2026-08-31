@@ -12,6 +12,7 @@ import { TelemetryService } from '../platform/telemetry/telemetry.service';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { StarRubric } from './rubrics/star-rubric';
+import { hasAuthoritativeMachineProvenance } from './evaluation-authority';
 
 interface EvaluateAnswerJobData {
   sessionId: string;
@@ -98,6 +99,8 @@ export class EvaluationProcessor extends WorkerHost {
       if (
         session.state === SessionState.COMPLETED &&
         turnNumber >= totalTurns &&
+        session.overallScore !== null &&
+        session.overallScore !== undefined &&
         !session.learningPath
       ) {
         await this.enqueueLearningPath(sessionId, traceparent);
@@ -127,6 +130,8 @@ export class EvaluationProcessor extends WorkerHost {
         if (
           session.state === SessionState.COMPLETED &&
           turnNumber >= totalTurns &&
+          session.overallScore !== null &&
+          session.overallScore !== undefined &&
           !session.learningPath
         ) {
           await this.enqueueLearningPath(sessionId, traceparent);
@@ -151,6 +156,8 @@ export class EvaluationProcessor extends WorkerHost {
         answer: answer.content,
         language: (session as any).language || 'vi',
       });
+      const isAuthoritative = hasAuthoritativeMachineProvenance(evaluationResult);
+      const authorityState = isAuthoritative ? 'AUTHORITATIVE' : 'NEEDS_REVIEW';
 
       // Calculate next difficulty
       const nextDifficulty = DifficultyCalculator.calculateNextDifficulty(
@@ -176,9 +183,8 @@ export class EvaluationProcessor extends WorkerHost {
               conciseFeedback: evaluationResult.conciseFeedback,
               evidence: evaluationResult.evidence,
               needsReview: evaluationResult.needsReview || false,
-              authorityState: evaluationResult.needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
-              provider: (evaluationResult as any).provider || undefined,
-              fallbackReason: (evaluationResult as any).fallbackReason || undefined,
+              authorityState,
+              provider: evaluationResult.provider,
               confidence: evaluationResult.confidence || 0.85,
             },
           });
@@ -203,10 +209,12 @@ export class EvaluationProcessor extends WorkerHost {
             conciseFeedback: evaluationResult.conciseFeedback,
             evidence: evaluationResult.evidence,
             needsReview: evaluationResult.needsReview || false,
-            authorityState: evaluationResult.needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
-            provider: (evaluationResult as any).provider || undefined,
-            fallbackReason: (evaluationResult as any).fallbackReason || undefined,
+            authorityState,
+            provider: evaluationResult.provider,
+            model: evaluationResult.model,
             confidence: evaluationResult.confidence || 0.85,
+            promptVersionId: evaluationResult.promptVersionId,
+            rubricVersion: evaluationResult.rubricVersion,
             triggeredBy: 'SYSTEM',
           },
         });
@@ -222,9 +230,8 @@ export class EvaluationProcessor extends WorkerHost {
             conciseFeedback: evaluationResult.conciseFeedback,
             evidence: evaluationResult.evidence,
             needsReview: evaluationResult.needsReview || false,
-            authorityState: evaluationResult.needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
-            provider: (evaluationResult as any).provider || undefined,
-            fallbackReason: (evaluationResult as any).fallbackReason || undefined,
+            authorityState,
+            provider: evaluationResult.provider,
             confidence: evaluationResult.confidence || 0.85,
             currentRunId: run.id,
           },
@@ -273,27 +280,24 @@ export class EvaluationProcessor extends WorkerHost {
         let overallScore: number | null = null;
         if (isFinalTurn) {
           // Calculate overall score from all turns
-          // Prefer AUTHORITATIVE evaluations; fall back to all evaluations if none exist (e.g., mock provider in dev)
-          let allEvaluations = await tx.evaluation.findMany({
+          const allEvaluations = await tx.evaluation.findMany({
             where: {
               answer: {
                 turn: { sessionId },
               },
               authorityState: 'AUTHORITATIVE', // Only count authoritative evaluations in score (F-011)
+              needsReview: false,
             },
           });
 
-          // Fallback: include NEEDS_REVIEW evaluations when no AUTHORITATIVE ones exist (mock provider scenario)
-          if (allEvaluations.length === 0) {
-            allEvaluations = await tx.evaluation.findMany({
-              where: {
-                answer: { turn: { sessionId } },
-              },
-            });
-          }
-
-          const totalScore = allEvaluations.reduce((sum, e) => sum + e.score, 0);
-          overallScore = Number((totalScore / Math.max(allEvaluations.length, 1)).toFixed(1));
+          overallScore =
+            allEvaluations.length > 0
+              ? Number(
+                  (
+                    allEvaluations.reduce((sum, e) => sum + e.score, 0) / allEvaluations.length
+                  ).toFixed(1),
+                )
+              : null;
 
           const completeResult = await tx.interviewSession.updateMany({
             where: {
@@ -372,8 +376,11 @@ export class EvaluationProcessor extends WorkerHost {
         rubricScores: evaluationResult.rubricScores,
         evidence: evaluationResult.evidence,
         needsReview: evaluationResult.needsReview || false,
-        authorityState: evaluationResult.needsReview ? 'NEEDS_REVIEW' : 'AUTHORITATIVE',
-        provider: (evaluationResult as any).provider || undefined,
+        authorityState,
+        provider: evaluationResult.provider,
+        model: evaluationResult.model,
+        promptVersionId: evaluationResult.promptVersionId,
+        rubricVersion: evaluationResult.rubricVersion,
         confidence: evaluationResult.confidence || 0.85,
         turn: {
           id: turnId,
@@ -382,13 +389,15 @@ export class EvaluationProcessor extends WorkerHost {
       });
 
       // Emit domain event for gamification engine
-      this.eventEmitter?.emit('evaluation.completed', {
-        userId: session.userId,
-        sessionId,
-        turnNumber,
-        score: evaluationResult.score,
-        sessionMode: session.sessionMode,
-      });
+      if (isAuthoritative) {
+        this.eventEmitter?.emit('evaluation.completed', {
+          userId: session.userId,
+          sessionId,
+          turnNumber,
+          score: evaluationResult.score,
+          sessionMode: session.sessionMode,
+        });
+      }
 
       if (!isFinalTurn) {
         if (didTransition) {
@@ -434,21 +443,26 @@ export class EvaluationProcessor extends WorkerHost {
           });
 
           // Emit interview.completed for gamification XP & Badges & Email Notifications
-          this.eventEmitter?.emit('interview.completed', {
-            userId: session.userId,
-            email: session.user?.email || '',
-            userName: session.user?.profile?.fullName || 'Candidate',
-            jobRole: session.jobRole?.name || 'Software Engineer',
-            sessionId,
-            overallScore: overallScore ?? evaluationResult.score,
-            sessionMode: session.sessionMode,
-            keyStrengths: evaluationResult.strengths,
-            growthAreas: evaluationResult.improvements,
-          });
+          if (overallScore !== null) {
+            this.eventEmitter?.emit('interview.completed', {
+              userId: session.userId,
+              email: session.user?.email || '',
+              userName: session.user?.profile?.fullName || 'Candidate',
+              jobRole: session.jobRole?.name || 'Software Engineer',
+              sessionId,
+              overallScore,
+              sessionMode: session.sessionMode,
+              keyStrengths: evaluationResult.strengths,
+              growthAreas: evaluationResult.improvements,
+            });
 
-          // Queue last: if dispatch fails BullMQ retries this evaluation job, whose duplicate
-          // recovery path above re-attempts the deterministic learning-path job ID.
-          await this.enqueueLearningPath(sessionId, traceparent);
+            // Queue only authoritative source material for downstream recommendations.
+            await this.enqueueLearningPath(sessionId, traceparent);
+          } else {
+            this.logger.warn(
+              `Session ${sessionId} completed without authoritative evaluations; score-dependent side effects are blocked pending review.`,
+            );
+          }
         } else {
           this.logger.warn(
             `Session ${sessionId} is already terminal. Skipping completion side effects.`,

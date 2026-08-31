@@ -131,11 +131,11 @@ describe('HistoryReportService', () => {
       const result = await service.getSessionResult('user-1', UserRole.CANDIDATE, 'sess-1');
       expect(result).toBeDefined();
       expect(result.turns.length).toBe(1);
-      expect(result.overallScore).toBe(8.5);
+      expect(result.overallScore).toBeNull();
       expect(result.rubricAverages).toEqual({
-        technicalAccuracy: 9,
-        depth: 8,
-        clarity: 8.5,
+        technicalAccuracy: 0,
+        depth: 0,
+        clarity: 0,
       });
       expect(result.technologies.map((technology: any) => technology.name)).toEqual([
         'Node.js',
@@ -146,7 +146,7 @@ describe('HistoryReportService', () => {
         isCompleted: true,
         completedAt: '2026-08-21T00:00:00.000Z',
       });
-      expect(result.learningPath?.summary).toContain('overall performance score of 8.5/10');
+      expect(result.learningPath?.summary).toContain('overall performance score of 0.0/10');
     });
 
     it('denies access to non-owner ADMIN if mfaVerified is false', async () => {

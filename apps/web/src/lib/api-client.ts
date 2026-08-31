@@ -20,46 +20,9 @@ interface RequestOptions extends RequestInit {
   skipAuth?: boolean;
 }
 
-let activeRefreshPromise: Promise<string | null> | null = null;
-
 async function performTokenRefresh(): Promise<string | null> {
-  if (activeRefreshPromise) {
-    return activeRefreshPromise;
-  }
-
-  activeRefreshPromise = (async () => {
-    const authStore = useAuthStore.getState();
-    const currentRefreshToken = authStore.refreshToken;
-    if (!currentRefreshToken) {
-      authStore.logout();
-      return null;
-    }
-
-    try {
-      const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      });
-
-      if (refreshResponse.ok) {
-        const refreshData = await refreshResponse.json();
-        const payload = refreshData.data || refreshData;
-        authStore.setAuth(payload.user, payload.accessToken, payload.refreshToken);
-        return payload.accessToken as string;
-      } else {
-        authStore.logout();
-        return null;
-      }
-    } catch {
-      authStore.logout();
-      return null;
-    } finally {
-      activeRefreshPromise = null;
-    }
-  })();
-
-  return activeRefreshPromise;
+  await useAuthStore.getState().restoreSession();
+  return useAuthStore.getState().accessToken;
 }
 
 export async function apiClient<T = any>(
@@ -72,6 +35,7 @@ export async function apiClient<T = any>(
   const isFormData = customConfig.body instanceof FormData;
   const reqHeaders: Record<string, string> = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+    'X-CSRF-Protection': '1',
     ...(headers as Record<string, string>),
   };
 
@@ -94,16 +58,18 @@ export async function apiClient<T = any>(
 
   let response = await fetch(url, {
     ...customConfig,
+    credentials: customConfig.credentials || 'include',
     headers: reqHeaders,
   });
 
   // Handle 401 unauthorized & refresh token attempt with global mutex lock (NEW-SEC-04)
-  if (response.status === 401 && !skipAuth) {
+  if (response.status === 401 && !skipAuth && !useAuthStore.getState().mfaEnrollmentRequired) {
     const newAccessToken = await performTokenRefresh();
     if (newAccessToken) {
       reqHeaders['Authorization'] = `Bearer ${newAccessToken}`;
       response = await fetch(url, {
         ...customConfig,
+        credentials: customConfig.credentials || 'include',
         headers: reqHeaders,
       });
     }

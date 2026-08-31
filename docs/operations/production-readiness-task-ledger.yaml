@@ -1,0 +1,1091 @@
+ledgerVersion: 1
+generatedFromPlanVersion: '2.0'
+generatedAtUtc: '2026-08-31T15:20:24.3137636Z'
+candidateSourceSha: null
+candidateFingerprint: null
+releaseManifestSha256: null
+apiImageDigest: null
+webImageDigest: null
+migrationSetSha256: null
+gates:
+  G0: 'PASS'
+  G1: 'NO_GO'
+  G2: 'NO_GO'
+  G3: 'NO_GO'
+  G4: 'NOT_STARTED'
+  G5: 'NO_GO'
+  G6: 'NOT_STARTED'
+tasks:
+  - id: 'PRD-0001'
+    title: 'Assign owners and approval authority'
+    phase: 0
+    state: 'CLOSED'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: []
+    dependencies: []
+    owner: 'Repository Owner'
+    reviewers: ['sol high coordinator self-review']
+    writeScope: ['owner matrix', 'execution records']
+    acceptanceRefs: ['section 9/PRD-0001', 'section 2.5']
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-owner-matrix.md#sha256:d2ca4474f4c1f614470b63c8f58d7684cc7dc1f88733cde086b20b13a8ce7082',
+        'docs/operations/production-readiness-closure-records.md#PRD-0001',
+      ]
+    blockers: []
+    updatedAtUtc: '2026-08-31T13:43:20.2916444Z'
+    updatedBy: 'sol high coordinator self-review'
+  - id: 'PRD-0002'
+    title: 'Create audit finding register'
+    phase: 0
+    state: 'CLOSED'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds:
+      [
+        'RLS-001',
+        'DATA-001',
+        'REL-001',
+        'SEC-001',
+        'OPS-001',
+        'SEC-002',
+        'REL-002',
+        'CD-001',
+        'SEC-003',
+        'DOC-001',
+      ]
+    dependencies: ['PRD-0001']
+    owner: 'Evidence Custodian'
+    reviewers: ['sol high coordinator self-review']
+    writeScope: ['finding register', 'evidence index']
+    acceptanceRefs: ['section 9/PRD-0002']
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-finding-register.md#sha256:dc4795084070805b7d797f23ea4def503601d9345e3f2adb7e1446216cbad1e9',
+        'docs/operations/production-readiness-closure-records.md#PRD-0002',
+      ]
+    blockers: []
+    updatedAtUtc: '2026-08-31T14:47:56.4461019Z'
+    updatedBy: 'sol high coordinator self-review'
+  - id: 'PRD-0003'
+    title: 'Lock candidate construction policy'
+    phase: 0
+    state: 'CLOSED'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['RLS-001']
+    dependencies: ['PRD-0002']
+    owner: 'Repository Owner'
+    reviewers: ['sol high coordinator self-review']
+    writeScope: ['candidate policy', 'manifest tooling and tests']
+    acceptanceRefs: ['section 9/PRD-0003']
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-candidate-policy.md#sha256:46db61e6924adb5eb9654e5a7486371b6ddd127090c51e988c0a65acc50985ad',
+        'docs/operations/p1-candidate-manifest.md#fingerprint:sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009',
+        'docs/operations/production-readiness-closure-records.md#PRD-0003',
+      ]
+    blockers: []
+    updatedAtUtc: '2026-08-31T15:20:24.3137636Z'
+    updatedBy: 'sol high coordinator self-review'
+  - id: 'PRD-1001'
+    title: 'Durable file deletion state machine'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['DATA-001']
+    dependencies: ['G0']
+    owner: 'Application Owner'
+    reviewers: ['Data Owner', 'Security Reviewer']
+    writeScope:
+      [
+        'apps/api/src/modules/storage/**',
+        'apps/api/prisma/schema.prisma',
+        'new additive migration',
+        'focused tests and metrics',
+      ]
+    acceptanceRefs: ['section 10/PRD-1001', 'section 28/PRD-1001']
+    evidenceRefs: []
+    blockers: ['deletion-state/outbox ADR is unresolved', 'G0 is not PASS']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1002'
+    title: 'Shared durable production upload intents'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['REL-001']
+    dependencies: ['G0']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer']
+    writeScope: ['storage module', 'platform Redis/config/readiness', 'focused tests']
+    acceptanceRefs: ['section 10/PRD-1002', 'section 28/PRD-1002']
+    evidenceRefs: []
+    blockers: ['shared-intent atomic model is unresolved', 'G0 is not PASS']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1003'
+    title: 'Runtime upload validation, byte cap and intent binding'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['SEC-001']
+    dependencies: ['PRD-1002']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'storage controller/service/provider',
+        'packages/contracts/src/schemas/storage.ts',
+        'web upload caller if contract changes',
+        'infra/terraform/modules/storage/**',
+        'focused tests',
+      ]
+    acceptanceRefs: ['section 10/PRD-1003', 'section 28/PRD-1003']
+    evidenceRefs: []
+    blockers: ['PRD-1002 is not CLOSED', 'upload mechanism and category limits are unresolved']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1004'
+    title: 'Storage deletion and upload observability'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['DATA-001', 'REL-001', 'SEC-001', 'OPS-001']
+    dependencies: ['PRD-1001', 'PRD-1002', 'PRD-1003']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'storage metrics/logs',
+        'apps/api/src/modules/platform/metrics/**',
+        'alert/dashboard config',
+        'tests',
+      ]
+    acceptanceRefs: ['section 10/PRD-1004', 'section 28/PRD-1004']
+    evidenceRefs: []
+    blockers: ['storage behavior dependencies are not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1101'
+    title: 'Separate ECS task roles by component'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['SEC-002']
+    dependencies: ['G0']
+    owner: 'Platform/IaC Owner'
+    reviewers: ['Security Reviewer']
+    writeScope:
+      [
+        'infra/terraform/modules/compute/**',
+        'relevant Terraform root/environment interfaces',
+        'IaC tests and workflow references',
+      ]
+    acceptanceRefs: ['section 10/PRD-1101', 'section 28/PRD-1101']
+    evidenceRefs: []
+    blockers: ['IAM action/prefix inventory is not approved', 'G0 is not PASS']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1102'
+    title: 'Remove reusable SSE bearer token from query'
+    phase: 1
+    state: 'IN_PROGRESS'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['SEC-003']
+    dependencies: ['G0']
+    owner: 'Application Owner'
+    reviewers: ['sol high coordinator self-review']
+    writeScope:
+      [
+        'apps/api/src/modules/interview/interview.controller.ts',
+        'apps/web/src/hooks/use-interview-sse.ts',
+        'apps/api/src/modules/platform/interceptors/logging.interceptor.ts',
+        'apps/api/src/modules/interview/interview.controller.spec.ts',
+        'apps/web/src/hooks/use-interview-sse.test.ts',
+      ]
+    acceptanceRefs: ['section 10/PRD-1102', 'section 28/PRD-1102']
+    evidenceRefs: []
+    blockers: []
+    updatedAtUtc: '2026-08-31T16:16:19.2278326Z'
+    updatedBy: 'sol high coordinator'
+  - id: 'PRD-1201'
+    title: 'Wire AI timeout and retry config end-to-end'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['REL-002']
+    dependencies: ['G0']
+    owner: 'Application Owner'
+    reviewers: ['sol high coordinator self-review']
+    writeScope: ['platform config', 'AI providers/router/circuit breaker', 'focused tests']
+    acceptanceRefs: ['section 10/PRD-1201', 'section 28/PRD-1201']
+    evidenceRefs: []
+    blockers:
+      [
+        'Pre-existing distributed-budget changes overlap the retry/fallback control flow in apps/api/src/modules/ai-orchestrator/router/provider-router.service.ts; safe ownership of the combined edit is not established.',
+        'Gemini request-level abort capability is UNKNOWN within the approved dependency and file scope.',
+        'Exact Node 22.13.x/pnpm 11.0.9 toolchain is unavailable for release-grade verification.',
+      ]
+    updatedAtUtc: '2026-08-31T16:19:35.3349686Z'
+    updatedBy: 'sol high coordinator preflight review'
+  - id: 'PRD-1202'
+    title: 'Prove per-call and daily AI cost caps'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: []
+    dependencies: ['PRD-1201']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer', 'SRE Owner']
+    writeScope:
+      ['AI orchestration/budget/config/metrics', 'focused tests', 'active cost governance docs']
+    acceptanceRefs: ['section 10/PRD-1202', 'section 28/PRD-1202']
+    evidenceRefs: []
+    blockers: ['PRD-1201 is not CLOSED', 'pricing/model/cost targets are not approved']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1301'
+    title: 'Add deterministic migration-set hash'
+    phase: 1
+    state: 'IN_PROGRESS'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['CD-001']
+    dependencies: ['G0']
+    owner: 'CI/CD Owner'
+    reviewers: ['sol high coordinator self-review']
+    writeScope:
+      [
+        '.github/workflows/deploy.yml',
+        'infra/scripts/check-migration-safety.mjs',
+        'infra/scripts/check-release-workflows.mjs',
+        'infra/scripts/test-migration-set-hash.mjs',
+        'infra/scripts/test-release-migration-gate.mjs',
+      ]
+    acceptanceRefs: ['section 10/PRD-1301', 'section 28/PRD-1301']
+    evidenceRefs: []
+    blockers: []
+    updatedAtUtc: '2026-08-31T16:26:11.4073518Z'
+    updatedBy: 'sol high coordinator'
+  - id: 'PRD-1302'
+    title: 'Release manifest schema v2'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['CD-001']
+    dependencies: ['PRD-1301']
+    owner: 'CI/CD Owner'
+    reviewers: ['Security Reviewer', 'Data Owner']
+    writeScope:
+      ['deploy workflow', 'release manifest generator/schema/checker', 'tests and active docs']
+    acceptanceRefs: ['section 10/PRD-1302', 'section 28/PRD-1302']
+    evidenceRefs: []
+    blockers: ['PRD-1301 is not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1303'
+    title: 'Harden exact-SHA release gate'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['RLS-001', 'CD-001']
+    dependencies: ['PRD-1302']
+    owner: 'CI/CD Owner'
+    reviewers: ['Security Reviewer']
+    writeScope:
+      ['.github/workflows/**', 'infra/scripts/check-release-workflows.mjs', 'tests and active docs']
+    acceptanceRefs: ['section 10/PRD-1303', 'section 28/PRD-1303']
+    evidenceRefs: []
+    blockers: ['PRD-1302 is not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1401'
+    title: 'Deploy production metrics architecture'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['G0']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Platform Owner', 'Security Reviewer']
+    writeScope:
+      [
+        'infra/prometheus/**',
+        'infra/grafana/**',
+        'approved Terraform/collector config',
+        'metrics auth/tests',
+      ]
+    acceptanceRefs: ['section 10/PRD-1401', 'section 28/PRD-1401']
+    evidenceRefs: []
+    blockers: ['observability architecture ADR is not approved', 'G0 is not PASS']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1402'
+    title: 'Define SLI, SLO and alert policy'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['PRD-1401']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Product Owner', 'Application Owner']
+    writeScope: ['active SLO/alert docs', 'alert rules', 'dashboards and tests']
+    acceptanceRefs: ['section 10/PRD-1402', 'section 28/PRD-1402']
+    evidenceRefs: []
+    blockers: ['PRD-1401 is not CLOSED', 'numeric targets are not approved']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1403'
+    title: 'Verify alerts with synthetic signals'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['PRD-1401', 'PRD-1402', 'PRD-4002']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Staging Approver']
+    writeScope: ['controlled staging signals', 'evidence store']
+    acceptanceRefs: ['section 10/PRD-1403', 'section 28/PRD-1403']
+    evidenceRefs: []
+    blockers: ['observability and staging dependencies are not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-1404'
+    title: 'Correct runbooks and bind owners'
+    phase: 1
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['DOC-001', 'OPS-001']
+    dependencies: ['PRD-0001', 'PRD-1402']
+    owner: 'Evidence Custodian'
+    reviewers: ['SRE Owner']
+    writeScope: ['ai-it-interview-project-kit/13-operations/**', 'active readiness/evidence docs']
+    acceptanceRefs: ['section 10/PRD-1404', 'section 28/PRD-1404']
+    evidenceRefs: []
+    blockers: ['owner and alert policy dependencies are not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-2001'
+    title: 'Rebuild candidate manifest'
+    phase: 2
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: ['RLS-001']
+    dependencies: ['G1']
+    owner: 'Repository Owner'
+    reviewers: ['Independent Reviewer']
+    writeScope: ['candidate manifest', 'evidence records', 'deterministic tooling']
+    acceptanceRefs: ['section 12/PRD-2001', 'section 28/PRD-2001']
+    evidenceRefs: []
+    blockers: ['G1 is not PASS']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-2002'
+    title: 'Create explicitly staged immutable candidate'
+    phase: 2
+    state: 'NOT_READY'
+    permissionClass: 'L2_GIT_RECORD'
+    findingIds: ['RLS-001']
+    dependencies: ['PRD-2001']
+    owner: 'Repository Owner'
+    reviewers: ['Independent Reviewer']
+    writeScope: ['Git index', 'candidate commit']
+    acceptanceRefs: ['section 12/PRD-2002', 'section 28/PRD-2002']
+    evidenceRefs: []
+    blockers: ['PRD-2001 is not CLOSED', 'explicit user authorization is absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-2003'
+    title: 'Run protected exact-SHA CI'
+    phase: 2
+    state: 'NOT_READY'
+    permissionClass: 'L3_REMOTE_CHANGE'
+    findingIds: ['RLS-001', 'CD-001']
+    dependencies: ['PRD-2002']
+    owner: 'CI/CD Owner'
+    reviewers: ['Security Reviewer', 'CI/CD Owner']
+    writeScope: ['authorized remote push/PR/run', 'CI artifacts']
+    acceptanceRefs: ['section 12/PRD-2003', 'section 28/PRD-2003']
+    evidenceRefs: []
+    blockers: ['immutable candidate and remote authorization are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-3001'
+    title: 'Validate Terraform on exact candidate'
+    phase: 3
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
+    findingIds: []
+    dependencies: ['G2']
+    owner: 'Platform/IaC Owner'
+    reviewers: ['Security Reviewer']
+    writeScope:
+      ['validation evidence', 'approved Terraform fix only via scoped implementation task']
+    acceptanceRefs: ['section 13/PRD-3001', 'section 28/PRD-3001']
+    evidenceRefs: []
+    blockers: ['G2 is not PASS', 'cloud target identity is not recorded']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-3002'
+    title: 'Generate and review staging Terraform plan'
+    phase: 3
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
+    findingIds: []
+    dependencies: ['PRD-3001']
+    owner: 'Platform/IaC Owner'
+    reviewers: ['Platform Owner', 'Data Owner']
+    writeScope: ['staging plan artifact and evidence']
+    acceptanceRefs: ['section 13/PRD-3002', 'section 28/PRD-3002']
+    evidenceRefs: []
+    blockers: ['PRD-3001 is not CLOSED', 'staging backend/account/region inputs are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-3003'
+    title: 'Generate and review production Terraform plan'
+    phase: 3
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
+    findingIds: []
+    dependencies: ['PRD-3001']
+    owner: 'Platform/IaC Owner'
+    reviewers: ['Platform Owner', 'Data Owner', 'Security Reviewer']
+    writeScope: ['production plan artifact and evidence']
+    acceptanceRefs: ['section 13/PRD-3003', 'section 28/PRD-3003']
+    evidenceRefs: []
+    blockers: ['PRD-3001 is not CLOSED', 'production backend/account/region inputs are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-3004'
+    title: 'Verify GitHub and AWS prerequisites'
+    phase: 3
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
+    findingIds: ['SEC-002', 'OPS-001']
+    dependencies: ['G2']
+    owner: 'CI/CD Owner'
+    reviewers: ['Security Reviewer']
+    writeScope: ['redacted prerequisite evidence']
+    acceptanceRefs: ['section 13/PRD-3004', 'section 28/PRD-3004']
+    evidenceRefs: []
+    blockers: ['G2 is not PASS', 'authorized identities are not recorded']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-4001'
+    title: 'Deploy exact release to staging'
+    phase: 4
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['CD-001']
+    dependencies: ['G3']
+    owner: 'Staging Approver'
+    reviewers: ['Staging Approver']
+    writeScope: ['approved staging migration task', 'approved staging ECS services']
+    acceptanceRefs: ['section 14/PRD-4001', 'section 28/PRD-4001']
+    evidenceRefs: []
+    blockers: ['G3 is not PASS', 'staging execution approval and target identity are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-4002'
+    title: 'Run staging post-deploy basic smoke'
+    phase: 4
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-4001']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Staging Approver']
+    writeScope: ['non-destructive staging smoke', 'approved exact rollback if required']
+    acceptanceRefs: ['section 14/PRD-4002', 'section 28/PRD-4002']
+    evidenceRefs: []
+    blockers: ['PRD-4001 is not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5001'
+    title: 'Browser authentication and security smoke'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['SEC-003']
+    dependencies: ['PRD-4002']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer']
+    writeScope: ['approved staging test users/data/actions', 'redacted evidence']
+    acceptanceRefs: ['section 15/PRD-5001', 'section 28/PRD-5001']
+    evidenceRefs: []
+    blockers: ['staging basic smoke and disposable test identities are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5002'
+    title: 'Authorization, BOLA and tenant suite'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-4002']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer']
+    writeScope: ['approved disposable staging tenant/account fixtures and evidence']
+    acceptanceRefs: ['section 15/PRD-5002', 'section 28/PRD-5002']
+    evidenceRefs: []
+    blockers: ['staging basic smoke and fixture ownership map are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5003'
+    title: 'Validate live S3, KMS and task roles'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['DATA-001', 'REL-001', 'SEC-001', 'SEC-002']
+    dependencies: ['PRD-4002']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer', 'Data Owner']
+    writeScope: ['approved disposable staging object prefixes and task actions']
+    acceptanceRefs: ['section 15/PRD-5003', 'section 28/PRD-5003']
+    evidenceRefs: []
+    blockers: ['staging basic smoke and disposable object scope are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5004'
+    title: 'Run AI trust, cost and provider failure suite'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['REL-002']
+    dependencies: ['PRD-4002']
+    owner: 'Application Owner'
+    reviewers: ['Security Reviewer', 'SRE Owner']
+    writeScope: ['controlled staging AI calls/data and evidence']
+    acceptanceRefs: ['section 15/PRD-5004', 'section 28/PRD-5004']
+    evidenceRefs: []
+    blockers: ['provider test mode, budget and abort threshold are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5005'
+    title: 'Run load, soak and capacity validation'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-4002', 'PRD-1402']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['SRE Owner', 'Product Owner']
+    writeScope: ['approved staging load generation and evidence']
+    acceptanceRefs: ['section 15/PRD-5005', 'section 28/PRD-5005']
+    evidenceRefs: []
+    blockers: ['peak/headroom/workload/duration/cost/abort inputs are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5006'
+    title: 'Run controlled dependency-failure suite'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['DATA-001', 'REL-001', 'REL-002', 'OPS-001']
+    dependencies: ['PRD-4002', 'PRD-1402']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['SRE Owner', 'Security Reviewer']
+    writeScope: ['enumerated staging components and controlled signals']
+    acceptanceRefs: ['section 15/PRD-5006', 'section 28/PRD-5006']
+    evidenceRefs: []
+    blockers: ['blast radius, recovery and abort plan are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5007'
+    title: 'Rehearse exact task-definition rollback'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-4002']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Data Owner', 'Staging Approver']
+    writeScope: ['approved staging ECS services']
+    acceptanceRefs: ['section 15/PRD-5007', 'section 28/PRD-5007']
+    evidenceRefs: []
+    blockers: ['prior ARNs/digests and schema compatibility are not proven']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5008'
+    title: 'Run backup, PITR and isolated restore drill'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-4002']
+    owner: 'Data/DB Owner'
+    reviewers: ['Data Owner', 'Security Reviewer']
+    writeScope: ['approved backup artifacts', 'exact isolated empty disposable drill target']
+    acceptanceRefs: ['section 15/PRD-5008', 'section 28/PRD-5008']
+    evidenceRefs: []
+    blockers: ['Data Owner has not authorized an exact disposable restore target']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-5009'
+    title: 'Run synthetic alert and runbook drill'
+    phase: 5
+    state: 'NOT_READY'
+    permissionClass: 'L5_NONPROD_WRITE'
+    findingIds: ['OPS-001']
+    dependencies: ['PRD-1403', 'PRD-4002']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Staging Approver']
+    writeScope: ['controlled staging alert signals and evidence']
+    acceptanceRefs: ['section 15/PRD-5009', 'section 28/PRD-5009']
+    evidenceRefs: []
+    blockers: ['alert architecture, policy and staging dependencies are not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-6001'
+    title: 'Issue independent production pre-approval'
+    phase: 6
+    state: 'NOT_READY'
+    permissionClass: 'L4_CLOUD_READ'
+    findingIds: []
+    dependencies: ['G4']
+    owner: 'Production Approver'
+    reviewers: ['Security Reviewer', 'Data Owner', 'SRE Owner']
+    writeScope: ['production gate decision and approval evidence']
+    acceptanceRefs: ['section 16/PRD-6001', 'section 28/PRD-6001']
+    evidenceRefs: []
+    blockers: ['G4 is not PASS and evidence bundle is not sealed']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-6002'
+    title: 'Promote exact release to production'
+    phase: 6
+    state: 'NOT_READY'
+    permissionClass: 'L6_PROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-6001']
+    owner: 'Platform/IaC Owner'
+    reviewers: ['Production Approver']
+    writeScope:
+      ['exact approved production migration task', 'exact approved production ECS services']
+    acceptanceRefs: ['section 16/PRD-6002', 'section 28/PRD-6002']
+    evidenceRefs: []
+    blockers: ['independent G5 approval and production authorization are absent']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-7001'
+    title: 'Run production smoke and observation window'
+    phase: 7
+    state: 'NOT_READY'
+    permissionClass: 'L6_PROD_WRITE'
+    findingIds: []
+    dependencies: ['PRD-6002']
+    owner: 'SRE/Operations Owner'
+    reviewers: ['Production Approver']
+    writeScope:
+      ['read-only production observation', 'exact approved rollback if stop threshold is reached']
+    acceptanceRefs: ['section 17/PRD-7001', 'section 28/PRD-7001']
+    evidenceRefs: []
+    blockers: ['production promotion is not VERIFIED']
+    updatedAtUtc: null
+    updatedBy: null
+  - id: 'PRD-7002'
+    title: 'Seal evidence and close production release'
+    phase: 7
+    state: 'NOT_READY'
+    permissionClass: 'L1_REPO_WRITE'
+    findingIds: []
+    dependencies: ['PRD-7001']
+    owner: 'Evidence Custodian'
+    reviewers: ['Production Approver']
+    writeScope: ['task/finding/gate/evidence/release records']
+    acceptanceRefs: ['section 17/PRD-7002', 'section 28/PRD-7002']
+    evidenceRefs: []
+    blockers: ['production observation is not CLOSED']
+    updatedAtUtc: null
+    updatedBy: null
+
+candidateStatus: 'STALE'
+releaseVerdict: 'NO_GO'
+executionModel:
+  amendment: 'Execution Model Amendment 002'
+  status: 'APPROVED'
+  coordinator: 'sol high'
+  boundedWorkers:
+    - 'luna xhigh'
+  workerBoundary: 'Workers perform only bounded L0/L1 inspection, implementation, focused tests, deterministic validation, and evidence drafting from the exact task packet.'
+  coordinatorReview: 'sol high performs direct-evidence self-review after every worker result; a worker result never closes a task or gate.'
+  independentAiReview: 'OPTIONAL_NON_BLOCKING'
+  humanAuthorization: 'Duong Vinh remains the accountable owner and is required for L2-L6, staging, remote, cloud, deployment, and Production GO/NO_GO actions.'
+  mandatoryTestRetries: 0
+  historyRule: 'Transitions and failed/blocked evidence are append-only; historical artifacts are retained as SUPERSEDED after invalidation.'
+transitionHistory:
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000001'
+    taskId: 'PRD-0001'
+    from: 'NOT_READY'
+    to: 'READY'
+    atUtc: '2026-08-31T13:17:23.3459783Z'
+    actor: 'Duong Vinh'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Approved owner matrix made PRD-0001 ready.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-owner-matrix.md#sha256:d2ca4474f4c1f614470b63c8f58d7684cc7dc1f88733cde086b20b13a8ce7082',
+      ]
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000002'
+    taskId: 'PRD-0001'
+    from: 'READY'
+    to: 'IN_PROGRESS'
+    atUtc: '2026-08-31T13:17:23.3459783Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Coordinator selected the approved governance packet.'
+    evidenceRefs: []
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000003'
+    taskId: 'PRD-0001'
+    from: 'IN_PROGRESS'
+    to: 'IMPLEMENTED'
+    atUtc: '2026-08-31T13:17:23.3459783Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Owner and approval authority records were implemented in scope.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-owner-matrix.md#sha256:d2ca4474f4c1f614470b63c8f58d7684cc7dc1f88733cde086b20b13a8ce7082',
+      ]
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000014'
+    taskId: 'PRD-0001'
+    from: 'IMPLEMENTED'
+    to: 'VERIFIED'
+    atUtc: '2026-08-31T13:40:40.7256779Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Direct acceptance checks passed for the owner matrix and notification amendment record.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-owner-matrix.md#sha256:d2ca4474f4c1f614470b63c8f58d7684cc7dc1f88733cde086b20b13a8ce7082',
+      ]
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000004'
+    taskId: 'PRD-0001'
+    from: 'VERIFIED'
+    to: 'REVIEWED'
+    atUtc: '2026-08-31T13:40:40.7256779Z'
+    actor: 'sol high coordinator self-review'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Coordinator review passed all PRD-0001 criteria under Amendment 002.'
+    evidenceRefs: ['docs/operations/production-readiness-closure-records.md#PRD-0001']
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000005'
+    taskId: 'PRD-0001'
+    from: 'REVIEWED'
+    to: 'CLOSED'
+    atUtc: '2026-08-31T13:43:20.2916444Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Closure record confirms PRD-0001 CLOSED with direct evidence.'
+    evidenceRefs: ['docs/operations/production-readiness-closure-records.md#PRD-0001']
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000006'
+    taskId: 'PRD-0002'
+    from: 'NOT_READY'
+    to: 'READY'
+    atUtc: '2026-08-31T13:43:20.2916444Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'PRD-0001 is CLOSED and its finding-register dependency is satisfied.'
+    evidenceRefs: ['docs/operations/production-readiness-closure-records.md#PRD-0001']
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000007'
+    taskId: 'PRD-0002'
+    from: 'READY'
+    to: 'IN_PROGRESS'
+    atUtc: '2026-08-31T13:43:20.2916444Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Coordinator began the bounded finding-register work.'
+    evidenceRefs: []
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000008'
+    taskId: 'PRD-0002'
+    from: 'IN_PROGRESS'
+    to: 'IMPLEMENTED'
+    atUtc: '2026-08-31T14:07:55.7078669Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'All ten finding-register rows were created and mapping review findings were retained.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-finding-register.md#sha256:dc4795084070805b7d797f23ea4def503601d9345e3f2adb7e1446216cbad1e9',
+      ]
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000009'
+    taskId: 'PRD-0002'
+    from: 'IMPLEMENTED'
+    to: 'VERIFIED'
+    atUtc: '2026-08-31T14:47:56.4461019Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Direct validation passed all ten register rows and Amendment 002 controls.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-finding-register.md#sha256:dc4795084070805b7d797f23ea4def503601d9345e3f2adb7e1446216cbad1e9',
+      ]
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000010'
+    taskId: 'PRD-0002'
+    from: 'VERIFIED'
+    to: 'REVIEWED'
+    atUtc: '2026-08-31T14:47:56.4461019Z'
+    actor: 'sol high coordinator self-review'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Coordinator self-review passed; optional independent review is non-blocking under Amendment 002.'
+    evidenceRefs: ['docs/operations/production-readiness-closure-records.md#PRD-0002']
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000011'
+    taskId: 'PRD-0002'
+    from: 'REVIEWED'
+    to: 'CLOSED'
+    atUtc: '2026-08-31T14:47:56.4461019Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Closure record confirms PRD-0002 CLOSED with direct evidence.'
+    evidenceRefs: ['docs/operations/production-readiness-closure-records.md#PRD-0002']
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000012'
+    taskId: 'PRD-0003'
+    from: 'NOT_READY'
+    to: 'READY'
+    atUtc: '2026-08-31T14:47:56.4461019Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'PRD-0002 is CLOSED and the finding register dependency is satisfied.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-finding-register.md#sha256:dc4795084070805b7d797f23ea4def503601d9345e3f2adb7e1446216cbad1e9',
+      ]
+    blockers: []
+  - eventId: '9a0c0d6e-5b0c-4d45-9c4a-000000000013'
+    taskId: 'PRD-0003'
+    from: 'READY'
+    to: 'IN_PROGRESS'
+    atUtc: '2026-08-31T14:56:05.6044906Z'
+    actor: 'luna xhigh bounded worker'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; exact paths in candidate policy'
+    authorizationRef: null
+    reason: 'Bounded PRD-0003 implementation started; policy and ledger are the only permitted new files.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-candidate-policy.md#sha256:27b60b9b56e86f0da329cc7d3833b8475b7814bd90d2dd37e9acb708d0057aca',
+      ]
+    blockers:
+      [
+        'coordinator direct-evidence self-review and owner acceptance remain required before closure',
+      ]
+  - eventId: 'b61e203d-5a0f-4a3b-8d10-000000000015'
+    taskId: 'PRD-0003'
+    from: 'IN_PROGRESS'
+    to: 'IMPLEMENTED'
+    atUtc: '2026-08-31T15:20:24.3137636Z'
+    actor: 'luna xhigh bounded worker'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; candidate=90 tracked-modified + 30 untracked-new + 1 self-excluded manifest; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user authorization for PRD-0003 and Execution Model Amendment 002'
+    reason: 'Candidate construction policy and 40-task operational ledger were implemented within the bounded L1 scope.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-candidate-policy.md#sha256:46db61e6924adb5eb9654e5a7486371b6ddd127090c51e988c0a65acc50985ad',
+      ]
+    blockers: []
+  - eventId: 'b61e203d-5a0f-4a3b-8d10-000000000016'
+    taskId: 'PRD-0003'
+    from: 'IMPLEMENTED'
+    to: 'VERIFIED'
+    atUtc: '2026-08-31T15:20:24.3137636Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; 121 explicit records; 120 ordinal fingerprint records; 40 unique tasks; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user authorization for PRD-0003 and Execution Model Amendment 002'
+    reason: 'Coordinator and fresh luna read-only validators independently reproduced path safety, raw hashes, ordinal aggregate, ledger schema, dependency and transition checks.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-candidate-policy.md#sha256:46db61e6924adb5eb9654e5a7486371b6ddd127090c51e988c0a65acc50985ad',
+      ]
+    blockers: []
+  - eventId: 'b61e203d-5a0f-4a3b-8d10-000000000017'
+    taskId: 'PRD-0003'
+    from: 'VERIFIED'
+    to: 'REVIEWED'
+    atUtc: '2026-08-31T15:20:24.3137636Z'
+    actor: 'sol high coordinator self-review'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; policy criteria PASS; candidate remains STALE/NO_GO; independent AI review optional/non-blocking'
+    authorizationRef: 'Execution Model Amendment 002'
+    reason: 'Direct-evidence coordinator self-review passed all PRD-0003 acceptance criteria.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-candidate-policy.md#sha256:46db61e6924adb5eb9654e5a7486371b6ddd127090c51e988c0a65acc50985ad',
+      ]
+    blockers: []
+  - eventId: 'b61e203d-5a0f-4a3b-8d10-000000000018'
+    taskId: 'PRD-0003'
+    from: 'REVIEWED'
+    to: 'CLOSED'
+    atUtc: '2026-08-31T15:20:24.3137636Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; PRD-0001/0002/0003 CLOSED; G0 PASS; G1-G6 unchanged; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user authorization for PRD-0003 and Execution Model Amendment 002'
+    reason: 'Phase 0 governance controls are complete; G0 passes without changing any release or production verdict.'
+    evidenceRefs: ['docs/operations/production-readiness-closure-records.md#PRD-0003']
+    blockers: []
+  - eventId: '195228fc-187a-42aa-8f66-4afd3b0e0038'
+    taskId: 'PRD-1102'
+    from: 'NOT_READY'
+    to: 'READY'
+    atUtc: '2026-08-31T16:16:19.2278326Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; scoped existing files read; controller and web hook report metadata-only M with no textual diff; logging interceptor clean; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user approval of DEC-006 and L1 execution at 2026-08-31T16:05:06.2896465Z'
+    reason: 'G0 is PASS; DEC-006 is APPROVED; owner, exact L1 write scope, invariants, failure cases, evidence destination, and focused test plan were confirmed by bounded L0 inspection and coordinator direct review.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-decision-register.md#DEC-006',
+        'docs/operations/production-readiness-finding-register.md#SEC-003',
+      ]
+    blockers:
+      [
+        'Exact Node 22.13.x/pnpm 11.0.9 toolchain is unavailable; focused results on the local toolchain cannot close G1 and must be labeled non-release evidence.',
+      ]
+  - eventId: 'e3358487-d964-4719-ab70-5fdf75619ecf'
+    taskId: 'PRD-1102'
+    from: 'READY'
+    to: 'IN_PROGRESS'
+    atUtc: '2026-08-31T16:16:19.2278326Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; exact five-file write scope locked; no application mutation had started at transition time; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user L1 execution authorization and approved DEC-006'
+    reason: 'Coordinator assigned the bounded implementation packet after direct-evidence DoR review.'
+    evidenceRefs: ['docs/operations/production-readiness-decision-register.md#DEC-006']
+    blockers: []
+  - eventId: '603eae2f-2f36-45a6-a757-3d15d09d113b'
+    taskId: 'PRD-1301'
+    from: 'NOT_READY'
+    to: 'READY'
+    atUtc: '2026-08-31T16:26:11.4073518Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; deploy workflow has a pre-existing dirty rewrite; both checker scripts are pre-existing untracked files; exact five-file patch scope is isolated from historical migration content; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user approval of the PRD-1301 deterministic enumeration contract and L1 execution'
+    reason: 'G0 is PASS; the execution plan defines deterministic migration enumeration and the user authorized conservative L1 owner resolution; bounded inspection established an isolated workflow/checker patch with in-memory tests.'
+    evidenceRefs:
+      [
+        'docs/operations/production-readiness-execution-plan.md#PRD-1301',
+        'docs/operations/production-readiness-finding-register.md#CD-001',
+      ]
+    blockers:
+      [
+        'Exact Node 22.13.x/pnpm 11.0.9 toolchain is unavailable; local focused results cannot close G1 and must be labeled non-release evidence.',
+      ]
+  - eventId: 'ad2f2ea5-70b1-43ea-8058-4918272b4dcc'
+    taskId: 'PRD-1301'
+    from: 'READY'
+    to: 'IN_PROGRESS'
+    atUtc: '2026-08-31T16:26:11.4073518Z'
+    actor: 'sol high coordinator'
+    snapshot:
+      branch: 'main'
+      head: 'd0c09cef4f80cf7d4bcbb6c42328a65e55a5d895'
+      fingerprint: 'sha256:daa49e6364be007894d9b6e59f18b205e313fd6b6377ef2a507e1701f63a5009'
+      statusSummary: 'staged=0; exact five-file write scope locked; no migration, package, promotion script, cloud, database, or deployment mutation authorized; candidate remains STALE/NO_GO'
+    authorizationRef: 'Direct user L1 execution authorization for PRD-1301'
+    reason: 'Coordinator assigned the bounded implementation packet after direct-evidence DoR review.'
+    evidenceRefs: ['docs/operations/production-readiness-execution-plan.md#PRD-1301']
+    blockers: []

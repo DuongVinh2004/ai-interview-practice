@@ -4,7 +4,7 @@ export const StorageCategorySchema = z.enum(['public', 'documents', 'system-desi
 export type StorageCategory = z.infer<typeof StorageCategorySchema>;
 
 export const PresignUploadSchema = z.object({
-  filename: z.string().min(1),
+  filename: z.string().min(1).max(128),
   mimeType: z.string().min(1),
   category: StorageCategorySchema.default('documents'),
 });

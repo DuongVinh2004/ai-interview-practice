@@ -380,7 +380,7 @@ export class AdminService {
   async getLlmHealth() {
     const circuitBreakerStates = this.providerRouter.getCircuitBreakerStates();
     const priorityChain = this.providerRouter.getPriorityChain();
-    const dailyCost = this.providerRouter.getCurrentDailyCostUsd();
+    const dailyCost = await this.providerRouter.getCurrentDailyCostUsd();
     const dailyBudget = this.providerRouter.getDailyBudgetUsd();
 
     return {

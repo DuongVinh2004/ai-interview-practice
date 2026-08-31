@@ -149,6 +149,14 @@ resource "aws_security_group" "alb" {
     cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
+  egress {
+    description = "Static web traffic within the VPC"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
   tags = {
     Name = "ai-interview-alb-sg-${var.environment}"
   }
@@ -163,6 +171,14 @@ resource "aws_security_group" "app" {
     description     = "Inbound traffic from ALB only"
     from_port       = 3001
     to_port         = 3001
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  ingress {
+    description     = "Static web traffic from ALB only"
+    from_port       = 8080
+    to_port         = 8080
     protocol        = "tcp"
     security_groups = [aws_security_group.alb.id]
   }

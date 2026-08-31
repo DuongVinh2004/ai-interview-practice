@@ -37,6 +37,7 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 !.vscode/launch.json
+
 *.suo
 *.ntvs*
 *.njsproj
@@ -46,6 +47,23 @@ Thumbs.db
 # Temporary files
 tmp
 temp
+.cache/
 .parallel-worktrees/
 .codex-runs/
 .terraform/
+
+# Terraform local state, plans, account-specific backend configuration, and inputs
+*.tfstate
+*.tfstate.*
+*.tfplan
+backend.hcl
+*.tfvars
+*.tfvars.json
+*.auto.tfvars
+*.auto.tfvars.json
+crash.log
+crash.*.log
+terraform.rc
+.terraformrc
+!*.tfvars.example
+!backend.hcl.example

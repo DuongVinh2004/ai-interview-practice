@@ -19,6 +19,9 @@ import {
 import { RegisterRequestDto, LoginRequestDto, ChangePasswordRequestDto } from './dto/auth.dto';
 import { TotpUtil } from './utils/totp.util';
 
+type InternalAuthResponse = AuthResponse & { refreshToken?: string };
+type InternalMfaEnableResponse = MfaEnableResponse & { refreshToken: string };
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -123,7 +126,7 @@ export class AuthService {
     };
   }
 
-  async register(dto: RegisterRequestDto): Promise<AuthResponse> {
+  async register(dto: RegisterRequestDto): Promise<InternalAuthResponse> {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
     });
@@ -167,7 +170,11 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  async login(dto: LoginRequestDto, ipAddress?: string, userAgent?: string): Promise<AuthResponse> {
+  async login(
+    dto: LoginRequestDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<InternalAuthResponse> {
     const user = await this.prisma.user.findUnique({
       where: { email: dto.email.toLowerCase() },
       include: { profile: true },
@@ -262,9 +269,6 @@ export class AuthService {
 
     // Enforce: Admin must setup MFA if not yet enabled (SEC-003)
     if (user.role === UserRole.ADMIN && !user.mfaEnabled) {
-      if (process.env.BYPASS_ADMIN_MFA === 'true') {
-        return this.generateAuthResponse(user, true);
-      }
       const authResponse = this.generateMfaEnrollmentResponse(user);
       return {
         ...authResponse,
@@ -277,7 +281,7 @@ export class AuthService {
     return this.generateAuthResponse(user);
   }
 
-  async refreshTokens(refreshTokenString: string): Promise<AuthResponse> {
+  async refreshTokens(refreshTokenString: string): Promise<InternalAuthResponse> {
     const tokenHash = this.hashToken(refreshTokenString);
 
     const storedToken = await this.prisma.refreshToken.findUnique({
@@ -428,6 +432,23 @@ export class AuthService {
     });
   }
 
+  async logoutBrowserSession(refreshTokenString: string): Promise<void> {
+    const tokenHash = this.hashToken(refreshTokenString);
+    await this.prisma.$transaction(async tx => {
+      const token = await tx.refreshToken.findUnique({ where: { tokenHash } });
+      if (!token) return;
+
+      await tx.refreshToken.updateMany({
+        where: { userId: token.userId, familyId: token.familyId, isRevoked: false },
+        data: { isRevoked: true },
+      });
+      await tx.user.update({
+        where: { id: token.userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    });
+  }
+
   async logoutAll(userId: string): Promise<void> {
     await this.prisma.$transaction([
       this.prisma.refreshToken.updateMany({
@@ -541,7 +562,7 @@ export class AuthService {
     };
   }
 
-  async enableMfa(userId: string, code: string): Promise<MfaEnableResponse> {
+  async enableMfa(userId: string, code: string): Promise<InternalMfaEnableResponse> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
@@ -623,7 +644,7 @@ export class AuthService {
     code: string,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<AuthResponse> {
+  ): Promise<InternalAuthResponse> {
     let payload: any;
     try {
       payload = this.jwtService.verify(mfaSessionToken, {
@@ -698,7 +719,7 @@ export class AuthService {
     recoveryCode: string,
     ipAddress?: string,
     userAgent?: string,
-  ): Promise<AuthResponse> {
+  ): Promise<InternalAuthResponse> {
     let payload: any;
     try {
       payload = this.jwtService.verify(mfaSessionToken, {
@@ -902,7 +923,7 @@ export class AuthService {
     tokenStore: {
       refreshToken: { create: (args: any) => Promise<unknown> };
     } = this.prisma,
-  ): Promise<AuthResponse> {
+  ): Promise<InternalAuthResponse> {
     const isMfaActive = user.mfaEnabled || false;
     const payload = {
       sub: user.id,
