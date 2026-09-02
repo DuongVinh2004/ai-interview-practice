@@ -16,5 +16,8 @@ paths = [
   '''(?:^|/)apps/api/src/modules/notifications/push-notification\.service\.ts$''',
   '''(?:^|/)apps/api/src/modules/platform/config/env\.validation\.spec\.ts$''',
   '''(?:^|/)apps/api/src/modules/engineering-arena/validator/challenge-validator\.service\.spec\.ts$''',
+  '''(?:^|/)apps/api/src/modules/code-execution/__tests__/prod-guard\.spec\.ts$''',
+  '''(?:^|/)apps/api/test/eval/release-manifest-integrity\.spec\.ts$''',
+  '''(?:^|/)apps/api/test/eval/l4-sandbox-zero-secret\.spec\.ts$''',
   '''(?:^|/)docs/features/F015-QUESTION-BANK\.md$'''
 ]
