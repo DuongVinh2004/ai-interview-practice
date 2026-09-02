@@ -235,6 +235,7 @@ export class ProviderRouterService {
       attemptedProviders++;
       const startTime = Date.now();
       let budgetReservation: BudgetReservation | null | undefined;
+      let providerDispatchAttempts = 0;
 
       try {
         if (providerName !== 'mock') {
@@ -246,7 +247,10 @@ export class ProviderRouterService {
         }
 
         const result = await this.circuitBreaker.execute(providerName, operation, async () => {
-          return await this.executeWithRetry(() => invokeFn(provider));
+          return await this.executeWithRetry(() => {
+            providerDispatchAttempts += 1;
+            return invokeFn(provider);
+          });
         });
 
         const durationSec = (Date.now() - startTime) / 1000;
@@ -278,8 +282,11 @@ export class ProviderRouterService {
         }
 
         if (budgetReservation) {
-          await this.distributedBudget!.settle(budgetReservation, result.costEstimate || 0);
-          this.checkDailyBudget(result.costEstimate || 0);
+          const accountedCost =
+            Math.max(0, providerDispatchAttempts - 1) * this.maxProviderCallCostUsd +
+            (result.costEstimate || 0);
+          await this.distributedBudget!.settle(budgetReservation, accountedCost);
+          this.checkDailyBudget(accountedCost);
           budgetReservation = undefined;
         } else if (result.costEstimate) {
           this.checkDailyBudget(result.costEstimate);
@@ -301,9 +308,15 @@ export class ProviderRouterService {
 
         return result;
       } catch (error: any) {
-        // The upstream request may have been billed even when its response was
-        // lost. Keep the maximum reservation on ambiguous provider failures;
-        // releasing it would let retries overspend the global daily cap.
+        // Every failed dispatch is potentially billable. Settle the reservation
+        // to the number of attempts actually sent before trying a fallback.
+        if (budgetReservation) {
+          await this.distributedBudget!.settle(
+            budgetReservation,
+            providerDispatchAttempts * this.maxProviderCallCostUsd,
+          );
+          budgetReservation = undefined;
+        }
         lastError = error;
         const durationSec = (Date.now() - startTime) / 1000;
         this.metricsService?.aiProviderRequestsTotal.inc({
@@ -352,10 +365,15 @@ export class ProviderRouterService {
     }
 
     try {
+      // A retry is a new provider dispatch and may be billable even when its
+      // response is lost. Reserve the worst-case cost for every attempt in
+      // this logical provider call; a successful response settles the
+      // reservation to its measured cost and releases the unused headroom.
+      const maxAttempts = Math.max(1, this.maxRetries + 1);
       return await this.distributedBudget.reserve(
         'ai-provider-global',
         this.dailyBudgetUsd,
-        this.maxProviderCallCostUsd,
+        this.maxProviderCallCostUsd * maxAttempts,
       );
     } catch (error: any) {
       this.logger.error(

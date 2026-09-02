@@ -10,6 +10,7 @@ import { SentenceChunkerService } from './services/sentence-chunker.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { AuthService } from '../auth/auth.service';
 import { EntitlementReservationService } from '../billing/entitlement-reservation.service';
+import { RedisService } from '../platform/redis/redis.service';
 import {
   VoiceEventType,
   VoiceSessionStatus,
@@ -20,6 +21,7 @@ import {
 
 describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKET-002)', () => {
   let gateway: VoiceStreamingGateway;
+  let testingModule: TestingModule;
   let authService: AuthService;
   let deepgramStt: DeepgramSttProvider;
 
@@ -33,6 +35,9 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     },
     voiceTranscript: {
       create: jest.fn().mockResolvedValue({ id: 'trans-1' }),
+    },
+    voiceConsentRecord: {
+      findUnique: jest.fn().mockResolvedValue({ revokedAt: null }),
     },
   };
 
@@ -49,6 +54,9 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     commit: jest.fn(),
     markForReconciliation: jest.fn(),
   };
+  const mockRedisService = {
+    getClient: jest.fn(),
+  };
 
   const mockConfigService = {
     get: jest.fn((key: string) => {
@@ -58,7 +66,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
   };
 
   beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
+    testingModule = await Test.createTestingModule({
       providers: [
         VoiceStreamingGateway,
         VadEngineService,
@@ -71,13 +79,14 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
         { provide: ConfigService, useValue: mockConfigService },
         { provide: AuthService, useValue: mockAuthService },
         { provide: EntitlementReservationService, useValue: mockEntitlementReservations },
+        { provide: RedisService, useValue: mockRedisService },
       ],
     }).compile();
 
-    gateway = module.get<VoiceStreamingGateway>(VoiceStreamingGateway);
-    authService = module.get<AuthService>(AuthService);
-    deepgramStt = module.get<DeepgramSttProvider>(DeepgramSttProvider);
-    const elevenLabsTts = module.get<ElevenLabsTtsProvider>(ElevenLabsTtsProvider);
+    gateway = testingModule.get<VoiceStreamingGateway>(VoiceStreamingGateway);
+    authService = testingModule.get<AuthService>(AuthService);
+    deepgramStt = testingModule.get<DeepgramSttProvider>(DeepgramSttProvider);
+    const elevenLabsTts = testingModule.get<ElevenLabsTtsProvider>(ElevenLabsTtsProvider);
 
     jest.spyOn(deepgramStt, 'isPaidConfigured').mockReturnValue(false);
     jest.spyOn(elevenLabsTts, 'isPaidConfigured').mockReturnValue(false);
@@ -445,6 +454,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     jest.spyOn(deepgramStt, 'isPaidConfigured').mockReturnValue(true);
     mockJwtService.verify.mockReturnValueOnce({
       sub: 'user-quota-test',
+      interviewId: 'int-quota',
       role: UserRole.CANDIDATE,
       tokenType: 'VOICE_TICKET',
       jti: 'ticket-quota-1',
@@ -475,5 +485,90 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     const quotaError = sentMessages.find(m => m.type === VoiceEventType.QUOTA_EXCEEDED);
     expect(quotaError).toBeDefined();
     expect(mockWs.close).toHaveBeenCalledWith(1008, 'Quota Exceeded');
+  });
+
+  it('rejects a previously issued voice ticket after its consent is revoked', async () => {
+    mockPrisma.voiceConsentRecord.findUnique.mockResolvedValueOnce({ revokedAt: new Date() });
+    mockJwtService.verify.mockReturnValueOnce({
+      sub: 'user-revoked-ticket',
+      interviewId: 'int-revoked-ticket',
+      role: UserRole.CANDIDATE,
+      tokenType: 'VOICE_TICKET',
+      jti: 'ticket-revoked-1',
+    });
+
+    const sentMessages: any[] = [];
+    const mockWs: any = {
+      readyState: 1,
+      send: jest.fn().mockImplementation((data: any) => {
+        if (typeof data === 'string') sentMessages.push(JSON.parse(data));
+      }),
+      close: jest.fn(),
+      on: jest.fn(),
+    };
+
+    await gateway.handleConnection(mockWs, { url: '/voice?ticket=revoked-ticket' });
+    const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
+    await messageHandler(
+      JSON.stringify({ type: VoiceEventType.CONNECT, interviewId: 'int-revoked-ticket' }),
+      false,
+    );
+
+    expect(sentMessages.find(m => m.type === VoiceEventType.ERROR)?.message).toContain(
+      'Authentication required',
+    );
+    expect(mockWs.close).toHaveBeenCalledWith(1008, 'Unauthorized');
+    expect(mockPrisma.voiceSession.upsert).not.toHaveBeenCalled();
+  });
+
+  it('claims a voice ticket JTI atomically across gateway replicas', async () => {
+    const claimedJtis = new Set<string>();
+    const sharedClient = {
+      status: 'ready',
+      set: jest.fn(async (key: string) => {
+        if (claimedJtis.has(key)) return null;
+        claimedJtis.add(key);
+        return 'OK';
+      }),
+    };
+    mockRedisService.getClient.mockReturnValue(sharedClient);
+    const payload = {
+      sub: 'user-cluster-ticket',
+      interviewId: 'int-cluster-ticket',
+      role: UserRole.CANDIDATE,
+      tokenType: 'VOICE_TICKET',
+      jti: 'ticket-cluster-1',
+    };
+    mockJwtService.verify.mockReturnValue(payload);
+
+    const secondGateway = new VoiceStreamingGateway(
+      testingModule.get(PrismaService),
+      testingModule.get(VadEngineService),
+      testingModule.get(MockVoiceProvider),
+      testingModule.get(DeepgramSttProvider),
+      testingModule.get(ElevenLabsTtsProvider),
+      testingModule.get(SentenceChunkerService),
+      testingModule.get(JwtService),
+      testingModule.get(ConfigService),
+      testingModule.get(AuthService),
+      testingModule.get(EntitlementReservationService),
+      mockRedisService as any,
+    );
+
+    const firstClaim = await (gateway as any).validateVoiceTicket('ticket', payload.interviewId);
+    const secondClaim = await (secondGateway as any).validateVoiceTicket(
+      'ticket',
+      payload.interviewId,
+    );
+
+    expect(firstClaim).toMatchObject({ jti: payload.jti, interviewId: payload.interviewId });
+    expect(secondClaim).toBeNull();
+    expect(sharedClient.set).toHaveBeenCalledWith(
+      'voice_ticket:ticket-cluster-1',
+      'claimed',
+      'EX',
+      60,
+      'NX',
+    );
   });
 });

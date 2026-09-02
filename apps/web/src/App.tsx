@@ -63,6 +63,11 @@ const VerifyCertificatePage = lazy(() =>
     default: module.VerifyCertificatePage,
   })),
 );
+const EngineeringArenaPage = lazy(() =>
+  import('./features/engineering-arena/EngineeringArenaPage').then(module => ({
+    default: module.EngineeringArenaPage,
+  })),
+);
 const MentorBookingPage = lazy(() =>
   import('./features/mentor/MentorBookingPage').then(module => ({
     default: module.MentorBookingPage,
@@ -161,6 +166,7 @@ export function App() {
                 <Route path="/skills/benchmark" element={<SkillGraphPage />} />
                 <Route path="/skills/progress" element={<SkillGraphPage />} />
                 <Route path="/readiness" element={<ReadinessPage />} />
+                <Route path="/arena" element={<EngineeringArenaPage />} />
                 <Route path="/gamification/badges" element={<BadgesShowcasePage />} />
                 <Route path="/gamification/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/flashcards" element={<FlashcardDecksPage />} />

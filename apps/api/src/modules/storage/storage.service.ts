@@ -2,6 +2,7 @@ import { Injectable, Inject, Optional, Logger, HttpStatus } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { RedisService } from '../platform/redis/redis.service';
+import { MetricsService } from '../platform/metrics/metrics.service';
 import { StorageProvider } from './interfaces/storage-provider.interface';
 import {
   ErrorCode,
@@ -73,6 +74,7 @@ export class StorageService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     @Optional() private readonly redisService?: RedisService,
+    @Optional() private readonly metricsService?: MetricsService,
   ) {}
 
   private normalizeKey(rawKey: string): string {
@@ -101,6 +103,10 @@ export class StorageService {
     }
 
     return normalized;
+  }
+
+  private normalizeMimeType(mimeType: string | undefined): string {
+    return (mimeType || '').split(';', 1)[0].trim().toLowerCase();
   }
 
   private isProduction(): boolean {
@@ -198,6 +204,7 @@ export class StorageService {
       });
 
     if (isInvalidFilename) {
+      this.metricsService?.storageQuotaRejectionsTotal.inc({ reason: 'invalid_filename' });
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
         'Invalid filename format or length.',
@@ -208,6 +215,7 @@ export class StorageService {
     const category = (dto.category || 'documents') as StorageCategory;
     const policy = CATEGORY_POLICIES[category];
     if (!policy || !policy.allowedMimes.includes(dto.mimeType)) {
+      this.metricsService?.storageQuotaRejectionsTotal.inc({ reason: 'invalid_mime_or_category' });
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
         `MIME type '${dto.mimeType}' is not allowed for category '${category}'.`,
@@ -231,6 +239,8 @@ export class StorageService {
       isPublic: category === 'public',
       expiresAt: Date.now() + this.INTENT_TTL_SECONDS * 1000,
     });
+
+    this.metricsService?.storageUploadIntentsTotal.inc({ category, status: 'issued' });
 
     let publicUrl: string | undefined = undefined;
     if (category === 'public') {
@@ -269,6 +279,22 @@ export class StorageService {
       );
     }
 
+    // The confirmation body is untrusted. Keep the capability's original
+    // metadata authoritative so a caller cannot rebind an upload key to a
+    // different filename, MIME type, or visibility after presigning it.
+    if (
+      intent.key !== normalizedKey ||
+      dto.filename !== intent.filename ||
+      this.normalizeMimeType(dto.mimeType) !== this.normalizeMimeType(intent.mimeType) ||
+      dto.isPublic !== Boolean(intent.isPublic)
+    ) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Upload confirmation metadata does not match the upload intent.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // 3. Verify key prefix matches caller identity
     const keyParts = normalizedKey.split('/');
     if (keyParts.length < 3 || keyParts[1] !== userId) {
@@ -301,9 +327,18 @@ export class StorageService {
       );
     }
 
+    if (this.normalizeMimeType(metadata.contentType) !== this.normalizeMimeType(intent.mimeType)) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Uploaded object content type does not match the upload intent.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
     // 6. Enforce category byte cap (SEC-001 / PRD-1003)
     const categoryPolicy = CATEGORY_POLICIES[intent.category as StorageCategory];
     if (categoryPolicy && metadata.size > categoryPolicy.maxBytes) {
+      this.metricsService?.storageQuotaRejectionsTotal.inc({ reason: 'byte_cap_exceeded' });
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
         `Uploaded file size (${metadata.size} bytes) exceeds the maximum allowed ${categoryPolicy.maxBytes} bytes for category '${intent.category}'.`,
@@ -328,8 +363,8 @@ export class StorageService {
       data: {
         key: normalizedKey,
         bucket,
-        filename: dto.filename,
-        mimeType: dto.mimeType,
+        filename: intent.filename,
+        mimeType: intent.mimeType,
         sizeBytes: metadata.size,
         url: publicUrl,
         isPublic,
@@ -339,6 +374,15 @@ export class StorageService {
 
     // 7. Invalidate/consume upload intent (single-use)
     await this.deleteIntent(normalizedKey);
+
+    this.metricsService?.storageUploadIntentsTotal.inc({
+      category: intent.category,
+      status: 'confirmed',
+    });
+    this.metricsService?.storageConfirmedBytesTotal.inc(
+      { category: intent.category },
+      metadata.size,
+    );
 
     await this.prisma.auditLog.create({
       data: {
@@ -407,6 +451,7 @@ export class StorageService {
 
     // FAIL CLOSED: Unregistered keys MUST NOT be deleted
     if (!asset) {
+      this.metricsService?.storageDeletionEventsTotal.inc({ status: 'not_found' });
       throw new DomainException(
         ErrorCode.RESOURCE_NOT_FOUND,
         'File asset not found or not registered.',
@@ -416,6 +461,7 @@ export class StorageService {
 
     const isAdmin = userRole === UserRole.ADMIN || userRole === 'ADMIN';
     if (asset.userId !== userId && !isAdmin) {
+      this.metricsService?.storageDeletionEventsTotal.inc({ status: 'unauthorized' });
       throw new DomainException(
         ErrorCode.FORBIDDEN,
         'You are not authorized to delete this file.',
@@ -424,8 +470,18 @@ export class StorageService {
     }
 
     // Never delete database metadata before cloud provider confirmation
-    await this.provider.deleteObject(normalizedKey);
+    try {
+      await this.provider.deleteObject(normalizedKey);
+    } catch (err: any) {
+      this.metricsService?.storageDeletionEventsTotal.inc({ status: 'provider_failed' });
+      this.logger.error(
+        `Cloud provider failed to delete object [${normalizedKey}]: ${err.message}`,
+      );
+      throw err;
+    }
+
     await this.prisma.fileAsset.delete({ where: { id: asset.id } });
+    this.metricsService?.storageDeletionEventsTotal.inc({ status: 'success' });
 
     await this.prisma.auditLog.create({
       data: {
@@ -436,6 +492,37 @@ export class StorageService {
         details: { key: normalizedKey },
       },
     });
+  }
+
+  async reconcileOrphanFiles(userId?: string): Promise<{ scanned: number; reconciled: number }> {
+    const assets = await this.prisma.fileAsset.findMany({
+      where: userId ? { userId } : undefined,
+      take: 100,
+    });
+
+    let reconciled = 0;
+    for (const asset of assets) {
+      const metadata = await this.provider.getObjectMetadata(asset.key);
+      if (!metadata) {
+        this.logger.warn(
+          `Orphan metadata detected for asset [${asset.id}], key [${asset.key}]. Reconciling...`,
+        );
+        await this.prisma.fileAsset.delete({ where: { id: asset.id } });
+        await this.prisma.auditLog.create({
+          data: {
+            userId: asset.userId,
+            action: AuditAction.FILE_DELETED,
+            resource: 'file_asset',
+            resourceId: asset.id,
+            details: { key: asset.key, reason: 'reconcile_orphan_metadata_purged' },
+          },
+        });
+        this.metricsService?.storageDeletionEventsTotal.inc({ status: 'reconciled_orphan' });
+        reconciled++;
+      }
+    }
+
+    return { scanned: assets.length, reconciled };
   }
 
   async getFileAsset(key: string): Promise<FileAssetDto | null> {

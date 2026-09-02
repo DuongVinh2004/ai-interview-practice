@@ -32,9 +32,11 @@ export class OpenAiProvider implements AiProvider {
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('ai.openaiApiKey', '');
     this.defaultModel = this.configService.get<string>('ai.openaiModel', 'gpt-4o');
+    const timeout = this.configService.get<number>('ai.timeoutMs', 10000);
+    const maxRetries = this.configService.get<number>('ai.maxRetries', 2);
 
     if (apiKey) {
-      this.client = new OpenAI({ apiKey, timeout: 25000 });
+      this.client = new OpenAI({ apiKey, timeout, maxRetries });
     }
   }
 
@@ -48,7 +50,9 @@ export class OpenAiProvider implements AiProvider {
           401,
         );
       }
-      this.client = new OpenAI({ apiKey, timeout: 25000 });
+      const timeout = this.configService.get<number>('ai.timeoutMs', 10000);
+      const maxRetries = this.configService.get<number>('ai.maxRetries', 2);
+      this.client = new OpenAI({ apiKey, timeout, maxRetries });
     }
     return this.client;
   }

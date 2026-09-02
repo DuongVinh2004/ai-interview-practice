@@ -29,6 +29,13 @@ export class AiSecurityFilterService {
       /exfiltrate/i,
       /system\s*:\s*you\s+are/i,
       /<\/?system>/i,
+      /you\s+are\s+dan|do\s+anything\s+now/i,
+      /repeat\s+(your\s+)?system\s+prompt/i,
+      /bỏ\s+qua\s+(toàn\s+bộ|tất\s+cả|mọi)\s+hướng\s+dẫn/i,
+      /cho\s+tôi\s+(100|10(\.0)?|điểm\s+tuyệt\s+đối)/i,
+      /<!--\s*(ai|system|override)/i,
+      /\/\/\s*(ai|system|instruction|override)/i,
+      /override\s+(the\s+)?(score|rubric)/i,
     ];
 
     for (const pattern of injectionPatterns) {

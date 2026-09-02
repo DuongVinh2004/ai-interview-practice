@@ -306,21 +306,12 @@ export class AuthService {
       this.logger.warn(
         `Token reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
       );
-      await this.prisma.refreshToken.updateMany({
-        where: { familyId: storedToken.familyId, isRevoked: false },
-        data: { isRevoked: true },
-      });
-      await this.prisma.auditLog.create({
-        data: {
-          userId: storedToken.userId,
-          action: AuditAction.TOKEN_REUSE_DETECTED,
-          resource: 'refresh_token',
-          resourceId: storedToken.id,
-          details: {
-            reason: 'Revoked refresh token was presented for rotation',
-            familyId: storedToken.familyId,
-          },
-        },
+      await this.prisma.$transaction(async tx => {
+        await this.revokeRefreshTokenFamily(
+          tx,
+          storedToken,
+          'Revoked refresh token was presented for rotation',
+        );
       });
       throw new DomainException(
         ErrorCode.UNAUTHORIZED,
@@ -345,61 +336,69 @@ export class AuthService {
       );
     }
 
-    // Atomic token rotation to prevent race condition replay (H-001)
-    const updateResult = await this.prisma.refreshToken.updateMany({
-      where: { id: storedToken.id, isRevoked: false },
-      data: { isRevoked: true },
-    });
+    const refreshMfaVerified =
+      storedToken.mfaVerified === true && storedToken.user.mfaEnabled === true;
 
-    if (updateResult.count === 0) {
-      this.logger.warn(
-        `Token race/reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
-      );
-      await this.prisma.refreshToken.updateMany({
-        where: { familyId: storedToken.familyId, isRevoked: false },
+    // Keep the one-time compare-and-revoke and child issuance in the same
+    // transaction. Otherwise a concurrent loser can revoke the family before
+    // the winner inserts its replacement token, leaving a fresh active token
+    // after family invalidation (H-001).
+    const rotation = await this.prisma.$transaction(async tx => {
+      const updateResult = await tx.refreshToken.updateMany({
+        where: { id: storedToken.id, isRevoked: false },
         data: { isRevoked: true },
       });
-      await this.prisma.auditLog.create({
-        data: {
-          userId: storedToken.userId,
-          action: AuditAction.TOKEN_REUSE_DETECTED,
-          resource: 'refresh_token',
-          resourceId: storedToken.id,
-          details: {
-            reason: 'Concurrent rotation race or already revoked refresh token',
-            familyId: storedToken.familyId,
-          },
-        },
-      });
+
+      if (updateResult.count === 0) {
+        this.logger.warn(
+          `Token race/reuse detected for user ${storedToken.userId}, family ${storedToken.familyId}! Invalidating compromised session family.`,
+        );
+        await this.revokeRefreshTokenFamily(
+          tx,
+          storedToken,
+          'Concurrent rotation race or already revoked refresh token',
+        );
+        return { outcome: 'FAMILY_COMPROMISED' as const };
+      }
+
+      if (storedToken.user.role === UserRole.ADMIN && !refreshMfaVerified) {
+        await tx.refreshToken.updateMany({
+          where: { familyId: storedToken.familyId, isRevoked: false },
+          data: { isRevoked: true },
+        });
+        await tx.user.update({
+          where: { id: storedToken.userId },
+          data: { tokenVersion: { increment: 1 } },
+        });
+        return { outcome: 'MFA_REQUIRED' as const };
+      }
+
+      const response = await this.generateAuthResponse(
+        storedToken.user,
+        refreshMfaVerified,
+        storedToken.familyId,
+        tx,
+      );
+      return { outcome: 'ROTATED' as const, response };
+    });
+
+    // Security state must commit before the request is rejected. Throwing from
+    // inside the transaction would roll the family revocation back.
+    if (rotation.outcome === 'FAMILY_COMPROMISED') {
       throw new DomainException(
         ErrorCode.UNAUTHORIZED,
         'Suspicious activity detected. The session family has been revoked.',
         HttpStatus.UNAUTHORIZED,
       );
     }
-
-    const refreshMfaVerified =
-      storedToken.mfaVerified === true && storedToken.user.mfaEnabled === true;
-
-    if (storedToken.user.role === UserRole.ADMIN && !refreshMfaVerified) {
-      await this.prisma.$transaction([
-        this.prisma.refreshToken.updateMany({
-          where: { familyId: storedToken.familyId, isRevoked: false },
-          data: { isRevoked: true },
-        }),
-        this.prisma.user.update({
-          where: { id: storedToken.userId },
-          data: { tokenVersion: { increment: 1 } },
-        }),
-      ]);
+    if (rotation.outcome === 'MFA_REQUIRED') {
       throw new DomainException(
         ErrorCode.MFA_REQUIRED,
         'Administrator session requires fresh MFA verification',
         HttpStatus.UNAUTHORIZED,
       );
     }
-
-    return this.generateAuthResponse(storedToken.user, refreshMfaVerified, storedToken.familyId);
+    return rotation.response;
   }
 
   async logout(userId: string, refreshTokenString?: string): Promise<void> {
@@ -991,6 +990,29 @@ export class AuthService {
 
   private hashToken(token: string): string {
     return crypto.createHash('sha256').update(token).digest('hex');
+  }
+
+  private async revokeRefreshTokenFamily(
+    tx: {
+      refreshToken: { updateMany: (args: any) => Promise<unknown> };
+      auditLog: { create: (args: any) => Promise<unknown> };
+    },
+    storedToken: any,
+    reason: string,
+  ): Promise<void> {
+    await tx.refreshToken.updateMany({
+      where: { familyId: storedToken.familyId, isRevoked: false },
+      data: { isRevoked: true },
+    });
+    await tx.auditLog.create({
+      data: {
+        userId: storedToken.userId,
+        action: AuditAction.TOKEN_REUSE_DETECTED,
+        resource: 'refresh_token',
+        resourceId: storedToken.id,
+        details: { reason, familyId: storedToken.familyId },
+      },
+    });
   }
 
   private mapToUserDto(user: any): UserDto {

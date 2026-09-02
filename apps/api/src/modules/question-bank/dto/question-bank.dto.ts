@@ -280,3 +280,30 @@ export class AdminReviewQuestionDto {
   @MaxLength(1000)
   reviewNotes?: string;
 }
+
+export class AdminListQuestionsQueryDto {
+  @ApiPropertyOptional({ default: 1, minimum: 1 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number = 1;
+
+  @ApiPropertyOptional({ default: 20, minimum: 1, maximum: 100 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  limit?: number = 20;
+
+  @ApiPropertyOptional({ enum: QuestionPublicationStatus })
+  @IsOptional()
+  @IsEnum(QuestionPublicationStatus)
+  status?: QuestionPublicationStatus;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  search?: string;
+}

@@ -12,8 +12,8 @@ export interface BillingProvider {
   createCustomerPortalSession(customerId: string, returnUrl: string): Promise<{ url: string }>;
 
   handleWebhook(
-    payload: any,
+    payload: unknown,
     signature?: string,
     rawBody?: string,
-  ): Promise<{ eventType: string; handled: boolean; data?: any }>;
+  ): Promise<{ eventType: string; handled: boolean; data?: unknown }>;
 }

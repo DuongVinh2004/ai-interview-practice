@@ -23,7 +23,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthService } from '../auth/auth.service';
-import { UserRole, BillingMetric, ErrorCode } from '@ai-interview/contracts';
+import { UserRole, BillingMetric, ErrorCode, JwtPayload } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { QuotaGuard, RequireQuota } from '../billing/guards/quota.guard';
 import {
@@ -84,7 +84,7 @@ export class InterviewController {
         await this.idempotencyService.completeKey(idempotencyKey, HttpStatus.CREATED, result);
       }
       return result;
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (idempotencyKey) {
         await this.idempotencyService.releaseKey(idempotencyKey);
       }
@@ -96,20 +96,25 @@ export class InterviewController {
   @ApiOperation({ summary: 'Get full interview session by ID' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async getInterview(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND })) id: string,
   ) {
-    return this.interviewService.getSession(user.sub, user.role, id, user.mfaVerified);
+    return this.interviewService.getSession(user.sub, user.role as UserRole, id, user.mfaVerified);
   }
 
   @Get(':id/status')
   @ApiOperation({ summary: 'Get lightweight interview session status (REST polling fallback)' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async getInterviewStatus(
-    @CurrentUser() user: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND })) id: string,
   ) {
-    return this.interviewService.getSessionStatus(user.sub, user.role, id, user.mfaVerified);
+    return this.interviewService.getSessionStatus(
+      user.sub,
+      user.role as UserRole,
+      id,
+      user.mfaVerified,
+    );
   }
 
   @Post(':id/answers')

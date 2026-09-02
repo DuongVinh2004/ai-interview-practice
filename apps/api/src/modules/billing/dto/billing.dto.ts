@@ -58,6 +58,28 @@ export class CreateCheckoutDto {
   cancelUrl?: string;
 }
 
+export class CreatePayosCheckoutDto {
+  @ApiProperty({ example: 'pro' })
+  @IsString()
+  @IsNotEmpty()
+  planSlug!: string;
+
+  @ApiPropertyOptional({ enum: ['monthly', 'yearly'], default: 'monthly' })
+  @IsIn(['monthly', 'yearly'])
+  @IsOptional()
+  billingCycle?: 'monthly' | 'yearly';
+
+  @ApiPropertyOptional({ example: 'https://ai-interview.dev/billing?success=true' })
+  @Validate(IsAllowedRedirectUrlConstraint)
+  @IsOptional()
+  returnUrl?: string;
+
+  @ApiPropertyOptional({ example: 'https://ai-interview.dev/billing?canceled=true' })
+  @Validate(IsAllowedRedirectUrlConstraint)
+  @IsOptional()
+  cancelUrl?: string;
+}
+
 export class ValidatePromoDto {
   @ApiProperty({ example: 'PROMO20' })
   @IsString()

@@ -6,13 +6,14 @@ import {
   Body,
   Param,
   UseGuards,
-  Req,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '@ai-interview/contracts';
 import { SetupDraftService } from './setup-draft.service';
 import {
   CreateSetupDraftRequestDto,
@@ -34,8 +35,8 @@ export class SetupDraftController {
     summary: 'Lấy hoặc khởi tạo draft thiết lập phỏng vấn đang kích hoạt của người dùng',
   })
   @ApiResponse({ status: 200, description: 'Thông tin bản nháp thiết lập phỏng vấn' })
-  async getActiveDraft(@Req() req: any) {
-    const userId = req.user.id;
+  async getActiveDraft(@CurrentUser() user: JwtPayload) {
+    const userId = user.id || user.sub;
     return this.draftService.getOrCreateActiveDraft(userId);
   }
 
@@ -43,16 +44,19 @@ export class SetupDraftController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Tạo hoặc khôi phục draft thiết lập phỏng vấn' })
   @ApiResponse({ status: 200, description: 'Bản nháp thiết lập phỏng vấn' })
-  async createOrResumeDraft(@Req() req: any, @Body() dto: CreateSetupDraftRequestDto) {
-    const userId = req.user.id;
+  async createOrResumeDraft(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: CreateSetupDraftRequestDto,
+  ) {
+    const userId = user.id || user.sub;
     return this.draftService.getOrCreateActiveDraft(userId, dto);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Lấy chi tiết bản nháp thiết lập phỏng vấn theo ID' })
   @ApiResponse({ status: 200, description: 'Chi tiết bản nháp' })
-  async getDraft(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
-    const userId = req.user.id;
+  async getDraft(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    const userId = user.id || user.sub;
     return this.draftService.getDraft(userId, id);
   }
 
@@ -60,11 +64,11 @@ export class SetupDraftController {
   @ApiOperation({ summary: 'Lưu các chỉnh sửa bản nháp phỏng vấn an toàn (Auto-save)' })
   @ApiResponse({ status: 200, description: 'Bản nháp sau khi cập nhật' })
   async updateDraft(
-    @Req() req: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateSetupDraftRequestDto,
   ) {
-    const userId = req.user.id;
+    const userId = user.id || user.sub;
     return this.draftService.updateDraft(userId, id, dto);
   }
 
@@ -78,11 +82,11 @@ export class SetupDraftController {
     description: 'Bản nháp đã gắn thông tin ứng viên và đề xuất cấu hình',
   })
   async analyzeProfile(
-    @Req() req: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AnalyzeProfileToDraftRequestDto,
   ) {
-    const userId = req.user.id;
+    const userId = user.id || user.sub;
     return this.draftService.attachExtractedProfile(userId, id, dto);
   }
 
@@ -94,11 +98,11 @@ export class SetupDraftController {
   })
   @ApiResponse({ status: 200, description: 'Bảng diff so sánh các trường và đề xuất merge' })
   async applyPreset(
-    @Req() req: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ApplyPresetToDraftRequestDto,
   ) {
-    const userId = req.user.id;
+    const userId = user.id || user.sub;
     return this.draftService.previewApplyPreset(userId, id, dto.presetId);
   }
 
@@ -112,11 +116,11 @@ export class SetupDraftController {
     description: 'Bản nháp đã cập nhật cấu hình theo quyết định của người dùng',
   })
   async resolveConflicts(
-    @Req() req: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ResolveConflictsRequestDto,
   ) {
-    const userId = req.user.id;
+    const userId = user.id || user.sub;
     return this.draftService.resolveConflictsAndApply(userId, id, dto);
   }
 }

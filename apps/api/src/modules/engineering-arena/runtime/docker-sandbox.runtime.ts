@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import {
   WorkspaceRuntime,
   WorkspaceProvisionParams,
   WorkspaceRunCommandParams,
   WorkspaceRunResult,
+  WorkspaceRuntimeUnavailableError,
 } from './workspace-runtime.interface';
 import { DeterministicLocalWorkspaceRuntime } from './deterministic-local.runtime';
 import { ArenaWorkspaceFileUpdate } from '@ai-interview/contracts';
@@ -16,10 +17,19 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
 
   // Injected fallback adapter for environments without Docker daemon (CI/Windows dev)
   private readonly fallbackAdapter: DeterministicLocalWorkspaceRuntime;
+  private readonly allowDeterministicFallback: boolean;
   private isDockerAvailable = false;
 
-  constructor(fallbackAdapter?: DeterministicLocalWorkspaceRuntime) {
+  constructor(
+    fallbackAdapter?: DeterministicLocalWorkspaceRuntime,
+    @Optional()
+    @Inject('ARENA_DETERMINISTIC_FALLBACK')
+    allowDeterministicFallback?: boolean,
+  ) {
     this.fallbackAdapter = fallbackAdapter || new DeterministicLocalWorkspaceRuntime();
+    const environment = (process.env.NODE_ENV || process.env.APP_ENV || '').trim().toLowerCase();
+    this.allowDeterministicFallback =
+      environment !== 'production' && (allowDeterministicFallback ?? environment === 'test');
   }
 
   /**
@@ -57,6 +67,7 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   async provision(params: WorkspaceProvisionParams): Promise<void> {
+    this.assertRuntimeAvailable();
     // Validate paths
     for (const filePath of Object.keys(params.files)) {
       if (filePath.includes('..') || filePath.startsWith('/') || filePath.startsWith('\\')) {
@@ -70,6 +81,7 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   async syncFiles(workspaceHandle: string, files: ArenaWorkspaceFileUpdate[]): Promise<void> {
+    this.assertRuntimeAvailable();
     await this.fallbackAdapter.syncFiles(workspaceHandle, files);
   }
 
@@ -78,6 +90,8 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
     if (!cmdDef) {
       throw new Error(`Command '${params.commandId}' is not allowed by challenge manifest.`);
     }
+
+    this.assertRuntimeAvailable();
 
     this.logger.log(
       `Executing command '${params.commandId}' in container sandbox for ${params.workspaceHandle}`,
@@ -90,11 +104,23 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
   async snapshot(
     workspaceHandle: string,
   ): Promise<{ snapshotHash: string; files: Record<string, string> }> {
+    this.assertRuntimeAvailable();
     return this.fallbackAdapter.snapshot(workspaceHandle);
   }
 
   async destroy(workspaceHandle: string): Promise<void> {
+    this.assertRuntimeAvailable();
     await this.fallbackAdapter.destroy(workspaceHandle);
     this.logger.log(`Destroyed container workspace ${workspaceHandle}`);
+  }
+
+  private assertRuntimeAvailable(): void {
+    if (this.isDockerAvailable || this.allowDeterministicFallback) {
+      return;
+    }
+
+    throw new WorkspaceRuntimeUnavailableError(
+      'Isolated Docker Arena runtime is unavailable; refusing to execute with a deterministic adapter.',
+    );
   }
 }

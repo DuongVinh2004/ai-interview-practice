@@ -6,7 +6,7 @@ import { CardState, FSRSRating, CardType } from '@ai-interview/contracts';
 describe('FlashcardService (F005)', () => {
   let service: FlashcardService;
 
-  const mockPrisma = {
+  const mockPrisma: any = {
     flashcardDeck: {
       create: jest
         .fn()
@@ -42,6 +42,7 @@ describe('FlashcardService (F005)', () => {
       findUnique: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
+    $transaction: jest.fn((callback: any) => callback(mockPrisma)),
   };
 
   beforeEach(async () => {
@@ -115,6 +116,10 @@ describe('FlashcardService (F005)', () => {
       expect(result.card.stability).toBe(2.4);
       expect(mockPrisma.reviewLog.create).toHaveBeenCalled();
       expect(mockPrisma.userStreak.create).toHaveBeenCalled();
+      expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+        expect.any(Function),
+        expect.objectContaining({ isolationLevel: 'Serializable' }),
+      );
     });
   });
 

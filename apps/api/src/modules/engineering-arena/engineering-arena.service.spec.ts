@@ -2,9 +2,9 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EngineeringArenaService } from './engineering-arena.service';
 import { ArenaChallengeRepository } from './repositories/arena-challenge.repository';
 import { ArenaSessionRepository } from './repositories/arena-session.repository';
-import { DeterministicLocalWorkspaceRuntime } from './runtime/deterministic-local.runtime';
 import { ArenaEvaluationService } from './services/arena-evaluation.service';
 import { ArenaSseService } from './services/arena-sse.service';
+import { WORKSPACE_RUNTIME } from './runtime/workspace-runtime.interface';
 import { ArenaAiAssistanceMode } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { ArenaSessionLifecycleState } from '@prisma/client';
@@ -29,6 +29,10 @@ describe('EngineeringArenaService', () => {
   };
   let evaluationService: {
     submitAndEvaluate: jest.Mock;
+  };
+  let sseService: {
+    emitLog: jest.Mock;
+    getSessionStream: jest.Mock;
   };
 
   const mockManifest = {
@@ -126,7 +130,7 @@ describe('EngineeringArenaService', () => {
       }),
     };
 
-    const mockSseService = {
+    sseService = {
       emitLog: jest.fn(),
       getSessionStream: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
     };
@@ -136,9 +140,9 @@ describe('EngineeringArenaService', () => {
         EngineeringArenaService,
         { provide: ArenaChallengeRepository, useValue: challengeRepo },
         { provide: ArenaSessionRepository, useValue: sessionRepo },
-        { provide: DeterministicLocalWorkspaceRuntime, useValue: workspaceRuntime },
+        { provide: WORKSPACE_RUNTIME, useValue: workspaceRuntime },
         { provide: ArenaEvaluationService, useValue: evaluationService },
-        { provide: ArenaSseService, useValue: mockSseService },
+        { provide: ArenaSseService, useValue: sseService },
       ],
     }).compile();
 
@@ -203,9 +207,21 @@ describe('EngineeringArenaService', () => {
   });
 
   describe('getSessionSseStream', () => {
-    it('returns observable stream from sseService', () => {
-      const stream = service.getSessionSseStream('s1');
+    it('returns observable stream from sseService after an owner check', async () => {
+      sessionRepo.findSessionById.mockResolvedValue({ id: 's1', userId: 'u1' });
+      const stream = await service.getSessionSseStream('s1', 'u1');
       expect(stream).toBeDefined();
+      expect(sessionRepo.findSessionById).toHaveBeenCalledWith('s1', 'u1');
+    });
+
+    it('does not subscribe when the caller does not own the session', async () => {
+      sessionRepo.findSessionById.mockResolvedValue(null);
+
+      await expect(service.getSessionSseStream('s1', 'attacker')).rejects.toMatchObject({
+        code: 'RESOURCE_NOT_FOUND',
+        status: 404,
+      });
+      expect(sseService.getSessionStream).not.toHaveBeenCalled();
     });
   });
 

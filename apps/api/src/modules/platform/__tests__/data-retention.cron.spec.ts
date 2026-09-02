@@ -118,4 +118,61 @@ describe('DataRetentionCron (PRIV-002)', () => {
     });
     expect(result.purgedDocsCount).toBe(1);
   });
+
+  it('retains the document record when provider deletion fails so a later purge can retry', async () => {
+    mockPrisma.userDocument.findMany.mockResolvedValue([
+      {
+        id: 'doc-retry',
+        userId: 'user-retry',
+        fileAsset: { key: 'resumes/user-retry/cv.pdf' },
+      },
+      {
+        id: 'doc-text-only',
+        userId: 'user-text',
+        fileAsset: null,
+      },
+    ]);
+    mockPrisma.userDocument.deleteMany.mockResolvedValue({ count: 1 });
+    mockStorageService.deleteFile.mockRejectedValueOnce(new Error('provider unavailable'));
+
+    await cron.handleDailyDataPurge();
+
+    expect(mockPrisma.userDocument.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['doc-text-only'] } },
+    });
+  });
+
+  it('purges voice transcripts and sessions older than 30 days cutoff', async () => {
+    mockPrisma.voiceTranscript.deleteMany.mockResolvedValue({ count: 5 });
+    mockPrisma.voiceSession.deleteMany.mockResolvedValue({ count: 2 });
+    mockPrisma.voiceSessionMetric.deleteMany.mockResolvedValue({ count: 10 });
+
+    await cron.handleDailyDataPurge();
+
+    expect(mockPrisma.voiceTranscript.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          createdAt: expect.objectContaining({ lt: expect.any(Date) }),
+        }),
+      }),
+    );
+    expect(mockPrisma.voiceSession.deleteMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          createdAt: expect.objectContaining({ lt: expect.any(Date) }),
+        }),
+      }),
+    );
+  });
+
+  it('skips execution when distributed lock is already held by another replica', async () => {
+    mockRedisService.getClient.mockReturnValue({
+      set: jest.fn().mockResolvedValue(null), // Lock acquisition failed
+    });
+
+    await cron.handleDailyDataPurge();
+
+    expect(mockPrisma.userDocument.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.userDocument.deleteMany).not.toHaveBeenCalled();
+  });
 });

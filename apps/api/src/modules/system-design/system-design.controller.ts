@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Headers, Param, Query, UseGuards } from '@
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiHeader } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { EvaluateDiagramDto } from '@ai-interview/contracts';
 import { CanvasService } from './services/canvas.service';
 import { DesignAnalyzerService } from './services/design-analyzer.service';
 import { DesignEvaluationService } from './services/design-evaluation.service';
@@ -97,7 +98,7 @@ export class SystemDesignController {
   async evaluateDiagram(
     @CurrentUser('sub') userId: string,
     @Param('id') interviewId: string,
-    @Body() dto: any,
+    @Body() dto: EvaluateDiagramDto,
     @Headers('idempotency-key') idempotencyKey?: string,
   ) {
     return this.designEvaluationService.evaluateDiagram(userId, interviewId, dto, idempotencyKey);

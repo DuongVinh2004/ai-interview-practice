@@ -205,20 +205,23 @@ describe('Track F010: Portfolio & Certificate Module', () => {
     it('generates certificate when candidate meets Gold/Platinum criteria', async () => {
       const userId = 'user-123';
       mockPrisma.skillScore.findMany.mockResolvedValue([]);
-      mockPrisma.interviewTurn.findMany.mockResolvedValue([]);
+      mockPrisma.interviewTurn.findMany.mockResolvedValue(
+        Array.from({ length: 10 }, () => ({
+          answer: {
+            evaluation: {
+              score: 8.6,
+              authorityState: 'AUTHORITATIVE',
+              needsReview: false,
+              provider: 'openai',
+              evidence: ['current authoritative evidence'],
+            },
+          },
+        })),
+      );
       mockPrisma.user.findUnique.mockResolvedValue({
         id: userId,
         email: 'candidate@example.com',
         profile: { fullName: 'Alex Rivera' },
-      });
-
-      mockPrisma.userBadge.findFirst.mockResolvedValue({
-        id: 'b-1',
-        userId,
-        competencyArea: CompetencyArea.SYSTEM_DESIGN,
-        level: BadgeLevel.GOLD,
-        score: 8.6,
-        evidenceCount: 10,
       });
 
       mockPrisma.certificate.create.mockImplementation(({ data }: any) =>
@@ -234,6 +237,41 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       expect(result.recipientName).toBe('Alex Rivera');
       expect(result.signatureHash).toBeDefined();
       expect(result.qrCodeUrl).toContain('data:image/svg+xml');
+    });
+
+    it('does not issue from a stale Gold badge when current evidence is below threshold', async () => {
+      const userId = 'user-stale-badge';
+      mockPrisma.user.findUnique.mockResolvedValue({
+        id: userId,
+        email: 'candidate@example.com',
+        profile: { fullName: 'Alex Rivera' },
+      });
+      mockPrisma.userBadge.findFirst.mockResolvedValue({
+        id: 'stale-gold',
+        userId,
+        competencyArea: CompetencyArea.SYSTEM_DESIGN,
+        level: BadgeLevel.GOLD,
+        score: 9.5,
+        evidenceCount: 12,
+      });
+      mockPrisma.interviewTurn.findMany.mockResolvedValue(
+        Array.from({ length: 7 }, () => ({
+          answer: {
+            evaluation: {
+              score: 9.5,
+              authorityState: 'AUTHORITATIVE',
+              needsReview: false,
+              provider: 'openai',
+              evidence: ['current evidence'],
+            },
+          },
+        })),
+      );
+
+      await expect(
+        certificateService.generateCertificate(userId, CompetencyArea.SYSTEM_DESIGN),
+      ).rejects.toThrow(BadRequestException);
+      expect(mockPrisma.certificate.create).not.toHaveBeenCalled();
     });
 
     it('rejects certificate generation if score < 8.0 or no badge exists', async () => {

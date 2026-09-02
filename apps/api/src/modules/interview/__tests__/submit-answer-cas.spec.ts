@@ -160,17 +160,11 @@ describe('Interview Submission State Machine & CAS (P1-009)', () => {
       }),
     ).rejects.toThrow(DomainException);
 
-    // Ensure full rollback: answer deleted, turn reverted to AWAITING_ANSWER, session reverted to ACTIVE (REL-001)
-    expect(mockPrisma.answer.delete).toHaveBeenCalledWith({
-      where: { id: 'ans-1' },
-    });
-    expect(mockPrisma.interviewTurn.update).toHaveBeenCalledWith({
+    // The answer is the durable source of truth for the reconciliation worker.
+    expect(mockPrisma.answer.delete).not.toHaveBeenCalled();
+    expect(mockPrisma.interviewTurn.update).not.toHaveBeenCalledWith({
       where: { id: turnId },
       data: { status: 'AWAITING_ANSWER' },
-    });
-    expect(mockPrisma.interviewSession.updateMany).toHaveBeenCalledWith({
-      where: { id: sessionId, state: SessionState.EVALUATING },
-      data: { state: SessionState.ACTIVE },
     });
   });
 });

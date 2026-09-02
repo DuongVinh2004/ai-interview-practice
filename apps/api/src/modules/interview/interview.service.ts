@@ -80,73 +80,97 @@ export class InterviewService {
 
     const turnIndices = Array.from({ length: totalTurns }, (_, i) => i + 1);
 
-    // Create session, technologies join, and turn rows
-    const session = await this.prisma.$transaction(
-      async tx => {
-        await this.usageMeter.checkAndConsumeQuotaInTransaction(
-          tx,
-          userId,
-          BillingMetric.SESSION_COUNT,
-        );
+    // Create session, technologies join, and turn rows with bounded retry on serialization conflict (P2034)
+    const MAX_RETRIES = 3;
+    let session: any;
+    let lastError: unknown;
 
-        const configurationSnapshot = await this.configService.buildConfigurationSnapshot(
-          {
-            jobRoleId: dto.jobRoleId,
-            seniorityLevelId: dto.seniorityLevelId,
-            technologyIds: dto.technologyIds,
-            sessionMode,
-            competencyArea: competencyArea || undefined,
-            language: dto.language || 'vi',
-            totalTurns,
-            isSandbox,
-            blueprintId: dto.blueprintId || undefined,
-          },
-          tx,
-        );
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        session = await this.prisma.$transaction(
+          async tx => {
+            await this.usageMeter.checkAndConsumeQuotaInTransaction(
+              tx,
+              userId,
+              BillingMetric.SESSION_COUNT,
+            );
 
-        return tx.interviewSession.create({
-          data: {
-            userId,
-            jobRoleId: dto.jobRoleId,
-            seniorityLevelId: dto.seniorityLevelId,
-            state: SessionState.CREATED,
-            sessionMode,
-            competencyArea,
-            language: dto.language || 'vi',
-            isSandbox,
-            currentTurn: 1,
-            totalTurns,
-            targetDifficulty: 1,
-            configurationSnapshot,
-            configurationSource: dto.configurationSource || (dto.presetId ? 'PRESET' : 'MANUAL'),
-            fieldSources: dto.fieldSources ? (dto.fieldSources as any) : undefined,
-            draftId: dto.draftId || null,
-            presetId: dto.presetId || null,
-            technologies: {
-              create: dto.technologyIds.map(techId => ({
-                technologyId: techId,
-              })),
-            },
-            turns: {
-              create: turnIndices.map(turnNum => ({
-                turnNumber: turnNum,
-                difficulty: 1,
-                status: 'PENDING',
-              })),
-            },
+            const configurationSnapshot = await this.configService.buildConfigurationSnapshot(
+              {
+                jobRoleId: dto.jobRoleId,
+                seniorityLevelId: dto.seniorityLevelId,
+                technologyIds: dto.technologyIds,
+                sessionMode,
+                competencyArea: competencyArea || undefined,
+                language: dto.language || 'vi',
+                totalTurns,
+                isSandbox,
+                blueprintId: dto.blueprintId || undefined,
+              },
+              tx,
+            );
+
+            return tx.interviewSession.create({
+              data: {
+                userId,
+                jobRoleId: dto.jobRoleId,
+                seniorityLevelId: dto.seniorityLevelId,
+                state: SessionState.CREATED,
+                sessionMode,
+                competencyArea,
+                language: dto.language || 'vi',
+                isSandbox,
+                currentTurn: 1,
+                totalTurns,
+                targetDifficulty: 1,
+                configurationSnapshot,
+                configurationSource:
+                  dto.configurationSource || (dto.presetId ? 'PRESET' : 'MANUAL'),
+                fieldSources: dto.fieldSources ? (dto.fieldSources as any) : undefined,
+                draftId: dto.draftId || null,
+                presetId: dto.presetId || null,
+                technologies: {
+                  create: dto.technologyIds.map(techId => ({
+                    technologyId: techId,
+                  })),
+                },
+                turns: {
+                  create: turnIndices.map(turnNum => ({
+                    turnNumber: turnNum,
+                    difficulty: 1,
+                    status: 'PENDING',
+                  })),
+                },
+              },
+              include: {
+                jobRole: true,
+                seniorityLevel: true,
+                technologies: { include: { technology: true } },
+                turns: {
+                  orderBy: { turnNumber: 'asc' },
+                },
+              },
+            });
           },
-          include: {
-            jobRole: true,
-            seniorityLevel: true,
-            technologies: { include: { technology: true } },
-            turns: {
-              orderBy: { turnNumber: 'asc' },
-            },
-          },
-        });
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10000 },
-    );
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10000 },
+        );
+        break;
+      } catch (err: any) {
+        lastError = err;
+        if (err?.code === 'P2034' && attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 25 * attempt));
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    if (!session) {
+      throw (
+        lastError ||
+        new DomainException(ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to create session')
+      );
+    }
 
     const firstTurn = (session as any).turns?.find((t: any) => t.turnNumber === 1);
     if (!firstTurn) {
@@ -500,29 +524,11 @@ export class InterviewService {
       );
     } catch (queueErr: any) {
       this.logger.error(
-        `Failed to enqueue evaluation job: ${queueErr.message}. Reverting session state to ACTIVE to allow user retry.`,
+        `Failed to enqueue evaluation job: ${queueErr.message}. Preserving the committed answer for durable reconciliation.`,
       );
-      // Full rollback: delete the committed answer, revert turn and session state (REL-001)
-      try {
-        await this.prisma.$transaction([
-          this.prisma.answer.delete({ where: { id: answer.id } }),
-          this.prisma.interviewTurn.update({
-            where: { id: turn.id },
-            data: { status: 'AWAITING_ANSWER' },
-          }),
-          this.prisma.interviewSession.updateMany({
-            where: { id: sessionId, state: SessionState.EVALUATING },
-            data: { state: SessionState.ACTIVE },
-          }),
-        ]);
-      } catch (rollbackErr: any) {
-        this.logger.error(
-          `Failed to rollback answer/turn/session state: ${rollbackErr.message}. Manual intervention may be required.`,
-        );
-      }
       throw new DomainException(
         ErrorCode.INTERNAL_SERVER_ERROR,
-        'Evaluation queue is temporarily unavailable. Please try submitting your answer again.',
+        'Evaluation queue is temporarily unavailable. Your answer was saved and will be retried automatically.',
         HttpStatus.SERVICE_UNAVAILABLE,
       );
     }
@@ -597,38 +603,31 @@ export class InterviewService {
         ? await this.prisma.evaluation.findFirst({ where: { answerId: turn.answer.id } })
         : null;
 
-    // Rate-limit candidate re-evaluations to at most 2 per turn
-    if (!isReviewerAdmin && existingEval && this.prisma.evaluationRun?.count) {
-      const candidateRunsCount = await this.prisma.evaluationRun.count({
-        where: { evaluationId: existingEval.id, triggeredBy: 'CANDIDATE' },
-      });
-      if (candidateRunsCount >= 2) {
-        throw new DomainException(
-          ErrorCode.QUOTA_EXCEEDED,
-          'Maximum re-evaluation attempts (2) reached for this turn',
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
-    }
+    const reservationId =
+      !isReviewerAdmin && existingEval
+        ? await this.reserveCandidateReevaluation(existingEval.id, userId)
+        : undefined;
 
     // Invoke AI Orchestrator to evaluate answer
-    const evalResult = await this.aiOrchestrator.evaluateAnswer(sessionId, {
-      role: session.jobRole.name,
-      level: session.seniorityLevel.name,
-      question: turn.question.content,
-      keyFocus: turn.question.keyFocus || undefined,
-      expectedPoints: (turn.question.expectedPoints as string[]) || undefined,
-      answer: turn.answer.content,
-    });
-
-    const lastRun =
-      existingEval && this.prisma.evaluationRun?.findFirst
-        ? await this.prisma.evaluationRun.findFirst({
-            where: { evaluationId: existingEval.id },
-            orderBy: { runNumber: 'desc' },
-          })
-        : null;
-    const runNumberVal = (lastRun?.runNumber || 0) + 1;
+    let evalResult: any;
+    try {
+      evalResult = await this.aiOrchestrator.evaluateAnswer(sessionId, {
+        role: session.jobRole.name,
+        level: session.seniorityLevel.name,
+        question: turn.question.content,
+        keyFocus: turn.question.keyFocus || undefined,
+        expectedPoints: (turn.question.expectedPoints as string[]) || undefined,
+        answer: turn.answer.content,
+      });
+    } catch (error) {
+      if (reservationId) {
+        await (this.prisma as any).evaluationRunReservation.updateMany({
+          where: { id: reservationId, status: 'PENDING' },
+          data: { status: 'FAILED' },
+        });
+      }
+      throw error;
+    }
 
     const evalRecord: any =
       existingEval ||
@@ -657,11 +656,10 @@ export class InterviewService {
       evalResult.evidence.length > 0;
     const authorityState = isAuthoritativeReview ? 'AUTHORITATIVE' : 'NEEDS_REVIEW';
 
-    const run = this.prisma.evaluationRun?.create
-      ? await this.prisma.evaluationRun.create({
-          data: {
-            evaluationId: evalRecord.id,
-            runNumber: runNumberVal,
+    const run = (this.prisma as any).evaluationRun?.create
+      ? await this.createEvaluationRun(
+          evalRecord.id,
+          {
             score: evalResult.score,
             rubricScores: evalResult.rubricScores as any,
             strengths: evalResult.strengths,
@@ -675,7 +673,8 @@ export class InterviewService {
             confidence: evalResult.confidence || 0.85,
             triggeredBy,
           },
-        })
+          reservationId,
+        )
       : null;
 
     // Only authorized reviewer/admin can overwrite canonical projection score
@@ -771,6 +770,112 @@ export class InterviewService {
       overallScore,
       createdAt: (updatedEval.createdAt || new Date()).toISOString(),
     };
+  }
+
+  private async reserveCandidateReevaluation(
+    evaluationId: string,
+    actorUserId: string,
+  ): Promise<string> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async tx => {
+            const reservations = (tx as any).evaluationRunReservation;
+            const now = new Date();
+            await reservations.updateMany({
+              where: { evaluationId, status: 'PENDING', expiresAt: { lte: now } },
+              data: { status: 'EXPIRED' },
+            });
+
+            const [completedRuns, pendingReservations] = await Promise.all([
+              tx.evaluationRun.count({
+                where: { evaluationId, triggeredBy: 'CANDIDATE' },
+              }),
+              reservations.count({
+                where: {
+                  evaluationId,
+                  triggeredBy: 'CANDIDATE',
+                  status: 'PENDING',
+                  expiresAt: { gt: now },
+                },
+              }),
+            ]);
+            if (completedRuns + pendingReservations >= 2) {
+              throw new DomainException(
+                ErrorCode.QUOTA_EXCEEDED,
+                'Maximum re-evaluation attempts (2) reached for this turn',
+                HttpStatus.TOO_MANY_REQUESTS,
+              );
+            }
+
+            const reservation = await reservations.create({
+              data: {
+                evaluationId,
+                actorUserId,
+                triggeredBy: 'CANDIDATE',
+                status: 'PENDING',
+                expiresAt: new Date(now.getTime() + 5 * 60_000),
+              },
+            });
+            return reservation.id;
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error: any) {
+        if (error instanceof DomainException) throw error;
+        if (error?.code === 'P2034' && attempt < 3) continue;
+        if (error?.code === 'P2034') {
+          throw new DomainException(
+            ErrorCode.INVALID_STATE_TRANSITION,
+            'A re-evaluation attempt is already being reserved. Please retry.',
+            HttpStatus.CONFLICT,
+          );
+        }
+        throw error;
+      }
+    }
+    throw new DomainException(
+      ErrorCode.INTERNAL_SERVER_ERROR,
+      'Unable to reserve a re-evaluation attempt',
+    );
+  }
+
+  private async createEvaluationRun(
+    evaluationId: string,
+    data: Record<string, unknown>,
+    reservationId?: string,
+  ): Promise<any> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        return await this.prisma.$transaction(
+          async tx => {
+            const lastRun = await tx.evaluationRun.findFirst({
+              where: { evaluationId },
+              orderBy: { runNumber: 'desc' },
+            });
+            const run = await tx.evaluationRun.create({
+              data: {
+                evaluationId,
+                runNumber: (lastRun?.runNumber || 0) + 1,
+                ...data,
+              } as any,
+            });
+            if (reservationId) {
+              await (tx as any).evaluationRunReservation.updateMany({
+                where: { id: reservationId, status: 'PENDING' },
+                data: { status: 'COMPLETED' },
+              });
+            }
+            return run;
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+      } catch (error: any) {
+        if ((error?.code === 'P2034' || error?.code === 'P2002') && attempt < 3) continue;
+        throw error;
+      }
+    }
+    throw new DomainException(ErrorCode.INTERNAL_SERVER_ERROR, 'Unable to persist evaluation run');
   }
 
   private mapToSessionDto(session: any) {

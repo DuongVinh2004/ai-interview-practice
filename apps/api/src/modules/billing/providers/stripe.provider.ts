@@ -6,6 +6,13 @@ import * as crypto from 'crypto';
 import { BillingProvider } from '../interfaces/billing-provider.interface';
 import { CreateCheckoutRequest, CheckoutResponse } from '@ai-interview/contracts';
 
+class StripeEventAlreadyClaimedError extends Error {
+  constructor() {
+    super('Stripe event has already been claimed');
+    this.name = 'StripeEventAlreadyClaimedError';
+  }
+}
+
 @Injectable()
 export class StripeProvider implements BillingProvider {
   readonly name = 'stripe';
@@ -50,6 +57,9 @@ export class StripeProvider implements BillingProvider {
         customer_email: userEmail,
         'metadata[userId]': userId,
         'metadata[planSlug]': req.planSlug,
+        'metadata[billingCycle]': req.billingCycle || 'monthly',
+        'subscription_data[metadata][planSlug]': req.planSlug,
+        'subscription_data[metadata][billingCycle]': req.billingCycle || 'monthly',
         success_url: successUrl,
         cancel_url: cancelUrl,
       };
@@ -201,10 +211,10 @@ export class StripeProvider implements BillingProvider {
   }
 
   async handleWebhook(
-    payload: any,
+    payload: unknown,
     signature?: string,
     rawBody?: string,
-  ): Promise<{ eventType: string; handled: boolean; data?: any }> {
+  ): Promise<{ eventType: string; handled: boolean; data?: unknown }> {
     const payloadStr = rawBody || (typeof payload === 'string' ? payload : JSON.stringify(payload));
 
     if (!this.webhookSecret) {
@@ -224,9 +234,13 @@ export class StripeProvider implements BillingProvider {
       throw new BadRequestException('Invalid Stripe webhook signature');
     }
 
-    const eventType = payload?.type || 'unknown';
-    const eventId = payload?.id;
-    const data = payload?.data?.object;
+    const event = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<
+      string,
+      any
+    >;
+    const eventType = (event.type as string) || 'unknown';
+    const eventId = event.id as string | undefined;
+    const data = event.data?.object;
 
     this.logger.log(
       `Handling verified Stripe webhook event: ${eventType} (ID: ${eventId || 'n/a'})`,
@@ -249,205 +263,256 @@ export class StripeProvider implements BillingProvider {
       }
     }
 
-    // Process database side-effects based on verified event type
-    if (this.prisma && data) {
+    // Claim and process the event in one transaction. A unique conflict on the
+    // claim is the concurrent-delivery signal; every other persistence failure
+    // must escape so Stripe retries the event after the transaction rolls back.
+    if (this.prisma && (data || eventId)) {
       try {
-        switch (eventType) {
-          case 'checkout.session.completed': {
-            const userId = data.metadata?.userId || data.client_reference_id;
-            const planSlug = data.metadata?.planSlug;
-            const billingCycle = data.metadata?.billingCycle || 'monthly';
+        const checkoutUserId = data?.metadata?.userId || data?.client_reference_id;
+        const checkoutPlanSlug = data?.metadata?.planSlug;
+        const checkoutBillingCycle = this.billingCycleFor(data);
+        const checkoutPlan =
+          eventType === 'checkout.session.completed' && checkoutPlanSlug
+            ? await this.prisma.subscriptionPlan.findUnique({
+                where: { slug: checkoutPlanSlug },
+              })
+            : null;
 
-            if (userId && planSlug) {
-              const plan = await this.prisma.subscriptionPlan.findUnique({
-                where: { slug: planSlug },
-              });
-
-              if (plan) {
-                const now = new Date();
-                const periodEnd = new Date();
-                if (billingCycle === 'yearly') {
-                  periodEnd.setFullYear(periodEnd.getFullYear() + 1);
-                } else {
-                  periodEnd.setMonth(periodEnd.getMonth() + 1);
-                }
-
-                const providerSubId = data.subscription || data.id;
-
-                await this.prisma.$transaction(async tx => {
-                  const existingSub = await tx.subscription.findFirst({
-                    where: { userId },
-                  });
-
-                  let subId = existingSub?.id;
-                  if (existingSub) {
-                    await tx.subscription.update({
-                      where: { id: existingSub.id },
-                      data: {
-                        planId: plan.id,
-                        status: 'ACTIVE',
-                        provider: 'STRIPE',
-                        providerSubId,
-                        currentPeriodStart: now,
-                        currentPeriodEnd: periodEnd,
-                        cancelAtPeriodEnd: false,
-                      },
-                    });
-                  } else {
-                    const created = await tx.subscription.create({
-                      data: {
-                        userId,
-                        planId: plan.id,
-                        status: 'ACTIVE',
-                        provider: 'STRIPE',
-                        providerSubId,
-                        currentPeriodStart: now,
-                        currentPeriodEnd: periodEnd,
-                      },
-                    });
-                    subId = created.id;
-                  }
-
-                  const amount = data.amount_total
-                    ? data.amount_total / 100
-                    : Number(billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly);
-
-                  await tx.invoice.create({
-                    data: {
-                      userId,
-                      subscriptionId: subId,
-                      amountTotal: amount,
-                      currency: data.currency?.toUpperCase() || 'USD',
-                      status: 'PAID',
-                      pdfUrl: data.invoice_pdf || 'https://ai-interview.dev/invoice.pdf',
-                      paidAt: now,
-                    },
-                  });
-
-                  if (eventId) {
-                    await tx.stripeEvent.upsert({
-                      where: { id: eventId },
-                      update: { processed: true },
-                      create: { id: eventId, eventType, processed: true },
-                    });
-                  }
-                });
-
-                // Emit billing.payment_succeeded event (NEW-BILLING-01)
-                const user = this.prisma?.user?.findUnique
-                  ? await this.prisma.user.findUnique({
-                      where: { id: userId },
-                      include: { profile: true },
-                    })
-                  : null;
-                this.eventEmitter?.emit('billing.payment_succeeded', {
-                  userId,
-                  email: user?.email || data.customer_email || '',
-                  userName: user?.profile?.fullName || 'Valued Member',
-                  planName: plan.name,
-                  amount: data.amount_total
-                    ? data.amount_total / 100
-                    : Number(billingCycle === 'yearly' ? plan.priceYearly : plan.priceMonthly),
-                  currency: data.currency?.toUpperCase() || 'USD',
-                  paymentMethod: 'Credit Card (Stripe)',
-                  invoiceId: data.invoice || eventId || `INV-STRIPE-${Date.now()}`,
-                  paidAt: now.toISOString().split('T')[0],
-                });
-              }
-            }
-            break;
-          }
-
-          case 'invoice.payment_succeeded': {
-            const providerSubId = data.subscription;
-            if (providerSubId) {
-              const sub = await this.prisma.subscription.findFirst({
+        const providerSubId = data?.subscription;
+        const renewalSubscription =
+          eventType === 'invoice.payment_succeeded' && providerSubId
+            ? await this.prisma.subscription.findFirst({
                 where: { providerSubId },
                 include: { plan: true },
+              })
+            : null;
+
+        let paymentNotification:
+          | {
+              userId: string;
+              planName: string;
+              amount: number;
+              currency: string;
+              invoiceId: string;
+              paidAt: string;
+              customerEmail?: string;
+            }
+          | undefined;
+
+        await this.prisma.$transaction(async tx => {
+          if (eventId) {
+            try {
+              await tx.stripeEvent.create({
+                data: { id: eventId, eventType, processed: false },
               });
+            } catch (claimError: any) {
+              if (claimError?.code === 'P2002') {
+                throw new StripeEventAlreadyClaimedError();
+              }
+              throw claimError;
+            }
+          }
 
-              if (sub) {
+          switch (eventType) {
+            case 'checkout.session.completed': {
+              if (checkoutUserId && checkoutPlan) {
                 const now = new Date();
-                const periodEnd = new Date();
-                periodEnd.setMonth(periodEnd.getMonth() + 1);
+                const periodEnd = this.periodEndFor(data, now, checkoutBillingCycle);
+                const checkoutProviderSubId = data.subscription || data.id;
 
-                await this.prisma.$transaction(async tx => {
+                const existingSub = await tx.subscription.findFirst({
+                  where: { userId: checkoutUserId },
+                });
+
+                let subId = existingSub?.id;
+                if (existingSub) {
                   await tx.subscription.update({
-                    where: { id: sub.id },
-                    data: { status: 'ACTIVE', currentPeriodEnd: periodEnd },
-                  });
-
-                  await tx.invoice.create({
+                    where: { id: existingSub.id },
                     data: {
-                      userId: sub.userId,
-                      subscriptionId: sub.id,
-                      amountTotal: data.amount_paid ? data.amount_paid / 100 : 0,
-                      currency: data.currency?.toUpperCase() || 'USD',
-                      status: 'PAID',
-                      pdfUrl: data.hosted_invoice_url || data.invoice_pdf,
-                      paidAt: now,
+                      planId: checkoutPlan.id,
+                      status: 'ACTIVE',
+                      provider: 'STRIPE',
+                      providerSubId: checkoutProviderSubId,
+                      currentPeriodStart: now,
+                      currentPeriodEnd: periodEnd,
+                      cancelAtPeriodEnd: false,
                     },
                   });
+                } else {
+                  const created = await tx.subscription.create({
+                    data: {
+                      userId: checkoutUserId,
+                      planId: checkoutPlan.id,
+                      status: 'ACTIVE',
+                      provider: 'STRIPE',
+                      providerSubId: checkoutProviderSubId,
+                      currentPeriodStart: now,
+                      currentPeriodEnd: periodEnd,
+                    },
+                  });
+                  subId = created.id;
+                }
 
-                  if (eventId) {
-                    await tx.stripeEvent.upsert({
-                      where: { id: eventId },
-                      update: { processed: true },
-                      create: { id: eventId, eventType, processed: true },
-                    });
-                  }
+                const amount = data.amount_total
+                  ? data.amount_total / 100
+                  : Number(
+                      checkoutBillingCycle === 'yearly'
+                        ? checkoutPlan.priceYearly
+                        : checkoutPlan.priceMonthly,
+                    );
+
+                const checkoutInvoiceData = {
+                  userId: checkoutUserId,
+                  subscriptionId: subId,
+                  amountTotal: amount,
+                  currency: data.currency?.toUpperCase() || 'USD',
+                  status: 'PAID',
+                  stripeInvoiceId: data.invoice || undefined,
+                  metadata: {
+                    planSlug: checkoutPlan.slug,
+                    billingCycle: checkoutBillingCycle,
+                  },
+                  pdfUrl: data.invoice_pdf || 'https://ai-interview.dev/invoice.pdf',
+                  paidAt: now,
+                };
+                if (data.invoice) {
+                  await (tx.invoice as any).upsert({
+                    where: { stripeInvoiceId: data.invoice },
+                    update: checkoutInvoiceData,
+                    create: checkoutInvoiceData,
+                  });
+                } else {
+                  await tx.invoice.create({ data: checkoutInvoiceData as any });
+                }
+
+                paymentNotification = {
+                  userId: checkoutUserId,
+                  planName: checkoutPlan.name,
+                  amount,
+                  currency: data.currency?.toUpperCase() || 'USD',
+                  invoiceId: data.invoice || eventId || `INV-STRIPE-${Date.now()}`,
+                  paidAt: now.toISOString().split('T')[0],
+                  customerEmail: data.customer_email,
+                };
+              }
+              break;
+            }
+
+            case 'invoice.payment_succeeded': {
+              if (renewalSubscription) {
+                const now = new Date();
+                const periodEnd = this.periodEndFor(
+                  data,
+                  now,
+                  this.billingCycleFor(data, renewalSubscription.plan),
+                );
+
+                await tx.subscription.update({
+                  where: { id: renewalSubscription.id },
+                  data: { status: 'ACTIVE', currentPeriodEnd: periodEnd },
                 });
 
-                // Emit billing.payment_succeeded event (NEW-BILLING-01)
-                const user = this.prisma?.user?.findUnique
-                  ? await this.prisma.user.findUnique({
-                      where: { id: sub.userId },
-                      include: { profile: true },
-                    })
-                  : null;
-                this.eventEmitter?.emit('billing.payment_succeeded', {
-                  userId: sub.userId,
-                  email: user?.email || data.customer_email || '',
-                  userName: user?.profile?.fullName || 'Valued Member',
-                  planName: sub.plan?.name || 'Pro Plan',
+                const renewalInvoiceData = {
+                  userId: renewalSubscription.userId,
+                  subscriptionId: renewalSubscription.id,
+                  amountTotal: data.amount_paid ? data.amount_paid / 100 : 0,
+                  currency: data.currency?.toUpperCase() || 'USD',
+                  status: 'PAID',
+                  stripeInvoiceId: data.id || undefined,
+                  metadata: {
+                    billingCycle: this.billingCycleFor(data, renewalSubscription.plan),
+                  },
+                  pdfUrl: data.hosted_invoice_url || data.invoice_pdf,
+                  paidAt: now,
+                };
+                if (data.id) {
+                  await (tx.invoice as any).upsert({
+                    where: { stripeInvoiceId: data.id },
+                    update: renewalInvoiceData,
+                    create: renewalInvoiceData,
+                  });
+                } else {
+                  await tx.invoice.create({ data: renewalInvoiceData as any });
+                }
+
+                paymentNotification = {
+                  userId: renewalSubscription.userId,
+                  planName: renewalSubscription.plan?.name || 'Pro Plan',
                   amount: data.amount_paid ? data.amount_paid / 100 : 0,
                   currency: data.currency?.toUpperCase() || 'USD',
-                  paymentMethod: 'Credit Card (Stripe)',
                   invoiceId: data.id || `INV-STRIPE-${Date.now()}`,
                   paidAt: now.toISOString().split('T')[0],
+                  customerEmail: data.customer_email,
+                };
+              }
+              break;
+            }
+
+            case 'invoice.payment_failed': {
+              if (providerSubId) {
+                await tx.subscription.updateMany({
+                  where: { providerSubId },
+                  data: { status: 'PAST_DUE' },
                 });
               }
+              break;
             }
-            break;
+
+            case 'customer.subscription.deleted': {
+              const deletedProviderSubId = data.id;
+              if (deletedProviderSubId) {
+                await tx.subscription.updateMany({
+                  where: { providerSubId: deletedProviderSubId },
+                  data: { status: 'CANCELED', canceledAt: new Date() },
+                });
+              }
+              break;
+            }
           }
 
-          case 'invoice.payment_failed': {
-            const providerSubId = data.subscription;
-            if (providerSubId) {
-              await this.prisma.subscription.updateMany({
-                where: { providerSubId },
-                data: { status: 'PAST_DUE' },
-              });
-            }
-            break;
+          if (eventId) {
+            await tx.stripeEvent.update({
+              where: { id: eventId },
+              data: { processed: true },
+            });
           }
+        });
 
-          case 'customer.subscription.deleted': {
-            const providerSubId = data.id;
-            if (providerSubId) {
-              await this.prisma.subscription.updateMany({
-                where: { providerSubId },
-                data: { status: 'CANCELED', canceledAt: new Date() },
-              });
-            }
-            break;
-          }
+        if (paymentNotification) {
+          const user = this.prisma.user?.findUnique
+            ? await this.prisma.user.findUnique({
+                where: { id: paymentNotification.userId },
+                include: { profile: true },
+              })
+            : null;
+          this.eventEmitter?.emit('billing.payment_succeeded', {
+            userId: paymentNotification.userId,
+            email: user?.email || paymentNotification.customerEmail || '',
+            userName: user?.profile?.fullName || 'Valued Member',
+            planName: paymentNotification.planName,
+            amount: paymentNotification.amount,
+            currency: paymentNotification.currency,
+            paymentMethod: 'Credit Card (Stripe)',
+            invoiceId: paymentNotification.invoiceId,
+            paidAt: paymentNotification.paidAt,
+          });
         }
       } catch (dbErr: any) {
+        if (dbErr instanceof StripeEventAlreadyClaimedError) {
+          this.logger.log(
+            `Stripe event ${eventId} was already claimed. Skipping duplicate execution.`,
+          );
+          return {
+            eventType,
+            handled: true,
+            data,
+          };
+        }
         this.logger.error(
           `Error processing webhook state transition: ${dbErr.message}`,
           dbErr.stack,
         );
+        throw dbErr;
       }
     }
 
@@ -456,5 +521,52 @@ export class StripeProvider implements BillingProvider {
       handled: true,
       data,
     };
+  }
+
+  private billingCycleFor(data: any, plan?: any): 'monthly' | 'yearly' {
+    const recurring =
+      data?.lines?.data?.[0]?.price?.recurring ||
+      data?.lines?.data?.[0]?.plan ||
+      data?.price?.recurring;
+    const interval = String(recurring?.interval || '').toLowerCase();
+    const intervalCount = Number(recurring?.interval_count ?? recurring?.intervalCount);
+    if (interval === 'year' || (interval === 'month' && intervalCount >= 12)) {
+      return 'yearly';
+    }
+
+    const metadataCandidates = [
+      data?.metadata,
+      data?.subscription_details?.metadata,
+      data?.parent?.subscription_details?.metadata,
+      data?.lines?.data?.[0]?.price?.metadata,
+    ];
+    if (
+      metadataCandidates.some(metadata =>
+        ['yearly', 'annual', 'year'].includes(String(metadata?.billingCycle).toLowerCase()),
+      )
+    ) {
+      return 'yearly';
+    }
+
+    const linePriceId = data?.lines?.data?.[0]?.price?.id;
+    if (linePriceId && plan?.stripePriceIdYearly === linePriceId) {
+      return 'yearly';
+    }
+    return 'monthly';
+  }
+
+  private periodEndFor(data: any, now: Date, billingCycle: 'monthly' | 'yearly'): Date {
+    const providerPeriodEnd = Number(data?.lines?.data?.[0]?.period?.end ?? data?.period_end);
+    if (Number.isFinite(providerPeriodEnd) && providerPeriodEnd > 0) {
+      return new Date(providerPeriodEnd * 1000);
+    }
+
+    const periodEnd = new Date(now);
+    if (billingCycle === 'yearly') {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
+    return periodEnd;
   }
 }

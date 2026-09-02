@@ -48,6 +48,11 @@ export class CohortController {
     @Param('id') cohortId: string,
     @Body() dto: ImportRosterDto,
   ) {
-    return this.cohortService.importRosterCsv(cohortId, req.tenantId!, dto.csvContent);
+    return this.cohortService.importRosterCsv(
+      cohortId,
+      req.tenantId!,
+      dto.csvContent,
+      req.tenantRole,
+    );
   }
 }

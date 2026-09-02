@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { LiveSessionStatus } from '@ai-interview/contracts';
 import { MentorAuthorityPolicy } from '../policies/mentor-authority.policy';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class BookingService {
@@ -60,55 +61,62 @@ export class BookingService {
     const windowStart = new Date(bookingDate.getTime() - 45 * 60 * 1000);
     const windowEnd = new Date(bookingDate.getTime() + 45 * 60 * 1000);
 
-    const existingMentorBooking = await this.prisma.liveSession.findFirst({
-      where: {
-        mentorId,
-        status: { in: [LiveSessionStatus.SCHEDULED, LiveSessionStatus.IN_PROGRESS] },
-        scheduledAt: {
-          gte: windowStart,
-          lte: windowEnd,
-        },
-      },
-    });
+    let session: any;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        session = await this.prisma.$transaction(
+          async tx => {
+            const existingMentorBooking = await tx.liveSession.findFirst({
+              where: {
+                mentorId,
+                status: { in: [LiveSessionStatus.SCHEDULED, LiveSessionStatus.IN_PROGRESS] },
+                scheduledAt: { gte: windowStart, lte: windowEnd },
+              },
+            });
+            if (existingMentorBooking) {
+              throw new ConflictException(
+                'Mentor is not available at this time slot (existing booking conflict).',
+              );
+            }
 
-    if (existingMentorBooking) {
-      throw new ConflictException(
-        'Mentor is not available at this time slot (existing booking conflict).',
-      );
+            const existingCandidateBooking = await tx.liveSession.findFirst({
+              where: {
+                candidateId,
+                status: { in: [LiveSessionStatus.SCHEDULED, LiveSessionStatus.IN_PROGRESS] },
+                scheduledAt: { gte: windowStart, lte: windowEnd },
+              },
+            });
+            if (existingCandidateBooking) {
+              throw new ConflictException(
+                'You already have another live session scheduled around this time.',
+              );
+            }
+
+            return tx.liveSession.create({
+              data: {
+                mentorId,
+                candidateId,
+                interviewId: interviewId || null,
+                scheduledAt: bookingDate,
+                status: LiveSessionStatus.SCHEDULED,
+              },
+              include: {
+                mentor: { include: { user: { include: { profile: true } } } },
+                candidate: { include: { profile: true } },
+              },
+            });
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+        break;
+      } catch (error: any) {
+        if (error?.code === 'P2034' && attempt < 3) continue;
+        if (error?.code === 'P2034') {
+          throw new ConflictException('The mentoring slot was booked concurrently.');
+        }
+        throw error;
+      }
     }
-
-    // Check candidate collision
-    const existingCandidateBooking = await this.prisma.liveSession.findFirst({
-      where: {
-        candidateId,
-        status: { in: [LiveSessionStatus.SCHEDULED, LiveSessionStatus.IN_PROGRESS] },
-        scheduledAt: {
-          gte: windowStart,
-          lte: windowEnd,
-        },
-      },
-    });
-
-    if (existingCandidateBooking) {
-      throw new ConflictException(
-        'You already have another live session scheduled around this time.',
-      );
-    }
-
-    // 3. Create LiveSession
-    const session = await this.prisma.liveSession.create({
-      data: {
-        mentorId,
-        candidateId,
-        interviewId: interviewId || null,
-        scheduledAt: bookingDate,
-        status: LiveSessionStatus.SCHEDULED,
-      },
-      include: {
-        mentor: { include: { user: { include: { profile: true } } } },
-        candidate: { include: { profile: true } },
-      },
-    });
 
     return {
       id: session.id,
@@ -175,11 +183,17 @@ export class BookingService {
       throw new BadRequestException(`Cannot cancel session with status ${session.status}`);
     }
 
-    const updated = await this.prisma.liveSession.update({
-      where: { id: sessionId },
+    const transition = await this.prisma.liveSession.updateMany({
+      where: {
+        id: sessionId,
+        status: { notIn: [LiveSessionStatus.COMPLETED, LiveSessionStatus.CANCELED] },
+      },
       data: { status: LiveSessionStatus.CANCELED },
     });
+    if (transition.count !== 1) {
+      throw new ConflictException('Session entered a terminal state before cancellation.');
+    }
 
-    return updated;
+    return this.prisma.liveSession.findUnique({ where: { id: sessionId } });
   }
 }

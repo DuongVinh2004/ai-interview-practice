@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
@@ -18,12 +18,21 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
   );
   const [details, setDetails] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit(reason, details);
     setSubmitted(true);
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setSubmitted(false);
       setDetails('');
       onClose();

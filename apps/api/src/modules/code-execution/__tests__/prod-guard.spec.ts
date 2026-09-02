@@ -91,3 +91,146 @@ describe('Code Execution Production Guard & Hidden Test Masking (P1-011)', () =>
     expect(secretResult?.actualOutput).toBe('[HIDDEN]');
   });
 });
+
+describe('Judge0Provider (Failure Modes & Sandbox Resilience)', () => {
+  let provider: Judge0Provider;
+  let originalFetch: typeof global.fetch;
+
+  beforeAll(() => {
+    originalFetch = global.fetch;
+  });
+
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  beforeEach(async () => {
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        Judge0Provider,
+        {
+          provide: ConfigService,
+          useValue: {
+            get: jest.fn((key: string) => {
+              if (key === 'JUDGE0_API_URL') return 'https://judge0-test.internal';
+              if (key === 'JUDGE0_API_KEY') return 'test-judge0-api-key';
+              return '';
+            }),
+          },
+        },
+      ],
+    }).compile();
+
+    provider = module.get<Judge0Provider>(Judge0Provider);
+  });
+
+  it('handles successful code execution with test cases', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({
+        status: { id: 3, description: 'Accepted' },
+        stdout: Buffer.from('42').toString('base64'),
+        stderr: null,
+        time: '0.045',
+        memory: 12400,
+      }),
+    } as any);
+
+    const result = await provider.executeCode('typescript', 'console.log(42);', [
+      { id: 'tc-1', input: '', expectedOutput: '42', isHidden: false, order: 1 },
+    ]);
+
+    expect(result.status).toBe('COMPLETED');
+    expect(result.allPassed).toBe(true);
+    expect(result.testResults[0].passed).toBe(true);
+    expect(result.testResults[0].actualOutput).toBe('42');
+  });
+
+  it('maps Judge0 status id 5 to TIMEOUT status', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({
+        status: { id: 5, description: 'Time Limit Exceeded' },
+        stdout: null,
+        stderr: Buffer.from('Time limit exceeded').toString('base64'),
+        time: '5.000',
+        memory: 15000,
+      }),
+    } as any);
+
+    const result = await provider.executeCode('python', 'while True: pass');
+
+    expect(result.status).toBe('TIMEOUT');
+    expect(result.allPassed).toBe(false);
+  });
+
+  it('maps Judge0 status id 6 to COMPILE_ERROR status', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: jest.fn().mockResolvedValue({
+        status: { id: 6, description: 'Compilation Error' },
+        stdout: null,
+        compile_output: Buffer.from('SyntaxError: unexpected token').toString('base64'),
+        time: '0.010',
+        memory: 10000,
+      }),
+    } as any);
+
+    const result = await provider.executeCode('cpp', 'int main() { syntax error }');
+
+    expect(result.status).toBe('COMPILE_ERROR');
+    expect(result.compileError).toContain('SyntaxError');
+  });
+
+  it('handles remote HTTP 429 rate limit without throwing unhandled exception', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 429,
+      statusText: 'Too Many Requests',
+    } as any);
+
+    const result = await provider.executeCode('javascript', 'console.log(1);');
+
+    expect(result.status).toBe('FAILED');
+    expect(result.allPassed).toBe(false);
+    expect(result.stderr).toContain('429');
+  });
+
+  it('handles remote HTTP 500 internal server error gracefully', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+    } as any);
+
+    const result = await provider.executeCode('go', 'package main\nfunc main() {}');
+
+    expect(result.status).toBe('FAILED');
+    expect(result.allPassed).toBe(false);
+    expect(result.stderr).toContain('500');
+  });
+
+  it('handles network error / timeout safely (fail closed)', async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error('Fetch network timeout to sandbox'));
+
+    const result = await provider.executeCode('python', 'print("hello")');
+
+    expect(result.status).toBe('FAILED');
+    expect(result.allPassed).toBe(false);
+    expect(result.stderr).toContain('Fetch network timeout');
+  });
+
+  it('rejects unsupported languages cleanly before making remote requests', async () => {
+    const fetchSpy = jest.fn();
+    global.fetch = fetchSpy as any;
+
+    const result = await provider.executeCode('ruby', 'puts 42');
+
+    expect(result.status).toBe('FAILED');
+    expect(result.stderr).toContain("Unsupported language: 'ruby'");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});

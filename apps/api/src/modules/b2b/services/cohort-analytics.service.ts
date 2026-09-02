@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { CompetencyArea } from '@ai-interview/contracts';
 import { CohortAccessContext, CohortAccessPolicy } from '../policies/cohort-access.policy';
+import { isPersistedAuthoritativeEvaluation } from '../../evaluation/evaluation-authority';
 
 export const AREA_NAMES: Record<CompetencyArea, string> = {
   [CompetencyArea.SYSTEM_DESIGN]: 'System Design & Scalability',
@@ -35,7 +36,23 @@ export class CohortAnalyticsService {
                     sessions: {
                       where: {
                         state: 'COMPLETED',
-                        tenantId, // B-002: strictly scope sessions to this tenant
+                        tenantId,
+                        // Do not let an overallScore or a review-only result
+                        // become tenant analytics. A session is eligible only
+                        // when it contains current authoritative evidence.
+                        turns: {
+                          some: {
+                            status: 'EVALUATED',
+                            answer: {
+                              evaluation: {
+                                is: {
+                                  authorityState: 'AUTHORITATIVE',
+                                  needsReview: false,
+                                },
+                              },
+                            },
+                          },
+                        },
                       },
                       include: {
                         turns: {
@@ -49,10 +66,6 @@ export class CohortAnalyticsService {
                           },
                         },
                       },
-                    },
-                    readinessSnapshots: {
-                      orderBy: { snapshotDate: 'desc' },
-                      take: 1,
                     },
                   },
                 },
@@ -101,13 +114,30 @@ export class CohortAnalyticsService {
 
     for (const m of cohort.members) {
       const u = m.tenantMember.user;
-      const completedSessions = u.sessions;
+      // Use only the evaluations returned from the tenant-scoped query and
+      // re-check provenance in application code (including provider and
+      // non-empty evidence) before using any score.
+      const completedSessions = (u.sessions || [])
+        .map(session => ({
+          session,
+          authoritativeTurns: (session.turns || []).filter(
+            turn =>
+              turn.status === 'EVALUATED' &&
+              isPersistedAuthoritativeEvaluation(turn.answer?.evaluation),
+          ),
+        }))
+        .filter(item => item.authoritativeTurns.length > 0);
       const totalSessions = completedSessions.length;
       let userAvgScore = 0;
 
       if (totalSessions > 0) {
-        const sum = completedSessions.reduce((acc, s) => acc + (s.overallScore || 0), 0);
-        userAvgScore = Number((sum / totalSessions).toFixed(1));
+        const sessionScores = completedSessions.map(
+          item =>
+            item.authoritativeTurns.reduce((sum, turn) => sum + turn.answer!.evaluation!.score, 0) /
+            item.authoritativeTurns.length,
+        );
+        const sum = sessionScores.reduce((acc, score) => acc + score, 0);
+        userAvgScore = Number((sum / sessionScores.length).toFixed(1));
         scoreSum += userAvgScore;
         scoredCount++;
 
@@ -117,9 +147,9 @@ export class CohortAnalyticsService {
         else distribution.bracket8to10++;
 
         // Collect turn scores for competency heatmap
-        for (const session of completedSessions) {
+        for (const { session, authoritativeTurns } of completedSessions) {
           const sessionArea = session.competencyArea as CompetencyArea | null;
-          for (const turn of session.turns || []) {
+          for (const turn of authoritativeTurns) {
             const evalRecord = turn.answer?.evaluation;
             if (evalRecord) {
               const targetArea = sessionArea || CompetencyArea.LANGUAGE_CORE;
@@ -137,8 +167,11 @@ export class CohortAnalyticsService {
         distribution.bracket0to4++;
       }
 
-      const readinessScore = u.readinessSnapshots[0]?.readinessScore;
-      const lastSession = completedSessions[0];
+      // Readiness snapshots are user-global and have no tenant/assignment
+      // provenance. Derive a tenant-safe indicator from the same authoritative
+      // scores instead of returning a cross-tenant snapshot.
+      const readinessScore = totalSessions > 0 ? Math.round(userAvgScore * 10) : undefined;
+      const lastSession = completedSessions[0]?.session;
 
       // NEW-B2B-01: Match completed assignments to cohort assignment requirements
       const cohortAssignmentIds = new Set(cohort.assignments.map(a => a.id));
@@ -146,7 +179,7 @@ export class CohortAnalyticsService {
       if (cohortAssignmentIds.size > 0) {
         const completedAssignmentSet = new Set(
           completedSessions
-            .map(s => s.assignmentId)
+            .map(({ session: s }) => s.assignmentId)
             .filter((id): id is string => Boolean(id && cohortAssignmentIds.has(id))),
         );
         // If sessions are tagged with assignmentId, use exact matching count; otherwise fallback to sessions count capped by total assignments

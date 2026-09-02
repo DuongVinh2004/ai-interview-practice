@@ -67,18 +67,22 @@ export function GreenRoomModal({
   const [warmupAnswer, setWarmupAnswer] = useState('');
   const [isWarmupRecording, setIsWarmupRecording] = useState(false);
 
+  const isMountedRef = useRef(true);
+
   // Check network latency using health endpoint
   const measureLatency = useCallback(async () => {
+    if (!isMountedRef.current) return;
     setIsPinging(true);
     const start = performance.now();
     try {
       await fetch('/api/health', { method: 'HEAD', cache: 'no-store' }).catch(() => null);
+      if (!isMountedRef.current) return;
       const elapsed = Math.round(performance.now() - start);
       setLatencyMs(elapsed < 10 ? 25 : elapsed);
     } catch {
-      setLatencyMs(null);
+      if (isMountedRef.current) setLatencyMs(null);
     } finally {
-      setIsPinging(false);
+      if (isMountedRef.current) setIsPinging(false);
     }
   }, []);
 
@@ -98,11 +102,13 @@ export function GreenRoomModal({
   // Enumerate devices & start streams
   const initDevices = useCallback(async () => {
     try {
+      if (!isMountedRef.current) return;
       setMicError(null);
       if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
         return;
       }
       const devices = await navigator.mediaDevices.enumerateDevices().catch(() => []);
+      if (!isMountedRef.current) return;
       const audioInputs = devices.filter(d => d.kind === 'audioinput');
 
       setAudioDevices(audioInputs);
@@ -122,6 +128,10 @@ export function GreenRoomModal({
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: selectedAudioDevice ? { deviceId: { exact: selectedAudioDevice } } : true,
       });
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach(t => t.stop());
+        return;
+      }
       setAudioStream(stream);
 
       // Setup audio analyzer
@@ -138,7 +148,7 @@ export function GreenRoomModal({
 
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         const updateMeter = () => {
-          if (!analyserRef.current) return;
+          if (!analyserRef.current || !isMountedRef.current) return;
           analyserRef.current.getByteFrequencyData(dataArray);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) {
@@ -146,22 +156,27 @@ export function GreenRoomModal({
           }
           const avg = sum / dataArray.length;
           const normalized = Math.min(100, Math.round((avg / 128) * 100));
-          setMicVolume(normalized);
-          animFrameRef.current = requestAnimationFrame(updateMeter);
+          if (isMountedRef.current) {
+            setMicVolume(normalized);
+            animFrameRef.current = requestAnimationFrame(updateMeter);
+          }
         };
         updateMeter();
       }
     } catch (err: any) {
-      setMicError(
-        language === 'vi'
-          ? 'Không thể truy cập Microphone. Vui lòng kiểm tra quyền truy cập.'
-          : 'Unable to access microphone. Please check permissions.',
-      );
+      if (isMountedRef.current) {
+        setMicError(
+          language === 'vi'
+            ? 'Không thể truy cập Microphone. Vui lòng kiểm tra quyền truy cập.'
+            : 'Unable to access microphone. Please check permissions.',
+        );
+      }
     }
   }, [selectedAudioDevice, language, cleanupAudioResources]);
 
   // Init devices and latency when modal opens; cleanup when it closes
   useEffect(() => {
+    isMountedRef.current = true;
     if (isOpen) {
       initDevices();
       measureLatency();
@@ -175,6 +190,7 @@ export function GreenRoomModal({
     }
 
     return () => {
+      isMountedRef.current = false;
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [isOpen, initDevices, measureLatency, cleanupAudioResources]);

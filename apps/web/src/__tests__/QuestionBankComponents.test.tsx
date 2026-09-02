@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { QuestionCard } from '../features/question-bank/components/QuestionCard';
 import { PaywallModal } from '../features/question-bank/components/PaywallModal';
@@ -109,8 +109,11 @@ describe('Question Bank Web Components', () => {
     expect(screen.getByText('Báo lỗi hoặc góp ý nội dung câu hỏi')).toBeInTheDocument();
 
     const submitBtn = screen.getByRole('button', { name: /Gửi báo cáo/i });
-    await fireEvent.click(submitBtn);
+    fireEvent.click(submitBtn);
 
-    expect(onSubmit).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalled();
+      expect(screen.getByText('Cảm ơn bạn đã đóng góp!')).toBeInTheDocument();
+    });
   });
 });

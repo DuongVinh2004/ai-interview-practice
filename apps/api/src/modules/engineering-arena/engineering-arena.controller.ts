@@ -54,8 +54,8 @@ export class EngineeringArenaController {
 
   @Sse('sessions/:id/stream')
   @ApiOperation({ summary: 'Subscribe to real-time SSE execution logs for session' })
-  streamSessionLogs(@Param('id') sessionId: string) {
-    return this.arenaService.getSessionSseStream(sessionId);
+  streamSessionLogs(@CurrentUser('id') userId: string, @Param('id') sessionId: string) {
+    return this.arenaService.getSessionSseStream(sessionId, userId);
   }
 
   @Post('sessions/:id/run')

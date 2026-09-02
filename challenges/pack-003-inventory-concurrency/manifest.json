@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "fix-inventory-oversell-race",
+  "title": "Fix Race Condition and Inventory Oversell Under High Concurrency",
+  "description": "Prevent overselling products when multiple concurrent orders arrive simultaneously.",
+  "domain": "BACKEND",
+  "category": "BUG_FIX",
+  "difficulty": 4,
+  "estimatedMinutes": 40,
+  "environment": {
+    "runtime": "node:22",
+    "memoryLimitMb": 512,
+    "cpuLimit": 1.0
+  },
+  "visibleFiles": ["src/inventory.service.ts", "test/inventory.test.ts"],
+  "editableFiles": ["src/inventory.service.ts"],
+  "hiddenFiles": ["test/hidden-concurrency.test.ts"],
+  "commands": [
+    {
+      "id": "test",
+      "label": "Run Concurrency Tests",
+      "command": "npm test",
+      "args": [],
+      "timeoutSeconds": 15,
+      "isVerification": false
+    }
+  ],
+  "rubric": {
+    "version": "1.0",
+    "objectiveWeight": 0.7,
+    "rubricWeight": 0.3,
+    "criteria": [
+      {
+        "key": "atomic_reservation",
+        "name": "Atomic Stock Reservation",
+        "description": "Uses optimistic concurrency or atomic conditional decrement.",
+        "maxPoints": 50
+      }
+    ]
+  },
+  "skills": [
+    {
+      "taxonomyKey": "concurrency_race_condition",
+      "weight": 1.0
+    }
+  ]
+}

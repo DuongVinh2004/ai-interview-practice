@@ -28,10 +28,12 @@ export class GeminiProvider implements AiProvider {
   private readonly logger = new Logger(GeminiProvider.name);
   private client: GoogleGenerativeAI | null = null;
   private readonly defaultModel: string;
+  private readonly timeoutMs: number;
 
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('ai.geminiApiKey', '');
     this.defaultModel = this.configService.get<string>('ai.geminiModel', 'gemini-3.6-flash');
+    this.timeoutMs = this.configService.get<number>('ai.timeoutMs', 10000);
 
     if (apiKey) {
       this.client = new GoogleGenerativeAI(apiKey);
@@ -67,15 +69,18 @@ export class GeminiProvider implements AiProvider {
   ): Promise<AiExecutionResult<GeneratedQuestionAi>> {
     const startTime = Date.now();
     const client = this.getClient();
-    const model = client.getGenerativeModel({
-      model: this.defaultModel,
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: toGeminiResponseSchema(AI_SCHEMAS.question.zod, 'GeneratedQuestion'),
-        temperature: 0.7,
+    const model = client.getGenerativeModel(
+      {
+        model: this.defaultModel,
+        systemInstruction: systemPrompt,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: toGeminiResponseSchema(AI_SCHEMAS.question.zod, 'GeneratedQuestion'),
+          temperature: 0.7,
+        },
       },
-    });
+      { timeout: this.timeoutMs },
+    );
 
     const promptText =
       userPrompt ||
@@ -123,15 +128,18 @@ export class GeminiProvider implements AiProvider {
   ): Promise<AiExecutionResult<EvaluatedAnswerAi>> {
     const startTime = Date.now();
     const client = this.getClient();
-    const model = client.getGenerativeModel({
-      model: this.defaultModel,
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: toGeminiResponseSchema(AI_SCHEMAS.evaluation.zod, 'EvaluatedAnswer'),
-        temperature: 0.2, // low temperature for consistent evaluation
+    const model = client.getGenerativeModel(
+      {
+        model: this.defaultModel,
+        systemInstruction: systemPrompt,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: toGeminiResponseSchema(AI_SCHEMAS.evaluation.zod, 'EvaluatedAnswer'),
+          temperature: 0.2, // low temperature for consistent evaluation
+        },
       },
-    });
+      { timeout: this.timeoutMs },
+    );
 
     const promptText =
       userPrompt ||
@@ -179,18 +187,21 @@ export class GeminiProvider implements AiProvider {
   ): Promise<AiExecutionResult<GeneratedLearningPathAi>> {
     const startTime = Date.now();
     const client = this.getClient();
-    const model = client.getGenerativeModel({
-      model: this.defaultModel,
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: toGeminiResponseSchema(
-          AI_SCHEMAS.learningPath.zod,
-          'GeneratedLearningPath',
-        ),
-        temperature: 0.5,
+    const model = client.getGenerativeModel(
+      {
+        model: this.defaultModel,
+        systemInstruction: systemPrompt,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          responseSchema: toGeminiResponseSchema(
+            AI_SCHEMAS.learningPath.zod,
+            'GeneratedLearningPath',
+          ),
+          temperature: 0.5,
+        },
       },
-    });
+      { timeout: this.timeoutMs },
+    );
 
     const promptText =
       userPrompt ||
@@ -240,10 +251,13 @@ export class GeminiProvider implements AiProvider {
     const startTime = Date.now();
 
     try {
-      const model = client.getGenerativeModel({
-        model: this.defaultModel,
-        systemInstruction: systemPrompt,
-      });
+      const model = client.getGenerativeModel(
+        {
+          model: this.defaultModel,
+          systemInstruction: systemPrompt,
+        },
+        { timeout: this.timeoutMs },
+      );
 
       const history = (context.chatHistory || []).map(m => ({
         role: m.role === 'AI_TUTOR' || m.role === 'assistant' ? 'model' : 'user',

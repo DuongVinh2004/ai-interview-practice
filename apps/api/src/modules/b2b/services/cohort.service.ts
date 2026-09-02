@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Optional,
+} from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { AssignmentStatus, TenantRole, UserRole, UserStatus } from '@ai-interview/contracts';
@@ -124,7 +130,19 @@ export class CohortService {
     };
   }
 
-  async importRosterCsv(cohortId: string, tenantId: string, csvContent: string) {
+  async importRosterCsv(
+    cohortId: string,
+    tenantId: string,
+    csvContent: string,
+    actorRole?: TenantRole | string,
+  ) {
+    // Instructors may manage coursework, but importing a roster can create
+    // privileged tenant memberships. Require the actor's current membership
+    // role at this boundary rather than trusting a CSV role column.
+    if (actorRole !== TenantRole.TENANT_ADMIN && actorRole !== TenantRole.INSTRUCTOR) {
+      throw new ForbiddenException('A valid tenant membership role is required to import rosters');
+    }
+
     const cohort = await this.prisma.cohort.findFirst({
       where: { id: cohortId, tenantId },
     });
@@ -164,6 +182,12 @@ export class CohortService {
 
       const role: TenantRole =
         roleStr === 'INSTRUCTOR' ? TenantRole.INSTRUCTOR : TenantRole.STUDENT;
+
+      if (role === TenantRole.INSTRUCTOR && actorRole !== TenantRole.TENANT_ADMIN) {
+        errors.push(`Row ${i + 1}: Only tenant administrators can import instructor memberships`);
+        skippedCount++;
+        continue;
+      }
 
       try {
         // 1. Find or create user

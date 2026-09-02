@@ -2,6 +2,65 @@ import { JobName, SessionState } from '@ai-interview/contracts';
 import { EvaluationProcessor } from './evaluation.processor';
 
 describe('EvaluationProcessor completion score', () => {
+  it('re-enqueues the deterministic next-question job when replaying an evaluated turn', async () => {
+    const session = {
+      id: 'session-recovery',
+      userId: 'user-1',
+      state: SessionState.ACTIVE,
+      currentTurn: 2,
+      totalTurns: 3,
+      sessionMode: 'STANDARD',
+      learningPath: null,
+      jobRole: { name: 'Backend Engineer' },
+      seniorityLevel: { name: 'Senior' },
+      turns: [
+        {
+          id: 'turn-1',
+          turnNumber: 1,
+          status: 'EVALUATED',
+          question: { content: 'Question' },
+          answer: { id: 'answer-1', content: 'Answer' },
+        },
+      ],
+    };
+    const prisma: any = {
+      interviewSession: { findUnique: jest.fn().mockResolvedValue(session) },
+      interviewTurn: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'turn-2',
+          turnNumber: 2,
+          status: 'PENDING',
+          difficulty: 4,
+        }),
+      },
+    };
+    const questionQueue = { add: jest.fn().mockResolvedValue({}) } as any;
+    const processor = new EvaluationProcessor(
+      prisma,
+      { emitSessionEvent: jest.fn() } as any,
+      { evaluateAnswer: jest.fn() } as any,
+      questionQueue,
+      { add: jest.fn() } as any,
+    );
+
+    await processor.process({
+      name: JobName.EVALUATE_ANSWER,
+      id: 'job-recovery',
+      data: {
+        sessionId: session.id,
+        turnId: 'turn-1',
+        turnNumber: 1,
+        answerId: 'answer-1',
+      },
+    } as any);
+
+    expect(questionQueue.add).toHaveBeenCalledWith(
+      JobName.GENERATE_QUESTION,
+      expect.objectContaining({ sessionId: session.id, turnId: 'turn-2', turnNumber: 2 }),
+      expect.objectContaining({ jobId: 'question-session-recovery-turn-2' }),
+    );
+  });
+
   it('emits the persisted session average instead of the final-turn score', async () => {
     const evaluations = [5, 5, 5, 5, 10].map(score => ({ score }));
     const prisma: any = {

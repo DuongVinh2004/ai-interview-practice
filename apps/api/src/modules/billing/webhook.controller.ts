@@ -1,5 +1,6 @@
 import { Controller, Post, Body, Headers, Req, RawBodyRequest } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { Request } from 'express';
 import { StripeProvider } from './providers/stripe.provider';
 import { BillingService } from './billing.service';
 import { Public } from '../auth/decorators/public.decorator';
@@ -16,8 +17,8 @@ export class BillingWebhookController {
   @Post('stripe')
   @ApiOperation({ summary: 'Stripe webhook receiver for asynchronous subscription events' })
   async handleStripeWebhook(
-    @Req() req: RawBodyRequest<any>,
-    @Body() payload: any,
+    @Req() req: RawBodyRequest<Request>,
+    @Body() payload: unknown,
     @Headers('stripe-signature') signature?: string,
   ) {
     const rawBodyString = req.rawBody ? req.rawBody.toString('utf8') : undefined;
@@ -27,7 +28,7 @@ export class BillingWebhookController {
   @Public()
   @Post('payos')
   @ApiOperation({ summary: 'PayOS VietQR webhook receiver for payment completion confirmation' })
-  async handlePayosWebhook(@Body() payload: any) {
+  async handlePayosWebhook(@Body() payload: unknown) {
     return this.billingService.handlePayosWebhook(payload);
   }
 }

@@ -71,6 +71,30 @@ resource "aws_s3_bucket_lifecycle_configuration" "storage_lifecycle" {
   bucket = aws_s3_bucket.app_storage.id
 
   rule {
+    id     = "expire-unconfirmed-temp-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = "temp/"
+    }
+
+    expiration {
+      days = 2
+    }
+  }
+
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {}
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 1
+    }
+  }
+
+  rule {
     id     = "archive-old-recordings"
     status = "Enabled"
 
@@ -98,6 +122,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "storage_lifecycle" {
 
     expiration {
       days = 7
+    }
+  }
+
+  rule {
+    id     = "cleanup-expired-noncurrent-versions"
+    status = "Enabled"
+
+    filter {}
+
+    noncurrent_version_expiration {
+      noncurrent_days = 30
     }
   }
 }

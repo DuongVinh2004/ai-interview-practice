@@ -2,7 +2,7 @@ import { VisualAnnotationDto } from '@ai-interview/contracts';
 
 export interface VisionEvaluationOptions {
   imageBase64: string;
-  canvasData?: any;
+  canvasData?: unknown;
   problemTitle?: string;
   requirements?: string[];
   language?: 'vi' | 'en';

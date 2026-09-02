@@ -41,6 +41,7 @@ import {
   Bookmark,
   TrendingUp,
   Boxes,
+  Cpu,
 } from 'lucide-react';
 
 export function Navbar() {
@@ -181,6 +182,7 @@ export function Navbar() {
   const isDashboardActive = location.pathname === '/';
   const isPracticeActive = location.pathname.startsWith('/interviews');
   const isQuestionBankActive = location.pathname.startsWith('/question-bank');
+  const isArenaActive = location.pathname.startsWith('/arena');
   const isProgressActive =
     location.pathname.startsWith('/readiness') ||
     location.pathname.startsWith('/skills') ||
@@ -253,6 +255,19 @@ export function Navbar() {
               >
                 <Layers className="h-4 w-4 text-indigo-500" />
                 <span>{language === 'vi' ? 'Ngân hàng câu hỏi' : 'Question Bank'}</span>
+              </Link>
+
+              {/* 3b. Engineering Arena */}
+              <Link
+                to="/arena"
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                  isArenaActive
+                    ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs dark:bg-slate-800 dark:text-white'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
+                }`}
+              >
+                <Cpu className="h-4 w-4 text-cyan-500" />
+                <span>{language === 'vi' ? 'Đấu trường Kỹ thuật' : 'Engineering Arena'}</span>
               </Link>
 
               {/* 4. Progress Dropdown */}
@@ -772,6 +787,13 @@ export function Navbar() {
                 >
                   <Layers className="h-4 w-4 text-indigo-600" />
                   <span>{language === 'vi' ? 'Ngân hàng câu hỏi' : 'Question Bank'}</span>
+                </Link>
+                <Link
+                  to="/arena"
+                  className="flex items-center gap-2.5 px-3 py-2.5 text-sm font-medium rounded-lg text-slate-800 hover:bg-emerald-50 hover:text-emerald-800 dark:text-slate-200 dark:hover:bg-emerald-950/40"
+                >
+                  <Cpu className="h-4 w-4 text-cyan-600" />
+                  <span>{language === 'vi' ? 'Đấu trường Kỹ thuật' : 'Engineering Arena'}</span>
                 </Link>
                 <Link
                   to="/readiness"

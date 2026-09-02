@@ -114,25 +114,26 @@ export class LiveSessionService {
     }
     await this.mentorAuthorityPolicy.requireApprovedByUser(userId);
 
-    const transition = await this.prisma.liveSession.updateMany({
-      where: {
-        id: sessionId,
-        status: LiveSessionStatus.IN_PROGRESS,
-        startedAt: { not: null },
-      },
-      data: {
-        status: LiveSessionStatus.COMPLETED,
-        endedAt: new Date(),
-      },
-    });
-    if (transition.count !== 1) {
-      throw new ConflictException('Only an in-progress live session can be completed');
-    }
+    await this.prisma.$transaction(async tx => {
+      const transition = await tx.liveSession.updateMany({
+        where: {
+          id: sessionId,
+          status: LiveSessionStatus.IN_PROGRESS,
+          startedAt: { not: null },
+        },
+        data: {
+          status: LiveSessionStatus.COMPLETED,
+          endedAt: new Date(),
+        },
+      });
+      if (transition.count !== 1) {
+        throw new ConflictException('Only an in-progress live session can be completed');
+      }
 
-    // Increment mentor total sessions
-    await this.prisma.mentorProfile.update({
-      where: { id: session.mentorId },
-      data: { totalSessions: { increment: 1 } },
+      await tx.mentorProfile.update({
+        where: { id: session.mentorId },
+        data: { totalSessions: { increment: 1 } },
+      });
     });
 
     return this.prisma.liveSession.findUnique({ where: { id: sessionId } });
