@@ -1,0 +1,9 @@
+﻿# Semgrep ignore file
+# Exclude historical diagnostic scripts and test artifacts
+infra/scripts/forensic/
+node_modules/
+dist/
+build/
+.cache/
+test-results/
+playwright-report/
