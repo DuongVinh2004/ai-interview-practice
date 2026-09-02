@@ -57,34 +57,41 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
     await expect(page).toHaveURL('/');
     await expect(page.getByText(/(welcome back|chào mừng)/i)).toBeVisible();
 
+    const navigateSpa = async (path: string) => {
+      await page.evaluate(to => {
+        window.history.pushState({}, '', to);
+        window.dispatchEvent(new PopStateEvent('popstate'));
+      }, path);
+    };
+
     // 4. Navigate to Skills Graph & Benchmark
-    await page.goto('/skills');
+    await navigateSpa('/skills');
     await expect(page.getByText(/(skill|kỹ năng|năng lực)/i).first()).toBeVisible();
 
     // 5. Navigate to Career Readiness
-    await page.goto('/readiness');
+    await navigateSpa('/readiness');
     await expect(page).toHaveURL('/readiness');
     await expect(page.getByTestId('readiness-page')).toBeVisible({ timeout: 15000 });
 
     // 6. Navigate to Flashcards Decks
-    await page.goto('/flashcards');
+    await navigateSpa('/flashcards');
     await expect(page.getByText(/(flashcard|thẻ ghi nhớ|deck)/i).first()).toBeVisible();
 
     // 7. Navigate to History
-    await page.goto('/history');
+    await navigateSpa('/history');
     await expect(page.getByText(/(lịch sử|history)/i).first()).toBeVisible();
 
     // 8. Navigate to Pricing & Billing
-    await page.goto('/pricing');
+    await navigateSpa('/pricing');
     await expect(page.getByText(/(free|pro|enterprise|pricing|bảng giá)/i).first()).toBeVisible();
 
     // 9. Navigate to Profile & Settings
-    await page.goto('/profile');
+    await navigateSpa('/profile');
     await expect(page).toHaveURL('/profile');
     await expect(page.getByTestId('profile-page')).toBeVisible({ timeout: 15000 });
 
     // 10. Navigate to Mentors
-    await page.goto('/mentors');
+    await navigateSpa('/mentors');
     await expect(page.getByText(/(mentor|cố vấn|chuyên gia)/i).first()).toBeVisible();
   });
 
