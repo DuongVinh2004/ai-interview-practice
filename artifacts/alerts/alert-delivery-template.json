@@ -1,0 +1,19 @@
+{
+  "status": "READY_FOR_OPERATOR_VERIFICATION",
+  "alertRulesFile": "infra/prometheus/alert_rules.yml",
+  "requiredEnv": [
+    "ALERTMANAGER_URL or ALERT_WEBHOOK_URL"
+  ],
+  "supportedDestinations": [
+    "Slack Webhook",
+    "PagerDuty Events API v2",
+    "AWS SNS"
+  ],
+  "syntheticAlertPayload": {
+    "alertname": "SyntheticHealthCheckWarning",
+    "severity": "warning",
+    "tier": "p3",
+    "summary": "Automated synthetic verification ping",
+    "description": "End-to-end alert routing verification"
+  }
+}

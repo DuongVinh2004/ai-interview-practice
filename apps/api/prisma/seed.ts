@@ -41,6 +41,8 @@ async function main() {
         passwordHash: adminPasswordHash,
         role: UserRole.ADMIN,
         status: UserStatus.ACTIVE,
+        mfaEnabled: false,
+        mfaSecret: null,
       },
       create: {
         email: adminEmail,
@@ -57,6 +59,8 @@ async function main() {
         },
       },
     });
+    await prisma.recoveryCode.deleteMany({ where: { userId: admin.id } });
+    await prisma.refreshToken.deleteMany({ where: { userId: admin.id } });
     adminUser = admin;
     console.log(`✅ Admin user seeded: ${admin.email}`);
   }
@@ -86,6 +90,8 @@ async function main() {
         },
       },
     });
+    await prisma.usageRecord.deleteMany({ where: { userId: candidate.id } });
+    await prisma.interviewSession.deleteMany({ where: { userId: candidate.id } });
     console.log(`✅ Candidate user seeded: ${candidate.email}`);
   }
 
