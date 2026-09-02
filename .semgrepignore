@@ -1,6 +1,11 @@
 ﻿# Semgrep ignore file
-# Exclude historical diagnostic scripts and test artifacts
-infra/scripts/forensic/
+# Exclude tests, tooling scripts, challenges, and build outputs from SAST application rules
+infra/scripts/
+challenges/
+apps/api/test/
+**/*.spec.ts
+**/*.test.ts
+**/*.test.tsx
 node_modules/
 dist/
 build/
