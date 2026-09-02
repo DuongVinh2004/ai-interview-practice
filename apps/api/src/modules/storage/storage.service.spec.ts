@@ -3,7 +3,7 @@ import { StorageService } from './storage.service';
 import { MockStorageProvider } from './providers/mock-storage.provider';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
-import { UserRole, ErrorCode } from '@ai-interview/contracts';
+import { UserRole, ErrorCode, AuditAction } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import { HttpStatus } from '@nestjs/common';
 
@@ -19,6 +19,7 @@ describe('StorageService (Module B1 / SEC-005)', () => {
     fileAsset: {
       create: jest.fn(),
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       delete: jest.fn(),
     },
     auditLog: {
@@ -112,6 +113,57 @@ describe('StorageService (Module B1 / SEC-005)', () => {
       expect(asset.key).toBe(intent.key);
       expect(mockPrisma.fileAsset.create).toHaveBeenCalled();
       expect(mockPrisma.auditLog.create).toHaveBeenCalled();
+    });
+
+    it.each([
+      ['filename', { filename: 'attacker-controlled.pdf' }],
+      ['MIME type', { mimeType: 'text/plain' }],
+    ])('rejects confirmation when the %s is rebound from the intent', async (_label, override) => {
+      const intent = await service.createUploadIntent(ownerUserId, {
+        filename: 'bound.pdf',
+        mimeType: 'application/pdf',
+        category: 'documents',
+      });
+
+      mockPrisma.fileAsset.findUnique.mockResolvedValue(null);
+
+      await expect(
+        service.confirmUpload(ownerUserId, {
+          key: intent.key,
+          filename: 'bound.pdf',
+          mimeType: 'application/pdf',
+          isPublic: false,
+          ...override,
+        }),
+      ).rejects.toThrow('Upload confirmation metadata does not match the upload intent.');
+
+      expect(mockPrisma.fileAsset.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects confirmation when provider content type differs from the intent', async () => {
+      const intent = await service.createUploadIntent(ownerUserId, {
+        filename: 'bound.pdf',
+        mimeType: 'application/pdf',
+        category: 'documents',
+      });
+
+      mockPrisma.fileAsset.findUnique.mockResolvedValue(null);
+      jest.spyOn(mockProvider, 'getObjectMetadata').mockResolvedValueOnce({
+        size: 1024,
+        contentType: 'text/plain',
+        lastModified: new Date(),
+      });
+
+      await expect(
+        service.confirmUpload(ownerUserId, {
+          key: intent.key,
+          filename: 'bound.pdf',
+          mimeType: 'application/pdf',
+          isPublic: false,
+        }),
+      ).rejects.toThrow('Uploaded object content type does not match the upload intent.');
+
+      expect(mockPrisma.fileAsset.create).not.toHaveBeenCalled();
     });
 
     it('rejects confirmation when no upload intent exists (unregistered key)', async () => {
@@ -561,15 +613,46 @@ describe('StorageService (Module B1 / SEC-005)', () => {
         lastModified: new Date(),
       });
 
-      const confirmed = await service.confirmUpload(ownerUserId, {
-        key: intent.key,
-        filename: 'private-doc.pdf',
-        mimeType: 'application/pdf',
-        isPublic: true, // Client tries to override to public
-      });
+      await expect(
+        service.confirmUpload(ownerUserId, {
+          key: intent.key,
+          filename: 'private-doc.pdf',
+          mimeType: 'application/pdf',
+          isPublic: true, // Client tries to override to public
+        }),
+      ).rejects.toThrow('Upload confirmation metadata does not match the upload intent.');
 
-      // Server-owned visibility derived from category 'documents' (must remain private)
-      expect(confirmed.isPublic).toBe(false);
+      expect(mockPrisma.fileAsset.create).not.toHaveBeenCalled();
+    });
+
+    it('reconciles and purges orphan database records when cloud object is missing', async () => {
+      mockPrisma.fileAsset.findMany.mockResolvedValueOnce([
+        { id: 'orphan-1', key: 'documents/u1/gone.pdf', userId: 'u1' },
+        { id: 'valid-1', key: 'documents/u1/exists.pdf', userId: 'u1' },
+      ]);
+
+      jest
+        .spyOn(mockProvider, 'getObjectMetadata')
+        .mockResolvedValueOnce(null) // orphan-1 is missing in cloud
+        .mockResolvedValueOnce({
+          size: 100,
+          contentType: 'application/pdf',
+          lastModified: new Date(),
+        }); // valid-1 exists
+
+      const result = await service.reconcileOrphanFiles('u1');
+      expect(result.scanned).toBe(2);
+      expect(result.reconciled).toBe(1);
+
+      expect(mockPrisma.fileAsset.delete).toHaveBeenCalledWith({ where: { id: 'orphan-1' } });
+      expect(mockPrisma.auditLog.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            action: AuditAction.FILE_DELETED,
+            resourceId: 'orphan-1',
+          }),
+        }),
+      );
     });
   });
 });

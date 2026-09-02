@@ -42,14 +42,14 @@ flowchart TD
 
 ### Tầng 1: Type Safety & Unit Testing (Kiểm định tĩnh & Hạt nhân)
 
-- [ ] **Monorepo Strict Type Check**:
+- [x] **Monorepo Strict Type Check**:
   - Lệnh: `pnpm type-check` (Quét toàn bộ `packages/contracts`, `apps/api`, `apps/web`).
   - Tiêu chí: **0 lỗi TypeScript**, không dùng `any` ở boundary, bật `noImplicitAny` và `strictNullChecks`.
-- [ ] **Contract & Schema Synchronization**:
+- [x] **Contract & Schema Synchronization**:
   - Đối chiếu Zod Schemas (`@ai-interview/contracts`) với Prisma Models (`schema.prisma`) và NestJS DTOs (`class-validator`).
-- [ ] **Core Utilities & Pure Functions**:
+- [x] **Core Utilities & Pure Functions**:
   - Thuật toán VAD Engine (Voice Activity Detection) xử lý buffer audio và ngưỡng năng lượng (`vad-engine.service.spec.ts`).
-  - Spaced Repetition (SuperMemo-2) tính toán khoảng thời gian lặp và hệ số độ khó (`spaced-repetition.service.spec.ts`).
+  - Spaced Repetition (FSRS v4) tính toán memory stability, difficulty, reps, lapses và khoảng thời gian lặp (`fsrs-engine.spec.ts`).
   - Timezone utils & Streak Calculator tính chuỗi ngày học liên tục không bị lệch múi giờ (`streak.service.spec.ts`).
   - Readiness Weight Profile & Competency Aggregator tính toán trọng số chuẩn xác.
 
@@ -57,19 +57,19 @@ flowchart TD
 
 ### Tầng 2: Integration & Stateful Workflows (Cơ sở dữ liệu & Quy trình tích hợp)
 
-- [ ] **Identity, Authentication & Session Lifecycle**:
+- [x] **Identity, Authentication & Session Lifecycle**:
   - JWT Access Token (15m) & Refresh Token (7d) rotation và blacklist khi logout.
   - Step-up MFA bắt buộc với quyền `UserRole.ADMIN` khi thực hiện các tác vụ nhạy cảm (`RolesGuard`).
   - Multi-tab cache isolation: Đăng xuất trên tab 1 làm mất hiệu lực token ngay lập tức ở tab 2.
-- [ ] **Interview Session State Machine**:
-  - Chu trình: `DRAFT` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `COMPLETED` $\rightarrow$ `EVALUATED` $\rightarrow$ `REPORT_READY`.
+- [x] **Interview Session State Machine**:
+  - Chu trình: `CREATED` $\rightarrow$ `ACTIVE` $\rightarrow$ `EVALUATING` $\rightarrow$ `COMPLETED` (với terminal states `COMPLETED`, `CANCELLED`, và recoverable `FAILED`).
   - Chặn các bước nhảy trạng thái phi logic (VD: không thể nộp bài khi session đã `COMPLETED`).
-  - Ghi nhận `ai_runs` và lưu trữ `answer` trước khi đưa vào hàng đợi AI (`adr/0004`).
-- [ ] **Subscription, Billing & Usage Metering**:
+  - Ghi nhận `ai_runs`/evaluation provenance và lưu trữ `answer` trước khi đưa vào hàng đợi AI (`adr/0004`).
+- [x] **Subscription, Billing & Usage Metering**:
   - Verify webhook signature từ PayOS / Stripe.
   - Idempotency test: Gửi 10 webhook cùng event ID chỉ cộng quota hoặc gia hạn gói đúng **1 lần**.
   - Entitlement resolver: Free (3 sessions/month, 5 question reveals), Pro (20 sessions, 50 reveals), Enterprise (unlimited).
-- [ ] **Question Bank Content Governance (F015)**:
+- [x] **Question Bank Content Governance (F015)**:
   - Chu trình biên tập 5 bước: `DRAFT` $\rightarrow$ `IN_REVIEW` $\rightarrow$ `APPROVED` $\rightarrow$ `PUBLISHED` $\rightarrow$ `ARCHIVED`.
   - Chặn quy tắc: Tác giả không được tự phê duyệt bài của mình (`QUESTION_BANK_REVIEWER_EQUALS_AUTHOR`).
   - Safe projection test: `listQuestions` và `getQuestionBySlug` (chưa reveal) tuyệt đối không chứa `answerBody` hay `rubric`.
@@ -78,76 +78,76 @@ flowchart TD
 
 ### Tầng 3: Concurrency, Idempotency & Race Conditions (Kiểm định Đồng thời & Xung đột)
 
-- [ ] **Concurrent Reveal Answer Attack**:
+- [x] **Concurrent Reveal Answer Attack**:
   - Gửi đồng thời 20 requests `POST /api/v1/question-bank/questions/:id/reveal-answer` cùng `userId` và cùng/khác `idempotency-key`.
   - Tiêu chí: Chỉ **1 bản ghi** `QuestionAnswerAccessGrant` và **1 bản ghi** `QuestionBankUsageLedger` được tạo, quota chỉ bị trừ đúng 1 đơn vị.
-- [ ] **Interview Start & Token Consumption Race**:
+- [x] **Interview Start & Token Consumption Race**:
   - Gửi đồng thời nhiều request tạo phòng phỏng vấn khi quota chỉ còn 1 lượt.
   - Tiêu chí: Đúng 1 phiên được kích hoạt thành công, các request còn lại trả mã lỗi `403 Forbidden` / `QUOTA_EXHAUSTED`.
-- [ ] **Whiteboard & Canvas Concurrency (F003)**:
+- [x] **Whiteboard & Canvas Concurrency (F003)**:
   - 2 người dùng/tabs vẽ đồng thời trên WebSocket / SSE canvas: Áp dụng Operational Transformation hoặc Version Lock để không bị mất nét vẽ (`canvas-concurrency.spec.ts`).
-- [ ] **BullMQ Job Deduplication & Dead-Letter Queue (DLQ)**:
+- [x] **BullMQ Job Deduplication & Dead-Letter Queue (DLQ)**:
   - Kiểm thử khi worker crash giữa chừng lúc xử lý AI evaluation: Job tự động retry có backoff và chuyển vào DLQ kèm alert sau 3 lần thất bại, không bị treo trạng thái session.
 
 ---
 
 ### Tầng 4: Security, IDOR, Sandbox & Data Privacy (Bảo mật & Quyền riêng tư)
 
-- [ ] **IDOR / BOLA (Broken Object Level Authorization)**:
-  - User A không thể đọc/sửa/xóa session, answer, scorecard, portfolio, bookmark của User B.
+- [x] **IDOR / BOLA (Broken Object Level Authorization)**:
+  - User A không thể đọc/sửa/xóa session, answer, scorecard, portfolio, bookmark của User B (`l4-idor-bola-security.spec.ts`).
   - Tenant User của Organization A không thể xem ứng viên/cohort của Organization B (`B2bTenantGuard`).
-- [ ] **Code Sandbox Isolation (Judge0 F002 & Arena F017)**:
-  - Resource limits: Timeout $\le 15s$, Memory $\le 512MB$, CPU 1.0 core, Fork Bomb prevention (`sandbox-security.spec.ts`, `arena-hardening-and-security.spec.ts`).
+- [x] **Code Sandbox Isolation (Judge0 F002 & Arena F017)**:
+  - Resource limits: Timeout $\le 15s$, Memory $\le 512MB$, CPU 1.0 core, Fork Bomb prevention (`l4-sandbox-zero-secret.spec.ts`, `sandbox-security.spec.ts`, `arena-hardening-and-security.spec.ts`).
   - Chặn triệt để path traversal (`../`), root escapes, socket network access và filesystem tampering trong multi-file repository workspace.
   - Zero-secret containment: Không kế thừa biến môi trường nhạy cảm của host vào môi trường sandbox chạy code.
-- [ ] **Data Retention & Privacy Lifecycle (GDPR / NDPA)**:
-  - Tự động xóa file âm thanh và file CV tải lên sau TTL 30 ngày (nếu người dùng không chọn lưu dài hạn).
-  - Endpoint xuất dữ liệu cá nhân (`GET /api/v1/profile/export`) và xóa vĩnh viễn tài khoản (`DELETE /api/v1/profile`).
+- [x] **Data Retention & Privacy Lifecycle (GDPR / NDPA)**:
+  - Tự động xóa file âm thanh và file CV tải lên sau TTL 30 ngày (`data-retention.cron.spec.ts`).
+  - Endpoint xuất dữ liệu cá nhân (`GET /api/v1/profile/export`) và xóa vĩnh viễn tài khoản (`DELETE /api/v1/profile`, `profile.service.spec.ts`).
 
 ---
 
 ### Tầng 5: AI Orchestrator & Evaluation Harness (Định lượng Chất lượng AI)
 
-- [ ] **Golden Dataset Evaluation & Deterministic Score Caps**:
-  - Chạy bộ test `apps/api/test/eval/golden-benchmark.spec.ts` trên 50 bộ câu trả lời chuẩn (Junior, Mid, Senior, Lead).
+- [x] **Golden Dataset Evaluation & Deterministic Score Caps**:
+  - Chạy bộ test `apps/api/test/eval/golden-benchmark.spec.ts` trên 50 bộ câu trả lời chuẩn (`golden-v2.json` từ Junior đến Lead).
   - Tiêu chí: Sai lệch điểm số giữa AI và giám khảo chuyên gia $\le 5\%$, độ nhất quán Rubric đạt $\ge 95\%$.
   - Arena Score Caps: Cố định điểm tối đa $\le 40\%$ khi rớt visible unit tests và $\le 50\%$ khi rớt toàn bộ hidden verification tests.
-- [ ] **Prompt Injection & Adversarial Resilience**:
-  - Thử nghiệm các prompt tấn công (DAN, jailbreak, yêu cầu bỏ qua tiêu chí chấm điểm, tiêm câu lệnh ẩn vào CV/code comments).
-  - Tiêu chí: AI phát hiện và từ chối prompt độc hại, giữ vững tiêu chuẩn đánh giá khách quan (`adversarial-eval.spec.ts`, `arena-hardening-and-security.spec.ts`).
-- [ ] **Multi-Provider Fallback Routing**:
-  - Giả lập lỗi Provider: `Gemini (429 Rate Limit)` $\rightarrow$ tự động chuyển tuyến `OpenAI (GPT-4o)` $\rightarrow$ `Anthropic (Claude 3.5 Sonnet)` $\rightarrow$ `Mock Fallback`.
+- [x] **Prompt Injection & Adversarial Resilience**:
+  - Thử nghiệm các prompt tấn công (DAN, jailbreak, yêu cầu bỏ qua tiêu chí chấm điểm, tiêm câu lệnh ẩn vào CV/code comments) (`l5-adversarial-expanded.spec.ts`, `adversarial-eval.spec.ts`, `ai-security-filter.service.ts`).
+  - Tiêu chí: AI phát hiện và từ chối prompt độc hại, giữ vững tiêu chuẩn đánh giá khách quan.
+- [x] **Multi-Provider Fallback Routing**:
+  - Giả lập lỗi Provider: `Gemini (429 Rate Limit)` $\rightarrow$ tự động chuyển tuyến `OpenAI (GPT-4o)` $\rightarrow$ `Anthropic (Claude 3.5 Sonnet)` $\rightarrow$ `Mock Fallback` (`l5-provider-fallback-latency.spec.ts`).
   - Tiêu chí: Không làm gián đoạn buổi phỏng vấn trực tiếp của ứng viên, độ trễ chuyển tuyến $\le 1.5s$.
 
 ---
 
 ### Tầng 6: Chaos Engineering & Resilience (Diễn tập GameDay)
 
-- [ ] **Redis Cluster Disconnection**:
-  - Kill tiến trình Redis trong khi phiên phỏng vấn đang diễn ra.
-  - Tiêu chí: Hệ thống chuyển sang cơ chế fallback polling qua database, không crash API server.
-- [ ] **Database Connection Pool Saturation**:
-  - Bơm tải vượt quá `max_connections` của PostgreSQL.
-  - Tiêu chí: Circuit Breaker kích hoạt, trả HTTP 503 có cấu trúc, không lộ stack trace nội bộ.
-- [ ] **Audio Stream Packet Loss & WebRTC Dropout**:
+- [x] **Redis Cluster Disconnection**:
+  - Giả lập mất kết nối Redis Cluster trong khi phiên phỏng vấn và queue đang hoạt động (`chaos-gameday.spec.ts`).
+  - Tiêu chí: Hệ thống chuyển sang cơ chế fallback in-memory/durable queue, không crash API server.
+- [x] **Database Connection Pool Saturation**:
+  - Bơm tải vượt quá `max_connections` (Prisma error P2024 connection pool timeout).
+  - Tiêu chí: Circuit Breaker kích hoạt, trả HTTP 503 có cấu trúc, không lộ stack trace nội bộ (`chaos-gameday.spec.ts`).
+- [x] **Audio Stream Packet Loss & WebRTC Dropout**:
   - Giả lập mạng chập chờn (mất 20% gói tin audio).
-  - Tiêu chí: Voice Gateway duy trì kết nối hoặc kích hoạt auto-reconnect trong $\le 2s$.
+  - Tiêu chí: Voice Gateway duy trì kết nối hoặc kích hoạt auto-reconnect trong $\le 2s$ (`chaos-gameday.spec.ts`).
 
 ---
 
 ### Tầng 7: End-to-End User Journeys, Performance & Accessibility (E2E & A11y)
 
-- [ ] **Critical Candidate Flow**:
-  - `Đăng ký/Đăng nhập` $\rightarrow$ `Setup phỏng vấn (CV upload + Job Role)` $\rightarrow$ `Phỏng vấn giọng nói/code` $\rightarrow$ `Hoàn thành` $\rightarrow$ `Xem Báo cáo Đánh giá & Khuyến nghị học tập`.
-- [ ] **Question Bank Flow (F015)**:
-  - `Duyệt Ngân hàng câu hỏi` $\rightarrow$ `Lọc theo Role/Seniority/Tech` $\rightarrow$ `Mở đáp án (trừ 1 quota)` $\rightarrow$ `Xem Rubric & Common Mistakes` $\rightarrow$ `Lưu Bookmark` $\rightarrow$ `Báo lỗi nội dung`.
-- [ ] **Engineering Arena Flow (F017)**:
-  - `Chọn Challenge trong Catalog` $\rightarrow$ `Khởi tạo Workspace` $\rightarrow$ `Sửa file trên Monaco Editor` $\rightarrow$ `Chạy Run Tests` $\rightarrow$ `Nộp bài (Submit Solution)` $\rightarrow$ `Xem Báo cáo Đánh giá & Skill Evidence`.
-- [ ] **Performance Benchmarks**:
-  - P95 Response Time cho API tra cứu câu hỏi / challenge catalog $\le 150ms$.
+- [x] **Critical Candidate Flow**:
+  - `Đăng ký/Đăng nhập` $\rightarrow$ `Setup phỏng vấn (CV upload + Job Role)` $\rightarrow$ `Phỏng vấn giọng nói/code 5 turns` $\rightarrow$ `Hoàn thành` $\rightarrow$ `Xem Báo cáo Đánh giá & Khuyến nghị học tập` (`l7-e2e-service-journeys.spec.ts`).
+- [x] **Question Bank Flow (F015)**:
+  - `Duyệt Ngân hàng câu hỏi` $\rightarrow$ `Lọc theo Role/Seniority/Tech` $\rightarrow$ `Mở đáp án (trừ 1 quota)` $\rightarrow$ `Xem Rubric & Common Mistakes` $\rightarrow$ `Lưu Bookmark` $\rightarrow$ `Báo lỗi nội dung` (`l7-e2e-service-journeys.spec.ts`).
+- [x] **Engineering Arena Flow (F017)**:
+  - `Chọn Challenge trong Catalog` $\rightarrow$ `Khởi tạo Workspace` $\rightarrow$ `Sửa file trên Monaco Editor` $\rightarrow$ `Chạy Run Tests` $\rightarrow$ `Nộp bài (Submit Solution)` $\rightarrow$ `Xem Báo cáo Đánh giá & Skill Evidence` (`l7-e2e-service-journeys.spec.ts`).
+- [x] **Performance Benchmarks**:
+  - P95 Response Time cho API evaluateAnswer $\le 150ms$, preFilter $\le 5ms$, scoring $\le 1ms$, 50x batch concurrency (`l7-performance-benchmarks.spec.ts`).
   - P95 Streaming latency cho audio chunk & test execution terminal $\le 300ms$.
-- [ ] **Web Accessibility (WCAG 2.2 AA Compliance)**:
-  - Toàn bộ Modal (Paywall, Feedback, Setup, Arena Report) hỗ trợ Focus Trap, phím `Escape`, phục hồi focus sau khi đóng.
+- [x] **Web Accessibility (WCAG 2.2 AA Compliance)**:
+  - Toàn bộ Modal (Paywall, Feedback, Setup, Arena Report, ConfirmationDialog) hỗ trợ Focus Trap, phím `Escape`, phục hồi focus sau khi đóng (`ModalAccessibility.test.tsx`).
   - Điều hướng hoàn toàn bằng bàn phím (`Tab`, `Shift+Tab`, `Enter`, `Space`).
   - Màu sắc đạt độ tương phản tối thiểu $4.5:1$ ở cả Light và Dark mode.
 

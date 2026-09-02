@@ -9,7 +9,6 @@ temp/
 .parallel-worktrees/
 .codex-runs/
 .terraform/
-
 # Build outputs
 dist/
 build/

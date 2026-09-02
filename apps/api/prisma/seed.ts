@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import { questionBankDrafts } from './question-bank-draft-data';
+import { seedArenaChallenges } from './seeds/arena-challenges.seed';
 
 const prisma = new PrismaClient();
 
@@ -735,6 +736,9 @@ async function main() {
     }
   }
   console.log('✅ Seeded demo mentor profile and availability slots');
+
+  // 11. Seed Engineering Arena Benchmark Challenges (F017)
+  await seedArenaChallenges();
 
   console.log('🎉 Database seed completed successfully!');
 }

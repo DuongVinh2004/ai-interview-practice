@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "idempotent-payment-webhook-worker",
+  "title": "Implement Idempotent Payment Webhook Queue Consumer",
+  "description": "Ensure payment webhooks can be retried safely without double-charging or duplicate order fulfillment.",
+  "domain": "BACKEND",
+  "category": "BUG_FIX",
+  "difficulty": 3,
+  "estimatedMinutes": 35,
+  "environment": {
+    "runtime": "node:22",
+    "memoryLimitMb": 512,
+    "cpuLimit": 1.0
+  },
+  "visibleFiles": ["src/payment-worker.ts", "test/payment-worker.test.ts"],
+  "editableFiles": ["src/payment-worker.ts"],
+  "hiddenFiles": ["test/hidden-webhook-idempotency.test.ts"],
+  "commands": [
+    {
+      "id": "test",
+      "label": "Run Worker Tests",
+      "command": "npm test",
+      "args": [],
+      "timeoutSeconds": 15,
+      "isVerification": false
+    }
+  ],
+  "rubric": {
+    "version": "1.0",
+    "objectiveWeight": 0.7,
+    "rubricWeight": 0.3,
+    "criteria": [
+      {
+        "key": "idempotent_processing",
+        "name": "Idempotent Ledger Writing",
+        "description": "Uses unique event ID constraint or idempotency lock table.",
+        "maxPoints": 50
+      }
+    ]
+  },
+  "skills": [
+    {
+      "taxonomyKey": "queue_idempotency_distributed_systems",
+      "weight": 1.0
+    }
+  ]
+}

@@ -1,6 +1,6 @@
-import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { Inject, Injectable, HttpStatus, Logger } from '@nestjs/common';
 import { ArenaSessionRepository } from '../repositories/arena-session.repository';
-import { DeterministicLocalWorkspaceRuntime } from '../runtime/deterministic-local.runtime';
+import { WORKSPACE_RUNTIME, WorkspaceRuntime } from '../runtime/workspace-runtime.interface';
 import { ArenaScoringEngine } from '../scoring/arena-scoring-engine';
 import { ArenaSessionStateMachine } from '../state-machine/arena-session-state-machine';
 import {
@@ -20,7 +20,7 @@ export class ArenaEvaluationService {
 
   constructor(
     private readonly sessionRepo: ArenaSessionRepository,
-    private readonly workspaceRuntime: DeterministicLocalWorkspaceRuntime,
+    @Inject(WORKSPACE_RUNTIME) private readonly workspaceRuntime: WorkspaceRuntime,
   ) {}
 
   async submitAndEvaluate(

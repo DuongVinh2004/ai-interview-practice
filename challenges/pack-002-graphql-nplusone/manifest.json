@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "optimize-graphql-n-plus-one",
+  "title": "Optimize N+1 Query Amplification in Batch DataLoader",
+  "description": "Implement DataLoader batching to eliminate N+1 SQL queries when resolving author details.",
+  "domain": "BACKEND",
+  "category": "PERFORMANCE_OPTIMIZATION",
+  "difficulty": 4,
+  "estimatedMinutes": 45,
+  "environment": {
+    "runtime": "node:22",
+    "memoryLimitMb": 512,
+    "cpuLimit": 1.0
+  },
+  "visibleFiles": ["src/author.loader.ts", "test/author.loader.test.ts"],
+  "editableFiles": ["src/author.loader.ts"],
+  "hiddenFiles": ["test/hidden-dataloader.test.ts"],
+  "commands": [
+    {
+      "id": "test",
+      "label": "Run Benchmark Tests",
+      "command": "npm test",
+      "args": [],
+      "timeoutSeconds": 15,
+      "isVerification": false
+    }
+  ],
+  "rubric": {
+    "version": "1.0",
+    "objectiveWeight": 0.7,
+    "rubricWeight": 0.3,
+    "criteria": [
+      {
+        "key": "dataloader_batching",
+        "name": "Batch Query Resolution",
+        "description": "Queries database once for all distinct keys in batch.",
+        "maxPoints": 50
+      }
+    ]
+  },
+  "skills": [
+    {
+      "taxonomyKey": "database_performance_n_plus_one",
+      "weight": 1.0
+    }
+  ]
+}

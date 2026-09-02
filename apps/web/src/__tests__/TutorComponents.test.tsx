@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { SocraticTutorDrawer } from '../components/tutor/SocraticTutorDrawer';
 import { InstantRetryModal } from '../components/tutor/InstantRetryModal';
 import { TutorRatingButtons } from '../components/tutor/TutorRatingButtons';
@@ -103,9 +103,12 @@ describe('Socratic AI Tutor & Instant Retry Components (F006)', () => {
     const submitBtn = screen.getByText(/Chấm điểm câu trả lời mới/i);
     fireEvent.click(submitBtn);
 
-    expect(onSubmitRetry).toHaveBeenCalledWith(
-      'Use distributed locks with Redlock algorithm and TTL.',
-    );
+    await waitFor(() => {
+      expect(onSubmitRetry).toHaveBeenCalledWith(
+        'Use distributed locks with Redlock algorithm and TTL.',
+      );
+      expect(screen.getByText(/Điểm số sau khi cải thiện/i)).toBeInTheDocument();
+    });
   });
 
   it('renders TutorRatingButtons and registers thumbs up feedback', async () => {
@@ -118,6 +121,9 @@ describe('Socratic AI Tutor & Instant Retry Components (F006)', () => {
     const thumbsUpBtn = screen.getByTitle('Hữu ích');
     fireEvent.click(thumbsUpBtn);
 
-    expect(onRate).toHaveBeenCalledWith('UP');
+    await waitFor(() => {
+      expect(onRate).toHaveBeenCalledWith('UP');
+      expect(screen.getByText('Cảm ơn đánh giá của bạn!')).toBeInTheDocument();
+    });
   });
 });

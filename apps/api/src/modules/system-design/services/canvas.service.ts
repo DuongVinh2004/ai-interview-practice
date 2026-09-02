@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, ForbiddenException, HttpStatus } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../platform/prisma/prisma.service';
 import { SystemDesignSessionDto, CanvasSnapshotDto, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
@@ -92,104 +93,145 @@ export class CanvasService {
   ): Promise<CanvasSnapshotDto & { version: number; etag: string }> {
     await this.verifySessionOwnership(userId, interviewId);
 
-    const session = await this.prisma.systemDesignSession.findUnique({
-      where: { interviewId },
-      include: {
-        snapshots: {
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
-    });
+    const MAX_RETRIES = 3;
+    let result: (CanvasSnapshotDto & { version: number; etag: string }) | null = null;
+    let lastError: unknown;
 
-    let currentSession = session;
-    if (!currentSession) {
-      currentSession = await this.prisma.systemDesignSession.create({
-        data: { interviewId },
-        include: {
-          snapshots: {
-            orderBy: { createdAt: 'desc' },
-            take: 1,
-          },
-        },
-      });
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const runTx =
+          typeof this.prisma.$transaction === 'function'
+            ? (fn: (tx: any) => Promise<any>) =>
+                this.prisma.$transaction(fn, {
+                  isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+                  timeout: 10000,
+                })
+            : async (fn: (tx: any) => Promise<any>) => fn(this.prisma);
+
+        result = await runTx(async tx => {
+          let currentSession = await tx.systemDesignSession.findUnique({
+            where: { interviewId },
+            include: {
+              snapshots: {
+                orderBy: { createdAt: 'desc' },
+                take: 1,
+              },
+            },
+          });
+
+          if (!currentSession) {
+            currentSession = await tx.systemDesignSession.create({
+              data: { interviewId },
+              include: {
+                snapshots: {
+                  orderBy: { createdAt: 'desc' },
+                  take: 1,
+                },
+              },
+            });
+          }
+
+          let latestSnapshot: any = currentSession.snapshots?.[0];
+          if (!latestSnapshot && typeof tx.canvasSnapshot?.findFirst === 'function') {
+            latestSnapshot = await tx.canvasSnapshot.findFirst({
+              where: { sessionId: currentSession.id },
+              orderBy: { createdAt: 'desc' },
+            });
+          }
+
+          const latestState = (latestSnapshot?.canvasStateJson as any) || {};
+          const currentVersion = latestState.version || 0;
+          const currentEtag = latestState.etag || this.generateEtag(currentVersion, latestState);
+
+          // Optimistic Concurrency Control (Version / ETag check)
+          if (
+            expectedVersion !== undefined &&
+            expectedVersion !== currentVersion &&
+            !(currentVersion === 0 && expectedVersion <= 1)
+          ) {
+            throw new DomainException(
+              ErrorCode.IDEMPOTENCY_CONFLICT,
+              `Diagram version conflict: expected version ${expectedVersion} but current version is ${currentVersion}`,
+              HttpStatus.CONFLICT,
+            );
+          }
+
+          if (ifMatchEtag && ifMatchEtag !== currentEtag && currentVersion > 0) {
+            throw new DomainException(
+              ErrorCode.IDEMPOTENCY_CONFLICT,
+              `Diagram ETag conflict: provided ETag ${ifMatchEtag} does not match current ETag ${currentEtag}`,
+              HttpStatus.CONFLICT,
+            );
+          }
+
+          const nextVersion = currentVersion + 1;
+          const nextEtag = this.generateEtag(nextVersion, canvasStateJson);
+
+          // Normalize architecture nodes and connection metadata
+          const stateToSave = {
+            ...(canvasStateJson || {}),
+            version: nextVersion,
+            etag: nextEtag,
+            elements: (canvasStateJson?.elements || []).map((el: any) => ({
+              id: el.id,
+              type: el.type,
+              label: el.label,
+              x: typeof el.x === 'number' ? el.x : 0,
+              y: typeof el.y === 'number' ? el.y : 0,
+              width: typeof el.width === 'number' ? el.width : 140,
+              height: typeof el.height === 'number' ? el.height : 60,
+              color: el.color || '#4f46e5',
+              properties: el.properties || {},
+            })),
+            connectors: (canvasStateJson?.connectors || []).map((conn: any) => ({
+              id: conn.id,
+              fromId: conn.fromId,
+              toId: conn.toId,
+              protocol: conn.protocol || 'HTTP/REST',
+              label: conn.label || '',
+              properties: conn.properties || {},
+            })),
+          };
+
+          const snapshot = await tx.canvasSnapshot.create({
+            data: {
+              sessionId: currentSession.id,
+              imageUrl,
+              canvasStateJson: stateToSave,
+              elapsedSeconds,
+            },
+          });
+
+          // Update session final canvas URL
+          await tx.systemDesignSession.update({
+            where: { id: currentSession.id },
+            data: { finalCanvasUrl: imageUrl },
+          });
+
+          return {
+            ...(snapshot as unknown as CanvasSnapshotDto),
+            version: nextVersion,
+            etag: nextEtag,
+          };
+        });
+        break;
+      } catch (err: any) {
+        lastError = err;
+        if (err?.code === 'P2034' && attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, 20 * attempt));
+          continue;
+        }
+        throw err;
+      }
     }
 
-    const latestSnapshot = currentSession.snapshots?.[0];
-    const latestState = (latestSnapshot?.canvasStateJson as any) || {};
-    const currentVersion = latestState.version || currentSession.snapshots?.length || 0;
-    const currentEtag = latestState.etag || this.generateEtag(currentVersion, latestState);
-
-    // Optimistic Concurrency Control (Version / ETag check)
-    if (
-      expectedVersion !== undefined &&
-      expectedVersion !== currentVersion &&
-      !(currentVersion === 0 && expectedVersion <= 1)
-    ) {
-      throw new DomainException(
-        ErrorCode.IDEMPOTENCY_CONFLICT,
-        `Diagram version conflict: expected version ${expectedVersion} but current version is ${currentVersion}`,
-        HttpStatus.CONFLICT,
+    if (!result) {
+      throw (
+        lastError || new DomainException(ErrorCode.INTERNAL_SERVER_ERROR, 'Failed to save snapshot')
       );
     }
 
-    if (ifMatchEtag && ifMatchEtag !== currentEtag && currentVersion > 0) {
-      throw new DomainException(
-        ErrorCode.IDEMPOTENCY_CONFLICT,
-        `Diagram ETag conflict: provided ETag ${ifMatchEtag} does not match current ETag ${currentEtag}`,
-        HttpStatus.CONFLICT,
-      );
-    }
-
-    const nextVersion = currentVersion + 1;
-    const nextEtag = this.generateEtag(nextVersion, canvasStateJson);
-
-    // Normalize architecture nodes and connection metadata
-    const stateToSave = {
-      ...(canvasStateJson || {}),
-      version: nextVersion,
-      etag: nextEtag,
-      elements: (canvasStateJson?.elements || []).map((el: any) => ({
-        id: el.id,
-        type: el.type,
-        label: el.label,
-        x: typeof el.x === 'number' ? el.x : 0,
-        y: typeof el.y === 'number' ? el.y : 0,
-        width: typeof el.width === 'number' ? el.width : 140,
-        height: typeof el.height === 'number' ? el.height : 60,
-        color: el.color || '#4f46e5',
-        properties: el.properties || {},
-      })),
-      connectors: (canvasStateJson?.connectors || []).map((conn: any) => ({
-        id: conn.id,
-        fromId: conn.fromId,
-        toId: conn.toId,
-        protocol: conn.protocol || 'HTTP/REST',
-        label: conn.label || '',
-        properties: conn.properties || {},
-      })),
-    };
-
-    const snapshot = await this.prisma.canvasSnapshot.create({
-      data: {
-        sessionId: currentSession.id,
-        imageUrl,
-        canvasStateJson: stateToSave,
-        elapsedSeconds,
-      },
-    });
-
-    // Update session final canvas URL
-    await this.prisma.systemDesignSession.update({
-      where: { id: currentSession.id },
-      data: { finalCanvasUrl: imageUrl },
-    });
-
-    return {
-      ...(snapshot as unknown as CanvasSnapshotDto),
-      version: nextVersion,
-      etag: nextEtag,
-    };
+    return result;
   }
 
   /**

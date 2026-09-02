@@ -344,7 +344,7 @@ resource "aws_iam_role" "web_task_role" {
   })
 }
 
-# S3 Access for API Task Role Only (Synchronous storage operations)
+# S3 and KMS Access for API Task Role (Synchronous storage operations)
 resource "aws_iam_role_policy" "api_s3_access" {
   name = "ai-interview-api-s3-access-${var.environment}"
   role = aws_iam_role.api_task_role.id
@@ -367,6 +367,41 @@ resource "aws_iam_role_policy" "api_s3_access" {
           "kms:Decrypt",
           "kms:GenerateDataKey"
         ]
+        Resource = [var.secrets_kms_key_arn]
+      }
+    ]
+  })
+}
+
+# S3 and KMS Access for Worker Task Role (Asynchronous queue processing)
+resource "aws_iam_role_policy" "worker_s3_access" {
+  name = "ai-interview-worker-s3-access-${var.environment}"
+  role = aws_iam_role.worker_task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = ["arn:aws:s3:::${var.s3_bucket_name}/*"]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey"
+        ]
+        Resource = [var.secrets_kms_key_arn]
+      }
+    ]
+  })
+}
+
 # Application Load Balancer
 resource "aws_lb" "main" {
   name = "ai-interview-alb-${var.environment}"

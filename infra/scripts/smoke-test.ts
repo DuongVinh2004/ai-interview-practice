@@ -142,6 +142,28 @@ async function runSmokeTests() {
   console.log(`Overall Health Status: ${failedCount === 0 ? 'HEALTHY ✅' : 'DEGRADED ❌'}`);
   console.log('==============================================================================');
 
+  try {
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const evidenceDir = process.env.EVIDENCE_DIR || 'artifacts/staging-smoke';
+    fs.mkdirSync(evidenceDir, { recursive: true });
+    const evidenceFile = path.join(evidenceDir, `staging-smoke-${Date.now()}.json`);
+    const payload = {
+      timestamp: new Date().toISOString(),
+      commitSha: process.env.GITHUB_SHA || 'local-candidate',
+      baseUrl,
+      totalChecks: results.length,
+      passedCount,
+      failedCount,
+      overall: failedCount === 0 ? 'PASS' : 'FAIL',
+      checks: results,
+    };
+    fs.writeFileSync(evidenceFile, JSON.stringify(payload, null, 2), 'utf8');
+    console.log(`📄 Staging smoke evidence written to: ${evidenceFile}`);
+  } catch {
+    // Non-blocking file write for constrained environments
+  }
+
   if (failedCount > 0 && process.env.STRICT_SMOKE_TEST === 'true') {
     process.exit(1);
   }

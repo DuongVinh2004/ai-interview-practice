@@ -1,8 +1,8 @@
-import { Injectable, HttpStatus } from '@nestjs/common';
+import { Inject, Injectable, HttpStatus } from '@nestjs/common';
 import { ArenaChallengeRepository } from './repositories/arena-challenge.repository';
 import { ArenaSessionRepository } from './repositories/arena-session.repository';
 import { ArenaSessionStateMachine } from './state-machine/arena-session-state-machine';
-import { DeterministicLocalWorkspaceRuntime } from './runtime/deterministic-local.runtime';
+import { WORKSPACE_RUNTIME, WorkspaceRuntime } from './runtime/workspace-runtime.interface';
 import { ArenaEvaluationService } from './services/arena-evaluation.service';
 import { ArenaSseService } from './services/arena-sse.service';
 import {
@@ -25,7 +25,7 @@ export class EngineeringArenaService {
   constructor(
     private readonly challengeRepo: ArenaChallengeRepository,
     private readonly sessionRepo: ArenaSessionRepository,
-    private readonly workspaceRuntime: DeterministicLocalWorkspaceRuntime,
+    @Inject(WORKSPACE_RUNTIME) private readonly workspaceRuntime: WorkspaceRuntime,
     private readonly evaluationService: ArenaEvaluationService,
     private readonly sseService: ArenaSseService,
   ) {}
@@ -142,7 +142,18 @@ export class EngineeringArenaService {
     return session;
   }
 
-  getSessionSseStream(sessionId: string) {
+  async getSessionSseStream(sessionId: string, userId: string) {
+    // SSE is a data read just like GET /sessions/:id. Authorize before
+    // creating/subscribing to the stream so a guessed UUID cannot receive
+    // another candidate's execution logs.
+    const session = await this.sessionRepo.findSessionById(sessionId, userId);
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        `Arena session '${sessionId}' not found or access denied.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
     return this.sseService.getSessionStream(sessionId);
   }
 

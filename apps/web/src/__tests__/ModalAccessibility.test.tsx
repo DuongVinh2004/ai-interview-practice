@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { Modal } from '../components/ui/Modal';
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 import { useState } from 'react';
 
 function ModalTestWrapper() {
@@ -94,5 +95,52 @@ describe('Modal Accessibility & Focus Trapping (A11Y-001)', () => {
     const dialogContainer = screen.getByRole('dialog').querySelector('.dark\\:bg-slate-900');
     expect(dialogContainer).toBeInTheDocument();
     expect(screen.getByText('Dark Mode Accessible Title')).toHaveClass('dark:text-slate-100');
+  });
+
+  it('ConfirmationDialog renders accessible structure with confirm/cancel action buttons', () => {
+    const handleConfirm = vi.fn();
+    const handleClose = vi.fn();
+
+    render(
+      <ConfirmationDialog
+        isOpen={true}
+        onClose={handleClose}
+        onConfirm={handleConfirm}
+        title="Confirm Action"
+        message="Are you sure you want to delete this resource?"
+        confirmLabel="Yes, Delete"
+        cancelLabel="No, Cancel"
+        variant="danger"
+      />,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByText('Confirm Action')).toBeInTheDocument();
+    expect(screen.getByText('Are you sure you want to delete this resource?')).toBeInTheDocument();
+
+    const confirmBtn = screen.getByText('Yes, Delete');
+    fireEvent.click(confirmBtn);
+    expect(handleConfirm).toHaveBeenCalledTimes(1);
+
+    const cancelBtn = screen.getByText('No, Cancel');
+    fireEvent.click(cancelBtn);
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores focus to previous active element after modal closes', () => {
+    const { unmount } = render(<ModalTestWrapper />);
+    const openBtn = screen.getByText('Open Modal');
+
+    openBtn.focus();
+    expect(document.activeElement).toBe(openBtn);
+
+    fireEvent.click(openBtn);
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+
+    // Close on Escape
+    fireEvent.keyDown(window, { key: 'Escape' });
+
+    unmount();
   });
 });

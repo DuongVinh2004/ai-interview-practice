@@ -340,4 +340,46 @@ describe('ProviderRouterService Spec', () => {
     expect(result.provider).toBe('mock');
     expect(result.data.needsReview).toBe(true);
   });
+
+  it('reserves the worst-case cost for every retry and settles successful usage', async () => {
+    const reservation = {
+      key: 'distributed-budget:ai-provider-global:2026-09-01',
+      reservedMicros: 6_000_000,
+    };
+    const mockBudget = {
+      reserve: jest.fn().mockResolvedValue(reservation),
+      settle: jest.fn().mockResolvedValue(undefined),
+    };
+    (routerService as any).distributedBudget = mockBudget;
+
+    mockGemini.evaluateAnswer
+      .mockRejectedValueOnce(new Error('temporary provider failure'))
+      .mockResolvedValueOnce({
+        data: {
+          score: 8,
+          rubricScores: { technicalAccuracy: 8, depth: 8, clarity: 8 },
+          strengths: ['Good'],
+          improvements: [],
+          conciseFeedback: 'Good',
+          evidence: [],
+          confidence: 0.9,
+          missingConcepts: [],
+          needsReview: false,
+        },
+        model: 'gemini-2.0-flash',
+        provider: 'gemini',
+        latencyMs: 100,
+        costEstimate: 0.03,
+      });
+
+    const result = await routerService.evaluateAnswer(
+      { role: 'Dev', level: 'Senior', question: 'Q', answer: 'A' },
+      'System prompt',
+    );
+
+    expect(result.provider).toBe('gemini');
+    expect(mockGemini.evaluateAnswer).toHaveBeenCalledTimes(2);
+    expect(mockBudget.reserve).toHaveBeenCalledWith('ai-provider-global', 50, 6);
+    expect(mockBudget.settle).toHaveBeenCalledWith(reservation, 2.03);
+  });
 });

@@ -448,120 +448,159 @@ export class QuestionBankService {
     }
 
     const cleanIdempotencyKey = idempotencyKey.trim();
+    const MAX_RETRIES = 5;
+    let grantResult: { isReplay: boolean; activeAnswer: any } | null = null;
+    let lastError: unknown;
 
-    const grantResult = await this.prisma.$transaction(
-      async tx => {
-        const question = await tx.questionBankQuestion.findUnique({
-          where: { id: questionId },
-          include: {
-            answers: {
-              where: { isPublished: true },
-              orderBy: { version: 'desc' },
-              take: 1,
-            },
-          },
-        });
-        if (!question || question.status !== QuestionPublicationStatus.PUBLISHED) {
-          throw new DomainException(
-            ErrorCode.QUESTION_BANK_NOT_FOUND,
-            'Question not found or not published',
-            HttpStatus.NOT_FOUND,
-          );
-        }
-        const activeAnswer = question.answers[0];
-        if (!activeAnswer) {
-          throw new DomainException(
-            ErrorCode.QUESTION_BANK_ANSWER_UNAVAILABLE,
-            'Answer is currently unavailable for this question',
-            HttpStatus.CONFLICT,
-          );
-        }
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        grantResult = await this.prisma.$transaction(
+          async tx => {
+            const question = await tx.questionBankQuestion.findUnique({
+              where: { id: questionId },
+              include: {
+                answers: {
+                  where: { isPublished: true },
+                  orderBy: { version: 'desc' },
+                  take: 1,
+                },
+              },
+            });
+            if (!question || question.status !== QuestionPublicationStatus.PUBLISHED) {
+              throw new DomainException(
+                ErrorCode.QUESTION_BANK_NOT_FOUND,
+                'Question not found or not published',
+                HttpStatus.NOT_FOUND,
+              );
+            }
+            const activeAnswer = question.answers[0];
+            if (!activeAnswer) {
+              throw new DomainException(
+                ErrorCode.QUESTION_BANK_ANSWER_UNAVAILABLE,
+                'Answer is currently unavailable for this question',
+                HttpStatus.CONFLICT,
+              );
+            }
 
-        const entitlementPolicy = await this.reservationService.getPolicyInTransaction(
-          tx,
-          userId,
-          EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
-        );
-        const existingGrant = await tx.questionAnswerAccessGrant.findUnique({
-          where: {
-            userId_questionId_answerId_accessPeriodKey: {
+            const entitlementPolicy = await this.reservationService.getPolicyInTransaction(
+              tx,
               userId,
-              questionId: question.id,
-              answerId: activeAnswer.id,
-              accessPeriodKey: entitlementPolicy.accessPeriodKey,
-            },
-          },
-        });
-        if (existingGrant) {
-          return { isReplay: true, activeAnswer };
-        }
+              EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
+            );
+            const existingGrant = await tx.questionAnswerAccessGrant.findUnique({
+              where: {
+                userId_questionId_answerId_accessPeriodKey: {
+                  userId,
+                  questionId: question.id,
+                  answerId: activeAnswer.id,
+                  accessPeriodKey: entitlementPolicy.accessPeriodKey,
+                },
+              },
+            });
+            if (existingGrant) {
+              return { isReplay: true, activeAnswer };
+            }
 
-        const reservation = await this.reservationService.reserveInTransaction(tx, {
-          userId,
-          metric: EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
-          quantity: 1,
-          idempotencyKey: cleanIdempotencyKey,
-          operationType: 'question-bank.answer-reveal',
-          operationId: `${question.id}:${activeAnswer.id}`,
-        });
-        if (reservation.isNewReservation !== true) {
-          throw new ConflictException(
-            'This reveal operation has already been processed or is awaiting reconciliation.',
-          );
-        }
-        if (reservation.state === 'COMMITTED') {
-          throw new ConflictException('A committed reveal reservation is missing its access grant');
-        }
-        if (reservation.state !== 'RESERVED') {
-          throw new ConflictException(
-            'The reveal operation is awaiting entitlement reconciliation',
-          );
-        }
-
-        const grant = await tx.questionAnswerAccessGrant.create({
-          data: {
-            userId,
-            questionId: question.id,
-            answerId: activeAnswer.id,
-            accessPeriodKey: reservation.accessPeriodKey,
-            idempotencyKey: cleanIdempotencyKey,
-            entitlementKey: EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
-            policyVersion: 'v2-atomic-reservation',
-          },
-        });
-        await tx.questionBankUsageLedger.create({
-          data: {
-            userId,
-            entitlementKey: EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
-            accessPeriodKey: reservation.accessPeriodKey,
-            quantity: 1,
-            grantId: grant.id,
-          },
-        });
-        await this.reservationService.commitInTransaction(tx, {
-          reservationId: reservation.id,
-          actualQuantity: 1,
-        });
-        await tx.auditLog.create({
-          data: {
-            userId,
-            action: AuditAction.QUESTION_BANK_ANSWER_REVEALED,
-            resource: 'question-bank',
-            resourceId: question.id,
-            details: {
-              questionId: question.id,
-              answerId: activeAnswer.id,
-              version: activeAnswer.version,
-              accessPeriodKey: reservation.accessPeriodKey,
+            const reservation = await this.reservationService.reserveInTransaction(tx, {
+              userId,
+              metric: EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
+              quantity: 1,
               idempotencyKey: cleanIdempotencyKey,
+              operationType: 'question-bank.answer-reveal',
+              operationId: `${question.id}:${activeAnswer.id}`,
+            });
+            if (reservation.isNewReservation !== true) {
+              const recheckedGrant = await tx.questionAnswerAccessGrant.findUnique({
+                where: {
+                  userId_questionId_answerId_accessPeriodKey: {
+                    userId,
+                    questionId: question.id,
+                    answerId: activeAnswer.id,
+                    accessPeriodKey: reservation.accessPeriodKey,
+                  },
+                },
+              });
+              if (recheckedGrant) {
+                return { isReplay: true, activeAnswer };
+              }
+              throw new ConflictException(
+                'This reveal operation has already been processed or is awaiting reconciliation.',
+              );
+            }
+            if (reservation.state === 'COMMITTED') {
+              return { isReplay: true, activeAnswer };
+            }
+            if (reservation.state !== 'RESERVED') {
+              throw new ConflictException(
+                'The reveal operation is awaiting entitlement reconciliation',
+              );
+            }
+
+            const grant = await tx.questionAnswerAccessGrant.create({
+              data: {
+                userId,
+                questionId: question.id,
+                answerId: activeAnswer.id,
+                accessPeriodKey: reservation.accessPeriodKey,
+                idempotencyKey: cleanIdempotencyKey,
+                entitlementKey: EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
+                policyVersion: 'v2-atomic',
+              },
+            });
+            await tx.questionBankUsageLedger.create({
+              data: {
+                userId,
+                entitlementKey: EntitlementMetric.QUESTION_BANK_ANSWER_REVEALS,
+                accessPeriodKey: reservation.accessPeriodKey,
+                quantity: 1,
+                grantId: grant.id,
+              },
+            });
+            await this.reservationService.commitInTransaction(tx, {
               reservationId: reservation.id,
-            },
+              actualQuantity: 1,
+            });
+            await tx.auditLog.create({
+              data: {
+                userId,
+                action: AuditAction.QUESTION_BANK_ANSWER_REVEALED,
+                resource: 'question-bank',
+                resourceId: question.id,
+                details: {
+                  questionId: question.id,
+                  answerId: activeAnswer.id,
+                  version: activeAnswer.version,
+                  accessPeriodKey: reservation.accessPeriodKey,
+                  idempotencyKey: cleanIdempotencyKey,
+                  reservationId: reservation.id,
+                },
+              },
+            });
+            return { isReplay: false, activeAnswer };
           },
-        });
-        return { isReplay: false, activeAnswer };
-      },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10_000 },
-    );
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 10_000 },
+        );
+        break;
+      } catch (error: any) {
+        lastError = error;
+        const isRetryable =
+          error?.code === 'P2034' ||
+          error?.code === 'P2002' ||
+          error?.code === 'ENTITLEMENT_RETRY' ||
+          error?.message?.includes('Entitlement bucket changed concurrently') ||
+          (error instanceof ConflictException &&
+            (error.message.includes('already been processed') ||
+              error.message.includes('missing its access grant')));
+        if (!isRetryable || attempt === MAX_RETRIES) {
+          throw error;
+        }
+        await new Promise(resolve => setTimeout(resolve, 15 * attempt + Math.random() * 20));
+      }
+    }
+
+    if (!grantResult) {
+      throw lastError || new ConflictException('Failed to complete reveal operation');
+    }
 
     const entitlement = await this.entitlementService.getEffectiveEntitlement(userId);
     const answerDto: QuestionBankAnswerDto = {
@@ -907,8 +946,11 @@ export class QuestionBankService {
           questionType: dto.questionType,
           difficulty: dto.difficulty || 3,
           language: dto.language || 'vi',
-          status: QuestionPublicationStatus.PUBLISHED,
-          publishedAt: new Date(),
+          // Every new question must complete the review workflow before it
+          // can become visible. Do not accept an unvalidated status from a
+          // caller (the DTO intentionally has no status field).
+          status: QuestionPublicationStatus.DRAFT,
+          publishedAt: null,
           minimumEntitlement: dto.minimumEntitlement,
           createdById: authorId,
           jobRoleId: dto.jobRoleId,
@@ -927,7 +969,7 @@ export class QuestionBankService {
           rubric: dto.initialAnswer?.rubric || Prisma.DbNull,
           commonMistakes: dto.initialAnswer?.commonMistakes || Prisma.DbNull,
           sourceType: dto.initialAnswer?.sourceType || 'curated',
-          isPublished: true,
+          isPublished: false,
         },
       });
 
@@ -981,100 +1023,134 @@ export class QuestionBankService {
       );
     }
 
-    const updated = await this.prisma.$transaction(async tx => {
-      // If question is not published/archived, update directly
-      const q = await tx.questionBankQuestion.update({
-        where: { id },
-        data: {
-          title: dto.title,
-          slug: dto.slug ? this.slugify(dto.slug) : undefined,
-          questionBody: dto.questionBody,
-          questionType: dto.questionType,
-          difficulty: dto.difficulty,
-          language: dto.language,
-          jobRoleId: dto.jobRoleId,
-          seniorityLevelId: dto.seniorityLevelId,
-          minimumEntitlement: dto.minimumEntitlement,
-        },
-      });
+    const updated = await this.prisma.$transaction(
+      async tx => {
+        const questionFieldsChanged =
+          dto.title !== undefined ||
+          dto.slug !== undefined ||
+          dto.questionBody !== undefined ||
+          dto.questionType !== undefined ||
+          dto.difficulty !== undefined ||
+          dto.language !== undefined ||
+          dto.jobRoleId !== undefined ||
+          dto.seniorityLevelId !== undefined ||
+          dto.minimumEntitlement !== undefined ||
+          dto.technologyIds !== undefined;
+        const answerFieldsChanged =
+          dto.answerBody !== undefined ||
+          dto.authority !== undefined ||
+          dto.explanationBody !== undefined ||
+          dto.rubric !== undefined ||
+          dto.commonMistakes !== undefined ||
+          dto.sourceType !== undefined;
+        const contentChanged = questionFieldsChanged || answerFieldsChanged;
+        // A reviewed or published question cannot be edited in place. Reset it
+        // to DRAFT so
+        // the new content must pass submit-review -> review -> publish, while
+        // retaining the currently published answer and currentAnswerId until
+        // the approved revision is published.
+        const q = await tx.questionBankQuestion.update({
+          where: { id },
+          data: {
+            title: dto.title,
+            slug: dto.slug ? this.slugify(dto.slug) : undefined,
+            questionBody: dto.questionBody,
+            questionType: dto.questionType,
+            difficulty: dto.difficulty,
+            language: dto.language,
+            jobRoleId: dto.jobRoleId,
+            seniorityLevelId: dto.seniorityLevelId,
+            minimumEntitlement: dto.minimumEntitlement,
+            ...(question.status !== QuestionPublicationStatus.DRAFT && contentChanged
+              ? { status: QuestionPublicationStatus.DRAFT }
+              : {}),
+          },
+        });
 
-      // Update technologies if specified
-      if (dto.technologyIds) {
-        await tx.questionBankTechnology.deleteMany({ where: { questionId: id } });
-        if (dto.technologyIds.length > 0) {
-          await tx.questionBankTechnology.createMany({
-            data: dto.technologyIds.map(techId => ({
-              questionId: id,
-              technologyId: techId,
-            })),
-            skipDuplicates: true,
-          });
+        // Update technologies if specified
+        if (dto.technologyIds) {
+          await tx.questionBankTechnology.deleteMany({ where: { questionId: id } });
+          if (dto.technologyIds.length > 0) {
+            await tx.questionBankTechnology.createMany({
+              data: dto.technologyIds.map(techId => ({
+                questionId: id,
+                technologyId: techId,
+              })),
+              skipDuplicates: true,
+            });
+          }
         }
-      }
 
-      // If answer body or metadata updated
-      if (
-        dto.answerBody ||
-        dto.authority ||
-        dto.explanationBody ||
-        dto.rubric ||
-        dto.commonMistakes
-      ) {
-        const latestAnswer = question.answers[0];
+        // If answer body or metadata updated
+        if (answerFieldsChanged) {
+          const latestAnswer = question.answers[0];
 
-        if (question.status === QuestionPublicationStatus.DRAFT && latestAnswer) {
-          // Update draft answer in-place
-          await tx.questionBankAnswer.update({
-            where: { id: latestAnswer.id },
-            data: {
-              authority: dto.authority as any,
-              answerBody: dto.answerBody,
-              explanationBody: dto.explanationBody,
-              rubric: dto.rubric !== undefined ? dto.rubric : undefined,
-              commonMistakes: dto.commonMistakes !== undefined ? dto.commonMistakes : undefined,
-              sourceType: dto.sourceType,
-            },
-          });
-        } else {
-          // Create new revision version
-          const nextVersion = (latestAnswer?.version || 0) + 1;
-          await tx.questionBankAnswer.create({
-            data: {
-              questionId: id,
-              version: nextVersion,
-              authority:
-                (dto.authority as any) ||
-                latestAnswer?.authority ||
-                QuestionAnswerAuthority.REFERENCE,
-              answerBody: dto.answerBody || latestAnswer?.answerBody || '',
-              explanationBody:
-                dto.explanationBody !== undefined
-                  ? dto.explanationBody
-                  : latestAnswer?.explanationBody,
-              rubric: dto.rubric !== undefined ? dto.rubric : latestAnswer?.rubric || Prisma.DbNull,
-              commonMistakes:
-                dto.commonMistakes !== undefined
-                  ? dto.commonMistakes
-                  : latestAnswer?.commonMistakes || Prisma.DbNull,
-              sourceType: dto.sourceType || latestAnswer?.sourceType || 'curated',
-              isPublished: false,
-            },
-          });
+          if (question.status === QuestionPublicationStatus.DRAFT && latestAnswer) {
+            // Update draft answer in-place
+            await tx.questionBankAnswer.update({
+              where: { id: latestAnswer.id },
+              data: {
+                authority: dto.authority !== undefined ? (dto.authority as any) : undefined,
+                answerBody: dto.answerBody !== undefined ? dto.answerBody : undefined,
+                explanationBody:
+                  dto.explanationBody !== undefined ? dto.explanationBody : undefined,
+                rubric: dto.rubric !== undefined ? dto.rubric : undefined,
+                commonMistakes: dto.commonMistakes !== undefined ? dto.commonMistakes : undefined,
+                sourceType: dto.sourceType,
+                reviewedById: null,
+                reviewedAt: null,
+                reviewNotes: null,
+              },
+            });
+          } else {
+            // Create new revision version
+            const nextVersion = (latestAnswer?.version || 0) + 1;
+            await tx.questionBankAnswer.create({
+              data: {
+                questionId: id,
+                version: nextVersion,
+                authority:
+                  (dto.authority as any) ||
+                  latestAnswer?.authority ||
+                  QuestionAnswerAuthority.REFERENCE,
+                answerBody: dto.answerBody || latestAnswer?.answerBody || '',
+                explanationBody:
+                  dto.explanationBody !== undefined
+                    ? dto.explanationBody
+                    : latestAnswer?.explanationBody,
+                rubric:
+                  dto.rubric !== undefined ? dto.rubric : latestAnswer?.rubric || Prisma.DbNull,
+                commonMistakes:
+                  dto.commonMistakes !== undefined
+                    ? dto.commonMistakes
+                    : latestAnswer?.commonMistakes || Prisma.DbNull,
+                sourceType: dto.sourceType || latestAnswer?.sourceType || 'curated',
+                isPublished: false,
+              },
+            });
+          }
         }
-      }
 
-      await tx.auditLog.create({
-        data: {
-          userId: editorId,
-          action: AuditAction.QUESTION_BANK_QUESTION_UPDATED,
-          resource: 'question-bank',
-          resourceId: id,
-          details: { questionId: id },
-        },
-      });
+        await tx.auditLog.create({
+          data: {
+            userId: editorId,
+            action: AuditAction.QUESTION_BANK_QUESTION_UPDATED,
+            resource: 'question-bank',
+            resourceId: id,
+            details: {
+              questionId: id,
+              previousStatus: question.status,
+              resetForReview: question.status !== QuestionPublicationStatus.DRAFT && contentChanged,
+              revisionCreated:
+                answerFieldsChanged && question.status !== QuestionPublicationStatus.DRAFT,
+            },
+          },
+        });
 
-      return q;
-    });
+        return q;
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     return updated;
   }
@@ -1204,69 +1280,79 @@ export class QuestionBankService {
   }
 
   async adminPublish(id: string, publisherId: string): Promise<any> {
-    const question = await this.prisma.questionBankQuestion.findUnique({
-      where: { id },
-      include: {
-        answers: { orderBy: { version: 'desc' }, take: 1 },
+    return this.prisma.$transaction(
+      async tx => {
+        const question = await tx.questionBankQuestion.findUnique({
+          where: { id },
+          include: { answers: { orderBy: { version: 'desc' }, take: 1 } },
+        });
+        if (!question) {
+          throw new DomainException(
+            ErrorCode.QUESTION_BANK_NOT_FOUND,
+            'Question not found',
+            HttpStatus.NOT_FOUND,
+          );
+        }
+        if (question.status !== QuestionPublicationStatus.APPROVED) {
+          throw new DomainException(
+            ErrorCode.CONTENT_NOT_REVIEWED,
+            `Question must be in APPROVED status before publishing. Current status: [${question.status}]`,
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+
+        const latestAnswer = question.answers[0];
+        if (!latestAnswer) {
+          throw new DomainException(
+            ErrorCode.QUESTION_BANK_ANSWER_UNAVAILABLE,
+            'Cannot publish question without an approved answer',
+            HttpStatus.BAD_REQUEST,
+          );
+        }
+        if (!latestAnswer.reviewedById || !latestAnswer.reviewedAt) {
+          throw new DomainException(
+            ErrorCode.CONTENT_NOT_REVIEWED,
+            'Cannot publish an answer that has not been reviewed',
+            HttpStatus.UNPROCESSABLE_ENTITY,
+          );
+        }
+
+        // Mark answer as published
+        await tx.questionBankAnswer.update({
+          where: { id: latestAnswer.id },
+          data: { isPublished: true },
+        });
+
+        const transition = await tx.questionBankQuestion.updateMany({
+          where: { id, status: QuestionPublicationStatus.APPROVED },
+          data: {
+            status: QuestionPublicationStatus.PUBLISHED,
+            currentAnswerId: latestAnswer.id,
+            publishedAt: new Date(),
+          },
+        });
+        if (transition.count !== 1) {
+          throw new DomainException(
+            ErrorCode.CONTENT_NOT_REVIEWED,
+            'Question changed after review and must be reviewed again',
+            HttpStatus.CONFLICT,
+          );
+        }
+
+        await tx.auditLog.create({
+          data: {
+            userId: publisherId,
+            action: AuditAction.QUESTION_BANK_QUESTION_PUBLISHED,
+            resource: 'question-bank',
+            resourceId: id,
+            details: { questionId: id, answerId: latestAnswer.id, version: latestAnswer.version },
+          },
+        });
+
+        return tx.questionBankQuestion.findUnique({ where: { id } });
       },
-    });
-
-    if (!question) {
-      throw new DomainException(
-        ErrorCode.QUESTION_BANK_NOT_FOUND,
-        'Question not found',
-        HttpStatus.NOT_FOUND,
-      );
-    }
-
-    if (question.status !== QuestionPublicationStatus.APPROVED) {
-      throw new DomainException(
-        ErrorCode.CONTENT_NOT_REVIEWED,
-        `Question must be in APPROVED status before publishing. Current status: [${question.status}]`,
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
-    }
-
-    const latestAnswer = question.answers[0];
-    if (!latestAnswer) {
-      throw new DomainException(
-        ErrorCode.QUESTION_BANK_ANSWER_UNAVAILABLE,
-        'Cannot publish question without an approved answer',
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-
-    const published = await this.prisma.$transaction(async tx => {
-      // Mark answer as published
-      await tx.questionBankAnswer.update({
-        where: { id: latestAnswer.id },
-        data: { isPublished: true },
-      });
-
-      // Update question status to PUBLISHED
-      const q = await tx.questionBankQuestion.update({
-        where: { id },
-        data: {
-          status: QuestionPublicationStatus.PUBLISHED,
-          currentAnswerId: latestAnswer.id,
-          publishedAt: new Date(),
-        },
-      });
-
-      await tx.auditLog.create({
-        data: {
-          userId: publisherId,
-          action: AuditAction.QUESTION_BANK_QUESTION_PUBLISHED,
-          resource: 'question-bank',
-          resourceId: id,
-          details: { questionId: id, answerId: latestAnswer.id, version: latestAnswer.version },
-        },
-      });
-
-      return q;
-    });
-
-    return published;
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   async adminArchive(id: string, archiverId: string): Promise<any> {

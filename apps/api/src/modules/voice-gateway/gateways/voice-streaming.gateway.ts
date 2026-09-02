@@ -19,6 +19,7 @@ import { VoiceEventType, VoiceSessionStatus, SpeakerRole } from '@ai-interview/c
 import { Subscription } from 'rxjs';
 import { AuthService } from '../../auth/auth.service';
 import { InterviewService } from '../../interview/interview.service';
+import { RedisService } from '../../platform/redis/redis.service';
 import {
   EntitlementMetric,
   EntitlementReservationService,
@@ -31,6 +32,7 @@ interface ClientSessionState {
   userId?: string;
   authenticatedUser?: any;
   voiceTicketJti?: string;
+  voiceTicketInterviewId?: string;
   entitlementReservationId?: string;
   isAiSpeaking: boolean;
   cancelAiStreaming: boolean;
@@ -65,6 +67,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   private readonly logger = new Logger(VoiceStreamingGateway.name);
   private readonly activeClients = new Map<WebSocket, ClientSessionState>();
   private readonly usedTicketJtis = new Map<string, number>();
+  private readonly VOICE_TICKET_TTL_SECONDS = 60;
 
   @WebSocketServer()
   server!: Server;
@@ -80,32 +83,129 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
     private readonly entitlementReservations: EntitlementReservationService,
+    @Optional() private readonly redisService?: RedisService,
     @Optional()
     @Inject(forwardRef(() => InterviewService))
     private readonly interviewService?: InterviewService,
   ) {}
 
-  private validateVoiceTicket(
+  private isProduction(): boolean {
+    return (
+      this.configService.get<string>('nodeEnv') === 'production' ||
+      this.configService.get<string>('app.nodeEnv') === 'production' ||
+      process.env.NODE_ENV === 'production'
+    );
+  }
+
+  private async hasActiveVoiceConsent(userId: string, interviewId: string): Promise<boolean> {
+    const consentStore = (this.prisma as any).voiceConsentRecord;
+    if (!consentStore?.findUnique) {
+      if (this.isProduction()) {
+        this.logger.error('Voice consent store is unavailable; rejecting voice ticket.');
+        return false;
+      }
+      // Local gateway tests may omit the optional consent delegate. Real
+      // deployments always provide Prisma's voiceConsentRecord delegate.
+      return true;
+    }
+
+    try {
+      const consent = await consentStore.findUnique({
+        where: { userId_interviewId: { userId, interviewId } },
+        select: { revokedAt: true },
+      });
+      return Boolean(consent && !consent.revokedAt);
+    } catch (err: any) {
+      this.logger.warn(`Voice consent verification failed: ${err.message}`);
+      return false;
+    }
+  }
+
+  private async isVoiceTicketSessionRevoked(payload: any): Promise<boolean> {
+    if (typeof payload.tokenVersion !== 'number') return false;
+
+    const userStore = (this.prisma as any).user;
+    if (!userStore?.findUnique) return this.isProduction();
+
+    try {
+      const user = await userStore.findUnique({
+        where: { id: payload.sub },
+        select: { tokenVersion: true, status: true },
+      });
+      return !user || user.status === 'LOCKED' || user.tokenVersion !== payload.tokenVersion;
+    } catch (err: any) {
+      this.logger.warn(`Voice ticket session verification failed: ${err.message}`);
+      return true;
+    }
+  }
+
+  private async claimVoiceTicketJti(jti: string, expiresAt?: number): Promise<boolean> {
+    const now = Date.now();
+    const ttlSeconds = Math.max(
+      1,
+      Math.min(
+        this.VOICE_TICKET_TTL_SECONDS,
+        typeof expiresAt === 'number'
+          ? Math.ceil(Math.max(1, expiresAt * 1000 - now) / 1000)
+          : this.VOICE_TICKET_TTL_SECONDS,
+      ),
+    );
+    const redisKey = `voice_ticket:${jti}`;
+    const client = this.redisService?.getClient?.();
+
+    if (client && client.status === 'ready') {
+      try {
+        // SET NX is atomic across every API replica sharing this Redis.
+        const result = await client.set(redisKey, 'claimed', 'EX', ttlSeconds, 'NX');
+        return result === 'OK';
+      } catch (err: any) {
+        this.logger.warn(`Redis voice ticket claim failed: ${err.message}`);
+        if (this.isProduction()) return false;
+      }
+    } else if (this.isProduction()) {
+      this.logger.error('Redis is unavailable; rejecting voice ticket claim.');
+      return false;
+    }
+
+    for (const [knownJti, expiry] of this.usedTicketJtis) {
+      if (expiry <= now) this.usedTicketJtis.delete(knownJti);
+    }
+    if (this.usedTicketJtis.has(jti)) return false;
+    this.usedTicketJtis.set(jti, now + ttlSeconds * 1000);
+    return true;
+  }
+
+  private async validateVoiceTicket(
     ticket: string,
     interviewId?: string,
-  ): { sub: string; role: string; jti: string } | null {
+  ): Promise<{ sub: string; role: string; jti: string; interviewId: string } | null> {
     try {
       const secret =
         this.configService.get<string>('jwt.accessSecret') ||
         this.configService.get<string>('JWT_ACCESS_SECRET') ||
         'dev-access-secret-min-32-chars-ok';
       const payload = this.jwtService.verify<any>(ticket, { secret });
-      if (payload.tokenType !== 'VOICE_TICKET' || !payload.jti) return null;
-      if (interviewId && payload.interviewId && payload.interviewId !== interviewId) return null;
-      if (payload.jti) {
-        const now = Date.now();
-        if (this.usedTicketJtis.has(payload.jti)) {
-          this.logger.warn(`Rejected replayed voice ticket ${payload.jti}`);
-          return null;
-        }
-        this.usedTicketJtis.set(payload.jti, now + 120_000);
+      if (
+        payload.tokenType !== 'VOICE_TICKET' ||
+        typeof payload.sub !== 'string' ||
+        typeof payload.jti !== 'string' ||
+        typeof payload.interviewId !== 'string'
+      ) {
+        return null;
       }
-      return { sub: payload.sub, role: payload.role || 'CANDIDATE', jti: payload.jti };
+      if (interviewId && payload.interviewId !== interviewId) return null;
+      if (!(await this.hasActiveVoiceConsent(payload.sub, payload.interviewId))) return null;
+      if (await this.isVoiceTicketSessionRevoked(payload)) return null;
+      if (!(await this.claimVoiceTicketJti(payload.jti, payload.exp))) {
+        this.logger.warn(`Rejected replayed voice ticket ${payload.jti}`);
+        return null;
+      }
+      return {
+        sub: payload.sub,
+        role: payload.role || 'CANDIDATE',
+        jti: payload.jti,
+        interviewId: payload.interviewId,
+      };
     } catch (err: any) {
       this.logger.warn(`Voice ticket verification error: ${err.message}`);
       return null;
@@ -135,7 +235,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
         }
       }
       if (ticket) {
-        const ticketAuth = this.validateVoiceTicket(ticket);
+        const ticketAuth = await this.validateVoiceTicket(ticket);
         if (ticketAuth) {
           authenticatedUser = ticketAuth;
           userId = ticketAuth.sub;
@@ -158,6 +258,10 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       userId,
       authenticatedUser,
       voiceTicketJti,
+      voiceTicketInterviewId:
+        typeof authenticatedUser?.interviewId === 'string'
+          ? authenticatedUser.interviewId
+          : undefined,
       isAiSpeaking: false,
       cancelAiStreaming: false,
       consecutiveSpeechFrames: 0,
@@ -274,13 +378,23 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   private async handleConnectVoice(client: WebSocket, state: ClientSessionState, payload: any) {
     state.interviewId = payload.interviewId;
 
+    if (state.voiceTicketInterviewId && state.voiceTicketInterviewId !== state.interviewId) {
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Voice ticket is not valid for this interview session.',
+      });
+      client.close(1008, 'Forbidden');
+      return;
+    }
+
     if (!state.userId) {
       if (payload.ticket) {
-        const ticketAuth = this.validateVoiceTicket(payload.ticket, payload.interviewId);
+        const ticketAuth = await this.validateVoiceTicket(payload.ticket, payload.interviewId);
         if (ticketAuth) {
           state.authenticatedUser = ticketAuth;
           state.userId = ticketAuth.sub;
           state.voiceTicketJti = ticketAuth.jti;
+          state.voiceTicketInterviewId = ticketAuth.interviewId;
         }
       }
       if (!state.userId && payload.token) {
@@ -299,6 +413,24 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
         message: 'Authentication required. Missing or invalid JWT token or voice ticket.',
       });
       client.close(1008, 'Unauthorized');
+      return;
+    }
+
+    // Consent can be revoked after the handshake but before CONNECT. Re-check
+    // the durable authority at the point where the stream is actually opened.
+    const connectedUserId = state.userId;
+    const connectedInterviewId = state.interviewId;
+    if (
+      state.voiceTicketJti &&
+      (!connectedUserId ||
+        !connectedInterviewId ||
+        !(await this.hasActiveVoiceConsent(connectedUserId, connectedInterviewId)))
+    ) {
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Voice consent has been revoked. Acquire a new ticket after consenting again.',
+      });
+      client.close(1008, 'Voice Ticket Revoked');
       return;
     }
 

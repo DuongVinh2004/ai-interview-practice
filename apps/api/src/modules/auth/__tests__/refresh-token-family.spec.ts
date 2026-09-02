@@ -57,6 +57,9 @@ describe('RefreshToken Family & Security (P1-008, P1-001)', () => {
 
     authService = module.get<AuthService>(AuthService);
     jest.clearAllMocks();
+    mockPrisma.$transaction.mockImplementation((cb: any) =>
+      typeof cb === 'function' ? cb(mockPrisma) : Promise.all(cb),
+    );
   });
 
   const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
@@ -100,6 +103,76 @@ describe('RefreshToken Family & Security (P1-008, P1-001)', () => {
         details: expect.objectContaining({ familyId }),
       }),
     });
+  });
+
+  it('serializes concurrent rotation so family revocation cannot race a child insert', async () => {
+    const familyId = 'family-race-111';
+    const storedToken = {
+      id: 'token-race-1',
+      userId: 'user-race-1',
+      familyId,
+      isRevoked: false,
+      mfaVerified: false,
+      expiresAt: new Date(Date.now() + 100000),
+      user: {
+        id: 'user-race-1',
+        email: 'race@example.com',
+        role: UserRole.CANDIDATE,
+        status: UserStatus.ACTIVE,
+        mfaEnabled: false,
+        createdAt: new Date(),
+        profile: null,
+      },
+    };
+    mockPrisma.refreshToken.findUnique.mockResolvedValue(storedToken);
+
+    let tokenAvailable = true;
+    let familyRevoked = false;
+    let transactionTail = Promise.resolve();
+    const events: string[] = [];
+    mockPrisma.$transaction.mockImplementation(async (callback: any) => {
+      const run = transactionTail.then(async () => {
+        const tx = {
+          refreshToken: {
+            updateMany: jest.fn(async ({ where }: any) => {
+              if (where.id === storedToken.id) {
+                if (!tokenAvailable) return { count: 0 };
+                tokenAvailable = false;
+                events.push('source-revoked');
+                return { count: 1 };
+              }
+              if (where.familyId === familyId) {
+                familyRevoked = true;
+                events.push('family-revoked');
+              }
+              return { count: 1 };
+            }),
+            create: jest.fn(async () => {
+              events.push('child-created');
+              if (familyRevoked) throw new Error('child inserted after family revocation');
+              return { id: 'token-race-child' };
+            }),
+          },
+          auditLog: { create: jest.fn().mockResolvedValue({}) },
+          user: { update: jest.fn().mockResolvedValue({}) },
+        };
+        return callback(tx);
+      });
+      transactionTail = run.then(
+        () => undefined,
+        () => undefined,
+      );
+      return run;
+    });
+
+    const results = await Promise.allSettled([
+      authService.refreshTokens('same-refresh-token'),
+      authService.refreshTokens('same-refresh-token'),
+    ]);
+
+    expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1);
+    expect(results.filter(result => result.status === 'rejected')).toHaveLength(1);
+    expect(events).toEqual(['source-revoked', 'child-created', 'family-revoked']);
   });
 
   it('invalidates active refresh tokens and increments tokenVersion when MFA is enabled (P1-001)', async () => {

@@ -6,7 +6,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
-import { ErrorCode, UserRole } from '@ai-interview/contracts';
+import { ErrorCode, JwtPayload, UserRole } from '@ai-interview/contracts';
 import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 import * as crypto from 'crypto';
 
@@ -104,6 +104,7 @@ export class VoiceGatewayController {
     @CurrentUser('sub') userId: string,
     @CurrentUser('role') role: UserRole,
     @Body() dto: GenerateVoiceTicketDto,
+    @CurrentUser() currentUser?: JwtPayload,
   ) {
     const session = await this.prisma.interviewSession.findUnique({
       where: { id: dto.interviewId },
@@ -156,6 +157,9 @@ export class VoiceGatewayController {
         role: session.userId === userId ? role : UserRole.ADMIN,
         tokenType: 'VOICE_TICKET',
         jti: ticketId,
+        ...(typeof currentUser?.tokenVersion === 'number'
+          ? { tokenVersion: currentUser.tokenVersion }
+          : {}),
       },
       {
         secret,

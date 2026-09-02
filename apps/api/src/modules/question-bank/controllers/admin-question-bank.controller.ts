@@ -10,6 +10,7 @@ import {
   AdminCreateQuestionDto,
   AdminUpdateQuestionDto,
   AdminReviewQuestionDto,
+  AdminListQuestionsQueryDto,
 } from '../dto/question-bank.dto';
 
 @ApiTags('Admin Question Bank')
@@ -22,7 +23,7 @@ export class AdminQuestionBankController {
 
   @Get('questions')
   @ApiOperation({ summary: 'Admin list questions across all publication states' })
-  async listQuestions(@Query() query: any) {
+  async listQuestions(@Query() query: AdminListQuestionsQueryDto) {
     return this.questionBankService.adminListQuestions(query);
   }
 

@@ -47,24 +47,32 @@ export class DataRetentionCron {
         include: { fileAsset: true },
       });
 
-      if (this.storageService) {
-        for (const doc of expiredDocs) {
-          if (doc.fileAsset) {
-            try {
-              await this.storageService.deleteFile(doc.userId, doc.fileAsset.key, 'ADMIN');
-            } catch (storageErr: any) {
-              this.logger.warn(
-                `Failed to delete storage asset ${doc.fileAsset.key} for expired doc ${doc.id}: ${storageErr.message}`,
-              );
-            }
-          }
+      const purgeableDocumentIds: string[] = [];
+      for (const doc of expiredDocs) {
+        if (!doc.fileAsset) {
+          purgeableDocumentIds.push(doc.id);
+          continue;
+        }
+        if (!this.storageService) {
+          this.logger.warn(
+            `Storage service unavailable; retaining expired doc ${doc.id} for a later deletion retry.`,
+          );
+          continue;
+        }
+        try {
+          await this.storageService.deleteFile(doc.userId, doc.fileAsset.key, 'ADMIN');
+          purgeableDocumentIds.push(doc.id);
+        } catch (storageErr: any) {
+          this.logger.warn(
+            `Failed to delete storage asset ${doc.fileAsset.key} for expired doc ${doc.id}: ${storageErr.message}. Retaining document for retry.`,
+          );
         }
       }
 
       // 2. Physically delete expired UserDocuments (CVs, JDs, blueprints older than retention window)
       const deletedDocs = await this.prisma.userDocument.deleteMany({
         where: {
-          id: { in: expiredDocs.map(d => d.id) },
+          id: { in: purgeableDocumentIds },
         },
       });
 
@@ -148,23 +156,31 @@ export class DataRetentionCron {
       include: { fileAsset: true },
     });
 
-    if (this.storageService) {
-      for (const doc of expiredDocs) {
-        if (doc.fileAsset) {
-          try {
-            await this.storageService.deleteFile(doc.userId, doc.fileAsset.key, 'ADMIN');
-          } catch (storageErr: any) {
-            this.logger.warn(
-              `Failed to delete storage asset ${doc.fileAsset.key} for expired doc ${doc.id}: ${storageErr.message}`,
-            );
-          }
-        }
+    const purgeableDocumentIds: string[] = [];
+    for (const doc of expiredDocs) {
+      if (!doc.fileAsset) {
+        purgeableDocumentIds.push(doc.id);
+        continue;
+      }
+      if (!this.storageService) {
+        this.logger.warn(
+          `Storage service unavailable; retaining expired doc ${doc.id} for a later deletion retry.`,
+        );
+        continue;
+      }
+      try {
+        await this.storageService.deleteFile(doc.userId, doc.fileAsset.key, 'ADMIN');
+        purgeableDocumentIds.push(doc.id);
+      } catch (storageErr: any) {
+        this.logger.warn(
+          `Failed to delete storage asset ${doc.fileAsset.key} for expired doc ${doc.id}: ${storageErr.message}. Retaining document for retry.`,
+        );
       }
     }
 
     const deletedDocs = await this.prisma.userDocument.deleteMany({
       where: {
-        id: { in: expiredDocs.map(d => d.id) },
+        id: { in: purgeableDocumentIds },
       },
     });
 

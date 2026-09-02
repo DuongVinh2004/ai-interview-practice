@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "harden-jwt-session-replay",
+  "title": "Harden Refresh Token Family against Token Replay and Theft",
+  "description": "Implement token rotation and automatic family invalidation when a compromised refresh token is reused.",
+  "domain": "SECURITY",
+  "category": "SECURITY_REMEDIATION",
+  "difficulty": 4,
+  "estimatedMinutes": 45,
+  "environment": {
+    "runtime": "node:22",
+    "memoryLimitMb": 512,
+    "cpuLimit": 1.0
+  },
+  "visibleFiles": ["src/token.service.ts", "test/token.test.ts"],
+  "editableFiles": ["src/token.service.ts"],
+  "hiddenFiles": ["test/hidden-token-family.test.ts"],
+  "commands": [
+    {
+      "id": "test",
+      "label": "Run Auth Tests",
+      "command": "npm test",
+      "args": [],
+      "timeoutSeconds": 15,
+      "isVerification": false
+    }
+  ],
+  "rubric": {
+    "version": "1.0",
+    "objectiveWeight": 0.7,
+    "rubricWeight": 0.3,
+    "criteria": [
+      {
+        "key": "token_family_revocation",
+        "name": "Token Family Invalidation",
+        "description": "Revokes all descendant tokens if an already-used refresh token is presented.",
+        "maxPoints": 50
+      }
+    ]
+  },
+  "skills": [
+    {
+      "taxonomyKey": "security_jwt_token_rotation",
+      "weight": 1.0
+    }
+  ]
+}

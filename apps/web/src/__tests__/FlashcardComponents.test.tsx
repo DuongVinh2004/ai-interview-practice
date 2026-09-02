@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { FlashcardItem } from '../components/flashcards/FlashcardItem';
 import { StreakHeatmap } from '../components/flashcards/StreakHeatmap';
 import { CreateCardModal } from '../components/flashcards/CreateCardModal';
@@ -63,7 +63,7 @@ describe('Flashcard & Spaced Repetition Components (F005)', () => {
     expect(screen.getByText('88')).toBeInTheDocument();
   });
 
-  it('renders CreateCardModal and submits new flashcard data', () => {
+  it('renders CreateCardModal and submits new flashcard data', async () => {
     const onCreateCard = vi.fn().mockResolvedValue({ id: 'card-1' });
     const onClose = vi.fn();
 
@@ -93,11 +93,14 @@ describe('Flashcard & Spaced Repetition Components (F005)', () => {
     const submitBtn = screen.getByText('Tạo Flashcard');
     fireEvent.click(submitBtn);
 
-    expect(onCreateCard).toHaveBeenCalledWith({
-      deckId: 'deck-123',
-      type: CardType.CONCEPT,
-      frontContent: 'Explain idempotency in REST APIs',
-      backContent: 'Making multiple identical requests has the same effect as a single request.',
+    await waitFor(() => {
+      expect(onCreateCard).toHaveBeenCalledWith({
+        deckId: 'deck-123',
+        type: CardType.CONCEPT,
+        frontContent: 'Explain idempotency in REST APIs',
+        backContent: 'Making multiple identical requests has the same effect as a single request.',
+      });
+      expect(onClose).toHaveBeenCalled();
     });
   });
 });

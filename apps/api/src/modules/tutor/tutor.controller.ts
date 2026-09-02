@@ -25,7 +25,7 @@ export class TutorController {
   constructor(private readonly tutorService: TutorService) {}
 
   @Post('sessions')
-  async createSession(@CurrentUser('sub') userId: string, @Body() body: any) {
+  async createSession(@CurrentUser('sub') userId: string, @Body() body: unknown) {
     const parsed = CreateTutorSessionRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid session payload');
@@ -42,7 +42,7 @@ export class TutorController {
   async chatStream(
     @CurrentUser('sub') userId: string,
     @Param('id') sessionId: string,
-    @Body() body: any,
+    @Body() body: unknown,
     @Res() res: Response,
   ) {
     const parsed = AskTutorRequestSchema.safeParse(body);
@@ -53,7 +53,7 @@ export class TutorController {
   }
 
   @Post('retry')
-  async submitRetry(@CurrentUser('sub') userId: string, @Body() body: any) {
+  async submitRetry(@CurrentUser('sub') userId: string, @Body() body: unknown) {
     const parsed = QuestionRetryRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid retry payload');
@@ -65,7 +65,7 @@ export class TutorController {
   async rateTutor(
     @CurrentUser('sub') userId: string,
     @Param('id') sessionId: string,
-    @Body() body: any,
+    @Body() body: unknown,
   ) {
     const parsed = TutorRatingRequestSchema.safeParse(body);
     if (!parsed.success) {

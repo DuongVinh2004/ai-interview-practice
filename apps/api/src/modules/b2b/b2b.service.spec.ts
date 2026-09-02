@@ -5,7 +5,7 @@ import { AssignmentService } from './services/assignment.service';
 import { CohortAnalyticsService } from './services/cohort-analytics.service';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { TenantRole, AssignmentStatus, CompetencyArea, UserRole } from '@ai-interview/contracts';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { CohortAccessPolicy } from './policies/cohort-access.policy';
 
 describe('Track F011: B2B Multi-Tenant Dashboard Module', () => {
@@ -164,11 +164,59 @@ invalid-email,"Bad Line",STUDENT`;
       mockPrisma.cohortMember.findUnique.mockResolvedValue(null);
       mockPrisma.cohortMember.create.mockResolvedValue({ id: 'cm-1' });
 
-      const result = await cohortService.importRosterCsv(cohortId, tenantId, csvData);
+      const result = await cohortService.importRosterCsv(
+        cohortId,
+        tenantId,
+        csvData,
+        TenantRole.TENANT_ADMIN,
+      );
       expect(result.totalImported).toBe(3);
       expect(result.successCount).toBe(2);
       expect(result.skippedCount).toBe(1); // 1 invalid email
       expect(result.errors.length).toBe(1);
+    });
+
+    it('does not allow an instructor CSV import to mint instructor memberships', async () => {
+      const result = await cohortService.importRosterCsv(
+        'cohort-1',
+        'tenant-1',
+        'email,fullName,role\nnew-instructor@example.com,Instructor,INSTRUCTOR',
+        TenantRole.INSTRUCTOR,
+      );
+      expect(result.successCount).toBe(0);
+      expect(result.errors[0]).toContain('Only tenant administrators');
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('allows an instructor to import students but requires an actor role', async () => {
+      mockPrisma.cohort.findFirst.mockResolvedValue({
+        id: 'cohort-1',
+        tenantId: 'tenant-1',
+        name: 'Batch',
+      });
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.create.mockResolvedValue({ id: 'student-1', email: 'student@example.com' });
+      mockPrisma.tenantMember.findUnique.mockResolvedValue(null);
+      mockPrisma.tenantMember.create.mockResolvedValue({
+        id: 'member-1',
+        tenantId: 'tenant-1',
+        userId: 'student-1',
+        role: TenantRole.STUDENT,
+      });
+      mockPrisma.cohortMember.findUnique.mockResolvedValue(null);
+      mockPrisma.cohortMember.create.mockResolvedValue({ id: 'cm-1' });
+
+      const result = await cohortService.importRosterCsv(
+        'cohort-1',
+        'tenant-1',
+        'email,fullName,role\nstudent@example.com,Student,STUDENT',
+        TenantRole.INSTRUCTOR,
+      );
+      expect(result.successCount).toBe(1);
+
+      await expect(
+        cohortService.importRosterCsv('cohort-1', 'tenant-1', 'email,fullName\na@b.com,A'),
+      ).rejects.toThrow(ForbiddenException);
     });
   });
 
@@ -232,7 +280,28 @@ invalid-email,"Bad Line",STUDENT`;
                 id: 'u-1',
                 email: 'top@test.com',
                 profile: { fullName: 'Top Student' },
-                sessions: [{ overallScore: 9.2, completedAt: new Date() }],
+                sessions: [
+                  {
+                    tenantId,
+                    overallScore: 9.2,
+                    completedAt: new Date(),
+                    turns: [
+                      {
+                        status: 'EVALUATED',
+                        question: { keyFocus: 'Load balancing' },
+                        answer: {
+                          evaluation: {
+                            score: 9.2,
+                            authorityState: 'AUTHORITATIVE',
+                            needsReview: false,
+                            provider: 'openai',
+                            evidence: ['verified rubric evidence'],
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ],
                 readinessSnapshots: [{ readinessScore: 94 }],
               },
             },
@@ -245,7 +314,28 @@ invalid-email,"Bad Line",STUDENT`;
                 id: 'u-2',
                 email: 'struggling@test.com',
                 profile: { fullName: 'Needs Help' },
-                sessions: [{ overallScore: 5.0, completedAt: new Date() }],
+                sessions: [
+                  {
+                    tenantId,
+                    overallScore: 5.0,
+                    completedAt: new Date(),
+                    turns: [
+                      {
+                        status: 'EVALUATED',
+                        question: { keyFocus: 'Garbage collection' },
+                        answer: {
+                          evaluation: {
+                            score: 5.0,
+                            authorityState: 'AUTHORITATIVE',
+                            needsReview: false,
+                            provider: 'openai',
+                            evidence: ['verified rubric evidence'],
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ],
                 readinessSnapshots: [{ readinessScore: 52 }],
               },
             },
@@ -270,6 +360,67 @@ invalid-email,"Bad Line",STUDENT`;
       expect(analytics.topPerformers[0].fullName).toBe('Top Student');
       expect(analytics.studentsNeedingHelp.length).toBe(1);
       expect(analytics.studentsNeedingHelp[0].fullName).toBe('Needs Help');
+      // The service derives readiness from this tenant's authoritative
+      // evaluations; a user-global snapshot must not be returned.
+      expect(analytics.topPerformers[0].readinessScore).toBe(92);
+    });
+
+    it('excludes non-authoritative evaluations and stale global scores from tenant analytics', async () => {
+      const tenantId = 'tenant-1';
+      const cohortId = 'cohort-1';
+      mockPrisma.cohort.findFirst.mockResolvedValue({
+        id: cohortId,
+        tenantId,
+        name: 'Tenant A',
+        assignments: [],
+        members: [
+          {
+            tenantMember: {
+              user: {
+                id: 'candidate-1',
+                email: 'candidate@example.com',
+                profile: { fullName: 'Candidate' },
+                // This is intentionally an inflated user-global snapshot.
+                readinessSnapshots: [{ readinessScore: 99 }],
+                sessions: [
+                  {
+                    tenantId,
+                    overallScore: 10,
+                    completedAt: new Date(),
+                    turns: [
+                      {
+                        status: 'EVALUATED',
+                        question: { keyFocus: 'Untrusted result' },
+                        answer: {
+                          evaluation: {
+                            score: 10,
+                            authorityState: 'NEEDS_REVIEW',
+                            needsReview: true,
+                            provider: 'mock',
+                            evidence: ['synthetic result'],
+                          },
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        ],
+      });
+
+      const analytics = await cohortAnalyticsService.getCohortAnalytics(cohortId, {
+        userId: 'instructor-1',
+        systemRole: UserRole.CANDIDATE,
+        tenantRole: TenantRole.INSTRUCTOR,
+        tenantId,
+      });
+
+      expect(analytics.overallAverageScore).toBe(0);
+      expect(analytics.activeStudents).toBe(0);
+      expect(analytics.studentsNeedingHelp[0]?.averageScore).toBe(0);
+      expect(analytics.studentsNeedingHelp[0]?.readinessScore).toBeUndefined();
     });
   });
 

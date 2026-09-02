@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { GreenRoomModal } from '../features/interview/GreenRoomModal';
 
@@ -24,6 +24,13 @@ describe('GreenRoomModal', () => {
     });
   });
 
+  afterEach(() => {
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    vi.useRealTimers();
+  });
+
   it('renders green room modal with navigation tabs and device checks', async () => {
     const onReady = vi.fn();
     const onClose = vi.fn();
@@ -37,6 +44,10 @@ describe('GreenRoomModal', () => {
         roleTitle="Senior Backend Engineer"
       />,
     );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     expect(screen.getByText(/Pre-Interview Green Room|Phòng Chuẩn Bị/i)).toBeInTheDocument();
     expect(screen.getByText(/Microphone/i)).toBeInTheDocument();
@@ -57,6 +68,10 @@ describe('GreenRoomModal', () => {
         sessionId="session-test-123"
       />,
     );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     const breathingTab = screen.getByText(/Thư giãn 4-7-8|Relaxation 4-7-8/i);
     fireEvent.click(breathingTab);
@@ -86,6 +101,10 @@ describe('GreenRoomModal', () => {
       />,
     );
 
+    await act(async () => {
+      await Promise.resolve();
+    });
+
     const warmupTab = screen.getByText(/Thử giọng|Voice Warm-up/i);
     fireEvent.click(warmupTab);
 
@@ -103,7 +122,7 @@ describe('GreenRoomModal', () => {
     expect(screen.getByText(/Test Recording Preview|Bản ghi âm thử/i)).toBeInTheDocument();
   });
 
-  it('triggers onReady when candidate clicks ready to start', () => {
+  it('triggers onReady when candidate clicks ready to start', async () => {
     const onReady = vi.fn();
     render(
       <GreenRoomModal
@@ -113,6 +132,10 @@ describe('GreenRoomModal', () => {
         sessionId="session-test-123"
       />,
     );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     const readyBtn = screen.getByText(/Sẵn sàng vào phỏng vấn|Ready to Start Interview/i);
     fireEvent.click(readyBtn);

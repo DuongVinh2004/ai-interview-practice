@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "slug": "fix-user-profile-bola",
+  "title": "Fix Broken Object Level Authorization (BOLA) in Profile API",
+  "description": "Audit and fix BOLA vulnerability where candidates can update profiles belonging to other users.",
+  "domain": "SECURITY",
+  "category": "SECURITY_REMEDIATION",
+  "difficulty": 3,
+  "estimatedMinutes": 30,
+  "environment": {
+    "runtime": "node:22",
+    "memoryLimitMb": 512,
+    "cpuLimit": 1.0
+  },
+  "visibleFiles": ["src/profile.controller.ts", "test/profile.test.ts"],
+  "editableFiles": ["src/profile.controller.ts"],
+  "hiddenFiles": ["test/hidden-bola.test.ts"],
+  "commands": [
+    {
+      "id": "test",
+      "label": "Run Unit Tests",
+      "command": "npm test",
+      "args": [],
+      "timeoutSeconds": 15,
+      "isVerification": false
+    }
+  ],
+  "rubric": {
+    "version": "1.0",
+    "objectiveWeight": 0.7,
+    "rubricWeight": 0.3,
+    "criteria": [
+      {
+        "key": "auth_scoping",
+        "name": "Authorization Scoping",
+        "description": "Enforce current user ID check against requested profile ID.",
+        "maxPoints": 50
+      }
+    ]
+  },
+  "skills": [
+    {
+      "taxonomyKey": "security_authorization_bola",
+      "weight": 1.0
+    }
+  ]
+}

@@ -10,6 +10,7 @@ import { QrCodeService } from './qr-code.service';
 import { BadgeService } from './badge.service';
 import { CompetencyArea, CertificateStatus, BadgeLevel } from '@ai-interview/contracts';
 import { v4 as uuidv4 } from 'uuid';
+import { isPersistedAuthoritativeEvaluation } from '../../evaluation/evaluation-authority';
 
 @Injectable()
 export class CertificateService {
@@ -25,9 +26,6 @@ export class CertificateService {
     competencyArea?: CompetencyArea,
     type: string = 'COMPETENCY',
   ) {
-    // 1. Sync badges to get latest progress
-    await this.badgeService.syncUserBadges(userId);
-
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: { profile: true },
@@ -39,22 +37,43 @@ export class CertificateService {
 
     const area = competencyArea || CompetencyArea.SYSTEM_DESIGN;
 
-    // 2. Check if user holds at least Gold or Platinum badge in this area or overall
-    const badge = await this.prisma.userBadge.findFirst({
+    // Badges are a cache/materialized view and may be stale or manually
+    // inserted. Recompute the credential threshold from current authoritative
+    // evidence at issuance time; a stale Gold badge must never qualify alone.
+    const turns = await this.prisma.interviewTurn.findMany({
       where: {
-        userId,
-        competencyArea: area,
-        level: { in: [BadgeLevel.GOLD, BadgeLevel.PLATINUM] },
+        status: 'EVALUATED',
+        session: { userId, competencyArea: area },
+        answer: {
+          evaluation: {
+            is: {
+              authorityState: 'AUTHORITATIVE',
+              needsReview: false,
+            },
+          },
+        },
       },
-      orderBy: { earnedAt: 'desc' },
+      include: { answer: { include: { evaluation: true } } },
     });
 
-    if (!badge) {
+    const authoritativeEvaluations = turns
+      .map(turn => turn.answer?.evaluation)
+      .filter((evaluation): evaluation is NonNullable<typeof evaluation> =>
+        isPersistedAuthoritativeEvaluation(evaluation),
+      );
+    const evidenceCount = authoritativeEvaluations.length;
+    const score =
+      evidenceCount > 0
+        ? authoritativeEvaluations.reduce((sum, evaluation) => sum + evaluation.score, 0) /
+          evidenceCount
+        : 0;
+    const currentLevel = this.badgeService.calculateUnlockedBadge(score, evidenceCount);
+
+    if (currentLevel !== BadgeLevel.GOLD && currentLevel !== BadgeLevel.PLATINUM) {
       throw new BadRequestException(
-        'Certificate issuance requires a Gold or Platinum badge backed by authoritative evaluation evidence.',
+        'Certificate issuance requires current authoritative evidence meeting the Gold threshold.',
       );
     }
-    const score = badge.score;
 
     const certId = uuidv4();
     const issuedAt = new Date();

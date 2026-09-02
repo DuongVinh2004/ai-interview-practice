@@ -18,6 +18,33 @@ import { B2bArenaTenantGuard } from './guards/b2b-arena.guard';
 import { ArenaChallengeRepository } from './repositories/arena-challenge.repository';
 import { ArenaSessionRepository } from './repositories/arena-session.repository';
 import { PrismaModule } from '../platform/prisma/prisma.module';
+import { WORKSPACE_RUNTIME } from './runtime/workspace-runtime.interface';
+
+export function selectWorkspaceRuntime(
+  deterministicRuntime: DeterministicLocalWorkspaceRuntime,
+  dockerRuntime: DockerSandboxWorkspaceRuntime,
+) {
+  const requestedRuntime = (process.env.ARENA_WORKSPACE_RUNTIME || '').trim().toLowerCase();
+  const isProduction =
+    (process.env.NODE_ENV || process.env.APP_ENV || '').trim().toLowerCase() === 'production';
+
+  if (requestedRuntime === 'deterministic') {
+    if (isProduction) {
+      throw new Error(
+        'Deterministic Arena runtime is not permitted in production; configure a container runtime.',
+      );
+    }
+    return deterministicRuntime;
+  }
+
+  if (requestedRuntime && requestedRuntime !== 'docker') {
+    throw new Error(`Unsupported Arena workspace runtime '${requestedRuntime}'.`);
+  }
+
+  // Docker is the only default outside the explicit development/test
+  // deterministic mode. Its adapter fails closed if Docker is absent.
+  return dockerRuntime;
+}
 
 @Module({
   imports: [PrismaModule],
@@ -38,6 +65,11 @@ import { PrismaModule } from '../platform/prisma/prisma.module';
     B2bArenaTenantGuard,
     ArenaChallengeRepository,
     ArenaSessionRepository,
+    {
+      provide: WORKSPACE_RUNTIME,
+      inject: [DeterministicLocalWorkspaceRuntime, DockerSandboxWorkspaceRuntime],
+      useFactory: selectWorkspaceRuntime,
+    },
   ],
   exports: [
     EngineeringArenaService,
@@ -55,6 +87,7 @@ import { PrismaModule } from '../platform/prisma/prisma.module';
     B2bArenaTenantGuard,
     ArenaChallengeRepository,
     ArenaSessionRepository,
+    WORKSPACE_RUNTIME,
   ],
 })
 export class EngineeringArenaModule {}

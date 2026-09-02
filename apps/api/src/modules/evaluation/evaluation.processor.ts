@@ -104,6 +104,12 @@ export class EvaluationProcessor extends WorkerHost {
         !session.learningPath
       ) {
         await this.enqueueLearningPath(sessionId, traceparent);
+      } else if (
+        session.state === SessionState.ACTIVE &&
+        turnNumber < totalTurns &&
+        session.currentTurn === turnNumber + 1
+      ) {
+        await this.enqueueNextQuestion(sessionId, turnNumber + 1, traceparent);
       }
       this.logger.warn(
         `Turn ${turn.turnNumber} for session ${sessionId} is already evaluated. Skipping duplicate execution.`,
@@ -135,6 +141,18 @@ export class EvaluationProcessor extends WorkerHost {
           !session.learningPath
         ) {
           await this.enqueueLearningPath(sessionId, traceparent);
+        } else {
+          const currentSession = await this.prisma.interviewSession.findUnique({
+            where: { id: sessionId },
+            select: { state: true, currentTurn: true },
+          });
+          if (
+            currentSession?.state === SessionState.ACTIVE &&
+            turnNumber < totalTurns &&
+            currentSession.currentTurn === turnNumber + 1
+          ) {
+            await this.enqueueNextQuestion(sessionId, turnNumber + 1, traceparent);
+          }
         }
       }
       this.logger.warn(
@@ -402,34 +420,12 @@ export class EvaluationProcessor extends WorkerHost {
       if (!isFinalTurn) {
         if (didTransition) {
           const nextTurnNumber = turnNumber + 1;
-          const nextTurn = await this.prisma.interviewTurn.findFirst({
-            where: { sessionId, turnNumber: nextTurnNumber },
-          });
-
           this.sseService.emitSessionEvent(sessionId, SseEventType.SESSION_UPDATED, {
             sessionId,
             currentTurn: nextTurnNumber,
             difficulty: nextDifficulty,
           });
-
-          if (nextTurn) {
-            const nextJobId = `question-${sessionId}-turn-${nextTurnNumber}`;
-            await this.questionQueue.add(
-              JobName.GENERATE_QUESTION,
-              {
-                sessionId,
-                turnId: nextTurn.id,
-                turnNumber: nextTurnNumber,
-                difficulty: nextDifficulty,
-                traceparent,
-              },
-              {
-                jobId: nextJobId,
-                attempts: 3,
-                backoff: { type: 'exponential', delay: 1000 },
-              },
-            );
-          }
+          await this.enqueueNextQuestion(sessionId, nextTurnNumber, traceparent);
         } else {
           this.logger.warn(
             `Session ${sessionId} is in terminal state. Skipping next question dispatch.`,
@@ -523,6 +519,35 @@ export class EvaluationProcessor extends WorkerHost {
       { sessionId, traceparent },
       {
         jobId: `lp-${sessionId}`,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+      },
+    );
+  }
+
+  private async enqueueNextQuestion(
+    sessionId: string,
+    nextTurnNumber: number,
+    traceparent?: string,
+  ): Promise<void> {
+    const nextTurn = await this.prisma.interviewTurn.findFirst({
+      where: { sessionId, turnNumber: nextTurnNumber },
+    });
+    if (!nextTurn || nextTurn.status !== 'PENDING') {
+      return;
+    }
+
+    await this.questionQueue.add(
+      JobName.GENERATE_QUESTION,
+      {
+        sessionId,
+        turnId: nextTurn.id,
+        turnNumber: nextTurnNumber,
+        difficulty: nextTurn.difficulty,
+        traceparent,
+      },
+      {
+        jobId: `question-${sessionId}-turn-${nextTurnNumber}`,
         attempts: 3,
         backoff: { type: 'exponential', delay: 1000 },
       },

@@ -38,6 +38,11 @@ if [[ ! "${TARGET_DATABASE}" =~ ^ai_interview_restore_drill_[a-zA-Z0-9_]+$ ]]; t
   exit 2
 fi
 
+if [[ "${DRILL_DATABASE_URL}" =~ (production|prod-db|live-db|\.internal:5432\/ai_interview_practice) ]]; then
+  echo "ERROR: DRILL_DATABASE_URL matches production host patterns. Aborting." >&2
+  exit 2
+fi
+
 EXISTING_TABLES="$(psql "${DRILL_DATABASE_URL}" -XAtc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE'")"
 if [[ "${EXISTING_TABLES}" != "0" ]]; then
   echo "ERROR: restore target is not empty; refusing to overwrite existing data" >&2

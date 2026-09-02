@@ -1,0 +1,14 @@
+﻿# Semgrep ignore file
+# Exclude tests, tooling scripts, challenges, and build outputs from SAST application rules
+infra/scripts/
+challenges/
+apps/api/test/
+**/*.spec.ts
+**/*.test.ts
+**/*.test.tsx
+node_modules/
+dist/
+build/
+.cache/
+test-results/
+playwright-report/

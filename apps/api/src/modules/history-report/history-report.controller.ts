@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiParam } from '@nestj
 import { HistoryReportService } from './history-report.service';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { UserRole, SessionState, SessionMode } from '@ai-interview/contracts';
+import { UserRole, SessionState, SessionMode, JwtPayload } from '@ai-interview/contracts';
 
 @ApiTags('History & Results')
 @ApiBearerAuth()
@@ -48,10 +48,10 @@ export class HistoryReportController {
   @Get(':id/result')
   @ApiOperation({ summary: 'Get full result breakdown and rubrics for a completed interview' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
-  async getSessionResult(@CurrentUser() user: any, @Param('id') sessionId: string) {
+  async getSessionResult(@CurrentUser() user: JwtPayload, @Param('id') sessionId: string) {
     return this.historyReportService.getSessionResult(
       user.sub,
-      user.role,
+      user.role as UserRole,
       sessionId,
       user.mfaVerified,
     );

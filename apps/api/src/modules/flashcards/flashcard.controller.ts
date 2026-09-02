@@ -32,7 +32,7 @@ export class FlashcardController {
   }
 
   @Post('decks')
-  async createDeck(@CurrentUser('sub') userId: string, @Body() body: any) {
+  async createDeck(@CurrentUser('sub') userId: string, @Body() body: unknown) {
     const parsed = CreateDeckRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid deck payload');
@@ -44,7 +44,7 @@ export class FlashcardController {
   async updateDeck(
     @CurrentUser('sub') userId: string,
     @Param('id') deckId: string,
-    @Body() body: any,
+    @Body() body: unknown,
   ) {
     const parsed = UpdateDeckRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -77,9 +77,10 @@ export class FlashcardController {
   async createFlashcard(
     @CurrentUser('sub') userId: string,
     @Param('id') deckId: string,
-    @Body() body: any,
+    @Body() body: unknown,
   ) {
-    const parsed = CreateFlashcardRequestSchema.safeParse({ ...body, deckId });
+    const payload = typeof body === 'object' && body !== null ? body : {};
+    const parsed = CreateFlashcardRequestSchema.safeParse({ ...payload, deckId });
     if (!parsed.success) {
       throw new BadRequestException(parsed.error.errors[0]?.message || 'Invalid card payload');
     }
@@ -95,7 +96,7 @@ export class FlashcardController {
   async reviewCard(
     @CurrentUser('sub') userId: string,
     @Param('id') cardId: string,
-    @Body() body: any,
+    @Body() body: unknown,
   ) {
     const parsed = ReviewCardRequestSchema.safeParse(body);
     if (!parsed.success) {
@@ -105,7 +106,7 @@ export class FlashcardController {
   }
 
   @Post('auto-generate')
-  async autoGenerate(@CurrentUser('sub') userId: string, @Body() body: any) {
+  async autoGenerate(@CurrentUser('sub') userId: string, @Body() body: unknown) {
     const parsed = AutoGenerateFlashcardsRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(

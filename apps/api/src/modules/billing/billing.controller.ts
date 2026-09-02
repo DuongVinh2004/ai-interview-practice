@@ -5,7 +5,7 @@ import { UsageMeterService } from './usage-meter.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { CreateCheckoutDto, ValidatePromoDto } from './dto/billing.dto';
+import { CreateCheckoutDto, CreatePayosCheckoutDto, ValidatePromoDto } from './dto/billing.dto';
 
 @ApiTags('Billing & Subscriptions')
 @Controller('billing')
@@ -45,7 +45,10 @@ export class BillingController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Create PayOS VietQR payment link for subscription upgrade' })
-  async createPayosCheckout(@CurrentUser('sub') userId: string, @Body() dto: any) {
+  async createPayosCheckout(
+    @CurrentUser('sub') userId: string,
+    @Body() dto: CreatePayosCheckoutDto,
+  ) {
     return this.billingService.createPayosPayment(userId, {
       planSlug: dto.planSlug,
       billingCycle: dto.billingCycle || 'monthly',

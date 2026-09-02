@@ -4,6 +4,17 @@ import {
   ArenaWorkspaceFileUpdate,
 } from '@ai-interview/contracts';
 
+// Use an explicit token so the arena cannot silently resolve the deterministic
+// adapter merely because it happens to be registered in the module.
+export const WORKSPACE_RUNTIME = Symbol('WORKSPACE_RUNTIME');
+
+export class WorkspaceRuntimeUnavailableError extends Error {
+  constructor(message = 'Engineering Arena workspace runtime is unavailable') {
+    super(message);
+    this.name = 'WorkspaceRuntimeUnavailableError';
+  }
+}
+
 export interface WorkspaceProvisionParams {
   sessionId: string;
   workspaceHandle: string;

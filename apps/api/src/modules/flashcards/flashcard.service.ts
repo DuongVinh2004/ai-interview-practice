@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { FSRSEngine, FSRSCard } from './fsrs/fsrs-engine';
@@ -17,6 +18,7 @@ import {
 import { CardType, CardState, FlashcardStatsDto } from '@ai-interview/contracts';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Optional } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 
 import { AiOrchestratorService } from '../ai-orchestrator/ai-orchestrator.service';
 
@@ -161,65 +163,83 @@ export class FlashcardService {
 
   // 3. FSRS Review
   async reviewCard(userId: string, cardId: string, dto: ReviewCardDto) {
-    const card = await this.prisma.flashcard.findUnique({
-      where: { id: cardId },
-      include: { deck: true },
-    });
+    let result: any;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        result = await this.prisma.$transaction(
+          async tx => {
+            const card = await tx.flashcard.findUnique({
+              where: { id: cardId },
+              include: { deck: true },
+            });
 
-    if (!card) throw new NotFoundException('Flashcard not found');
-    if (card.deck.userId !== userId) throw new ForbiddenException('Access denied');
+            if (!card) throw new NotFoundException('Flashcard not found');
+            if (card.deck.userId !== userId) throw new ForbiddenException('Access denied');
 
-    const now = new Date();
+            const now = new Date();
+            const currentCardState: FSRSCard = {
+              due: card.due,
+              stability: card.stability,
+              difficulty: card.difficulty,
+              elapsedDays: card.elapsedDays,
+              scheduledDays: card.scheduledDays,
+              reps: card.reps,
+              lapses: card.lapses,
+              state: card.state as CardState,
+              lastReview: card.lastReview,
+            };
+            const scheduled = this.fsrs.scheduleCard(
+              currentCardState,
+              dto.rating,
+              dto.durationMs,
+              now,
+            );
 
-    const currentCardState: FSRSCard = {
-      due: card.due,
-      stability: card.stability,
-      difficulty: card.difficulty,
-      elapsedDays: card.elapsedDays,
-      scheduledDays: card.scheduledDays,
-      reps: card.reps,
-      lapses: card.lapses,
-      state: card.state as CardState,
-      lastReview: card.lastReview,
-    };
+            const updatedCard = await tx.flashcard.update({
+              where: { id: cardId },
+              data: {
+                due: scheduled.card.due,
+                stability: scheduled.card.stability,
+                difficulty: scheduled.card.difficulty,
+                elapsedDays: scheduled.card.elapsedDays,
+                scheduledDays: scheduled.card.scheduledDays,
+                reps: scheduled.card.reps,
+                lapses: scheduled.card.lapses,
+                state: scheduled.card.state,
+                lastReview: scheduled.card.lastReview,
+              },
+            });
 
-    const scheduled = this.fsrs.scheduleCard(currentCardState, dto.rating, dto.durationMs, now);
+            const reviewLog = await tx.reviewLog.create({
+              data: {
+                flashcardId: cardId,
+                rating: dto.rating,
+                state: scheduled.log.state,
+                due: scheduled.log.due,
+                stability: scheduled.log.stability,
+                difficulty: scheduled.log.difficulty,
+                elapsedDays: scheduled.log.elapsedDays,
+                lastElapsed: scheduled.log.lastElapsed,
+                scheduledDays: scheduled.log.scheduledDays,
+                reviewedAt: scheduled.log.reviewedAt,
+                durationMs: scheduled.log.durationMs,
+              },
+            });
 
-    // Update Flashcard
-    const updatedCard = await this.prisma.flashcard.update({
-      where: { id: cardId },
-      data: {
-        due: scheduled.card.due,
-        stability: scheduled.card.stability,
-        difficulty: scheduled.card.difficulty,
-        elapsedDays: scheduled.card.elapsedDays,
-        scheduledDays: scheduled.card.scheduledDays,
-        reps: scheduled.card.reps,
-        lapses: scheduled.card.lapses,
-        state: scheduled.card.state,
-        lastReview: scheduled.card.lastReview,
-      },
-    });
-
-    // Create ReviewLog
-    const reviewLog = await this.prisma.reviewLog.create({
-      data: {
-        flashcardId: cardId,
-        rating: dto.rating,
-        state: scheduled.log.state,
-        due: scheduled.log.due,
-        stability: scheduled.log.stability,
-        difficulty: scheduled.log.difficulty,
-        elapsedDays: scheduled.log.elapsedDays,
-        lastElapsed: scheduled.log.lastElapsed,
-        scheduledDays: scheduled.log.scheduledDays,
-        reviewedAt: scheduled.log.reviewedAt,
-        durationMs: scheduled.log.durationMs,
-      },
-    });
-
-    // Update UserStreak
-    await this.updateUserStreak(userId, now);
+            await this.updateUserStreak(userId, now, tx);
+            return { card: updatedCard, log: reviewLog };
+          },
+          { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+        );
+        break;
+      } catch (error: any) {
+        if (error?.code === 'P2034' && attempt < 3) continue;
+        if (error?.code === 'P2034') {
+          throw new ConflictException('Flashcard was reviewed concurrently; please retry.');
+        }
+        throw error;
+      }
+    }
 
     this.eventEmitter?.emit('flashcard.reviewed', {
       userId,
@@ -227,15 +247,19 @@ export class FlashcardService {
       rating: dto.rating,
     });
 
-    return { card: updatedCard, log: reviewLog };
+    return result;
   }
 
-  private async updateUserStreak(userId: string, now: Date) {
-    const userStreak = await this.prisma.userStreak.findUnique({ where: { userId } });
+  private async updateUserStreak(
+    userId: string,
+    now: Date,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
+  ) {
+    const userStreak = await db.userStreak.findUnique({ where: { userId } });
     const todayStr = now.toISOString().split('T')[0];
 
     if (!userStreak) {
-      await this.prisma.userStreak.create({
+      await db.userStreak.create({
         data: {
           userId,
           currentStreak: 1,
@@ -268,7 +292,7 @@ export class FlashcardService {
 
     const newLongest = Math.max(userStreak.longestStreak, newCurrent);
 
-    await this.prisma.userStreak.update({
+    await db.userStreak.update({
       where: { userId },
       data: {
         currentStreak: newCurrent,

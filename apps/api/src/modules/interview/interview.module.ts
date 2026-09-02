@@ -9,6 +9,7 @@ import { AuthModule } from '../auth/auth.module';
 import { InterviewConfigurationModule } from '../interview-configuration/interview-configuration.module';
 import { MentorModule } from '../mentor/mentor.module';
 import { isWorkerProcess } from '../platform/process-role';
+import { InterviewQueueReconciliationCron } from './interview-queue-reconciliation.cron';
 
 @Module({
   imports: [AiOrchestratorModule, AuthModule, InterviewConfigurationModule, MentorModule],
@@ -16,6 +17,7 @@ import { isWorkerProcess } from '../platform/process-role';
   providers: [
     InterviewService,
     BehavioralService,
+    InterviewQueueReconciliationCron,
     ...(isWorkerProcess() ? [QuestionProcessor] : []),
   ],
   exports: [InterviewService, BehavioralService],

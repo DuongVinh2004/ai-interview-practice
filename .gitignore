@@ -51,7 +51,6 @@ temp
 .parallel-worktrees/
 .codex-runs/
 .terraform/
-
 # Terraform local state, plans, account-specific backend configuration, and inputs
 *.tfstate
 *.tfstate.*

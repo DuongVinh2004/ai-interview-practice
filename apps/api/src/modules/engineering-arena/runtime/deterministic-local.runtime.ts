@@ -4,6 +4,7 @@ import {
   WorkspaceProvisionParams,
   WorkspaceRunCommandParams,
   WorkspaceRunResult,
+  WorkspaceRuntimeUnavailableError,
 } from './workspace-runtime.interface';
 import { ArenaWorkspaceFileUpdate, ArenaTestResult } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
@@ -21,6 +22,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
   private readonly workspaces = new Map<string, ActiveWorkspace>();
 
   async provision(params: WorkspaceProvisionParams): Promise<void> {
+    this.assertAllowedEnvironment();
     const fileMap = new Map<string, string>();
     for (const [path, content] of Object.entries(params.files)) {
       this.validatePath(path);
@@ -36,6 +38,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   async syncFiles(workspaceHandle: string, files: ArenaWorkspaceFileUpdate[]): Promise<void> {
+    this.assertAllowedEnvironment();
     const ws = this.getWorkspace(workspaceHandle);
     for (const file of files) {
       this.validatePath(file.path);
@@ -44,6 +47,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   async runAllowedCommand(params: WorkspaceRunCommandParams): Promise<WorkspaceRunResult> {
+    this.assertAllowedEnvironment();
     const ws = this.getWorkspace(params.workspaceHandle);
 
     // Apply any in-flight modified files
@@ -125,6 +129,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
   async snapshot(
     workspaceHandle: string,
   ): Promise<{ snapshotHash: string; files: Record<string, string> }> {
+    this.assertAllowedEnvironment();
     const ws = this.getWorkspace(workspaceHandle);
     const files: Record<string, string> = {};
     for (const [p, c] of ws.files.entries()) {
@@ -135,6 +140,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   async destroy(workspaceHandle: string): Promise<void> {
+    this.assertAllowedEnvironment();
     this.workspaces.delete(workspaceHandle);
     this.logger.log(`Destroyed workspace ${workspaceHandle}`);
   }
@@ -145,6 +151,15 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
       throw new Error(`Workspace '${handle}' not found or has been destroyed.`);
     }
     return ws;
+  }
+
+  private assertAllowedEnvironment(): void {
+    const environment = (process.env.NODE_ENV || process.env.APP_ENV || '').trim().toLowerCase();
+    if (environment === 'production') {
+      throw new WorkspaceRuntimeUnavailableError(
+        'Deterministic Arena runtime is disabled in production; configure an isolated container runtime.',
+      );
+    }
   }
 
   private validatePath(filePath: string): void {

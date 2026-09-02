@@ -59,7 +59,7 @@ export class DocumentParserController {
   async parseCv(
     @CurrentUser('sub') userId: string,
     @UploadedFile() file?: Express.Multer.File,
-    @Body() body?: any,
+    @Body() body?: unknown,
   ) {
     if (file) {
       const fileName = file.originalname || 'resume.pdf';
@@ -80,7 +80,7 @@ export class DocumentParserController {
   }
 
   @Post('analyze-jd')
-  async analyzeJd(@CurrentUser('sub') userId: string, @Body() body: any) {
+  async analyzeJd(@CurrentUser('sub') userId: string, @Body() body: unknown) {
     const parsed = AnalyzeJdRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(
@@ -91,7 +91,7 @@ export class DocumentParserController {
   }
 
   @Post('generate-blueprint')
-  async generateBlueprint(@CurrentUser('sub') userId: string, @Body() body: any) {
+  async generateBlueprint(@CurrentUser('sub') userId: string, @Body() body: unknown) {
     const parsed = GenerateBlueprintRequestSchema.safeParse(body);
     if (!parsed.success) {
       throw new BadRequestException(

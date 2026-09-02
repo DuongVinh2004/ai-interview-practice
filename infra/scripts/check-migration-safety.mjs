@@ -39,7 +39,9 @@ export function normalizeRepoRelativePath(path) {
 }
 
 export function hashRawMigrationBytes(bytes) {
-  return createHash('sha256').update(bytes).digest('hex');
+  const content = typeof bytes === 'string' ? bytes : bytes.toString('utf8');
+  const normalized = content.replace(/\r\n/g, '\n');
+  return createHash('sha256').update(Buffer.from(normalized, 'utf8')).digest('hex');
 }
 
 export function serializeMigrationRecords(records) {

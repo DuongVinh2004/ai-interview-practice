@@ -1,4 +1,4 @@
-﻿import {
+import {
   Controller,
   Get,
   Post,
@@ -8,13 +8,14 @@
   Param,
   Query,
   UseGuards,
-  Req,
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtPayload } from '@ai-interview/contracts';
 import { InterviewConfigurationService } from './interview-configuration.service';
 import {
   CreatePresetRequestDto,
@@ -35,8 +36,8 @@ export class InterviewConfigurationController {
     status: 200,
     description: 'Danh sách preset kèm thông tin taxonomy và tính tương thích',
   })
-  async listPresets(@Req() req: any) {
-    const userId = req.user.id;
+  async listPresets(@CurrentUser() user: JwtPayload) {
+    const userId = user.id || user.sub;
     return this.configService.listPresets(userId);
   }
 
@@ -44,8 +45,8 @@ export class InterviewConfigurationController {
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Tạo preset cấu hình mới có đặt tên và tùy chọn ghim' })
   @ApiResponse({ status: 201, description: 'Preset đã được tạo thành công' })
-  async createPreset(@Req() req: any, @Body() dto: CreatePresetRequestDto) {
-    const userId = req.user.id;
+  async createPreset(@CurrentUser() user: JwtPayload, @Body() dto: CreatePresetRequestDto) {
+    const userId = user.id || user.sub;
     return this.configService.createPreset(userId, dto);
   }
 
@@ -55,11 +56,11 @@ export class InterviewConfigurationController {
   })
   @ApiResponse({ status: 200, description: 'Preset đã được cập nhật' })
   async updatePreset(
-    @Req() req: any,
+    @CurrentUser() user: JwtPayload,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePresetRequestDto,
   ) {
-    const userId = req.user.id;
+    const userId = user.id || user.sub;
     return this.configService.updatePreset(userId, id, dto);
   }
 
@@ -68,8 +69,8 @@ export class InterviewConfigurationController {
     summary: 'Xóa một preset cấu hình (không ảnh hưởng đến các session phỏng vấn cũ)',
   })
   @ApiResponse({ status: 200, description: 'Preset đã được xóa' })
-  async deletePreset(@Req() req: any, @Param('id', ParseUUIDPipe) id: string) {
-    const userId = req.user.id;
+  async deletePreset(@CurrentUser() user: JwtPayload, @Param('id', ParseUUIDPipe) id: string) {
+    const userId = user.id || user.sub;
     return this.configService.deletePreset(userId, id);
   }
 
@@ -79,8 +80,8 @@ export class InterviewConfigurationController {
     status: 200,
     description: 'Danh sách recent configurations kèm useCount và lastUsedAt',
   })
-  async listRecent(@Req() req: any, @Query('limit') limit?: string) {
-    const userId = req.user.id;
+  async listRecent(@CurrentUser() user: JwtPayload, @Query('limit') limit?: string) {
+    const userId = user.id || user.sub;
     const parsedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 8, 1), 20) : 8;
     return this.configService.listRecent(userId, parsedLimit);
   }
@@ -94,8 +95,11 @@ export class InterviewConfigurationController {
     status: 200,
     description: 'Kết quả validation và danh sách cảnh báo/lỗi (nếu có)',
   })
-  async validateConfig(@Req() req: any, @Body() dto: ValidateConfigurationRequestDto) {
-    const userId = req.user.id;
+  async validateConfig(
+    @CurrentUser() user: JwtPayload,
+    @Body() dto: ValidateConfigurationRequestDto,
+  ) {
+    const userId = user.id || user.sub;
     if (dto.presetId) {
       const presets = await this.configService.listPresets(userId);
       const target = presets.find(p => p.id === dto.presetId);

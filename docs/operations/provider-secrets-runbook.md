@@ -18,6 +18,8 @@ Before ECS services start, the operator-managed secret must contain every key be
   "OPENAI_API_KEY": "",
   "ANTHROPIC_API_KEY": "",
   "GEMINI_API_KEY": "",
+  "JUDGE0_API_URL": "",
+  "JUDGE0_API_KEY": "",
   "PAYOS_CLIENT_ID": "",
   "PAYOS_API_KEY": "",
   "PAYOS_CHECKSUM_KEY": "",

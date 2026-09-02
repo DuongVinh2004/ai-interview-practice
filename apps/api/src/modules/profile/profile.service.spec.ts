@@ -336,5 +336,37 @@ describe('ProfileService', () => {
         }),
       });
     });
+
+    it('exportUserData includes voice sessions when user has recorded voice turns', async () => {
+      const mockUserWithVoice = {
+        id: 'user-voice-exp',
+        email: 'voice@example.com',
+        role: UserRole.CANDIDATE,
+        status: UserStatus.ACTIVE,
+        createdAt: new Date(),
+        profile: { fullName: 'Voice User', targetRole: 'Dev', targetLevel: 'Senior' },
+        sessions: [],
+      };
+      prisma.user.findUnique.mockResolvedValue(mockUserWithVoice);
+      prisma.userDocument = { findMany: jest.fn().mockResolvedValue([]) };
+      prisma.voiceSession = {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            id: 'vs-1',
+            interviewId: 'int-1',
+            status: 'COMPLETED',
+            startedAt: new Date(),
+            endedAt: new Date(),
+            totalDuration: 120,
+            transcripts: [],
+            metrics: [],
+          },
+        ]),
+      };
+
+      const result = await service.exportUserData('user-voice-exp');
+      expect(result.voiceSessions).toBeDefined();
+      expect(result.voiceSessions?.length).toBe(1);
+    });
   });
 });
