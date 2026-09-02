@@ -4,8 +4,11 @@ packages:
 overrides:
   deepmerge-ts: '8.0.2'
   tar: '7.5.22'
+  qs: '6.16.0'
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
+minimumReleaseAgeExclude:
+  - qs
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 43200
 blockExoticSubdeps: true
