@@ -193,7 +193,7 @@ jobs:
           echo "migration_set_sha256=${migration_set_sha256}" >> "${GITHUB_OUTPUT}"
 
       - name: Upload immutable release evidence
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: release-manifest-${{ env.SOURCE_SHA }}
           path: |
@@ -279,7 +279,7 @@ jobs:
           test "${metrics_status}" = "404"
 
       - name: Upload staging rollout evidence
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: staging-release-${{ env.SOURCE_SHA }}
           path: staging-release-evidence.json
@@ -359,7 +359,7 @@ jobs:
           test "${metrics_status}" = "404"
 
       - name: Upload production rollout evidence
-        uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: production-release-${{ env.SOURCE_SHA }}
           path: production-release-evidence.json
