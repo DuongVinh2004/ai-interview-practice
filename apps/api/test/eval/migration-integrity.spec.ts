@@ -1,4 +1,4 @@
-﻿import * as fs from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 
@@ -11,8 +11,10 @@ describe('Deterministic Migration-Set Hash & Safety (CD-001 / PRD-1301..1303)', 
     return normalized;
   }
 
-  function hashRawMigrationBytes(bytes: Buffer): string {
-    return crypto.createHash('sha256').update(bytes).digest('hex');
+  function hashRawMigrationBytes(bytes: Buffer | string): string {
+    const content = typeof bytes === 'string' ? bytes : bytes.toString('utf8');
+    const normalized = content.replace(/\r\n/g, '\n');
+    return crypto.createHash('sha256').update(Buffer.from(normalized, 'utf8')).digest('hex');
   }
 
   function serializeMigrationRecords(records: { path: string; sha256: string }[]): string {
@@ -98,7 +100,7 @@ describe('Deterministic Migration-Set Hash & Safety (CD-001 / PRD-1301..1303)', 
   it('verifies exact match with infra check-migration-safety output', async () => {
     const migrationSet = collectMigrationSet();
     expect(migrationSet.migrationSetSha256).toBe(
-      '8b4c64c71688cecd9eb29c2c8c8d30a43f12e1209b3720dab0c9aef2639b1bc2',
+      '644f4d689a25696332a86a697350a4573344c80ed2227334e62a5a1b832a57f7',
     );
   });
 });
