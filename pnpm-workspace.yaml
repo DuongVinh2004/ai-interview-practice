@@ -5,10 +5,14 @@ overrides:
   deepmerge-ts: '8.0.2'
   tar: '7.5.22'
   qs: '6.16.0'
+  fast-uri: '3.1.6'
+  mysql2: '3.23.1'
 minimumReleaseAge: 10080
 minimumReleaseAgeStrict: true
 minimumReleaseAgeExclude:
   - qs
+  - fast-uri
+  - mysql2
 trustPolicy: no-downgrade
 trustPolicyIgnoreAfter: 43200
 blockExoticSubdeps: true
@@ -20,3 +24,4 @@ allowBuilds:
   esbuild: true
   msgpackr-extract: true
   prisma: true
+  unrs-resolver: true
