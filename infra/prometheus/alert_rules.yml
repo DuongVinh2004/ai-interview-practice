@@ -56,6 +56,17 @@ groups:
           description: 'Background worker pool is falling behind on job execution. Consider scaling worker replicas.'
           runbook: 'docs/operations/production-slo-alert-policy.md'
 
+      - alert: BullMqDeadLetterJobCountHigh
+        expr: sum(increase(bullmq_jobs_failed_total[5m])) by (queue) > 5
+        for: 2m
+        labels:
+          severity: critical
+          tier: tier2
+        annotations:
+          summary: 'High BullMQ job failure rate (DLQ) in queue {{ $labels.queue }}'
+          description: 'Queue {{ $labels.queue }} has more than 5 failed jobs in 5 minutes requiring dead-letter triage.'
+          runbook: 'docs/operations/production-slo-alert-policy.md'
+
       - alert: AiDailyBudgetBurnCritical
         expr: sum(increase(ai_estimated_cost_usd_total[24h])) > 40.0
         for: 1m

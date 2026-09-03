@@ -41,10 +41,22 @@ export class AuthService {
       );
     }
 
-    const secret =
+    const isProd =
+      this.configService.get<string>('app.nodeEnv') === 'production' ||
+      process.env.NODE_ENV === 'production';
+    const configuredSecret =
       this.configService.get<string>('jwt.accessSecret') ||
-      this.configService.get<string>('JWT_ACCESS_SECRET') ||
-      'dev-access-secret-min-32-chars-ok';
+      this.configService.get<string>('JWT_ACCESS_SECRET');
+
+    if (isProd && (!configuredSecret || configuredSecret === 'dev-access-secret-min-32-chars-ok')) {
+      throw new DomainException(
+        ErrorCode.UNAUTHORIZED,
+        'JWT access secret must be securely configured in production',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+
+    const secret = configuredSecret || 'dev-access-secret-min-32-chars-ok';
 
     let payload: JwtPayload;
     try {

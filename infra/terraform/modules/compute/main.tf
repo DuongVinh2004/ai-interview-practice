@@ -611,45 +611,6 @@ resource "aws_ecs_task_definition" "api" {
           "awslogs-region"        = "ap-southeast-1"
           "awslogs-stream-prefix" = "api"
         }
-        { name = "AI_PROVIDER", value = "router" },
-        { name = "AI_PROVIDER_PRIORITY", value = "gemini,openai,anthropic" },
-        { name = "AI_ALLOW_MOCK", value = "false" },
-        { name = "ALLOW_MOCK_PROVIDERS", value = "false" },
-        { name = "AI_BUDGET_DAILY_USD", value = tostring(var.ai_daily_budget_usd) },
-        { name = "AI_MAX_PROVIDER_CALL_COST_USD", value = tostring(var.ai_max_provider_call_cost_usd) },
-        { name = "METRICS_EXPORTER_ENABLED", value = "true" },
-        { name = "METRICS_EXPORTER_HOST", value = "0.0.0.0" },
-        { name = "METRICS_EXPORTER_PORT", value = "9091" },
-        { name = "REDIS_HOST", value = var.redis_endpoint },
-        { name = "REDIS_PORT", value = "6379" },
-        { name = "REDIS_TLS", value = "true" },
-        { name = "STORAGE_PROVIDER", value = "s3" },
-        { name = "AWS_S3_BUCKET", value = var.s3_bucket_name }
-      ]
-      secrets = [
-        { name = "DATABASE_URL", valueFrom = "${var.secrets_arn}:DATABASE_URL::" },
-        { name = "REDIS_PASSWORD", valueFrom = "${var.secrets_arn}:REDIS_PASSWORD::" },
-        { name = "JWT_ACCESS_SECRET", valueFrom = "${var.secrets_arn}:JWT_ACCESS_SECRET::" },
-        { name = "JWT_REFRESH_SECRET", valueFrom = "${var.secrets_arn}:JWT_REFRESH_SECRET::" },
-        { name = "MFA_ENCRYPTION_KEY", valueFrom = "${var.secrets_arn}:MFA_ENCRYPTION_KEY::" },
-        { name = "CERTIFICATE_SECRET", valueFrom = "${var.secrets_arn}:CERTIFICATE_SECRET::" },
-        { name = "METRICS_AUTH_TOKEN", valueFrom = "${var.secrets_arn}:METRICS_AUTH_TOKEN::" },
-        { name = "OPENAI_API_KEY", valueFrom = "${var.provider_secrets_arn}:OPENAI_API_KEY::" },
-        { name = "ANTHROPIC_API_KEY", valueFrom = "${var.provider_secrets_arn}:ANTHROPIC_API_KEY::" },
-        { name = "GEMINI_API_KEY", valueFrom = "${var.provider_secrets_arn}:GEMINI_API_KEY::" },
-        { name = "PAYOS_CLIENT_ID", valueFrom = "${var.provider_secrets_arn}:PAYOS_CLIENT_ID::" },
-        { name = "PAYOS_API_KEY", valueFrom = "${var.provider_secrets_arn}:PAYOS_API_KEY::" },
-        { name = "PAYOS_CHECKSUM_KEY", valueFrom = "${var.provider_secrets_arn}:PAYOS_CHECKSUM_KEY::" },
-        { name = "STRIPE_SECRET_KEY", valueFrom = "${var.provider_secrets_arn}:STRIPE_SECRET_KEY::" },
-        { name = "STRIPE_WEBHOOK_SECRET", valueFrom = "${var.provider_secrets_arn}:STRIPE_WEBHOOK_SECRET::" }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.api.name
-          "awslogs-region"        = "ap-southeast-1"
-          "awslogs-stream-prefix" = "api"
-        }
       }
     }
   ])
@@ -904,3 +865,16 @@ resource "aws_appautoscaling_policy" "api_cpu_policy" {
     scale_out_cooldown = 60
   }
 }
+
+# Automated Scheduled Backup EventBridge Rule (Nightly at 02:00 UTC)
+resource "aws_cloudwatch_event_rule" "nightly_backup" {
+  name                = "ai-interview-nightly-backup-${var.environment}"
+  description         = "Triggers scheduled PostgreSQL snapshot backup and S3 encrypted upload"
+  schedule_expression = "cron(0 2 * * ? *)"
+
+  tags = {
+    Environment = var.environment
+    Automation  = "DisasterRecovery"
+  }
+}
+

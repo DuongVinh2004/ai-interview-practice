@@ -1,0 +1,21 @@
+{
+  "executedAt": "2026-09-03T06:49:10.582Z",
+  "scenario": "interview-flow-load-test",
+  "concurrencyProfile": {
+    "peakVUs": 200,
+    "sustainedVUs": 100,
+    "totalRequests": 6750
+  },
+  "metrics": {
+    "p50Ms": 96,
+    "p95Ms": 150,
+    "p99Ms": 169,
+    "errorRate": 0.0007
+  },
+  "sloStatus": {
+    "p95LatencySlo": "PASS",
+    "p99LatencySlo": "PASS",
+    "errorRateSlo": "PASS",
+    "overallSlo": "PASS"
+  }
+}

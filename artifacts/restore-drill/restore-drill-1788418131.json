@@ -1,0 +1,14 @@
+{
+  "startedAt": "2026-09-03T06:48:51.127Z",
+  "targetDatabase": "ai_interview_restore_drill_1788418131128",
+  "backupFile": "artifacts/backups/postgres/ai_interview_drill_1788418131.dump.enc",
+  "sourceRecoveryPointUtc": "2026-09-03T06:43:51.202Z",
+  "tableCount": 104,
+  "invalidConstraints": 0,
+  "rpoSeconds": 300,
+  "rpoTargetSeconds": 900,
+  "rpoStatus": "PASS",
+  "rtoSeconds": 1,
+  "rtoTargetSeconds": 3600,
+  "rtoStatus": "PASS"
+}
