@@ -93,6 +93,7 @@ export class MockVoiceProvider {
           resolve();
         }
       }, 50); // 50ms chunk emission
+      interval.unref();
     });
   }
 }
