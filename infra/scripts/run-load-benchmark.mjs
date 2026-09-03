@@ -32,17 +32,75 @@ const STAGES = [
   { stage: '5. Ramp-down', targetVUs: 0, durationSec: 5 },
 ];
 
-function generateSimulatedLatencies(count, baseLatency, variance) {
-  const latencies = [];
-  for (let i = 0; i < count; i++) {
-    // Log-normal distribution simulation for realistic HTTP latencies
-    const u1 = Math.random();
-    const u2 = Math.random();
-    const z = Math.sqrt(-2.0 * Math.log(u1 || 0.001)) * Math.cos(2.0 * Math.PI * u2);
-    const latency = Math.max(12, Math.round(baseLatency + z * variance));
-    latencies.push(latency);
+import http from 'node:http';
+import { performance } from 'node:perf_hooks';
+
+function createBenchmarkHttpServer() {
+  const server = http.createServer((req, res) => {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk;
+    });
+    req.on('end', () => {
+      const url = req.url || '/';
+
+      if (url === '/api/v1/health/live') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'ok', uptime: process.uptime() }));
+      } else if (url === '/api/v1/auth/login') {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ accessToken: 'mock-token', expiresIn: 900 }));
+      } else if (url.startsWith('/api/v1/interviews')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ id: 'session-bench-1', status: 'IN_PROGRESS' }));
+      } else {
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'healthy' }));
+      }
+    });
+  });
+  return server;
+}
+
+async function executeHttpRequest(targetBaseUrl, endpoint, method = 'GET', body = null) {
+  const start = performance.now();
+  try {
+    const res = await fetch(`${targetBaseUrl}${endpoint}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    await res.text();
+    const duration = Math.round(performance.now() - start);
+    return { ok: res.ok, duration };
+  } catch (err) {
+    const duration = Math.round(performance.now() - start);
+    return { ok: false, duration };
   }
-  return latencies;
+}
+
+async function runStageConcurrentRequests(targetBaseUrl, vus, requestsPerVu) {
+  const endpoints = [
+    { path: '/api/v1/health/live', method: 'GET' },
+    { path: '/api/v1/auth/login', method: 'POST', body: { email: 'load@test.com', password: 'secret' } },
+    { path: '/api/v1/interviews', method: 'POST', body: { role: 'frontend', level: 'senior' } },
+    { path: '/api/v1/interviews/session-bench-1', method: 'GET' },
+    { path: '/api/v1/interviews/session-bench-1/answers', method: 'POST', body: { answer: 'load test answer' } },
+    { path: '/api/v1/interviews/session-bench-1/status', method: 'GET' },
+  ];
+
+  const vuTasks = Array.from({ length: vus }, async (_, vuIndex) => {
+    const results = [];
+    for (let i = 0; i < requestsPerVu; i++) {
+      const ep = endpoints[(vuIndex + i) % endpoints.length];
+      const res = await executeHttpRequest(targetBaseUrl, ep.path, ep.method, ep.body);
+      results.push(res);
+    }
+    return results;
+  });
+
+  const allVuResults = await Promise.all(vuTasks);
+  return allVuResults.flat();
 }
 
 function calculatePercentile(sortedArray, percentile) {
@@ -55,10 +113,26 @@ async function runLoadBenchmark() {
   console.log('⚡ [SRE / Performance] Production SLO Load Test Benchmark');
   console.log('================================================================\n');
 
-  console.log('Simulating multi-stage load across interview endpoints:');
+  let server = null;
+  let targetBaseUrl = process.env.TARGET_URL;
+
+  if (!targetBaseUrl) {
+    server = createBenchmarkHttpServer();
+    await new Promise((resolve, reject) => {
+      server.listen(0, '127.0.0.1', resolve);
+      server.on('error', reject);
+    });
+    const addr = server.address();
+    targetBaseUrl = `http://127.0.0.1:${addr.port}`;
+    console.log(`Started local benchmark HTTP server at: ${targetBaseUrl}`);
+  } else {
+    console.log(`Targeting external benchmark server at: ${targetBaseUrl}`);
+  }
+
+  console.log('Executing real multi-stage HTTP traffic across interview endpoints:');
   console.log(' - GET  /api/v1/health/live');
   console.log(' - POST /api/v1/auth/login');
-  console.log(' - POST /api/v1/interviews (with Idempotency-Key)');
+  console.log(' - POST /api/v1/interviews');
   console.log(' - GET  /api/v1/interviews/:id');
   console.log(' - POST /api/v1/interviews/:id/answers');
   console.log(' - GET  /api/v1/interviews/:id/status\n');
@@ -67,19 +141,25 @@ async function runLoadBenchmark() {
   let totalRequests = 0;
   let failedRequests = 0;
 
-  for (const s of STAGES) {
-    console.log(`▶ Stage [${s.stage}]: Target ${s.targetVUs} VUs (${s.durationSec}s)`);
-    const requestsInStage = s.targetVUs * 15;
-    if (requestsInStage > 0) {
-      // Average latency varies by concurrency: 45ms at 50 VUs, 85ms at 100 VUs, 160ms at 200 VUs
-      const stageBase = 40 + (s.targetVUs / 200) * 80;
-      const stageLatencies = generateSimulatedLatencies(requestsInStage, stageBase, 25);
-      allLatencies.push(...stageLatencies);
-      totalRequests += requestsInStage;
+  try {
+    for (const s of STAGES) {
+      if (s.targetVUs === 0) continue;
+      console.log(`▶ Stage [${s.stage}]: Target ${s.targetVUs} VUs (${s.durationSec}s)`);
+      const requestsPerVu = 10;
+      const stageResults = await runStageConcurrentRequests(targetBaseUrl, s.targetVUs, requestsPerVu);
 
-      // 0.1% simulated error rate (well below 1%)
-      const stageErrors = Math.floor(requestsInStage * 0.001);
-      failedRequests += stageErrors;
+      for (const res of stageResults) {
+        allLatencies.push(res.duration);
+        totalRequests++;
+        if (!res.ok) {
+          failedRequests++;
+        }
+      }
+    }
+  } finally {
+    if (server) {
+      await new Promise(resolve => server.close(resolve));
+      console.log('Local benchmark HTTP server stopped.');
     }
   }
 

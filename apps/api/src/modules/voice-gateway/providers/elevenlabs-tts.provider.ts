@@ -97,7 +97,8 @@ export class ElevenLabsTtsProvider {
           close: () => {
             if (ws.readyState === WebSocket.OPEN) {
               ws.send(JSON.stringify({ text: '' }));
-              setTimeout(() => ws.close(), 500);
+              const closeTimer = setTimeout(() => ws.close(), 500);
+              closeTimer.unref();
             }
           },
         };
@@ -137,7 +138,7 @@ export class ElevenLabsTtsProvider {
         const chunkCount = Math.max(2, Math.min(10, words.length * 2));
 
         for (let i = 0; i < chunkCount; i++) {
-          setTimeout(() => {
+          const chunkTimer = setTimeout(() => {
             if (isClosed) return;
             const pcm = Buffer.alloc(640); // 20ms @ 16kHz 16-bit
             for (let j = 0; j < 320; j++) {
@@ -146,6 +147,7 @@ export class ElevenLabsTtsProvider {
             }
             audioStream.next(pcm);
           }, i * 40);
+          chunkTimer.unref();
         }
       },
       audioStream,

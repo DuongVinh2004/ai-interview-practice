@@ -878,3 +878,67 @@ resource "aws_cloudwatch_event_rule" "nightly_backup" {
   }
 }
 
+resource "aws_iam_role" "eventbridge_backup" {
+  name = "ai-interview-eventbridge-backup-${var.environment}"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "eventbridge_backup" {
+  name = "ai-interview-eventbridge-backup-policy-${var.environment}"
+  role = aws_iam_role.eventbridge_backup.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["ecs:RunTask"]
+        Resource = [
+          aws_ecs_task_definition.worker.arn,
+          "${replace(aws_ecs_task_definition.worker.arn, "/:\\d+$$/", "")}:*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = ["iam:PassRole"]
+        Resource = [
+          aws_iam_role.ecs_execution_role.arn,
+          aws_iam_role.worker_task_role.arn
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_cloudwatch_event_target" "nightly_backup" {
+  rule      = aws_cloudwatch_event_rule.nightly_backup.name
+  target_id = "ai-interview-nightly-backup-${var.environment}"
+  arn       = aws_ecs_cluster.main.arn
+  role_arn  = aws_iam_role.eventbridge_backup.arn
+
+  ecs_target {
+    task_count          = 1
+    task_definition_arn = aws_ecs_task_definition.worker.arn
+    launch_type         = "FARGATE"
+    platform_version    = "LATEST"
+
+    network_configuration {
+      subnets          = var.app_subnet_ids
+      security_groups  = [var.app_security_group_id]
+      assign_public_ip = false
+    }
+  }
+}
+
