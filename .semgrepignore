@@ -1,6 +1,7 @@
-﻿# Semgrep ignore file
+# Semgrep ignore file
 # Exclude tests, tooling scripts, challenges, and build outputs from SAST application rules
 infra/scripts/
+infra/testing/
 challenges/
 apps/api/test/
 **/*.spec.ts

@@ -139,7 +139,7 @@ export class HistoryReportService {
       );
     }
 
-    const isSuperAdmin = userRole === UserRole.ADMIN && mfaVerified !== false;
+    const isSuperAdmin = userRole === UserRole.ADMIN && mfaVerified === true;
     if (session.userId !== userId && !isSuperAdmin) {
       throw new DomainException(
         ErrorCode.FORBIDDEN,

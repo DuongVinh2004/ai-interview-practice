@@ -135,6 +135,35 @@ describe('InterviewService (Unit)', () => {
         service.assertSessionAccess('any-user', UserRole.CANDIDATE, 'non-existent-session'),
       ).rejects.toThrow(DomainException);
     });
+
+    it('should deny getSession if requester is ADMIN but mfaVerified is undefined or false', async () => {
+      prisma.interviewSession.findUnique.mockResolvedValue({
+        id: 'session-123',
+        userId: 'owner-user-id',
+        technologies: [],
+        turns: [],
+      });
+
+      await expect(
+        service.getSession('admin-user-id', UserRole.ADMIN, 'session-123', undefined),
+      ).rejects.toThrow(DomainException);
+
+      await expect(
+        service.getSession('admin-user-id', UserRole.ADMIN, 'session-123', false),
+      ).rejects.toThrow(DomainException);
+    });
+
+    it('should deny getSessionStatus if requester is ADMIN but mfaVerified is undefined or false', async () => {
+      prisma.interviewSession.findUnique.mockResolvedValue({
+        id: 'session-123',
+        userId: 'owner-user-id',
+        turns: [],
+      });
+
+      await expect(
+        service.getSessionStatus('admin-user-id', UserRole.ADMIN, 'session-123', undefined),
+      ).rejects.toThrow(DomainException);
+    });
   });
 
   describe('reEvaluateTurn', () => {
