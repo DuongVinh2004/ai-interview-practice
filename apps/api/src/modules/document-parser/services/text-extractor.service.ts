@@ -1,5 +1,4 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { PDFParse } from 'pdf-parse';
 import * as mammoth from 'mammoth';
 
 @Injectable()
@@ -55,6 +54,7 @@ export class TextExtractorService {
   private async extractFromPdf(buffer: Buffer): Promise<string> {
     // pdf-parse v2 exposes a PDFParse class; calling the module as a function
     // (the v1 API) rejects every valid PDF with "parseFn is not a function".
+    const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: buffer });
     try {
       const result = await parser.getText();
