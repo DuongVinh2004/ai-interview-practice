@@ -198,6 +198,10 @@ describe('InterviewRoomExperience (Phase 3)', () => {
     fireEvent.click(submitBtn);
 
     expect(callCount).toBe(1);
+
+    await waitFor(() => {
+      expect(textarea).toHaveValue('');
+    });
   });
 
   it('renders completed session state with overall score and result link', async () => {

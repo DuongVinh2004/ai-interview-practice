@@ -76,6 +76,14 @@ export function InterviewRoomPage() {
   const { isFocusMode, toggleFocusMode } = useFocusModeStore();
   const { addXpLocally } = useGamificationStore();
   const hasCelebratedRef = useRef(false);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const [answerText, setAnswerText] = useState('');
   const [codeLanguage, setCodeLanguage] = useState<SupportedCodeLanguage>('javascript');
@@ -257,10 +265,13 @@ export function InterviewRoomPage() {
       // Clear draft from storage on successful submission
       const draftKey = `draft-answer-${userId}-${sessionId}-turn-${currentTurn.turnNumber}`;
       removeDraft(draftKey);
-      setAnswerText('');
+      if (isMountedRef.current) {
+        setAnswerText('');
+      }
       await refetch();
       queryClient.invalidateQueries({ queryKey: ['interview', sessionId] });
     } catch (err: any) {
+      if (!isMountedRef.current) return;
       if (err instanceof ApiError) {
         setErrorMessage(err.message);
       } else {
@@ -271,7 +282,9 @@ export function InterviewRoomPage() {
         );
       }
     } finally {
-      setIsSubmitting(false);
+      if (isMountedRef.current) {
+        setIsSubmitting(false);
+      }
     }
   };
 
