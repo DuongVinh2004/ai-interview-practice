@@ -31,13 +31,13 @@
     "arena:validate": "node infra/scripts/arena-validate.mjs"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.68.0",
-    "@typescript-eslint/parser": "^8.68.0",
-    "eslint": "^10.8.0",
-    "eslint-config-prettier": "^10.1.8",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react": "^7.37.4",
-    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-hooks": "^5.1.0",
     "prettier": "^3.5.2",
-    "typescript": "^7.0.2"
+    "typescript": "^5.7.3"
   }
 }
