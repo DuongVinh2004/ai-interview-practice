@@ -895,31 +895,9 @@ resource "aws_iam_role" "eventbridge_backup" {
   })
 }
 
-resource "aws_iam_role_policy" "eventbridge_backup" {
-  name = "ai-interview-eventbridge-backup-policy-${var.environment}"
-  role = aws_iam_role.eventbridge_backup.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect   = "Allow"
-        Action   = ["ecs:RunTask"]
-        Resource = [
-          aws_ecs_task_definition.worker.arn,
-          "${replace(aws_ecs_task_definition.worker.arn, "/:\\d+$$/", "")}:*"
-        ]
-      },
-      {
-        Effect = "Allow"
-        Action = ["iam:PassRole"]
-        Resource = [
-          aws_iam_role.ecs_execution_role.arn,
-          aws_iam_role.worker_task_role.arn
-        ]
-      }
-    ]
-  })
+resource "aws_iam_role_policy_attachment" "eventbridge_backup" {
+  role       = aws_iam_role.eventbridge_backup.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceEventsRole"
 }
 
 resource "aws_cloudwatch_event_target" "nightly_backup" {
