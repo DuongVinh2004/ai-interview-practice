@@ -260,6 +260,18 @@ describe('DocumentParser Module (F004)', () => {
       );
     });
 
+    it('rejects retrieval when neither CV nor JD belongs to user (fail-closed check)', async () => {
+      mockPrisma.interviewBlueprint.findUnique.mockResolvedValueOnce({
+        id: 'bp-partial',
+        parsedProfile: null,
+        jdAnalysis: { userId: 'other-user' },
+      });
+
+      await expect(parserService.getBlueprint('user-1', 'bp-partial')).rejects.toThrow(
+        'You do not have access to this interview blueprint.',
+      );
+    });
+
     it('rejects fake PDF upload with invalid magic bytes', async () => {
       const corruptPdfBuffer = Buffer.from('NOT_A_REAL_PDF_DATA_STREAM');
       await expect(

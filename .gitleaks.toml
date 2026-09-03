@@ -19,5 +19,6 @@ paths = [
   '''(?:^|/)apps/api/src/modules/code-execution/__tests__/prod-guard\.spec\.ts$''',
   '''(?:^|/)apps/api/test/eval/release-manifest-integrity\.spec\.ts$''',
   '''(?:^|/)apps/api/test/eval/l4-sandbox-zero-secret\.spec\.ts$''',
+  '''(?:^|/)infra/testing/.*$''',
   '''(?:^|/)docs/features/F015-QUESTION-BANK\.md$'''
 ]

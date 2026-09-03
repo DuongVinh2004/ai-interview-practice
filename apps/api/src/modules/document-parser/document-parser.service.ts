@@ -289,7 +289,10 @@ export class DocumentParserService {
     const docOwnerId = blueprint.parsedProfile?.document?.userId;
     const jdOwnerId = blueprint.jdAnalysis?.userId;
 
-    if (docOwnerId && docOwnerId !== userId && jdOwnerId && jdOwnerId !== userId) {
+    const isDocOwner = Boolean(docOwnerId && docOwnerId === userId);
+    const isJdOwner = Boolean(jdOwnerId && jdOwnerId === userId);
+
+    if (!isDocOwner && !isJdOwner) {
       throw new ForbiddenException('You do not have access to this interview blueprint.');
     }
 
