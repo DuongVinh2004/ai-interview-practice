@@ -195,8 +195,8 @@ export function Navbar() {
   const isAdminActive = location.pathname.startsWith('/admin');
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs dark:bg-slate-900/95 dark:border-slate-800">
-      <div className="w-full max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-slate-200/90 shadow-2xs dark:bg-slate-900/95 dark:border-slate-800 max-w-full">
+      <div className="w-full max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4 min-w-0">
         {/* ========================================================= */}
         {/* LEFT: BRAND LOGO + ENLARGED ELONGATED NAVIGATION TABS      */}
         {/* ========================================================= */}
@@ -504,12 +504,12 @@ export function Navbar() {
         {/* ========================================================= */}
         {/* RIGHT: ACTION TOOLBAR (UPGRADE + LANG + GAMIFICATION + USER)*/}
         {/* ========================================================= */}
-        <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
-          {/* Quick Upgrade Pill (Suggested next higher tier; hidden if on highest tier) */}
+        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
+          {/* Quick Upgrade Pill (Suggested next higher tier; hidden on mobile and if on highest tier) */}
           {isAuthenticated && upgradeSuggestion.hasHigherPlan && (
             <Link
               to={`/pricing?plan=${upgradeSuggestion.targetPlanSlug}`}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-extrabold bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-400/60 hover:border-emerald-500 text-slate-800 shadow-2xs hover:shadow-xs transition-all duration-200 group dark:text-white shrink-0 hover:scale-105 active:scale-95"
+              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-extrabold bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-400/60 hover:border-emerald-500 text-slate-800 shadow-2xs hover:shadow-xs transition-all duration-200 group dark:text-white shrink-0 hover:scale-105 active:scale-95"
               title={upgradeSuggestion.headerPillLabel}
             >
               <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
@@ -523,14 +523,14 @@ export function Navbar() {
           <button
             type="button"
             onClick={toggleLanguage}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             title={
               language === 'vi'
                 ? 'Chuyển sang Tiếng Anh (English)'
                 : 'Switch to Vietnamese (Tiếng Việt)'
             }
           >
-            <Globe className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+            <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 dark:text-slate-400" />
             <span>{language === 'vi' ? 'VI' : 'EN'}</span>
           </button>
 
@@ -739,14 +739,14 @@ export function Navbar() {
               </button>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <Link to="/login">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="px-2 sm:px-3 text-xs sm:text-sm">
                   {t.nav.signIn}
                 </Button>
               </Link>
               <Link to="/register">
-                <Button variant="primary" size="sm">
+                <Button variant="primary" size="sm" className="px-2.5 sm:px-4 text-xs sm:text-sm">
                   {t.nav.getStarted}
                 </Button>
               </Link>

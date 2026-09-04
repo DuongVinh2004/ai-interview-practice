@@ -1059,7 +1059,7 @@ export function SetupInterviewPage() {
                   </div>
 
                   {/* Category Pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin w-full max-w-full min-w-0">
                     {TECH_CATEGORIES.map(cat => {
                       const isCatActive = selectedTechCategory === cat.key;
                       return (

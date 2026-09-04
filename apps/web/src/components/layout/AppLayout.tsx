@@ -15,7 +15,7 @@ export function AppLayout() {
   const { isFocusMode, setFocusMode } = useFocusModeStore();
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-emerald-100 selection:text-emerald-900">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 selection:bg-emerald-100 selection:text-emerald-900 max-w-full overflow-x-clip">
       {/* Skip to Main Content Link for Keyboard Accessibility */}
       <a
         href="#main-content"
@@ -46,7 +46,7 @@ export function AppLayout() {
       <main
         id="main-content"
         tabIndex={-1}
-        className={`flex-1 w-full mx-auto focus:outline-none animate-fade-in ${
+        className={`flex-1 w-full max-w-full mx-auto focus:outline-none animate-fade-in overflow-x-clip ${
           isFocusMode ? 'p-2 sm:p-4 max-w-7xl' : 'max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8'
         }`}
       >

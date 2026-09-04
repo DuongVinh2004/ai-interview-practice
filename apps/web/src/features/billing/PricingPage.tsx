@@ -121,12 +121,12 @@ export function PricingPage() {
         </p>
 
         {/* Monthly / Yearly Toggle */}
-        <div className="flex items-center justify-center pt-4">
-          <div className="bg-slate-100 p-1.5 rounded-2xl flex items-center border border-slate-200 shadow-xs">
+        <div className="flex items-center justify-center pt-4 max-w-full">
+          <div className="bg-slate-100 p-1 sm:p-1.5 rounded-2xl flex flex-wrap sm:flex-nowrap items-center justify-center border border-slate-200 shadow-xs max-w-full gap-1">
             <button
               type="button"
               onClick={() => setBillingCycle('monthly')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold transition-all ${
+              className={`px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${
                 billingCycle === 'monthly'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
@@ -137,14 +137,14 @@ export function PricingPage() {
             <button
               type="button"
               onClick={() => setBillingCycle('yearly')}
-              className={`px-5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all ${
+              className={`px-2.5 sm:px-5 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold flex items-center space-x-1 sm:space-x-1.5 transition-all ${
                 billingCycle === 'yearly'
                   ? 'bg-white text-slate-900 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
               <span>{language === 'vi' ? 'Hàng năm (Annual Billing)' : 'Annual Billing'}</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+              <span className="bg-emerald-100 text-emerald-800 text-[10px] px-1.5 sm:px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                 {language === 'vi' ? 'Tiết kiệm ~17%' : 'Save ~17%'}
               </span>
             </button>

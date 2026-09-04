@@ -23,7 +23,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
   }, [fetchChallenges, selectedDomain, selectedCategory]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full max-w-7xl mx-auto py-2 sm:py-6">
       {/* Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -66,12 +66,12 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
       ) : (
         <>
           {/* Filters */}
-          <div className="flex flex-wrap gap-4 mb-8">
+          <div className="flex flex-wrap gap-3 sm:gap-4 mb-8">
             <select
               value={selectedDomain}
               onChange={e => setSelectedDomain(e.target.value)}
               aria-label="Filter by domain"
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              className="w-full sm:w-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
               <option value="">All Domains</option>
               <option value={ChallengeDomain.BACKEND}>Backend</option>
@@ -85,7 +85,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
               value={selectedCategory}
               onChange={e => setSelectedCategory(e.target.value)}
               aria-label="Filter by category"
-              className="rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
+              className="w-full sm:w-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
               <option value="">All Categories</option>
               <option value={ChallengeCategory.BUG_FIX}>Bug Fix</option>
