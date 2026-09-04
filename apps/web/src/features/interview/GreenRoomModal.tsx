@@ -75,7 +75,8 @@ export function GreenRoomModal({
     setIsPinging(true);
     const start = performance.now();
     try {
-      await fetch('/api/health', { method: 'HEAD', cache: 'no-store' }).catch(() => null);
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+      await fetch(`${API_BASE_URL}/health/live`, { method: 'HEAD', cache: 'no-store' }).catch(() => null);
       if (!isMountedRef.current) return;
       const elapsed = Math.round(performance.now() - start);
       setLatencyMs(elapsed < 10 ? 25 : elapsed);

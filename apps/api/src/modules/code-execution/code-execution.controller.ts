@@ -1,4 +1,13 @@
-import { Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Body,
+  UseGuards,
+  ParseUUIDPipe,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { CodeExecutionService } from './code-execution.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -17,7 +26,8 @@ export class CodeExecutionController {
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async executeCode(
     @CurrentUser('sub') userId: string,
-    @Param('id') sessionId: string,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND }))
+    sessionId: string,
     @Body() dto: ExecuteCodeDto,
   ) {
     return this.codeExecutionService.executeCode(userId, sessionId, dto);
@@ -28,7 +38,8 @@ export class CodeExecutionController {
   @ApiParam({ name: 'id', description: 'Interview session ID' })
   async submitCode(
     @CurrentUser('sub') userId: string,
-    @Param('id') sessionId: string,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND }))
+    sessionId: string,
     @Body() dto: SubmitCodeDto,
   ) {
     return this.codeExecutionService.submitCode(userId, sessionId, dto);
@@ -37,7 +48,11 @@ export class CodeExecutionController {
   @Get(':id/code/submissions')
   @ApiOperation({ summary: 'List code submissions for an interview session' })
   @ApiParam({ name: 'id', description: 'Interview session ID' })
-  async getSubmissions(@CurrentUser('sub') userId: string, @Param('id') sessionId: string) {
+  async getSubmissions(
+    @CurrentUser('sub') userId: string,
+    @Param('id', new ParseUUIDPipe({ errorHttpStatusCode: HttpStatus.NOT_FOUND }))
+    sessionId: string,
+  ) {
     return this.codeExecutionService.getSubmissions(userId, sessionId);
   }
 }

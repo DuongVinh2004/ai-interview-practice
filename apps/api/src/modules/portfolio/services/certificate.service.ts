@@ -117,6 +117,21 @@ export class CertificateService {
   }
 
   async verifyCertificate(certId: string) {
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!certId || !UUID_REGEX.test(certId)) {
+      return {
+        isValid: false,
+        status: CertificateStatus.REVOKED,
+        certId,
+        recipientName: 'Unknown',
+        score: 0,
+        signatureHash: '',
+        verifyCount: 0,
+        message: 'Certificate ID does not exist in registry.',
+      };
+    }
+
     const cert = await this.prisma.certificate.findUnique({
       where: { id: certId },
       include: {

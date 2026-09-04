@@ -293,7 +293,7 @@ describe('Track F010: Portfolio & Certificate Module', () => {
     });
 
     it('verifies valid certificate and detects revoked state', async () => {
-      const certId = 'cert-777';
+      const certId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
       const userId = 'user-123';
       const issuedAt = new Date('2026-08-24T10:00:00Z');
       const sig = signatureService.generateSignature(
@@ -322,6 +322,15 @@ describe('Track F010: Portfolio & Certificate Module', () => {
       expect(verified.isValid).toBe(true);
       expect(verified.recipientName).toBe('Alex Rivera');
       expect(verified.verifyCount).toBe(3);
+    });
+
+    it('returns invalid certificate status without database error when non-UUID is passed', async () => {
+      const nonUuid = 'invalid-audit-cert-nonexistent';
+      const verified = await certificateService.verifyCertificate(nonUuid);
+      expect(verified.isValid).toBe(false);
+      expect(verified.status).toBe(CertificateStatus.REVOKED);
+      expect(verified.message).toContain('does not exist');
+      expect(mockPrisma.certificate.findUnique).not.toHaveBeenCalled();
     });
   });
 
