@@ -145,7 +145,7 @@ export function LoginPage() {
             t.mfa.mfaPromptTitle
           ) : (
             <>
-              <span className="sr-only">Sign in to your account</span>
+              <span className="sr-only">Sign in to your account - Đăng nhập</span>
               {t.auth.loginTitle}
             </>
           )}
@@ -163,8 +163,10 @@ export function LoginPage() {
                 <KeyRound className="h-5 w-5 text-indigo-600" />
                 <span>{t.mfa.title}</span>
               </span>
+            ) : language === 'vi' ? (
+              'Chào mừng trở lại'
             ) : (
-              t.nav.signIn
+              'Welcome Back'
             )}
           </CardTitle>
           <CardDescription>

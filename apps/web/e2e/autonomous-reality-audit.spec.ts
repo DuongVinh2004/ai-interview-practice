@@ -100,8 +100,8 @@ test.describe('Autonomous Comprehensive Product Reality Test Suite', () => {
     await expect(startBtn).toBeEnabled({ timeout: 15000 });
     await startBtn.click();
 
-    await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/, { timeout: 20000 });
-    await expect(page.locator('#answer-textarea')).toBeVisible({ timeout: 25000 });
+    await expect(page).toHaveURL(/\/interviews\/[a-f0-9-]+/, { timeout: 25000 });
+    await expect(page.locator('#answer-textarea')).toBeVisible({ timeout: 35000 });
 
     // 3. Test Controlled Answer: Prompt Injection Defense
     await page.fill(

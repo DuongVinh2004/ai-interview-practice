@@ -46,7 +46,7 @@ test.describe('Comprehensive AI Interview Practice E2E Operations Suite', () => 
 
   test('1. Candidate Auth, Navigation & Core Modules Walkthrough', async ({ page }) => {
     // 1. Visit Login (prepared by beforeEach)
-    await expect(page.getByRole('heading', { name: /(sign in|đăng nhập)/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /(sign in|đăng nhập)/i }).first()).toBeVisible();
 
     // 2. Sign in as Candidate
     await page.fill('#email', 'candidate@example.com');
