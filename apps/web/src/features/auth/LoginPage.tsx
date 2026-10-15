@@ -157,7 +157,7 @@ export function LoginPage() {
                 <span>{t.mfa.title}</span>
               </span>
             ) : (
-              t.auth.loginTitle
+              t.nav.signIn
             )}
           </CardTitle>
           <CardDescription>
