@@ -132,8 +132,13 @@ export function useInterviewSse({
               const rawJson = dataLine.slice(6).trim();
               try {
                 const payload = JSON.parse(rawJson);
-                if (payload.type !== SseEventType.HEARTBEAT) {
-                  onEventRef.current?.(payload.type, payload.data);
+                const event =
+                  payload && payload.data && typeof payload.data === 'object' && (payload.data.type || payload.data.sessionId)
+                    ? payload.data
+                    : payload;
+                const eventType = event?.type;
+                if (eventType && eventType !== SseEventType.HEARTBEAT) {
+                  onEventRef.current?.(eventType, event.data);
                   onSessionUpdatedRef.current?.();
                 }
               } catch {

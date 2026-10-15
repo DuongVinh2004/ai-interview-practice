@@ -12,7 +12,7 @@ export const SupportedCodeLanguageSchema = z.enum([
 export type SupportedCodeLanguage = z.infer<typeof SupportedCodeLanguageSchema>;
 
 export const TestCaseSchema = z.object({
-  id: z.string().uuid().optional(),
+  id: z.string().optional(),
   input: z.string().max(10000),
   expectedOutput: z.string().max(10000),
   isHidden: z.boolean().default(false),
@@ -23,7 +23,8 @@ export type TestCaseDto = z.infer<typeof TestCaseSchema>;
 export const ExecuteCodeRequestSchema = z.object({
   language: SupportedCodeLanguageSchema,
   sourceCode: z.string().min(1, 'Source code cannot be empty').max(50000),
-  customInput: z.string().max(10000).optional(),
+  customInput: z.string().max(50000).optional(),
+  compilerOptions: z.string().max(500).optional(),
   testCases: z.array(TestCaseSchema).max(20).optional(),
 });
 
@@ -57,6 +58,7 @@ export const SubmitCodeRequestSchema = z.object({
   turnNumber: z.number().int().min(1).max(10),
   language: SupportedCodeLanguageSchema,
   sourceCode: z.string().min(1).max(50000),
+  compilerOptions: z.string().max(500).optional(),
 });
 export type SubmitCodeRequest = z.infer<typeof SubmitCodeRequestSchema>;
 

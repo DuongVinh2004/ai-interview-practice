@@ -179,10 +179,20 @@ export class EntitlementReservationService {
 
     for (let attempt = 1; attempt <= EntitlementReservationService.MAX_RETRIES; attempt += 1) {
       try {
-        return await this.prisma.$transaction(async tx => this.commitInTransaction(tx, input), {
-          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-          timeout: 10_000,
-        });
+        const result = await this.prisma.$transaction(
+          async tx => this.commitInTransaction(tx, input),
+          {
+            isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+            timeout: 10_000,
+          },
+        );
+        if (result?.requiresReconciliation) {
+          throw new ConflictException(
+            result.message ||
+              'Actual provider usage exceeds its reservation and requires reconciliation',
+          );
+        }
+        return result;
       } catch (error: any) {
         lastError = error;
         if (!this.isRetryable(error) || attempt === EntitlementReservationService.MAX_RETRIES) {
@@ -211,7 +221,7 @@ export class EntitlementReservationService {
       );
     }
     if (input.actualQuantity > reservation.estimatedQuantity) {
-      await tx.entitlementReservation.update({
+      const updatedReservation = await tx.entitlementReservation.update({
         where: { id: reservation.id },
         data: {
           state: 'RECONCILIATION_REQUIRED',
@@ -223,9 +233,11 @@ export class EntitlementReservationService {
           },
         },
       });
-      throw new ConflictException(
-        'Actual provider usage exceeds its reservation and requires reconciliation',
-      );
+      return {
+        requiresReconciliation: true,
+        reservation: updatedReservation,
+        message: 'Actual provider usage exceeds its reservation and requires reconciliation',
+      };
     }
 
     const bucket = await tx.entitlementBucket.findUnique({ where: { id: reservation.bucketId } });

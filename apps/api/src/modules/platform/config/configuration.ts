@@ -37,8 +37,12 @@ export const aiConfig = registerAs('ai', () => ({
   providerPriority: process.env.AI_PROVIDER_PRIORITY || 'gemini,openai,anthropic,mock',
   dailyBudgetUsd: parseFloat(process.env.AI_BUDGET_DAILY_USD || '50.0'),
   maxProviderCallCostUsd: parseFloat(process.env.AI_MAX_PROVIDER_CALL_COST_USD || '2.0'),
-  timeoutMs: parseInt(process.env.AI_TIMEOUT_MS || '10000', 10),
+  timeoutMs: parseInt(process.env.AI_TIMEOUT_MS || '30000', 10),
   maxRetries: parseInt(process.env.AI_MAX_RETRIES || '2', 10),
+  ninerouterUrl: process.env.NINEROUTER_URL || 'http://localhost:20128',
+  ninerouterKey: process.env.NINEROUTER_KEY || '',
+  ninerouterSttModel: process.env.NINEROUTER_STT_MODEL || 'groq/whisper-large-v3-turbo',
+  ninerouterTtsModel: process.env.NINEROUTER_TTS_MODEL || 'edge-tts/vi-VN-HoaiMyNeural',
 }));
 
 export const featuresConfig = registerAs('features', () => ({

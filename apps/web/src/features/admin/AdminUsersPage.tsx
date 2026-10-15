@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '../../lib/api-client';
 import { useAuthStore } from '../../stores/auth.store';
+import { useI18nStore } from '../../stores/i18n.store';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -12,6 +13,8 @@ import { Shield, Lock, Unlock } from 'lucide-react';
 
 export function AdminUsersPage() {
   const currentUser = useAuthStore(state => state.user);
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const [search, setSearch] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -27,11 +30,15 @@ export function AdminUsersPage() {
     try {
       await apiClient(`/admin/users/${targetUserId}/lock`, {
         method: 'POST',
-        body: JSON.stringify({ reason: 'Account suspended by administrator' }),
+        body: JSON.stringify({
+          reason: isVi ? 'Tài khoản bị tạm khóa bởi quản trị viên' : 'Account suspended by administrator',
+        }),
       });
       refetch();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to lock user.');
+      setErrorMessage(
+        err.message || (isVi ? 'Khóa tài khoản thất bại.' : 'Failed to lock user.'),
+      );
     }
   };
 
@@ -43,7 +50,9 @@ export function AdminUsersPage() {
       });
       refetch();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to unlock user.');
+      setErrorMessage(
+        err.message || (isVi ? 'Mở khóa tài khoản thất bại.' : 'Failed to unlock user.'),
+      );
     }
   };
 
@@ -54,9 +63,13 @@ export function AdminUsersPage() {
           <Shield className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">User Administration</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isVi ? 'Quản lý Người dùng' : 'User Administration'}
+          </h1>
           <p className="text-sm text-slate-500">
-            Manage candidate accounts, search users, and apply soft locks
+            {isVi
+              ? 'Quản lý tài khoản ứng viên, tìm kiếm và kiểm soát trạng thái truy cập'
+              : 'Manage candidate accounts, search users, and apply soft locks'}
           </p>
         </div>
       </div>
@@ -66,10 +79,10 @@ export function AdminUsersPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
-            <CardTitle>Registered Users</CardTitle>
+            <CardTitle>{isVi ? 'Danh sách người dùng' : 'Registered Users'}</CardTitle>
             <div className="w-72">
               <Input
-                placeholder="Search by email or name..."
+                placeholder={isVi ? 'Tìm theo email hoặc họ tên...' : 'Search by email or name...'}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -86,11 +99,11 @@ export function AdminUsersPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
                   <tr>
-                    <th className="px-6 py-3.5">User</th>
-                    <th className="px-6 py-3.5">Role</th>
-                    <th className="px-6 py-3.5">Status</th>
-                    <th className="px-6 py-3.5">Sessions</th>
-                    <th className="px-6 py-3.5 text-right">Actions</th>
+                    <th className="px-6 py-3.5">{isVi ? 'Người dùng' : 'User'}</th>
+                    <th className="px-6 py-3.5">{isVi ? 'Vai trò' : 'Role'}</th>
+                    <th className="px-6 py-3.5">{isVi ? 'Trạng thái' : 'Status'}</th>
+                    <th className="px-6 py-3.5">{isVi ? 'Số phiên' : 'Sessions'}</th>
+                    <th className="px-6 py-3.5 text-right">{isVi ? 'Thao tác' : 'Actions'}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -102,7 +115,7 @@ export function AdminUsersPage() {
                       <tr key={u.id} className="hover:bg-slate-50/50">
                         <td className="px-6 py-4">
                           <div className="font-semibold text-slate-900">
-                            {u.profile?.fullName || 'No Name'}
+                            {u.profile?.fullName || (isVi ? 'Chưa đặt tên' : 'No Name')}
                           </div>
                           <div className="text-xs text-slate-500">{u.email}</div>
                         </td>
@@ -122,7 +135,9 @@ export function AdminUsersPage() {
                         </td>
                         <td className="px-6 py-4 text-right">
                           {isSelf ? (
-                            <span className="text-xs text-slate-400 italic">Current User</span>
+                            <span className="text-xs text-slate-400 italic">
+                              {isVi ? 'Tài khoản hiện tại' : 'Current User'}
+                            </span>
                           ) : isLocked ? (
                             <Button
                               variant="outline"
@@ -131,7 +146,7 @@ export function AdminUsersPage() {
                               className="gap-1 text-emerald-700 hover:text-emerald-800"
                             >
                               <Unlock className="h-3.5 w-3.5" />
-                              <span>Unlock</span>
+                              <span>{isVi ? 'Mở khóa' : 'Unlock'}</span>
                             </Button>
                           ) : (
                             <Button
@@ -141,7 +156,7 @@ export function AdminUsersPage() {
                               className="gap-1 text-rose-600 hover:text-rose-700 hover:bg-rose-50"
                             >
                               <Lock className="h-3.5 w-3.5" />
-                              <span>Lock</span>
+                              <span>{isVi ? 'Khóa' : 'Lock'}</span>
                             </Button>
                           )}
                         </td>

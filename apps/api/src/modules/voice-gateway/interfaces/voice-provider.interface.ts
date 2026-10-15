@@ -13,10 +13,12 @@ export interface TranscriptEvent {
 export interface SttStreamSession {
   sendAudioChunk(pcmChunk: Buffer): void;
   events: Subject<TranscriptEvent>;
+  finish?(): Promise<void>;
   close(): void;
 }
 
 export interface TtsStreamSession {
+  codec?: 'pcm16' | 'mp3';
   sendText(text: string): void;
   audioStream: Subject<Buffer>;
   flush(): void;

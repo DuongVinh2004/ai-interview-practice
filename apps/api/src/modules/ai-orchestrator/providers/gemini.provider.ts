@@ -33,7 +33,7 @@ export class GeminiProvider implements AiProvider {
   constructor(private readonly configService: ConfigService) {
     const apiKey = this.configService.get<string>('ai.geminiApiKey', '');
     this.defaultModel = this.configService.get<string>('ai.geminiModel', 'gemini-3.6-flash');
-    this.timeoutMs = this.configService.get<number>('ai.timeoutMs', 10000);
+    this.timeoutMs = this.configService.get<number>('ai.timeoutMs', 30000);
 
     if (apiKey) {
       this.client = new GoogleGenerativeAI(apiKey);
@@ -93,6 +93,22 @@ export class GeminiProvider implements AiProvider {
       const text = response.text();
 
       const parsed = JSON.parse(text);
+      if (parsed.suggestedDifficulty != null) {
+        const diffMap: Record<string, number> = {
+          '1': 1,
+          '2': 2,
+          '3': 3,
+          EASY: 1,
+          MEDIUM: 2,
+          HARD: 3,
+        };
+        const key = String(parsed.suggestedDifficulty).toUpperCase();
+        parsed.suggestedDifficulty =
+          diffMap[key] ??
+          (typeof parsed.suggestedDifficulty === 'number'
+            ? Math.min(Math.max(1, Math.round(parsed.suggestedDifficulty)), 3)
+            : 2);
+      }
       const validated = GeneratedQuestionAiSchema.parse(parsed);
 
       const promptTokens = response.usageMetadata?.promptTokenCount || 200;

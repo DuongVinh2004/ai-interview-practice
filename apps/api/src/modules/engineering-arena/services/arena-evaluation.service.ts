@@ -37,6 +37,24 @@ export class ArenaEvaluationService {
       );
     }
 
+    // Idempotency: if session was already completed, return existing evaluation
+    if (session.state === ArenaSessionLifecycleState.COMPLETED) {
+      const latestSubmission = session.submissions?.[0];
+      const evaluation = latestSubmission?.evaluations?.[0];
+      if (evaluation) {
+        return {
+          id: evaluation.id,
+          sessionId,
+          submissionId: latestSubmission.id,
+          scoreBreakdown: evaluation.scoreBreakdownJson as any,
+          aiFeedbackSummary: evaluation.aiFeedbackSummary,
+          rubricCriteriaFeedback: (evaluation.rubricFeedbackJson as any) || [],
+          skillEvidences: [],
+          evaluatedAt: evaluation.createdAt.toISOString(),
+        };
+      }
+    }
+
     // Validate state transitions
     ArenaSessionStateMachine.validateTransition(
       session.state as ArenaSessionState,

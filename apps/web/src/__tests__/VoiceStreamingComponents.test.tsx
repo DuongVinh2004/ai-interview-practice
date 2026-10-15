@@ -51,11 +51,11 @@ describe('Voice Streaming Components (F001)', () => {
     );
 
     expect(screen.getByTestId('voice-consent-modal')).toBeInTheDocument();
-    expect(screen.getByText(/Xác Nhận Quyền Riêng Tư & Xử Lý Giọng Nói/i)).toBeInTheDocument();
-    expect(screen.getByText(/Tôi Đồng Ý & Bắt Đầu Phỏng Vấn/i)).toBeInTheDocument();
+    expect(screen.getByText(/Quyền riêng tư & xử lý giọng nói/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Đồng ý và bắt đầu' })).toBeInTheDocument();
 
     // Grant consent
-    const consentBtn = screen.getByText(/Tôi Đồng Ý & Bắt Đầu Phỏng Vấn/i);
+    const consentBtn = screen.getByRole('button', { name: 'Đồng ý và bắt đầu' });
     fireEvent.click(consentBtn);
 
     await waitFor(() => {
@@ -70,7 +70,7 @@ describe('Voice Streaming Components (F001)', () => {
     });
   });
 
-  it('renders VoiceInterviewRoom with controls, avatars, and ARIA live region (FINDING-007)', async () => {
+  it('renders focused question and answer controls with a collapsed accessible history', async () => {
     const onFinish = vi.fn();
 
     render(
@@ -85,30 +85,30 @@ describe('Voice Streaming Components (F001)', () => {
     );
 
     // Accept consent
-    fireEvent.click(screen.getByText(/Tôi Đồng Ý & Bắt Đầu Phỏng Vấn/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Đồng ý và bắt đầu' }));
 
     await waitFor(() => {
       expect(screen.getByTestId('voice-interview-room')).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/Live Voice Interview/i)).toBeInTheDocument();
-    expect(screen.getByText('AI Technical Interviewer')).toBeInTheDocument();
-    expect(screen.getByText('Ứng viên (Bạn)')).toBeInTheDocument();
-    expect(screen.getByText('Tắt Micro')).toBeInTheDocument();
-    expect(screen.getByText('Ngắt lời AI (Barge-in)')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Phỏng vấn giọng nói' })).toBeInTheDocument();
+    expect(screen.getByText('AI Interviewer')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Câu trả lời của bạn' })).toBeInTheDocument();
+    expect(screen.getByText('Bắt đầu trả lời')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Đọc lại câu hỏi' })).toBeDisabled();
 
     // Verify ARIA Live region on live transcript log
+    const history = screen.getByText('Nội dung đã trao đổi').closest('details');
+    expect(history).not.toHaveAttribute('open');
+    fireEvent.click(screen.getByText('Nội dung đã trao đổi'));
     const transcriptLog = screen.getByRole('log');
     expect(transcriptLog).toBeInTheDocument();
     expect(transcriptLog).toHaveAttribute('aria-live', 'polite');
 
-    // Toggle mute
-    const muteBtn = screen.getByText('Tắt Micro');
-    fireEvent.click(muteBtn);
-    expect(screen.getByText('Bật Micro')).toBeInTheDocument();
+    expect(screen.getByText('Bắt đầu trả lời')).toBeDisabled();
 
     // End call
-    const endBtn = screen.getByText('Kết thúc Phỏng vấn');
+    const endBtn = screen.getByRole('button', { name: 'Rời phiên' });
     fireEvent.click(endBtn);
     expect(onFinish).toHaveBeenCalled();
   });

@@ -2,11 +2,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
 import { Card, CardContent } from '../../components/ui/Card';
 import { CheckCircle2, ArrowRight } from 'lucide-react';
+import { useI18nStore } from '../../stores/i18n.store';
 
 export function CheckoutSuccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get('session_id');
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
 
   return (
     <div className="max-w-md mx-auto py-16 px-4">
@@ -16,10 +19,13 @@ export function CheckoutSuccessPage() {
             <CheckCircle2 className="w-8 h-8" />
           </div>
 
-          <h1 className="text-2xl font-bold text-slate-900">Subscription Activated!</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {isVi ? 'Gói đăng ký đã kích hoạt!' : 'Subscription Activated!'}
+          </h1>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Thank you for upgrading! Your account has been upgraded with increased mock interview
-            quotas and advanced features.
+            {isVi
+              ? 'Cảm ơn bạn đã nâng cấp! Tài khoản của bạn đã được mở khóa thêm lượt phỏng vấn và các tính năng nâng cao.'
+              : 'Thank you for upgrading! Your account has been upgraded with increased mock interview quotas and advanced features.'}
           </p>
 
           {sessionId && (
@@ -34,11 +40,11 @@ export function CheckoutSuccessPage() {
               onClick={() => navigate('/interviews/new')}
               className="w-full gap-1.5"
             >
-              <span>Start Interview</span>
+              <span>{isVi ? 'Bắt đầu phỏng vấn' : 'Start Interview'}</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
             <Button variant="outline" onClick={() => navigate('/billing')} className="w-full">
-              Billing Dashboard
+              {isVi ? 'Bảng quản lý Gói cước' : 'Billing Dashboard'}
             </Button>
           </div>
         </CardContent>

@@ -42,4 +42,43 @@ describe('InterviewQueueReconciliationCron', () => {
       expect.objectContaining({ jobId: 'question-session-1-turn-2' }),
     );
   });
+
+  it('skips reconciliation when Redis distributed lock is held by another cluster instance', async () => {
+    const prisma: any = {
+      interviewTurn: { findMany: jest.fn() },
+    };
+    const evaluationQueue = { add: jest.fn() } as any;
+    const questionQueue = { add: jest.fn() } as any;
+
+    const mockRedis = {
+      status: 'ready',
+      set: jest.fn().mockResolvedValue(null), // Lock already held
+      get: jest.fn(),
+      del: jest.fn(),
+    };
+
+    const redisService: any = {
+      getClient: () => mockRedis,
+    };
+
+    const cron = new InterviewQueueReconciliationCron(
+      prisma,
+      evaluationQueue,
+      questionQueue,
+      redisService,
+    );
+
+    await cron.reconcile();
+
+    expect(mockRedis.set).toHaveBeenCalledWith(
+      'lock:cron:interview-queue-reconciliation',
+      expect.any(String),
+      'EX',
+      55,
+      'NX',
+    );
+    expect(prisma.interviewTurn.findMany).not.toHaveBeenCalled();
+    expect(evaluationQueue.add).not.toHaveBeenCalled();
+    expect(questionQueue.add).not.toHaveBeenCalled();
+  });
 });

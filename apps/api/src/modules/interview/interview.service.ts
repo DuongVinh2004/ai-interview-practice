@@ -376,9 +376,12 @@ export class InterviewService {
       where: { id: sessionId },
       include: {
         turns: {
-          select: {
-            turnNumber: true,
-            status: true,
+          orderBy: { turnNumber: 'asc' },
+          include: {
+            question: true,
+            answer: {
+              include: { evaluation: true },
+            },
           },
         },
       },
@@ -960,7 +963,7 @@ export class InterviewService {
             content: turn.question.content,
             difficulty: turn.question.difficulty as DifficultyLevel,
             keyFocus: turn.question.keyFocus,
-            createdAt: turn.question.createdAt.toISOString(),
+            createdAt: turn.question.createdAt ? turn.question.createdAt.toISOString() : new Date().toISOString(),
           }
         : null,
       answer: turn.answer
@@ -968,7 +971,7 @@ export class InterviewService {
             id: turn.answer.id,
             turnId: turn.answer.turnId,
             content: turn.answer.content,
-            submittedAt: turn.answer.submittedAt.toISOString(),
+            submittedAt: turn.answer.submittedAt ? turn.answer.submittedAt.toISOString() : new Date().toISOString(),
             evaluation: turn.answer.evaluation
               ? {
                   id: turn.answer.evaluation.id,
@@ -979,13 +982,13 @@ export class InterviewService {
                   improvements: turn.answer.evaluation.improvements,
                   conciseFeedback: turn.answer.evaluation.conciseFeedback,
                   evidence: turn.answer.evaluation.evidence,
-                  createdAt: turn.answer.evaluation.createdAt.toISOString(),
+                  createdAt: turn.answer.evaluation.createdAt ? turn.answer.evaluation.createdAt.toISOString() : new Date().toISOString(),
                 }
               : null,
           }
         : null,
-      createdAt: turn.createdAt.toISOString(),
-      updatedAt: turn.updatedAt.toISOString(),
+      createdAt: turn.createdAt ? turn.createdAt.toISOString() : new Date().toISOString(),
+      updatedAt: turn.updatedAt ? turn.updatedAt.toISOString() : new Date().toISOString(),
     };
   }
 }

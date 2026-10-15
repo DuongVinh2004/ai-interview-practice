@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useEngineeringArena } from './useEngineeringArena';
 import { ArenaSkillRadarView } from './ArenaSkillRadarView';
 import { ChallengeDomain, ChallengeCategory } from '@ai-interview/contracts';
+import { useI18nStore } from '../../stores/i18n.store';
 
 interface ChallengeCatalogViewProps {
   onSelectChallenge: (slug: string) => void;
@@ -11,6 +12,8 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
   onSelectChallenge,
 }) => {
   const { challenges, isLoading, error, fetchChallenges } = useEngineeringArena();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const [activeTab, setActiveTab] = useState<'CATALOG' | 'RADAR'>('CATALOG');
   const [selectedDomain, setSelectedDomain] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
@@ -28,11 +31,12 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 dark:text-white tracking-tight">
-            Engineering Arena
+            {isVi ? 'Đấu trường Kỹ thuật' : 'Engineering Arena'}
           </h1>
           <p className="mt-2 text-base text-slate-600 dark:text-slate-400 max-w-2xl">
-            Solve real-world multi-file repository challenges: debug race conditions, fix memory
-            leaks, and prove your skills with evidence-backed evaluation.
+            {isVi
+              ? 'Giải quyết các thử thách mã nguồn thực tế: xử lý race condition, rò rỉ bộ nhớ và chứng minh năng lực với đánh giá tự động dựa trên bằng chứng.'
+              : 'Solve real-world multi-file repository challenges: debug race conditions, fix memory leaks, and prove your skills with evidence-backed evaluation.'}
           </p>
         </div>
 
@@ -46,7 +50,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Challenges
+            {isVi ? 'Thử thách' : 'Challenges'}
           </button>
           <button
             onClick={() => setActiveTab('RADAR')}
@@ -56,7 +60,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
             }`}
           >
-            Skill Radar
+            {isVi ? 'Radar Kỹ năng' : 'Skill Radar'}
           </button>
         </div>
       </div>
@@ -73,7 +77,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
               aria-label="Filter by domain"
               className="w-full sm:w-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
-              <option value="">All Domains</option>
+              <option value="">{isVi ? 'Tất cả lĩnh vực' : 'All Domains'}</option>
               <option value={ChallengeDomain.BACKEND}>Backend</option>
               <option value={ChallengeDomain.FRONTEND}>Frontend</option>
               <option value={ChallengeDomain.FULLSTACK}>Fullstack</option>
@@ -87,14 +91,14 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
               aria-label="Filter by category"
               className="w-full sm:w-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
-              <option value="">All Categories</option>
-              <option value={ChallengeCategory.BUG_FIX}>Bug Fix</option>
-              <option value={ChallengeCategory.REFACTORING}>Refactoring</option>
+              <option value="">{isVi ? 'Tất cả danh mục' : 'All Categories'}</option>
+              <option value={ChallengeCategory.BUG_FIX}>{isVi ? 'Sửa lỗi (Bug Fix)' : 'Bug Fix'}</option>
+              <option value={ChallengeCategory.REFACTORING}>{isVi ? 'Tái cấu trúc (Refactoring)' : 'Refactoring'}</option>
               <option value={ChallengeCategory.FEATURE_IMPLEMENTATION}>
-                Feature Implementation
+                {isVi ? 'Phát triển tính năng' : 'Feature Implementation'}
               </option>
-              <option value={ChallengeCategory.PERFORMANCE_OPTIMIZATION}>Performance</option>
-              <option value={ChallengeCategory.SECURITY_REMEDIATION}>Security</option>
+              <option value={ChallengeCategory.PERFORMANCE_OPTIMIZATION}>{isVi ? 'Tối ưu hiệu năng' : 'Performance'}</option>
+              <option value={ChallengeCategory.SECURITY_REMEDIATION}>{isVi ? 'Bảo mật' : 'Security'}</option>
             </select>
           </div>
 
@@ -110,7 +114,9 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
           ) : challenges.length === 0 ? (
             <div className="text-center py-16 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-800">
               <p className="text-base text-slate-500 dark:text-slate-400">
-                No engineering challenges found matching the selected filters.
+                {isVi
+                  ? 'Không tìm thấy thử thách kỹ thuật nào phù hợp với bộ lọc.'
+                  : 'No engineering challenges found matching the selected filters.'}
               </p>
             </div>
           ) : (
@@ -126,20 +132,22 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
                         {challenge.domain}
                       </span>
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        Difficulty {challenge.difficulty}/5
+                        {isVi ? `Độ khó: ${challenge.difficulty}/5` : `Difficulty ${challenge.difficulty}/5`}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 line-clamp-1">
                       {challenge.title}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-                      Category:{' '}
+                      {isVi ? 'Danh mục: ' : 'Category: '}
                       <span className="font-medium text-slate-700 dark:text-slate-300">
                         {challenge.category}
                       </span>
                     </p>
                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                      Estimated time: ~{challenge.estimatedMinutes} minutes
+                      {isVi
+                        ? `Thời gian ước tính: ~${challenge.estimatedMinutes} phút`
+                        : `Estimated time: ~${challenge.estimatedMinutes} minutes`}
                     </p>
                   </div>
 
@@ -148,7 +156,7 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
                       onClick={() => onSelectChallenge(challenge.slug)}
                       className="w-full inline-flex justify-center items-center px-4 py-2.5 rounded-lg text-sm font-semibold text-white bg-primary-600 hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600 shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
                     >
-                      Start Challenge
+                      {isVi ? 'Bắt đầu Thử thách' : 'Start Challenge'}
                     </button>
                   </div>
                 </div>

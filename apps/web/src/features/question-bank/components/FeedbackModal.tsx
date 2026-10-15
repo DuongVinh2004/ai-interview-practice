@@ -4,6 +4,7 @@ import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { QuestionFeedbackReason } from '@ai-interview/contracts';
 import { Flag, CheckCircle2 } from 'lucide-react';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -13,6 +14,9 @@ interface FeedbackModalProps {
 }
 
 export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: FeedbackModalProps) {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const [reason, setReason] = useState<QuestionFeedbackReason>(
     QuestionFeedbackReason.INCORRECT_ANSWER,
   );
@@ -43,7 +47,7 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Báo lỗi hoặc góp ý nội dung câu hỏi"
+      title={isVi ? 'Báo lỗi hoặc góp ý nội dung câu hỏi' : 'Report Issue or Suggest Feedback'}
       maxWidth="md"
     >
       {submitted ? (
@@ -52,17 +56,19 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
             <CheckCircle2 className="h-6 w-6" />
           </div>
           <h4 className="text-base font-semibold text-slate-900 dark:text-white">
-            Cảm ơn bạn đã đóng góp!
+            {isVi ? 'Cảm ơn bạn đã đóng góp!' : 'Thank you for your feedback!'}
           </h4>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Đội ngũ biên tập viên sẽ xem xét và cập nhật nội dung trong thời gian sớm nhất.
+            {isVi
+              ? 'Đội ngũ biên tập viên sẽ xem xét và cập nhật nội dung trong thời gian sớm nhất.'
+              : 'Our editorial team will review and update this question promptly.'}
           </p>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Lý do báo cáo
+              {isVi ? 'Lý do báo cáo' : 'Report Reason'}
             </label>
             <select
               value={reason}
@@ -70,29 +76,43 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             >
               <option value={QuestionFeedbackReason.INCORRECT_ANSWER}>
-                Đáp án hoặc mã nguồn chưa chính xác
+                {isVi
+                  ? 'Đáp án hoặc mã nguồn chưa chính xác'
+                  : 'Inaccurate solution or code'}
               </option>
               <option value={QuestionFeedbackReason.TYPO_ERROR}>
-                Lỗi chính tả / cú pháp đề bài
+                {isVi
+                  ? 'Lỗi chính tả / cú pháp đề bài'
+                  : 'Typo or description syntax error'}
               </option>
               <option value={QuestionFeedbackReason.POOR_EXPLANATION}>
-                Lời giải thích hoặc Rubric chưa rõ ràng
+                {isVi
+                  ? 'Lời giải thích hoặc Rubric chưa rõ ràng'
+                  : 'Unclear explanation or evaluation rubric'}
               </option>
               <option value={QuestionFeedbackReason.OUTDATED_CONTENT}>
-                Kiến thức hoặc công nghệ đã lỗi thời
+                {isVi
+                  ? 'Kiến thức hoặc công nghệ đã lỗi thời'
+                  : 'Outdated technology or deprecated knowledge'}
               </option>
-              <option value={QuestionFeedbackReason.OTHER}>Lý do khác</option>
+              <option value={QuestionFeedbackReason.OTHER}>
+                {isVi ? 'Lý do khác' : 'Other reason'}
+              </option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-              Chi tiết góp ý (Tùy chọn)
+              {isVi ? 'Chi tiết góp ý (Tùy chọn)' : 'Feedback Details (Optional)'}
             </label>
             <Textarea
               value={details}
               onChange={e => setDetails(e.target.value)}
-              placeholder="Mô tả cụ thể điểm cần sửa hoặc bổ sung..."
+              placeholder={
+                isVi
+                  ? 'Mô tả cụ thể điểm cần sửa hoặc bổ sung...'
+                  : 'Describe specific issues or proposed corrections...'
+              }
               rows={4}
               maxLength={2000}
             />
@@ -100,7 +120,7 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
 
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" type="button" onClick={onClose} disabled={isSubmitting}>
-              Hủy
+              {isVi ? 'Hủy' : 'Cancel'}
             </Button>
             <Button
               variant="primary"
@@ -109,7 +129,7 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
               className="flex items-center gap-1.5"
             >
               <Flag className="h-4 w-4" />
-              Gửi báo cáo
+              {isVi ? 'Gửi báo cáo' : 'Submit Feedback'}
             </Button>
           </div>
         </form>

@@ -24,7 +24,7 @@ export const EnvSchema = z.object({
     .default('mock'),
   AI_ALLOW_MOCK: z.enum(['true', 'false']).default('false'),
   ALLOW_MOCK_PROVIDERS: z.enum(['true', 'false']).default('false'),
-  PROCESS_ROLE: z.enum(['api', 'worker']).default('api'),
+  PROCESS_ROLE: z.enum(['api', 'worker', 'all']).default('api'),
   METRICS_EXPORTER_ENABLED: z.enum(['true', 'false']).default('false'),
   METRICS_EXPORTER_HOST: z.string().min(1).default('127.0.0.1'),
   METRICS_EXPORTER_PORT: z.coerce.number().int().min(1).max(65535).default(9091),
@@ -41,6 +41,10 @@ export const EnvSchema = z.object({
   AI_MAX_PROVIDER_CALL_COST_USD: z.coerce.number().positive().default(2.0),
   AI_TIMEOUT_MS: z.coerce.number().default(10000),
   AI_MAX_RETRIES: z.coerce.number().default(2),
+  NINEROUTER_URL: z.string().url().default('http://localhost:20128'),
+  NINEROUTER_KEY: z.string().optional().default(''),
+  NINEROUTER_STT_MODEL: z.string().default('groq/whisper-large-v3-turbo'),
+  NINEROUTER_TTS_MODEL: z.string().default('edge-tts/vi-VN-HoaiMyNeural'),
   FEATURE_SEMANTIC_CACHE: z.string().optional().default('false'),
   FEATURE_LIVE_CODING: z.string().optional().default('false'),
   FEATURE_BEHAVIORAL_INTERVIEW: z.string().optional().default('false'),
@@ -77,6 +81,8 @@ export const EnvSchema = z.object({
   PAYOS_API_KEY: z.string().optional().default(''),
   PAYOS_CHECKSUM_KEY: z.string().optional().default(''),
   VISION_PROVIDER: z.string().optional().default('mock'),
+  ARENA_WORKSPACE_RUNTIME: z.enum(['docker', 'deterministic']).optional().default('docker'),
+  ARENA_DETERMINISTIC_FALLBACK: z.enum(['true', 'false']).optional().default('false'),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

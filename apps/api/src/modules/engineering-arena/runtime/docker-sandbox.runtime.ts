@@ -9,6 +9,7 @@ import {
 import { DeterministicLocalWorkspaceRuntime } from './deterministic-local.runtime';
 import { ArenaWorkspaceFileUpdate } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
+import { assertSafeWorkspacePath } from './workspace-path.util';
 
 @Injectable()
 export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
@@ -28,8 +29,11 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
   ) {
     this.fallbackAdapter = fallbackAdapter || new DeterministicLocalWorkspaceRuntime();
     const environment = (process.env.NODE_ENV || process.env.APP_ENV || '').trim().toLowerCase();
+    const envFallback =
+      (process.env.ARENA_DETERMINISTIC_FALLBACK || '').trim().toLowerCase() === 'true';
     this.allowDeterministicFallback =
-      environment !== 'production' && (allowDeterministicFallback ?? environment === 'test');
+      environment !== 'production' &&
+      (allowDeterministicFallback ?? (envFallback || environment === 'test'));
   }
 
   /**
@@ -70,9 +74,7 @@ export class DockerSandboxWorkspaceRuntime implements WorkspaceRuntime {
     this.assertRuntimeAvailable();
     // Validate paths
     for (const filePath of Object.keys(params.files)) {
-      if (filePath.includes('..') || filePath.startsWith('/') || filePath.startsWith('\\')) {
-        throw new Error(`Security violation: Path traversal detected in '${filePath}'.`);
-      }
+      assertSafeWorkspacePath(filePath);
     }
 
     this.logger.log(`Provisioning container workspace for session ${params.sessionId}`);

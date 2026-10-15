@@ -53,10 +53,16 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
   const activeContent = activeFilePath ? fileContents[activeFilePath] || '' : '';
   const currentFileNode = session.files.find(f => f.path === activeFilePath);
 
+  const isCompleted = session.state === 'COMPLETED' || !!evaluation;
+
   const handleSubmit = async () => {
     setShowSubmitConfirm(false);
-    await submitSolution(explanation);
-    setShowReportModal(true);
+    try {
+      await submitSolution(explanation);
+      setShowReportModal(true);
+    } catch (err) {
+      console.error('Submit failed:', err);
+    }
   };
 
   return (
@@ -96,18 +102,28 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
 
           <button
             onClick={() => runCommand('test')}
-            disabled={isRunningCommand || isSubmitting}
+            disabled={isRunningCommand || isSubmitting || isCompleted}
             className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50"
           >
             {isRunningCommand ? 'Running Tests...' : '▶ Run Tests'}
           </button>
 
           <button
-            onClick={() => setShowSubmitConfirm(true)}
+            onClick={() => {
+              if (isCompleted) {
+                setShowReportModal(true);
+              } else {
+                setShowSubmitConfirm(true);
+              }
+            }}
             disabled={isRunningCommand || isSubmitting}
             className="inline-flex items-center px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm disabled:opacity-50"
           >
-            {isSubmitting ? 'Evaluating...' : '✓ Submit Solution'}
+            {isSubmitting
+              ? 'Evaluating...'
+              : isCompleted
+                ? '📊 View Evaluation'
+                : '✓ Submit Solution'}
           </button>
         </div>
       </div>
@@ -143,16 +159,22 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
         <div className="flex-1 flex flex-col bg-slate-900 border-r border-slate-800">
           <div className="px-4 py-2 bg-slate-950/70 border-b border-slate-800 text-xs font-mono text-slate-400 flex items-center justify-between">
             <span>{activeFilePath || 'No file selected'}</span>
-            <span>{currentFileNode?.isEditable ? 'Read / Write' : 'Read Only'}</span>
+            <span>
+              {isCompleted
+                ? 'Completed (Read Only)'
+                : currentFileNode?.isEditable
+                  ? 'Read / Write'
+                  : 'Read Only'}
+            </span>
           </div>
 
           <div className="flex-1 p-2">
             <textarea
               aria-label="Code Editor"
               value={activeContent}
-              readOnly={!currentFileNode?.isEditable}
+              readOnly={!currentFileNode?.isEditable || isCompleted}
               onChange={e => {
-                if (activeFilePath && currentFileNode?.isEditable) {
+                if (activeFilePath && currentFileNode?.isEditable && !isCompleted) {
                   updateFileContent(activeFilePath, e.target.value);
                 }
               }}

@@ -6,10 +6,13 @@ import { QuestionBankQuestionDto } from '@ai-interview/contracts';
 import { QuestionCard } from './components/QuestionCard';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { useI18nStore } from '../../stores/i18n.store';
 import { ArrowLeft, Bookmark, AlertCircle } from 'lucide-react';
 
 export function BookmarkedQuestionsPage() {
   const queryClient = useQueryClient();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
   const [page] = useState(1);
 
   const {
@@ -46,14 +49,16 @@ export function BookmarkedQuestionsPage() {
             className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 mb-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Ngân hàng câu hỏi
+            {isVi ? 'Ngân hàng câu hỏi' : 'Question Bank'}
           </Link>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl flex items-center gap-2.5">
             <Bookmark className="h-7 w-7 text-amber-500 fill-amber-500" />
-            Câu hỏi phỏng vấn đã lưu
+            {isVi ? 'Câu hỏi phỏng vấn đã lưu' : 'Saved Interview Questions'}
           </h1>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Xem lại danh sách các câu hỏi bạn đã đánh dấu để ôn tập chuyên sâu.
+            {isVi
+              ? 'Xem lại danh sách các câu hỏi bạn đã đánh dấu để ôn tập chuyên sâu.'
+              : 'Review questions you bookmarked for in-depth interview practice.'}
           </p>
         </div>
       </div>
@@ -76,7 +81,9 @@ export function BookmarkedQuestionsPage() {
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/30">
           <AlertCircle className="mx-auto h-8 w-8 text-rose-500" />
           <h3 className="mt-2 text-base font-semibold text-rose-800 dark:text-rose-200">
-            Không thể tải danh sách câu hỏi đã lưu
+            {isVi
+              ? 'Không thể tải danh sách câu hỏi đã lưu'
+              : 'Failed to load saved questions'}
           </h3>
           <Button
             variant="outline"
@@ -84,21 +91,24 @@ export function BookmarkedQuestionsPage() {
             className="mt-4"
             onClick={() => queryClient.invalidateQueries({ queryKey: ['question-bank-bookmarks'] })}
           >
-            Thử lại
+            {isVi ? 'Thử lại' : 'Retry'}
           </Button>
         </div>
       ) : questions.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/50 p-12 text-center dark:border-slate-800 dark:bg-slate-900/50">
           <Bookmark className="mx-auto h-12 w-12 text-slate-400" />
           <h3 className="mt-3 text-base font-semibold text-slate-800 dark:text-white">
-            Bạn chưa lưu câu hỏi nào
+            {isVi ? 'Bạn chưa lưu câu hỏi nào' : 'No saved questions yet'}
           </h3>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
-            Khi duyệt ngân hàng câu hỏi, bấm biểu tượng Bookmark trên bất kỳ câu hỏi nào để lưu vào
-            danh sách này.
+            {isVi
+              ? 'Khi duyệt ngân hàng câu hỏi, bấm biểu tượng Bookmark trên bất kỳ câu hỏi nào để lưu vào danh sách này.'
+              : 'While browsing the question bank, click the Bookmark icon on any question to save it here.'}
           </p>
           <Link to="/question-bank" className="mt-5 inline-block">
-            <Button variant="primary">Khám phá Ngân hàng câu hỏi</Button>
+            <Button variant="primary">
+              {isVi ? 'Khám phá Ngân hàng câu hỏi' : 'Explore Question Bank'}
+            </Button>
           </Link>
         </div>
       ) : (

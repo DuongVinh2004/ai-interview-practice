@@ -75,6 +75,17 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/voice': {
+        target: 'ws://localhost:3001',
+        ws: true,
+        changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            if ((err as any).code === 'ECONNRESET' || (err as any).code === 'EPIPE') return;
+            console.warn('[Vite WS Proxy Warning]', err.message);
+          });
+        },
+      },
     },
   },
   test: {

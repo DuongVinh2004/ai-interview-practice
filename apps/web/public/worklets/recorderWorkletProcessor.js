@@ -8,9 +8,21 @@ class RecorderWorkletProcessor extends AudioWorkletProcessor {
     this.bufferSize = 2048; // ~128ms chunk at 16kHz
     this._bytesWritten = 0;
     this._buffer = new Int16Array(this.bufferSize);
+    this.stopped = false;
+    this.port.onmessage = event => {
+      if (event.data?.type !== 'flush') return;
+      this.stopped = true;
+      if (this._bytesWritten) {
+        const tail = this._buffer.slice(0, this._bytesWritten);
+        this.port.postMessage(tail.buffer, [tail.buffer]);
+        this._bytesWritten = 0;
+      }
+      this.port.postMessage({ type: 'flushed' });
+    };
   }
 
   process(inputs, outputs, parameters) {
+    if (this.stopped) return true;
     const input = inputs[0];
     if (!input || input.length === 0) return true;
 

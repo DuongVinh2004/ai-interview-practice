@@ -8,7 +8,7 @@ import compression from 'compression';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  process.env.PROCESS_ROLE ??= 'api';
+  process.env.PROCESS_ROLE ??= process.env.NODE_ENV === 'production' ? 'api' : 'all';
   const { AppModule } = await import('./app.module');
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
@@ -29,7 +29,16 @@ async function bootstrap() {
       contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
     }),
   );
-  app.use(compression());
+  app.use(
+    compression({
+      filter: (req: any, res: any) => {
+        if (req.headers.accept?.includes('text/event-stream') || req.url?.includes('/events')) {
+          return false;
+        }
+        return compression.filter(req, res);
+      },
+    }),
+  );
 
   app.enableCors({
     origin: corsOrigin.split(',').map(origin => origin.trim()),

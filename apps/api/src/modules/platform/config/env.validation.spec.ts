@@ -1,4 +1,7 @@
 import { validateEnv } from './env.validation';
+import { Test } from '@nestjs/testing';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { aiConfig } from './configuration';
 
 const productionBase = {
   NODE_ENV: 'production',
@@ -18,6 +21,41 @@ const productionBase = {
 };
 
 describe('validateEnv production mock-provider boundary', () => {
+  it('preserves router settings through validation and Nest process-environment loading', async () => {
+    const isolatedEnv = { ...process.env };
+    for (const name of ['NINEROUTER_URL', 'NINEROUTER_KEY', 'NINEROUTER_STT_MODEL', 'NINEROUTER_TTS_MODEL']) {
+      delete isolatedEnv[name];
+    }
+    const envReplacement = jest.replaceProperty(process, 'env', isolatedEnv);
+    try {
+      const module = await Test.createTestingModule({
+        imports: [ConfigModule.forRoot({
+          ignoreEnvFile: true,
+          ignoreEnvVars: true,
+          validate: () => validateEnv({
+            ...productionBase,
+            NODE_ENV: 'test',
+            NINEROUTER_URL: 'http://127.0.0.1:20128',
+            NINEROUTER_KEY: 'synthetic-router-key',
+            NINEROUTER_STT_MODEL: 'test/stt',
+            NINEROUTER_TTS_MODEL: 'edge-tts/vi-VN-HoaiMyNeural',
+          }),
+          load: [aiConfig],
+        })],
+      }).compile();
+      try {
+        const config = module.get(ConfigService);
+        expect(config.get('ai.ninerouterKey')).toBe('synthetic-router-key');
+        expect(config.get('ai.ninerouterUrl')).toBe('http://127.0.0.1:20128');
+        expect(config.get('ai.ninerouterSttModel')).toBe('test/stt');
+        expect(config.get('ai.ninerouterTtsModel')).toBe('edge-tts/vi-VN-HoaiMyNeural');
+      } finally {
+        await module.close();
+      }
+    } finally {
+      envReplacement.restore();
+    }
+  });
   it.each([
     [{ AI_PROVIDER: 'mock' }, 'AI_PROVIDER=mock'],
     [{ AI_ALLOW_MOCK: 'true' }, 'AI_ALLOW_MOCK=true'],

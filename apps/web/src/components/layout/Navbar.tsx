@@ -200,7 +200,7 @@ export function Navbar() {
         {/* ========================================================= */}
         {/* LEFT: BRAND LOGO + ENLARGED ELONGATED NAVIGATION TABS      */}
         {/* ========================================================= */}
-        <div className="flex items-center gap-4 lg:gap-6 shrink-0 min-w-0">
+        <div className="flex items-center gap-3 lg:gap-4 shrink-0">
           {/* Brand Logo */}
           <Link
             to="/"
@@ -218,11 +218,11 @@ export function Navbar() {
 
           {/* Desktop Navigation Links */}
           {isAuthenticated && (
-            <nav className="hidden xl:flex items-center gap-1.5" aria-label="Main Navigation">
+            <nav className="hidden xl:flex items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
               {/* 1. Dashboard */}
               <Link
                 to="/"
-                className={`px-4 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                className={`px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
                   isDashboardActive
                     ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs dark:bg-slate-800 dark:text-white'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
@@ -234,7 +234,7 @@ export function Navbar() {
               {/* 2. Practice (Primary Action) */}
               <Link
                 to="/interviews/new"
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
                   isPracticeActive
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:scale-[1.02] active:scale-[0.98] dark:bg-emerald-950/60 dark:text-emerald-300 dark:hover:bg-emerald-900/60'
@@ -247,27 +247,29 @@ export function Navbar() {
               {/* 3. Question Bank */}
               <Link
                 to="/question-bank"
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
                   isQuestionBankActive
                     ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs dark:bg-slate-800 dark:text-white'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
                 }`}
+                title={language === 'vi' ? 'Ngân hàng câu hỏi' : 'Question Bank'}
               >
                 <Layers className="h-4 w-4 text-indigo-500" />
-                <span>{language === 'vi' ? 'Ngân hàng câu hỏi' : 'Question Bank'}</span>
+                <span>{language === 'vi' ? 'Câu hỏi' : 'Questions'}</span>
               </Link>
 
               {/* 3b. Engineering Arena */}
               <Link
                 to="/arena"
-                className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
                   isArenaActive
                     ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs dark:bg-slate-800 dark:text-white'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
                 }`}
+                title={language === 'vi' ? 'Đấu trường Kỹ thuật' : 'Engineering Arena'}
               >
                 <Cpu className="h-4 w-4 text-cyan-500" />
-                <span>{language === 'vi' ? 'Đấu trường Kỹ thuật' : 'Engineering Arena'}</span>
+                <span>{language === 'vi' ? 'Đấu trường' : 'Arena'}</span>
               </Link>
 
               {/* 4. Progress Dropdown */}
@@ -280,7 +282,7 @@ export function Navbar() {
                     setAdminOpen(false);
                     setUserMenuOpen(false);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
                     isProgressActive
                       ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs dark:bg-slate-800 dark:text-white'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
@@ -336,7 +338,7 @@ export function Navbar() {
                     setAdminOpen(false);
                     setUserMenuOpen(false);
                   }}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
+                  className={`flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-xl transition-all whitespace-nowrap ${
                     isToolsActive
                       ? 'bg-slate-100 text-slate-900 font-bold shadow-2xs dark:bg-slate-800 dark:text-white'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50 dark:text-slate-300 dark:hover:text-white dark:hover:bg-slate-800/60'
@@ -409,7 +411,7 @@ export function Navbar() {
                       setToolsMenuOpen(false);
                       setUserMenuOpen(false);
                     }}
-                    className={`flex items-center gap-1.5 px-3.5 py-2 text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm font-bold rounded-xl transition-all whitespace-nowrap ${
                       isAdminActive
                         ? 'bg-purple-100 text-purple-900 dark:bg-purple-950/60 dark:text-purple-300'
                         : 'text-purple-700 hover:bg-purple-50 dark:text-purple-400 dark:hover:bg-purple-950/40'
@@ -504,17 +506,17 @@ export function Navbar() {
         {/* ========================================================= */}
         {/* RIGHT: ACTION TOOLBAR (UPGRADE + LANG + GAMIFICATION + USER)*/}
         {/* ========================================================= */}
-        <div className="flex items-center gap-2 sm:gap-3.5 shrink-0">
-          {/* Quick Upgrade Pill (Suggested next higher tier; hidden on mobile and if on highest tier) */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-auto">
+          {/* Quick Upgrade Pill: compact badge */}
           {isAuthenticated && upgradeSuggestion.hasHigherPlan && (
             <Link
               to={`/pricing?plan=${upgradeSuggestion.targetPlanSlug}`}
-              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs sm:text-sm font-extrabold bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-400/60 hover:border-emerald-500 text-slate-800 shadow-2xs hover:shadow-xs transition-all duration-200 group dark:text-white shrink-0 hover:scale-105 active:scale-95"
+              className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-400/60 hover:border-emerald-500 text-slate-800 shadow-2xs hover:shadow-xs transition-all duration-200 group dark:text-white shrink-0 hover:scale-105 active:scale-95"
               title={upgradeSuggestion.headerPillLabel}
             >
-              <Sparkles className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
-              <span className="bg-gradient-to-r from-amber-700 via-emerald-700 to-teal-700 bg-clip-text text-transparent font-black dark:from-amber-300 dark:via-emerald-300 dark:to-teal-300">
-                {upgradeSuggestion.buttonLabel}
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
+              <span className="bg-gradient-to-r from-amber-700 via-emerald-700 to-teal-700 bg-clip-text text-transparent font-extrabold dark:from-amber-300 dark:via-emerald-300 dark:to-teal-300">
+                {language === 'vi' ? 'Nâng cấp' : 'Upgrade'}
               </span>
             </Link>
           )}
@@ -523,14 +525,14 @@ export function Navbar() {
           <button
             type="button"
             onClick={toggleLanguage}
-            className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl border border-slate-200 text-xs sm:text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
             title={
               language === 'vi'
                 ? 'Chuyển sang Tiếng Anh (English)'
                 : 'Switch to Vietnamese (Tiếng Việt)'
             }
           >
-            <Globe className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-slate-500 dark:text-slate-400" />
+            <Globe className="h-3 w-3 text-slate-500 dark:text-slate-400" />
             <span>{language === 'vi' ? 'VI' : 'EN'}</span>
           </button>
 
@@ -727,11 +729,11 @@ export function Navbar() {
                 )}
               </div>
 
-              {/* Mobile Hamburger Toggle (Visible on lg: and below) */}
+              {/* Mobile / Tablet Hamburger Toggle (Visible below xl) */}
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-300 dark:hover:bg-slate-800"
+                className="xl:hidden p-2 rounded-xl text-slate-700 hover:bg-slate-100 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:text-slate-300 dark:hover:bg-slate-800"
                 aria-label="Toggle mobile menu"
                 aria-expanded={mobileMenuOpen}
               >
@@ -756,10 +758,10 @@ export function Navbar() {
       </div>
 
       {/* ========================================================= */}
-      {/* MOBILE DRAWER NAVIGATION                                  */}
+      {/* MOBILE / TABLET DRAWER NAVIGATION                         */}
       {/* ========================================================= */}
       {mobileMenuOpen && isAuthenticated && (
-        <div className="lg:hidden fixed inset-0 top-16 z-50 bg-slate-900/50 backdrop-blur-xs flex flex-col justify-between animate-fade-in">
+        <div className="xl:hidden fixed inset-0 top-16 z-50 bg-slate-900/50 backdrop-blur-xs flex flex-col justify-between animate-fade-in">
           <div className="bg-white border-b border-slate-200 p-4 space-y-4 max-h-[85vh] overflow-y-auto shadow-2xl dark:bg-slate-900 dark:border-slate-800">
             {/* Primary Candidate Navigation */}
             <div>

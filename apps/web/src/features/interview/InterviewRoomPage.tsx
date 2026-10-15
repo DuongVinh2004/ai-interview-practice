@@ -110,10 +110,22 @@ export function InterviewRoomPage() {
     queryKey: ['interview', sessionId],
     queryFn: () => apiClient(`/interviews/${sessionId}`),
     enabled: !!sessionId,
-    refetchInterval: false,
+    refetchInterval: query => {
+      const current = query.state.data;
+      return current?.sessionMode === SessionMode.VOICE_LIVE &&
+        ![SessionState.COMPLETED, SessionState.CANCELLED, SessionState.FAILED].includes(
+          current.state,
+        )
+        ? 3000
+        : false;
+    },
   });
 
-  // Connect to SSE stream
+  // SSE updates plus periodic voice reconciliation cover missed worker events.
+  const isVoiceLive =
+    session?.sessionMode === SessionMode.VOICE_LIVE ||
+    (session?.sessionMode as any) === 'VOICE_LIVE';
+
   const { usingFallbackPolling } = useInterviewSse({
     sessionId,
     enabled: session?.state !== SessionState.COMPLETED && session?.state !== SessionState.CANCELLED,
@@ -232,6 +244,7 @@ export function InterviewRoomPage() {
   useEffect(() => {
     if (
       mode === InterviewMode.VOICE &&
+      !isVoiceLive &&
       autoPlayTts &&
       question?.content &&
       session?.state === SessionState.ACTIVE &&
@@ -241,7 +254,7 @@ export function InterviewRoomPage() {
       lastSpokenQuestionRef.current = question.content;
       speakAiQuestion(question.content);
     }
-  }, [mode, autoPlayTts, question?.content, session?.state, answer, speakAiQuestion]);
+  }, [mode, isVoiceLive, autoPlayTts, question?.content, session?.state, answer, speakAiQuestion]);
 
   const handleSubmitAnswerText = async (textToSubmit: string) => {
     if (!sessionId || !currentTurn || !textToSubmit.trim() || isSubmitting) return;
@@ -448,18 +461,58 @@ export function InterviewRoomPage() {
     return (
       <VoiceInterviewRoom
         interviewId={session.id}
+        userId={userId}
+        turnId={currentTurn?.id}
+        turnNumber={session.currentTurn}
+        totalTurns={session.totalTurns}
+        conversationHistory={session.turns.flatMap(turn => [
+          ...(turn.question
+            ? [{ id: `${turn.id}-question`, speaker: 'AI', text: turn.question.content }]
+            : []),
+          ...(turn.answer
+            ? [{ id: `${turn.id}-answer`, speaker: 'USER', text: turn.answer.content }]
+            : []),
+        ])}
+        hasAnswer={!!answer}
+        currentQuestion={question?.content}
+        sessionState={session.state}
         roleName={session.jobRole?.name}
         levelName={session.seniorityLevel?.name}
-        onRestAnswerSubmit={async (text: string) => {
-          if (currentTurn?.id) {
-            await handleSubmitAnswerText(text);
+        onRestAnswerSubmit={async (text: string, submittedTurnId: string) => {
+          const latest = await apiClient<InterviewSessionDto>(`/interviews/${session.id}`);
+          const turn = latest.turns.find(t => t.id === submittedTurnId);
+          if (turn?.answer) {
+            if (turn.answer.content !== text.trim())
+              throw new Error(
+                'Lượt này đã nhận một câu trả lời khác. Hãy tải lại phiên để kiểm tra.',
+              );
+            await refetch();
+            return;
           }
+          if (
+            latest.state !== SessionState.ACTIVE ||
+            !turn?.question ||
+            turn.turnNumber !== latest.currentTurn
+          )
+            throw new Error('Vui lòng chờ câu hỏi tiếp theo trước khi gửi.');
+          try {
+            await apiClient(`/interviews/${session.id}/answers`, {
+              method: 'POST',
+              idempotencyKey: `voice-fallback-${session.id}-${turn.id}`,
+              body: JSON.stringify({ turnId: turn.id, answerText: text.trim() }),
+            });
+          } catch (error) {
+            const reconciled = await apiClient<InterviewSessionDto>(`/interviews/${session.id}`);
+            const saved = reconciled.turns.find(t => t.id === submittedTurnId)?.answer;
+            if (!saved || saved.content !== text.trim()) throw error;
+          }
+          await refetch();
         }}
         onFinish={() => {
           if (session.state === SessionState.COMPLETED) {
             navigate(`/interviews/${session.id}/result`);
           } else {
-            refetch();
+            navigate('/history');
           }
         }}
       />

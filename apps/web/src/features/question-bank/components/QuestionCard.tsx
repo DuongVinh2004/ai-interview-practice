@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { QuestionBankQuestionDto } from '@ai-interview/contracts';
 import { Bookmark, CheckCircle2, Lock, Eye, Layers } from 'lucide-react';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface QuestionCardProps {
   question: QuestionBankQuestionDto;
@@ -9,6 +10,9 @@ interface QuestionCardProps {
 }
 
 export function QuestionCard({ question, onToggleBookmark, isBookmarkLoading }: QuestionCardProps) {
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
+
   const getDifficultyColor = (difficulty: number) => {
     switch (difficulty) {
       case 1:
@@ -28,34 +32,34 @@ export function QuestionCard({ question, onToggleBookmark, isBookmarkLoading }: 
   const getDifficultyLabel = (difficulty: number) => {
     switch (difficulty) {
       case 1:
-        return 'Cơ bản (L1)';
+        return isVi ? 'Cơ bản (L1)' : 'Basic (L1)';
       case 2:
-        return 'Dễ (L2)';
+        return isVi ? 'Dễ (L2)' : 'Easy (L2)';
       case 3:
-        return 'Trung bình (L3)';
+        return isVi ? 'Trung bình (L3)' : 'Medium (L3)';
       case 4:
-        return 'Khó (L4)';
+        return isVi ? 'Khó (L4)' : 'Hard (L4)';
       case 5:
       default:
-        return 'Chuyên sâu (L5)';
+        return isVi ? 'Chuyên sâu (L5)' : 'Expert (L5)';
     }
   };
 
   const formatTypeLabel = (type: string) => {
     switch (type.toLowerCase()) {
       case 'conceptual':
-        return 'Lý thuyết';
+        return isVi ? 'Lý thuyết' : 'Conceptual';
       case 'coding':
-        return 'Lập trình';
+        return isVi ? 'Lập trình' : 'Coding';
       case 'system_design':
       case 'system-design':
-        return 'Thiết kế hệ thống';
+        return isVi ? 'Thiết kế hệ thống' : 'System Design';
       case 'behavioral':
-        return 'Hành vi (STAR)';
+        return isVi ? 'Hành vi (STAR)' : 'Behavioral';
       case 'scenario':
-        return 'Tình huống';
+        return isVi ? 'Tình huống' : 'Scenario';
       case 'debugging':
-        return 'Gỡ lỗi';
+        return isVi ? 'Gỡ lỗi' : 'Debugging';
       default:
         return type;
     }
@@ -90,7 +94,15 @@ export function QuestionCard({ question, onToggleBookmark, isBookmarkLoading }: 
           {onToggleBookmark && (
             <button
               type="button"
-              aria-label={question.isBookmarked ? 'Bỏ lưu câu hỏi' : 'Lưu câu hỏi'}
+              aria-label={
+                question.isBookmarked
+                  ? isVi
+                    ? 'Bỏ lưu câu hỏi'
+                    : 'Remove bookmark'
+                  : isVi
+                    ? 'Lưu câu hỏi'
+                    : 'Bookmark question'
+              }
               disabled={isBookmarkLoading}
               onClick={e => {
                 e.preventDefault();
@@ -149,12 +161,12 @@ export function QuestionCard({ question, onToggleBookmark, isBookmarkLoading }: 
           {question.isRevealed ? (
             <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
               <CheckCircle2 className="h-3.5 w-3.5" />
-              Đã mở đáp án
+              {isVi ? 'Đã mở đáp án' : 'Answer Revealed'}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1 text-slate-500 dark:text-slate-400">
               <Lock className="h-3.5 w-3.5" />
-              Chưa mở đáp án
+              {isVi ? 'Chưa mở đáp án' : 'Answer Locked'}
             </span>
           )}
         </div>
@@ -164,7 +176,7 @@ export function QuestionCard({ question, onToggleBookmark, isBookmarkLoading }: 
           className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 transition-colors hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
         >
           <Eye className="h-3.5 w-3.5" />
-          Chi tiết & Đáp án
+          {isVi ? 'Chi tiết & Đáp án' : 'View & Solution'}
         </Link>
       </div>
     </div>

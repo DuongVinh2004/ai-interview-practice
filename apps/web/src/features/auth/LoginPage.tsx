@@ -32,7 +32,7 @@ export function LoginPage() {
   const navigate = useNavigate();
   const setAuth = useAuthStore(state => state.setAuth);
   const setMfaEnrollmentAuth = useAuthStore(state => state.setMfaEnrollmentAuth);
-  const { language } = useI18nStore();
+  const { t, language } = useI18nStore();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -141,12 +141,10 @@ export function LoginPage() {
           {mfaRequired ? <ShieldCheck className="h-8 w-8" /> : <Bot className="h-8 w-8" />}
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          {mfaRequired ? 'Two-Factor Verification Required' : 'Sign in to your account'}
+          {mfaRequired ? t.mfa.mfaPromptTitle : t.auth.loginTitle}
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
-          {mfaRequired
-            ? 'Enter your 6-digit authenticator code or emergency backup recovery code'
-            : 'Practice IT technical interviews with real-time AI evaluation'}
+          {mfaRequired ? t.mfa.mfaPromptSubtitle : t.auth.loginSubtitle}
         </p>
       </div>
 
@@ -156,16 +154,20 @@ export function LoginPage() {
             {mfaRequired ? (
               <span className="flex items-center gap-2">
                 <KeyRound className="h-5 w-5 text-indigo-600" />
-                <span>Two-Factor Authentication</span>
+                <span>{t.mfa.title}</span>
               </span>
             ) : (
-              'Welcome Back'
+              t.auth.loginTitle
             )}
           </CardTitle>
           <CardDescription>
             {mfaRequired
-              ? 'Provide verification code to complete sign in'
-              : 'Enter your credentials to access your training dashboard'}
+              ? (language === 'vi'
+                  ? 'Cung cấp mã xác thực để hoàn tất đăng nhập'
+                  : 'Provide verification code to complete sign in')
+              : (language === 'vi'
+                  ? 'Nhập thông tin đăng nhập để truy cập bảng điều khiển'
+                  : 'Enter your credentials to access your training dashboard')}
           </CardDescription>
         </CardHeader>
 
@@ -184,7 +186,9 @@ export function LoginPage() {
                   htmlFor="mfa-code-input"
                   className="block text-xs font-semibold text-slate-700 mb-1.5"
                 >
-                  {useRecoveryCode ? 'Backup Recovery Code' : '6-digit Authenticator Code'}
+                  {useRecoveryCode
+                    ? (language === 'vi' ? 'Mã khôi phục dự phòng' : 'Backup Recovery Code')
+                    : (language === 'vi' ? 'Mã xác thực 6 chữ số' : '6-digit Authenticator Code')}
                 </label>
                 <input
                   id="mfa-code-input"
@@ -195,8 +199,8 @@ export function LoginPage() {
                   onChange={e => setMfaCode(e.target.value)}
                   placeholder={
                     useRecoveryCode
-                      ? 'Recovery code (e.g. ABCD-1234)'
-                      : '6-digit code (e.g. 123456)'
+                      ? t.mfa.recoveryCodePlaceholder
+                      : t.mfa.verifyCodePlaceholder
                   }
                   className="w-full h-11 px-3 py-2 bg-white border border-slate-300 rounded-lg text-base font-mono tracking-widest text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   maxLength={useRecoveryCode ? 16 : 6}
@@ -210,7 +214,7 @@ export function LoginPage() {
                 isLoading={isVerifyingMfa}
                 leftIcon={<ShieldCheck className="h-4 w-4" />}
               >
-                <span>{isVerifyingMfa ? 'Verifying...' : 'Verify & Sign In'}</span>
+                <span>{isVerifyingMfa ? t.mfa.verifying : t.mfa.verifyAndLogin}</span>
               </Button>
 
               <div className="flex flex-col gap-2 pt-2 border-t border-slate-100 text-center">
@@ -223,9 +227,7 @@ export function LoginPage() {
                   }}
                   className="text-xs text-indigo-600 hover:text-indigo-800 font-semibold"
                 >
-                  {useRecoveryCode
-                    ? 'Use 6-digit Authenticator code instead'
-                    : 'Use a backup recovery code instead'}
+                  {useRecoveryCode ? t.mfa.useTotpCode : t.mfa.useRecoveryCode}
                 </button>
 
                 <button
@@ -239,7 +241,9 @@ export function LoginPage() {
                   className="text-xs text-slate-500 hover:text-slate-800 inline-flex items-center justify-center gap-1 mt-1"
                 >
                   <ArrowLeft className="h-3 w-3" />
-                  <span>Back to Password Login</span>
+                  <span>
+                    {language === 'vi' ? 'Quay lại đăng nhập mật khẩu' : 'Back to Password Login'}
+                  </span>
                 </button>
               </div>
             </form>
@@ -249,9 +253,9 @@ export function LoginPage() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <Input
                   id="email"
-                  label="Email Address"
+                  label={t.auth.emailLabel}
                   type="email"
-                  placeholder="candidate@example.com"
+                  placeholder={t.auth.emailPlaceholder}
                   leftIcon={<Mail className="h-4 w-4" />}
                   error={errors.email?.message}
                   {...register('email')}
@@ -260,16 +264,24 @@ export function LoginPage() {
                 <div>
                   <Input
                     id="password"
-                    label="Password"
+                    label={t.auth.passwordLabel}
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="••••••••"
+                    placeholder={t.auth.passwordPlaceholder}
                     leftIcon={<Lock className="h-4 w-4" />}
                     rightIcon={
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
                         className="text-slate-400 hover:text-slate-600 focus:outline-none"
-                        aria-label={showPassword ? 'Hide secret' : 'Show secret'}
+                        aria-label={
+                          showPassword
+                            ? language === 'vi'
+                              ? 'Ẩn mật khẩu'
+                              : 'Hide secret'
+                            : language === 'vi'
+                              ? 'Hiện mật khẩu'
+                              : 'Show secret'
+                        }
                       >
                         {showPassword ? (
                           <EyeOff className="h-4 w-4" />
@@ -288,7 +300,11 @@ export function LoginPage() {
                   className="w-full h-11 font-bold shadow-sm"
                   isLoading={isSubmitting}
                 >
-                  {isSubmitting ? 'Signing in...' : 'Sign In'}
+                  {isSubmitting
+                    ? language === 'vi'
+                      ? 'Đang đăng nhập...'
+                      : 'Signing in...'
+                    : t.auth.signInBtn}
                 </Button>
               </form>
 
@@ -325,12 +341,12 @@ export function LoginPage() {
 
       {!mfaRequired && (
         <p className="text-center text-xs sm:text-sm text-slate-500 mt-6">
-          Don't have an account?{' '}
+          {t.auth.noAccount}{' '}
           <Link
             to="/register"
             className="text-emerald-600 font-bold hover:text-emerald-700 hover:underline"
           >
-            Create account
+            {t.auth.registerLink}
           </Link>
         </p>
       )}

@@ -8,6 +8,7 @@ import {
 } from './workspace-runtime.interface';
 import { ArenaWorkspaceFileUpdate, ArenaTestResult } from '@ai-interview/contracts';
 import * as crypto from 'crypto';
+import { assertSafeWorkspacePath } from './workspace-path.util';
 
 interface ActiveWorkspace {
   sessionId: string;
@@ -163,9 +164,7 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
   }
 
   private validatePath(filePath: string): void {
-    if (filePath.includes('..') || filePath.startsWith('/') || filePath.startsWith('\\')) {
-      throw new Error(`Security violation: Path traversal detected in '${filePath}'.`);
-    }
+    assertSafeWorkspacePath(filePath);
   }
 
   private computeSnapshotHash(files: Map<string, string>): string {

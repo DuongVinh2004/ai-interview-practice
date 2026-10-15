@@ -204,15 +204,15 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     );
 
     // Enter email & password
-    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+    fireEvent.change(screen.getByLabelText(/^(Email Address|Địa chỉ Email)$/i), {
       target: { value: 'admin@example.com' },
     });
-    fireEvent.change(screen.getByLabelText(/Password/i), {
+    fireEvent.change(screen.getByLabelText(/^(Password|Mật khẩu)$/i), {
       target: { value: 'Admin@123456' },
     });
 
     // Submit password login
-    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Sign In|Đăng nhập tài khoản)$/i }));
 
     // Expect 2FA Challenge step to appear
     await waitFor(() => {
@@ -275,13 +275,13 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
       </QueryClientProvider>,
     );
 
-    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+    fireEvent.change(screen.getByLabelText(/^(Email Address|Địa chỉ Email)$/i), {
       target: { value: 'admin@example.com' },
     });
-    fireEvent.change(screen.getByLabelText(/Password/i), {
+    fireEvent.change(screen.getByLabelText(/^(Password|Mật khẩu)$/i), {
       target: { value: 'Admin@123456' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Sign In|Đăng nhập tài khoản)$/i }));
 
     await waitFor(() => {
       expect(useAuthStore.getState().isAuthenticated).toBe(true);
@@ -305,13 +305,13 @@ describe('Epic 8 Two-Factor Authentication (2FA & Recovery Codes)', () => {
     );
 
     // Login with password
-    fireEvent.change(screen.getByLabelText(/Email Address/i), {
+    fireEvent.change(screen.getByLabelText(/^(Email Address|Địa chỉ Email)$/i), {
       target: { value: 'admin@example.com' },
     });
-    fireEvent.change(screen.getByLabelText(/Password/i), {
+    fireEvent.change(screen.getByLabelText(/^(Password|Mật khẩu)$/i), {
       target: { value: 'Admin@123456' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Sign In/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^(Sign In|Đăng nhập tài khoản)$/i }));
 
     await waitFor(() => {
       expect(

@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
-import { Subject, Observable, filter, map, merge, interval } from 'rxjs';
+import { Subject, Observable, filter, map, merge, timer } from 'rxjs';
 import { SseEventType } from '@ai-interview/contracts';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
@@ -84,8 +84,8 @@ export class SseService implements OnModuleInit {
       map(event => ({ data: event })),
     );
 
-    // Heartbeat every 15 seconds
-    const heartbeatStream = interval(15000).pipe(
+    // Immediate initial connection frame, followed by heartbeat every 15 seconds
+    const heartbeatStream = timer(0, 15000).pipe(
       map(() => ({
         data: {
           sessionId,

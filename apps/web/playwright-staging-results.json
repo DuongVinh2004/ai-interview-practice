@@ -1,0 +1,1264 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "e2e/reality-audit/",
+      "--config=playwright.staging.config.ts"
+    ],
+    "configFile": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\playwright.staging.config.ts",
+    "rootDir": "C:/Users/Duong Vinh/ai-interview-practice/apps/web/e2e/reality-audit",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/Duong Vinh/ai-interview-practice/apps/web/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/Duong Vinh/ai-interview-practice/apps/web/e2e/reality-audit",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "playwright-staging-results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.62.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "01-public-and-auth.spec.ts",
+      "file": "01-public-and-auth.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Domain A, B, C — Public Routes, Authentication & Registration Audit",
+          "file": "01-public-and-auth.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Domain A: Public Routes Integrity & Safe Failure Modes",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 9362,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "text": "[browser http 500] GET https://vinh-ai-interview.duckdns.org/api/v1/public/verify/invalid-audit-cert-nonexistent\n"
+                        },
+                        {
+                          "text": "[browser http 500] GET https://vinh-ai-interview.duckdns.org/api/v1/public/verify/invalid-audit-cert-nonexistent\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:29:59.136Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7a10d7698890b679b0e6-5c39c85c874dfbd6db84",
+              "file": "01-public-and-auth.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "Domain B: Authentication Flow, Session Lifecycle & Invalidation",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5167,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:30:08.879Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7a10d7698890b679b0e6-d8c0c7dceda3650674e2",
+              "file": "01-public-and-auth.spec.ts",
+              "line": 58,
+              "column": 3
+            },
+            {
+              "title": "Domain C: Registration Negative Cases & Fresh User Onboarding",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2989,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:30:14.103Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "7a10d7698890b679b0e6-7353a744b1ecdbc5d8bd",
+              "file": "01-public-and-auth.spec.ts",
+              "line": 100,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "02-interview-full-lifecycle.spec.ts",
+      "file": "02-interview-full-lifecycle.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Domain D, E, F, G, H, I — Interview Setup, Creation, Controlled Answers & Results Audit",
+          "file": "02-interview-full-lifecycle.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Domain D & E: Interview Setup Validation, Creation Flow & State Persistence",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3107,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:30:17.149Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "44f507fc0fb66d34d27f-f8f37cd09237731861b4",
+              "file": "02-interview-full-lifecycle.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "Domain F & G: Controlled Answer Classes Benchmark & Scoring Reality Invariants",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 5620,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m6\u001b[39m\nReceived:    \u001b[31m4.8\u001b[39m",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m6\u001b[39m\nReceived:    \u001b[31m4.8\u001b[39m\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts:149:20",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts",
+                          "column": 20,
+                          "line": 149
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 147 |\u001b[39m     \u001b[36mconst\u001b[39m score3 \u001b[33m=\u001b[39m score3Match \u001b[33m?\u001b[39m parseFloat(score3Match[\u001b[35m1\u001b[39m]) \u001b[33m:\u001b[39m \u001b[35m0\u001b[39m\u001b[33m;\u001b[39m\n \u001b[90m 148 |\u001b[39m     console\u001b[33m.\u001b[39mlog(\u001b[32m`[EVIDENCE F.HighQuality] Turn 3 Recorded Score: ${score3}/10`\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 149 |\u001b[39m     expect(score3)\u001b[33m.\u001b[39mtoBeGreaterThanOrEqual(\u001b[35m6.0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                    \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 150 |\u001b[39m     \u001b[90m// Strict monotonicity check: High quality score must be materially better than incorrect answer score\u001b[39m\n \u001b[90m 151 |\u001b[39m     expect(score3)\u001b[33m.\u001b[39mtoBeGreaterThan(score2)\u001b[33m;\u001b[39m\n \u001b[90m 152 |\u001b[39m   })\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts",
+                            "column": 20,
+                            "line": 149
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m6\u001b[39m\nReceived:    \u001b[31m4.8\u001b[39m\n\n  147 |     const score3 = score3Match ? parseFloat(score3Match[1]) : 0;\n  148 |     console.log(`[EVIDENCE F.HighQuality] Turn 3 Recorded Score: ${score3}/10`);\n> 149 |     expect(score3).toBeGreaterThanOrEqual(6.0);\n      |                    ^\n  150 |     // Strict monotonicity check: High quality score must be materially better than incorrect answer score\n  151 |     expect(score3).toBeGreaterThan(score2);\n  152 |   });\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts:149:20"
+                        }
+                      ],
+                      "stdout": [
+                        {
+                          "text": "[EVIDENCE F.PromptInjection] Turn 1 Recorded Score: 0/10\n"
+                        },
+                        {
+                          "text": "[EVIDENCE F.IncorrectAnswer] Turn 2 Recorded Score: 2.5/10\n"
+                        },
+                        {
+                          "text": "[EVIDENCE F.HighQuality] Turn 3 Recorded Score: 4.8/10\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:30:20.270Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-561a8--Scoring-Reality-Invariants-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-561a8--Scoring-Reality-Invariants-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-561a8--Scoring-Reality-Invariants-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-561a8--Scoring-Reality-Invariants-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts",
+                        "column": 20,
+                        "line": 149
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "44f507fc0fb66d34d27f-bd5adce6021756a7d39d",
+              "file": "02-interview-full-lifecycle.spec.ts",
+              "line": 66,
+              "column": 3
+            },
+            {
+              "title": "Domain H & I: Full Interview Completion, Result Detail & History Persistence",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "timedOut",
+                      "duration": 90645,
+                      "error": {
+                        "message": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m",
+                        "stack": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m"
+                      },
+                      "errors": [
+                        {
+                          "message": "\u001b[31mTest timeout of 90000ms exceeded.\u001b[39m"
+                        },
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts",
+                            "column": 31,
+                            "line": 197
+                          },
+                          "message": "Error: locator.click: Test timeout of 90000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('button:has-text(\"Xem Kết Quả\"), button:has-text(\"View Full Result\"), button:has-text(\"Kết quả\")').first()\u001b[22m\n\u001b[2m    - locator resolved to <button type=\"button\" class=\"inline-flex items-center justify-center rounded-lg transition-all select-none focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] bg-emerald-600 dark:bg-emerald-500 text-white hover:bg-emerald-700 dark:hover:bg-emerald-600 active:bg-emerald-800 focus-visible:ring-emerald-500 hover:shadow h-11 px-6 text-base gap-2 shadow-sm font-bold\">…</button>\u001b[22m\n\u001b[2m  - attempting click action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is visible, enabled and stable\u001b[22m\n\u001b[2m      - scrolling into view if needed\u001b[22m\n\u001b[2m      - done scrolling\u001b[22m\n\u001b[2m      - <p class=\"text-base font-semibold text-emerald-700\">Ứng viên Tập sự</p> from <div class=\"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200\">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m      - element is not stable\u001b[22m\n\u001b[2m    - retrying click action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    37 × waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <div class=\"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <div class=\"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <div class=\"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m       - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m       - element is visible, enabled and stable\u001b[22m\n\u001b[2m       - scrolling into view if needed\u001b[22m\n\u001b[2m       - done scrolling\u001b[22m\n\u001b[2m       - <p class=\"text-base font-semibold text-emerald-700\">Ứng viên Tập sự</p> from <div class=\"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200\">…</div> subtree intercepts pointer events\u001b[22m\n\u001b[2m     - retrying click action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n\u001b[2m    - waiting for element to be visible, enabled and stable\u001b[22m\n\u001b[2m    - element is visible, enabled and stable\u001b[22m\n\u001b[2m    - scrolling into view if needed\u001b[22m\n\u001b[2m    - done scrolling\u001b[22m\n\u001b[2m    - <div class=\"fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200\">…</div> intercepts pointer events\u001b[22m\n\u001b[2m  - retrying click action\u001b[22m\n\u001b[2m    - waiting 500ms\u001b[22m\n\n\n  195 |         // Check for Gamification Level Up modal and dismiss if present\n  196 |         await page.keyboard.press('Escape');\n> 197 |         const dismissBtn = page.locator('button:has-text(\"Tiếp Tục\"), button:has-text(\"Keep Practicing\")').first();\n      |                               ^\n  198 |         if (await dismissBtn.isVisible()) {\n  199 |           await dismissBtn.click();\n  200 |         }\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\02-interview-full-lifecycle.spec.ts:197:31"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:30:27.836Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-6ad58--Detail-History-Persistence-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-6ad58--Detail-History-Persistence-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\02-interview-full-lifecycl-6ad58--Detail-History-Persistence-chromium\\trace.zip"
+                        }
+                      ]
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "44f507fc0fb66d34d27f-4972c4cfcb0e440d1137",
+              "file": "02-interview-full-lifecycle.spec.ts",
+              "line": 154,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "03-learning-and-practice.spec.ts",
+      "file": "03-learning-and-practice.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Domain J, K, L, M, N, O — Learning, Practice, Gamification & Arena Audit",
+          "file": "03-learning-and-practice.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Domain J: Profile Management, Validation & Persistence",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 13023,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#fullName, input[name=\"fullName\"]').first()\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#fullName, input[name=\"fullName\"]').first()\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#fullName, input[name=\"fullName\"]').first()\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#fullName, input[name=\"fullName\"]').first()\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:30:29",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                          "column": 29,
+                          "line": 30
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 28 |\u001b[39m     \u001b[90m// 3. Edit Profile field\u001b[39m\n \u001b[90m 29 |\u001b[39m     \u001b[36mconst\u001b[39m nameInput \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'#fullName, input[name=\"fullName\"]'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 30 |\u001b[39m     \u001b[36mawait\u001b[39m expect(nameInput)\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                             \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 31 |\u001b[39m     \u001b[36mconst\u001b[39m originalName \u001b[33m=\u001b[39m \u001b[36mawait\u001b[39m nameInput\u001b[33m.\u001b[39minputValue()\u001b[33m;\u001b[39m\n \u001b[90m 32 |\u001b[39m     \u001b[36mconst\u001b[39m updatedName \u001b[33m=\u001b[39m \u001b[32m`Candidate Audit ${Date.now().toString().slice(-4)}`\u001b[39m\u001b[33m;\u001b[39m\n \u001b[90m 33 |\u001b[39m     \u001b[36mawait\u001b[39m nameInput\u001b[33m.\u001b[39mfill(updatedName)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                            "column": 29,
+                            "line": 30
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#fullName, input[name=\"fullName\"]').first()\nExpected: visible\nTimeout: 10000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 10000ms\u001b[22m\n\u001b[2m  - waiting for locator('#fullName, input[name=\"fullName\"]').first()\u001b[22m\n\n\n  28 |     // 3. Edit Profile field\n  29 |     const nameInput = page.locator('#fullName, input[name=\"fullName\"]').first();\n> 30 |     await expect(nameInput).toBeVisible({ timeout: 10000 });\n     |                             ^\n  31 |     const originalName = await nameInput.inputValue();\n  32 |     const updatedName = `Candidate Audit ${Date.now().toString().slice(-4)}`;\n  33 |     await nameInput.fill(updatedName);\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:30:29"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:31:59.524Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-b8bc7-ment-Validation-Persistence-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-b8bc7-ment-Validation-Persistence-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-b8bc7-ment-Validation-Persistence-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-b8bc7-ment-Validation-Persistence-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                        "column": 29,
+                        "line": 30
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c0847612a36c0112b598-13eed05cf2a5804ffb00",
+              "file": "03-learning-and-practice.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "Domain K: Question Bank Search, Detail & Bookmarking Flow",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 29875,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/question-bank\\/[^/]+$/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/login\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    42 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/login\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/question-bank\\/[^/]+$/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/login\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    42 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/login\"\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:70:24",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                          "column": 24,
+                          "line": 70
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 68 |\u001b[39m     \u001b[36mawait\u001b[39m expect(firstQuestionLink)\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m 69 |\u001b[39m     \u001b[36mawait\u001b[39m firstQuestionLink\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 70 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/\\/question-bank\\/[^/]+$/\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 71 |\u001b[39m\n \u001b[90m 72 |\u001b[39m     \u001b[90m// 4. Verify question details render\u001b[39m\n \u001b[90m 73 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mlocator(\u001b[32m'h1, h2'\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m10000\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                            "column": 24,
+                            "line": 70
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/question-bank\\/[^/]+$/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/login\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    42 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/login\"\u001b[22m\n\n\n  68 |     await expect(firstQuestionLink).toBeVisible({ timeout: 15000 });\n  69 |     await firstQuestionLink.click();\n> 70 |     await expect(page).toHaveURL(/\\/question-bank\\/[^/]+$/);\n     |                        ^\n  71 |\n  72 |     // 4. Verify question details render\n  73 |     await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10000 });\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:70:24"
+                        },
+                        {
+                          "message": "Error: ENOENT: no such file or directory, open 'C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\.playwright-artifacts-3\\f5424eab607f7500f259b216fd586bd6.zip'"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:32:21.379Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-e759f-rch-Detail-Bookmarking-Flow-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-e759f-rch-Detail-Bookmarking-Flow-chromium\\error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                        "column": 24,
+                        "line": 70
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c0847612a36c0112b598-e62b14ac3eefe8e81542",
+              "file": "03-learning-and-practice.spec.ts",
+              "line": 49,
+              "column": 3
+            },
+            {
+              "title": "Domain L: Flashcards Decks & Review Lifecycle",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8402,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:32:57.324Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0847612a36c0112b598-6aeae3b26255423ed9d4",
+              "file": "03-learning-and-practice.spec.ts",
+              "line": 80,
+              "column": 3
+            },
+            {
+              "title": "Domain M: Gamification Showcase, Badges & Leaderboard",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 8906,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:33:06.648Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "c0847612a36c0112b598-60a7d9f364abc2b39456",
+              "file": "03-learning-and-practice.spec.ts",
+              "line": 99,
+              "column": 3
+            },
+            {
+              "title": "Domain N: Skills Graph, Benchmarks & Career Readiness",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 4,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 43416,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:128:87",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                          "column": 87,
+                          "line": 128
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 126 |\u001b[39m     \u001b[90m// 2. Skills Benchmark\u001b[39m\n \u001b[90m 127 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/skills/benchmark'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 128 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                                                       \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 129 |\u001b[39m\n \u001b[90m 130 |\u001b[39m     \u001b[90m// 3. Career Readiness\u001b[39m\n \u001b[90m 131 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/readiness'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                            "column": 87,
+                            "line": 128
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()\u001b[22m\n\n\n  126 |     // 2. Skills Benchmark\n  127 |     await page.goto('/skills/benchmark');\n> 128 |     await expect(page.getByText(/(benchmark|chuẩn hóa|so sánh|tiêu chuẩn)/i).first()).toBeVisible({ timeout: 15000 });\n      |                                                                                       ^\n  129 |\n  130 |     // 3. Career Readiness\n  131 |     await page.goto('/readiness');\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:128:87"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:33:15.638Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-1e67b-Benchmarks-Career-Readiness-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-1e67b-Benchmarks-Career-Readiness-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-1e67b-Benchmarks-Career-Readiness-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-1e67b-Benchmarks-Career-Readiness-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                        "column": 87,
+                        "line": 128
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c0847612a36c0112b598-2937112b5e863c09ef6c",
+              "file": "03-learning-and-practice.spec.ts",
+              "line": 116,
+              "column": 3
+            },
+            {
+              "title": "Domain O: Engineering Arena Interactive Challenge Flow",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 5,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 42078,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:145:103",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                          "column": 103,
+                          "line": 145
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 143 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/arena'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 144 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[32m'/arena'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 145 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/(engineering arena|đấu trường|thử thách code|challenges)/i\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                                                                                       \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 146 |\u001b[39m\n \u001b[90m 147 |\u001b[39m     \u001b[90m// 2. Check Monaco or code editor container\u001b[39m\n \u001b[90m 148 |\u001b[39m     \u001b[36mconst\u001b[39m codeEditor \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'[data-testid=\"code-editor-container\"], .monaco-editor, textarea'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                            "column": 103,
+                            "line": 145
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()\u001b[22m\n\n\n  143 |     await page.goto('/arena');\n  144 |     await expect(page).toHaveURL('/arena');\n> 145 |     await expect(page.getByText(/(engineering arena|đấu trường|thử thách code|challenges)/i).first()).toBeVisible({ timeout: 15000 });\n      |                                                                                                       ^\n  146 |\n  147 |     // 2. Check Monaco or code editor container\n  148 |     const codeEditor = page.locator('[data-testid=\"code-editor-container\"], .monaco-editor, textarea').first();\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts:145:103"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:34:35.608Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-3de86--Interactive-Challenge-Flow-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-3de86--Interactive-Challenge-Flow-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-3de86--Interactive-Challenge-Flow-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\03-learning-and-practice-D-3de86--Interactive-Challenge-Flow-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\03-learning-and-practice.spec.ts",
+                        "column": 103,
+                        "line": 145
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "c0847612a36c0112b598-5b6106340d38f6449a9b",
+              "file": "03-learning-and-practice.spec.ts",
+              "line": 136,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "04-extended-and-responsive.spec.ts",
+      "file": "04-extended-and-responsive.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Domain P, Q, R, S, T — Extended Modules, Voice Consent, SSE & Responsive UI Audit",
+          "file": "04-extended-and-responsive.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Domain P: Billing, Mentors & B2B Candidate Role Fail-Closed Authorization",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 6,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 26001,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).not.\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected: not \u001b[32m\"https://vinh-ai-interview.duckdns.org/b2b/dashboard\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mhttps://vinh-ai-interview.duckdns.org/b2b/dashboard\u001b[27m\"\u001b[39m\nTimeout:  20000ms\n\nCall log:\n\u001b[2m  - Expect \"not toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    42 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/b2b/dashboard\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).not.\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected: not \u001b[32m\"https://vinh-ai-interview.duckdns.org/b2b/dashboard\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mhttps://vinh-ai-interview.duckdns.org/b2b/dashboard\u001b[27m\"\u001b[39m\nTimeout:  20000ms\n\nCall log:\n\u001b[2m  - Expect \"not toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    42 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/b2b/dashboard\"\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts:37:28",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                          "column": 28,
+                          "line": 37
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 35 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/b2b/dashboard'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 36 |\u001b[39m     \u001b[90m// Expected: either 403, redirected to /403, or redirected to /\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 37 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mnot\u001b[33m.\u001b[39mtoHaveURL(\u001b[32m'/b2b/dashboard'\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                            \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 38 |\u001b[39m   })\u001b[33m;\u001b[39m\n \u001b[90m 39 |\u001b[39m\n \u001b[90m 40 |\u001b[39m   test(\u001b[32m'Domain Q: Public Share, Verification & Portfolio Edge Cases'\u001b[39m\u001b[33m,\u001b[39m \u001b[36masync\u001b[39m ({ page }) \u001b[33m=>\u001b[39m {\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                            "column": 28,
+                            "line": 37
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).not.\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected: not \u001b[32m\"https://vinh-ai-interview.duckdns.org/b2b/dashboard\"\u001b[39m\nReceived: \u001b[31m\"\u001b[7mhttps://vinh-ai-interview.duckdns.org/b2b/dashboard\u001b[27m\"\u001b[39m\nTimeout:  20000ms\n\nCall log:\n\u001b[2m  - Expect \"not toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    42 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/b2b/dashboard\"\u001b[22m\n\n\n  35 |     await page.goto('/b2b/dashboard');\n  36 |     // Expected: either 403, redirected to /403, or redirected to /\n> 37 |     await expect(page).not.toHaveURL('/b2b/dashboard');\n     |                            ^\n  38 |   });\n  39 |\n  40 |   test('Domain Q: Public Share, Verification & Portfolio Edge Cases', async ({ page }) => {\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts:37:28"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:36:22.317Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-71741-e-Fail-Closed-Authorization-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-71741-e-Fail-Closed-Authorization-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-71741-e-Fail-Closed-Authorization-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-71741-e-Fail-Closed-Authorization-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                        "column": 28,
+                        "line": 37
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "622ff0caf93b656b2560-05d845b641cceba4f9a2",
+              "file": "04-extended-and-responsive.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "Domain Q: Public Share, Verification & Portfolio Edge Cases",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 7,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 17806,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(không tìm thấy|not found|404|quay lại)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(không tìm thấy|not found|404|quay lại)/i).first()\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(không tìm thấy|not found|404|quay lại)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(không tìm thấy|not found|404|quay lại)/i).first()\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts:47:86",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                          "column": 86,
+                          "line": 47
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 45 |\u001b[39m     \u001b[90m// 2. Public portfolio with non-existent user\u001b[39m\n \u001b[90m 46 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/u/nonexistent_audit_user_xyz'\u001b[39m)\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 47 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page\u001b[33m.\u001b[39mgetByText(\u001b[35m/(không tìm thấy|not found|404|quay lại)/i\u001b[39m)\u001b[33m.\u001b[39mfirst())\u001b[33m.\u001b[39mtoBeVisible({ timeout\u001b[33m:\u001b[39m \u001b[35m15000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                                                                                      \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 48 |\u001b[39m\n \u001b[90m 49 |\u001b[39m     \u001b[90m// 3. Certificate verification with safe non-existent UUID\u001b[39m\n \u001b[90m 50 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mgoto(\u001b[32m'/verify/00000000-0000-0000-0000-000000000000'\u001b[39m)\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                            "column": 86,
+                            "line": 47
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText(/(không tìm thấy|not found|404|quay lại)/i).first()\nExpected: visible\nTimeout: 15000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" with timeout 15000ms\u001b[22m\n\u001b[2m  - waiting for getByText(/(không tìm thấy|not found|404|quay lại)/i).first()\u001b[22m\n\n\n  45 |     // 2. Public portfolio with non-existent user\n  46 |     await page.goto('/u/nonexistent_audit_user_xyz');\n> 47 |     await expect(page.getByText(/(không tìm thấy|not found|404|quay lại)/i).first()).toBeVisible({ timeout: 15000 });\n     |                                                                                      ^\n  48 |\n  49 |     // 3. Certificate verification with safe non-existent UUID\n  50 |     await page.goto('/verify/00000000-0000-0000-0000-000000000000');\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts:47:86"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:36:50.440Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-67d85-cation-Portfolio-Edge-Cases-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-67d85-cation-Portfolio-Edge-Cases-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-67d85-cation-Portfolio-Edge-Cases-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-67d85-cation-Portfolio-Edge-Cases-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                        "column": 86,
+                        "line": 47
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "622ff0caf93b656b2560-ae438b8dc0f947560ff7",
+              "file": "04-extended-and-responsive.spec.ts",
+              "line": 40,
+              "column": 3
+            },
+            {
+              "title": "Domain R & S: Voice Interview Explicit Consent UX & Realtime Lifecycle",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 8,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 23980,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    41 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    41 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts:67:24",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                          "column": 24,
+                          "line": 67
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 65 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"TypeScript\")'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 66 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Bắt Đầu Phỏng Vấn Ngay\"), button:has-text(\"Begin 5-Question Interview\"), button:has-text(\"Bắt đầu\")'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m20000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 68 |\u001b[39m\n \u001b[90m 69 |\u001b[39m     \u001b[90m// 3. Switch to Voice Mode\u001b[39m\n \u001b[90m 70 |\u001b[39m     \u001b[36mconst\u001b[39m voiceModeBtn \u001b[33m=\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'[data-testid=\"mode-voice-btn\"], button:has-text(\"Voice Mode\"), button:has-text(\"Chế độ Giọng nói\")'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                            "column": 24,
+                            "line": 67
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    41 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[22m\n\n\n  65 |     await page.locator('button:has-text(\"TypeScript\")').first().click();\n  66 |     await page.locator('button:has-text(\"Bắt Đầu Phỏng Vấn Ngay\"), button:has-text(\"Begin 5-Question Interview\"), button:has-text(\"Bắt đầu\")').first().click();\n> 67 |     await expect(page).toHaveURL(/\\/interviews\\/[a-f0-9-]+/, { timeout: 20000 });\n     |                        ^\n  68 |\n  69 |     // 3. Switch to Voice Mode\n  70 |     const voiceModeBtn = page.locator('[data-testid=\"mode-voice-btn\"], button:has-text(\"Voice Mode\"), button:has-text(\"Chế độ Giọng nói\")').first();\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts:67:24"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:37:09.462Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-8b0ad-nsent-UX-Realtime-Lifecycle-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-8b0ad-nsent-UX-Realtime-Lifecycle-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-8b0ad-nsent-UX-Realtime-Lifecycle-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\04-extended-and-responsive-8b0ad-nsent-UX-Realtime-Lifecycle-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\04-extended-and-responsive.spec.ts",
+                        "column": 24,
+                        "line": 67
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "622ff0caf93b656b2560-62f6380b168f85841ec3",
+              "file": "04-extended-and-responsive.spec.ts",
+              "line": 54,
+              "column": 3
+            },
+            {
+              "title": "Domain T: Responsive Layout Integrity Across Mobile, Tablet & Desktop",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6413,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:37:34.516Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "622ff0caf93b656b2560-bacc135be0499beb390c",
+              "file": "04-extended-and-responsive.spec.ts",
+              "line": 87,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "05-edge-cases.spec.ts",
+      "file": "05-edge-cases.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "Section 8 — Edge Cases, Malformed UUIDs, Rapid Clicks & Security Guardrails",
+          "file": "05-edge-cases.spec.ts",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "Edge Case 1: Malformed & Non-Existent UUID Session Handling",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5446,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [
+                        {
+                          "text": "[browser http 500] GET https://vinh-ai-interview.duckdns.org/api/v1/interviews/not-a-valid-uuid-format/code/submissions\n"
+                        },
+                        {
+                          "text": "[browser http 500] GET https://vinh-ai-interview.duckdns.org/api/v1/interviews/not-a-valid-uuid-format/code/submissions\n"
+                        }
+                      ],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:37:41.136Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8db582cd03743201068a-a671aada4486d444458b",
+              "file": "05-edge-cases.spec.ts",
+              "line": 15,
+              "column": 3
+            },
+            {
+              "title": "Edge Case 2: Protected Route Invalidation for Anonymous Users",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4456,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:37:46.600Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "8db582cd03743201068a-7a22d6ae1cb63d7f9323",
+              "file": "05-edge-cases.spec.ts",
+              "line": 32,
+              "column": 3
+            },
+            {
+              "title": "Edge Case 3: XSS & Special Characters Input Sanitization",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 90000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "chromium",
+                  "projectName": "chromium",
+                  "results": [
+                    {
+                      "workerIndex": 9,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 50326,
+                      "error": {
+                        "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    37 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[22m\n",
+                        "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    37 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[22m\n\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\05-edge-cases.spec.ts:68:24",
+                        "location": {
+                          "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\05-edge-cases.spec.ts",
+                          "column": 24,
+                          "line": 68
+                        },
+                        "snippet": "\u001b[0m \u001b[90m 66 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"TypeScript\")'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n \u001b[90m 67 |\u001b[39m     \u001b[36mawait\u001b[39m page\u001b[33m.\u001b[39mlocator(\u001b[32m'button:has-text(\"Bắt Đầu Phỏng Vấn Ngay\"), button:has-text(\"Begin 5-Question Interview\"), button:has-text(\"Bắt đầu\")'\u001b[39m)\u001b[33m.\u001b[39mfirst()\u001b[33m.\u001b[39mclick()\u001b[33m;\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 68 |\u001b[39m     \u001b[36mawait\u001b[39m expect(page)\u001b[33m.\u001b[39mtoHaveURL(\u001b[35m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\u001b[33m,\u001b[39m { timeout\u001b[33m:\u001b[39m \u001b[35m20000\u001b[39m })\u001b[33m;\u001b[39m\n \u001b[90m    |\u001b[39m                        \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 69 |\u001b[39m\n \u001b[90m 70 |\u001b[39m     \u001b[90m// Submit XSS payload as answer\u001b[39m\n \u001b[90m 71 |\u001b[39m     \u001b[36mconst\u001b[39m xssPayload \u001b[33m=\u001b[39m \u001b[32m'<script>alert(\"xss\")</script><img src=\"x\" onerror=\"alert(1)\">\\' OR \\'1\\'=\\'1'\u001b[39m\u001b[33m;\u001b[39m\u001b[0m"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\05-edge-cases.spec.ts",
+                            "column": 24,
+                            "line": 68
+                          },
+                          "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mpage\u001b[39m\u001b[2m).\u001b[22mtoHaveURL\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nExpected pattern: \u001b[32m/\\/interviews\\/[a-f0-9-]+/\u001b[39m\nReceived string:  \u001b[31m\"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[39m\nTimeout: 20000ms\n\nCall log:\n\u001b[2m  - Expect \"toHaveURL\" with timeout 20000ms\u001b[22m\n\u001b[2m    37 × locator resolved to <html lang=\"en\">…</html>\u001b[22m\n\u001b[2m       - unexpected value \"https://vinh-ai-interview.duckdns.org/interviews/new\"\u001b[22m\n\n\n  66 |     await page.locator('button:has-text(\"TypeScript\")').first().click();\n  67 |     await page.locator('button:has-text(\"Bắt Đầu Phỏng Vấn Ngay\"), button:has-text(\"Begin 5-Question Interview\"), button:has-text(\"Bắt đầu\")').first().click();\n> 68 |     await expect(page).toHaveURL(/\\/interviews\\/[a-f0-9-]+/, { timeout: 20000 });\n     |                        ^\n  69 |\n  70 |     // Submit XSS payload as answer\n  71 |     const xssPayload = '<script>alert(\"xss\")</script><img src=\"x\" onerror=\"alert(1)\">\\' OR \\'1\\'=\\'1';\n    at C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\05-edge-cases.spec.ts:68:24"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-04T04:37:51.080Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "screenshot",
+                          "contentType": "image/png",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\05-edge-cases-Section-8-—--02369-aracters-Input-Sanitization-chromium\\test-failed-1.png"
+                        },
+                        {
+                          "name": "video",
+                          "contentType": "video/webm",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\05-edge-cases-Section-8-—--02369-aracters-Input-Sanitization-chromium\\video.webm"
+                        },
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\05-edge-cases-Section-8-—--02369-aracters-Input-Sanitization-chromium\\error-context.md"
+                        },
+                        {
+                          "name": "trace",
+                          "contentType": "application/zip",
+                          "path": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\test-results\\05-edge-cases-Section-8-—--02369-aracters-Input-Sanitization-chromium\\trace.zip"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "C:\\Users\\Duong Vinh\\ai-interview-practice\\apps\\web\\e2e\\reality-audit\\05-edge-cases.spec.ts",
+                        "column": 24,
+                        "line": 68
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "8db582cd03743201068a-250c2566a1103f8bc437",
+              "file": "05-edge-cases.spec.ts",
+              "line": 56,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-04T04:29:30.207Z",
+    "duration": 567285.076,
+    "expected": 9,
+    "skipped": 0,
+    "unexpected": 10,
+    "flaky": 0
+  }
+}

@@ -14,7 +14,7 @@ export class VadEngineService {
   private readonly logger = new Logger(VadEngineService.name);
 
   // Energy threshold for voice detection (normalized RMS 0.0 to 1.0)
-  private readonly energyThreshold = 0.02;
+  private readonly energyThreshold = 0.03;
   private readonly minSpeechFrames = 3;
   private readonly minSilenceFrames = 15;
 

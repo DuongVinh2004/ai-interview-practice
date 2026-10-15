@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Sparkles, Check, Lock, Calendar, ArrowRight } from 'lucide-react';
+import { useI18nStore } from '../../../stores/i18n.store';
 
 interface PaywallModalProps {
   isOpen: boolean;
@@ -12,20 +13,40 @@ interface PaywallModalProps {
 
 export function PaywallModal({ isOpen, onClose, resetsAt }: PaywallModalProps) {
   const navigate = useNavigate();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
 
   const formattedResetDate = resetsAt
-    ? new Date(resetsAt).toLocaleDateString('vi-VN', {
+    ? new Date(resetsAt).toLocaleDateString(isVi ? 'vi-VN' : 'en-US', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
       })
-    : 'đầu tháng sau';
+    : isVi
+      ? 'đầu tháng sau'
+      : 'early next month';
+
+  const benefits = isVi
+    ? [
+        '50 lượt mở đáp án có kiểm duyệt mỗi tháng',
+        'Xem đầy đủ tiêu chí chấm điểm (Rubric) chi tiết',
+        'Nhận diện các lỗi thường gặp (Common Mistakes) trong phỏng vấn',
+        'Bộ lọc chuyên sâu theo Role, Seniority, Tech Stack & Difficulty',
+        'Không giới hạn lưu câu hỏi Bookmark & Luyện tập mock interview',
+      ]
+    : [
+        '50 curated answer reveals per month',
+        'Access full detailed evaluation rubrics',
+        'Identify common candidate interview pitfalls',
+        'Advanced filters by Role, Seniority, Tech Stack & Difficulty',
+        'Unlimited question bookmarks & mock interview practice',
+      ];
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title="Mở rộng quyền truy cập Ngân hàng câu hỏi"
+      title={isVi ? 'Mở rộng quyền truy cập Ngân hàng câu hỏi' : 'Upgrade Question Bank Access'}
       maxWidth="md"
     >
       <div className="space-y-5">
@@ -35,27 +56,25 @@ export function PaywallModal({ isOpen, onClose, resetsAt }: PaywallModalProps) {
             <Lock className="h-5 w-5" />
           </div>
           <h4 className="text-base font-semibold text-amber-900 dark:text-amber-200">
-            Bạn đã dùng hết 5/5 lượt mở đáp án miễn phí
+            {isVi
+              ? 'Bạn đã dùng hết 5/5 lượt mở đáp án miễn phí'
+              : 'You have used all 5/5 free answer reveals'}
           </h4>
           <p className="mt-1 text-xs text-amber-700 dark:text-amber-400 flex items-center justify-center gap-1.5">
             <Calendar className="h-3.5 w-3.5" />
-            Lượt xem miễn phí tiếp theo sẽ được làm mới vào ngày {formattedResetDate}.
+            {isVi
+              ? `Lượt xem miễn phí tiếp theo sẽ được làm mới vào ngày ${formattedResetDate}.`
+              : `Your free reveal quota will reset on ${formattedResetDate}.`}
           </p>
         </div>
 
         {/* Benefits Comparison */}
         <div>
           <h5 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-            Quyền lợi khi nâng cấp gói Pro
+            {isVi ? 'Quyền lợi khi nâng cấp gói Pro' : 'Benefits of Pro Upgrade'}
           </h5>
           <ul className="mt-3 space-y-2.5">
-            {[
-              '50 lượt mở đáp án có kiểm duyệt mỗi tháng',
-              'Xem đầy đủ tiêu chí chấm điểm (Rubric) chi tiết',
-              'Nhận diện các lỗi thường gặp (Common Mistakes) trong phỏng vấn',
-              'Bộ lọc chuyên sâu theo Role, Seniority, Tech Stack & Difficulty',
-              'Không giới hạn lưu câu hỏi Bookmark & Luyện tập mock interview',
-            ].map((benefit, idx) => (
+            {benefits.map((benefit, idx) => (
               <li
                 key={idx}
                 className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300"
@@ -72,7 +91,7 @@ export function PaywallModal({ isOpen, onClose, resetsAt }: PaywallModalProps) {
         {/* Action Buttons */}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end pt-2">
           <Button variant="outline" onClick={onClose}>
-            Đóng
+            {isVi ? 'Đóng' : 'Close'}
           </Button>
           <Button
             variant="primary"
@@ -83,7 +102,7 @@ export function PaywallModal({ isOpen, onClose, resetsAt }: PaywallModalProps) {
             className="flex items-center justify-center gap-2"
           >
             <Sparkles className="h-4 w-4" />
-            Xem các gói Pro
+            {isVi ? 'Xem các gói Pro' : 'View Pro Plans'}
             <ArrowRight className="h-4 w-4" />
           </Button>
         </div>

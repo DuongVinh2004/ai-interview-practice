@@ -370,7 +370,7 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     expect(mockWs.close).toHaveBeenCalledWith(1008, 'Unauthorized audio frame stream');
   });
 
-  it('processes binary audio chunk and detects barge-in to interrupt AI speaking', async () => {
+  it('does not interrupt AI from microphone noise, but honors an explicit interrupt', async () => {
     const sentMessages: any[] = [];
     const mockWs: any = {
       readyState: 1,
@@ -386,17 +386,19 @@ describe('VoiceStreamingGateway (F001 Live Voice Streaming & Security - AG-PACKE
     gateway.handleConnection(mockWs);
     const messageHandler = mockWs.on.mock.calls.find((call: any[]) => call[0] === 'message')[1];
 
-    // Manual interrupt event
-    await messageHandler(
-      JSON.stringify({
-        type: VoiceEventType.INTERRUPT,
-      }),
-      false,
-    );
+    const state = (gateway as any).activeClients.get(mockWs);
+    state.userId = 'user-1';
+    state.voiceSessionId = 'voice-1';
+    state.isAiSpeaking = true;
+    state.aiSpeakingStartedAt = Date.now() - 2000;
+    const speech = Buffer.alloc(640);
+    for (let offset = 0; offset < speech.length; offset += 2) speech.writeInt16LE(12000, offset);
+    for (let frame = 0; frame < 3; frame++) await messageHandler(speech, true);
 
     const bargeInEvent = sentMessages.find(m => m.type === VoiceEventType.INTERRUPT);
-    expect(bargeInEvent).toBeDefined();
-    expect(bargeInEvent.bargeInCount).toBe(1);
+    expect(bargeInEvent).toBeUndefined();
+    await messageHandler(JSON.stringify({ type: VoiceEventType.INTERRUPT }), false);
+    expect(sentMessages.find(m => m.type === VoiceEventType.INTERRUPT)?.bargeInCount).toBe(1);
   });
 
   it('enforces single active WebSocket connection per user and disconnects older session', async () => {

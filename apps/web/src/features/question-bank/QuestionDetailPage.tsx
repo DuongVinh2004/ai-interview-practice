@@ -14,6 +14,7 @@ import { QuestionCard } from './components/QuestionCard';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useAuthStore } from '../../stores/auth.store';
+import { useI18nStore } from '../../stores/i18n.store';
 import {
   ArrowLeft,
   Bookmark,
@@ -32,6 +33,8 @@ export function QuestionDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { isAuthenticated } = useAuthStore();
+  const { language } = useI18nStore();
+  const isVi = language === 'vi';
 
   const [showPaywall, setShowPaywall] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -200,13 +203,17 @@ export function QuestionDetailPage() {
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <AlertTriangle className="mx-auto h-12 w-12 text-rose-500" />
         <h2 className="mt-4 text-xl font-bold text-slate-900 dark:text-white">
-          Không tìm thấy câu hỏi
+          {isVi ? 'Không tìm thấy câu hỏi' : 'Question Not Found'}
         </h2>
         <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          Câu hỏi không tồn tại hoặc đã được chuyển vào kho lưu trữ nội bộ.
+          {isVi
+            ? 'Câu hỏi không tồn tại hoặc đã được chuyển vào kho lưu trữ nội bộ.'
+            : 'The requested question does not exist or has been archived.'}
         </p>
         <Link to="/question-bank" className="mt-6 inline-block">
-          <Button variant="primary">Quay lại Ngân hàng câu hỏi</Button>
+          <Button variant="primary">
+            {isVi ? 'Quay lại Ngân hàng câu hỏi' : 'Back to Question Bank'}
+          </Button>
         </Link>
       </div>
     );
@@ -224,7 +231,7 @@ export function QuestionDetailPage() {
           className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400"
         >
           <ArrowLeft className="h-4 w-4" />
-          Tất cả câu hỏi
+          {isVi ? 'Tất cả câu hỏi' : 'All Questions'}
         </Link>
 
         <div className="flex items-center gap-2">
@@ -234,7 +241,7 @@ export function QuestionDetailPage() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
           >
             <Flag className="h-3.5 w-3.5" />
-            Báo lỗi
+            {isVi ? 'Báo lỗi' : 'Report Issue'}
           </button>
 
           <Button
@@ -248,7 +255,13 @@ export function QuestionDetailPage() {
               className="h-4 w-4 text-amber-500"
               fill={question.isBookmarked ? 'currentColor' : 'none'}
             />
-            {question.isBookmarked ? 'Đã lưu' : 'Lưu câu hỏi'}
+            {question.isBookmarked
+              ? isVi
+                ? 'Đã lưu'
+                : 'Saved'
+              : isVi
+                ? 'Lưu câu hỏi'
+                : 'Bookmark Question'}
           </Button>
         </div>
       </div>
@@ -262,7 +275,7 @@ export function QuestionDetailPage() {
           </span>
 
           <span className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-            Độ khó: Level {question.difficulty}/5
+            {isVi ? `Độ khó: Cấp độ ${question.difficulty}/5` : `Difficulty: Level ${question.difficulty}/5`}
           </span>
 
           {question.jobRole && (
@@ -290,7 +303,9 @@ export function QuestionDetailPage() {
         {/* Technologies */}
         {question.technologies && question.technologies.length > 0 && (
           <div className="mt-6 flex flex-wrap items-center gap-2">
-            <span className="text-xs font-medium text-slate-500">Chủ đề:</span>
+            <span className="text-xs font-medium text-slate-500">
+              {isVi ? 'Chủ đề:' : 'Topics:'}
+            </span>
             {question.technologies.map(t => (
               <span
                 key={t.id}
@@ -316,7 +331,7 @@ export function QuestionDetailPage() {
                     <CheckCircle2 className="h-4 w-4" />
                   </span>
                   <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-                    Đáp án tham khảo đã kiểm duyệt
+                    {isVi ? 'Đáp án tham khảo đã kiểm duyệt' : 'Verified Reference Solution'}
                   </h2>
                 </div>
 
@@ -336,7 +351,7 @@ export function QuestionDetailPage() {
               {question.answer.explanationBody && (
                 <div className="mt-4 border-l-2 border-indigo-300 pl-4 dark:border-indigo-700">
                   <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    <Info className="h-4 w-4" /> Giải thích chi tiết
+                    <Info className="h-4 w-4" /> {isVi ? 'Giải thích chi tiết' : 'Detailed Explanation'}
                   </h4>
                   <p className="mt-1.5 text-sm leading-6 text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                     {question.answer.explanationBody}
@@ -350,10 +365,12 @@ export function QuestionDetailPage() {
                 <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
                   <h3 className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-white">
                     <FileCheck className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-                    Scorecard phỏng vấn
+                    {isVi ? 'Scorecard phỏng vấn' : 'Interview Scorecard'}
                   </h3>
                   <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    Các luận điểm một câu trả lời tốt cần thể hiện.
+                    {isVi
+                      ? 'Các luận điểm một câu trả lời tốt cần thể hiện.'
+                      : 'Key points that an exemplary answer should articulate.'}
                   </p>
                   <ol className="mt-3 grid gap-2">
                     {rubricItems.map((item, index) => (
@@ -375,7 +392,7 @@ export function QuestionDetailPage() {
                 <section className="rounded-xl border border-rose-200 bg-rose-50/50 p-4 dark:border-rose-950 dark:bg-rose-950/15">
                   <h3 className="flex items-center gap-2 text-sm font-bold text-rose-800 dark:text-rose-200">
                     <AlertTriangle className="h-4 w-4 text-rose-600 dark:text-rose-400" />
-                    Bẫy cần tránh
+                    {isVi ? 'Bẫy cần tránh' : 'Common Pitfalls to Avoid'}
                   </h3>
                   <div className="mt-3 text-sm leading-5 text-rose-900 dark:text-rose-300">
                     {Array.isArray(question.answer.commonMistakes) ? (
@@ -409,11 +426,14 @@ export function QuestionDetailPage() {
             </div>
 
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-              Đáp án tham khảo & Tiêu chí chấm điểm (Rubric)
+              {isVi
+                ? 'Đáp án tham khảo & Tiêu chí chấm điểm (Rubric)'
+                : 'Reference Solution & Rubric Criteria'}
             </h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-slate-600 dark:text-slate-400">
-              Mở đáp án để xem lời giải mẫu, phân tích độ phức tạp, thang điểm Rubric và các lỗi
-              thường gặp được tổng hợp bởi đội ngũ chuyên gia.
+              {isVi
+                ? 'Mở đáp án để xem lời giải mẫu, phân tích độ phức tạp, thang điểm Rubric và các lỗi thường gặp được tổng hợp bởi đội ngũ chuyên gia.'
+                : 'Unlock this solution to view model answers, complexity analysis, structured rubric criteria, and common interview mistakes.'}
             </p>
 
             <div className="mt-6 flex justify-center">
@@ -425,7 +445,7 @@ export function QuestionDetailPage() {
                 className="flex items-center gap-2 shadow-lg shadow-indigo-500/20"
               >
                 <Unlock className="h-5 w-5" />
-                Mở đáp án tham khảo
+                {isVi ? 'Mở đáp án tham khảo' : 'Reveal Reference Solution'}
               </Button>
             </div>
 
@@ -442,7 +462,7 @@ export function QuestionDetailPage() {
       {question.relatedQuestions && question.relatedQuestions.length > 0 && (
         <div className="mt-12 border-t border-slate-200 pt-8 dark:border-slate-800">
           <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-5">
-            Câu hỏi liên quan cùng chủ đề
+            {isVi ? 'Câu hỏi liên quan cùng chủ đề' : 'Related Questions in this Topic'}
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {question.relatedQuestions.map(rel => (

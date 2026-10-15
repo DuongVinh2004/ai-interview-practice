@@ -20,7 +20,7 @@ export function useVoiceStreaming(interviewId?: string) {
   const [connectionStatus, setConnectionStatus] = useState<
     'DISCONNECTED' | 'CONNECTING' | 'LIVE' | 'ENDED' | 'ERROR'
   >('DISCONNECTED');
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
   const [isCandidateSpeaking, setIsCandidateSpeaking] = useState(false);
   const [candidateVolume, setCandidateVolume] = useState(0);
@@ -36,9 +36,31 @@ export function useVoiceStreaming(interviewId?: string) {
     quality: 'EXCELLENT',
   });
   const [bargeInCount, setBargeInCount] = useState(0);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uncommittedTranscript, setUncommittedTranscript] = useState('');
+  const pendingTranscriptRef = useRef('');
+  const [recordingStatus, setRecordingStatus] = useState<
+    'IDLE' | 'STARTING' | 'RECORDING' | 'FINALIZING'
+  >('IDLE');
+  const [recordingText, setRecordingText] = useState('');
+  const recordingIdRef = useRef<string | null>(null);
+  const recordingTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const captureFlushRef = useRef<(() => void) | null>(null);
+  const decodeQueueRef = useRef<Promise<void>>(Promise.resolve());
+  const acceptingPlaybackRef = useRef(true);
+  const [sessionCompleted, setSessionCompleted] = useState(false);
+  const connectionGenerationRef = useRef(0);
+  const connectingRef = useRef(false);
+  const playbackGenerationRef = useRef(0);
+  const playbackCodecRef = useRef<'pcm16' | 'mp3'>('pcm16');
+  const pendingDecodesRef = useRef(0);
 
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const playbackAudioContextRef = useRef<AudioContext | null>(null);
+  const nextPlayTimeRef = useRef(0);
+  const scheduledSourcesRef = useRef<AudioBufferSourceNode[]>([]);
+  const aiSpeakingEndReceivedRef = useRef(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
@@ -55,17 +77,43 @@ export function useVoiceStreaming(interviewId?: string) {
   isAiSpeakingRef.current = isAiSpeaking;
   isMutedRef.current = isMuted;
 
+  const stopAiAudio = useCallback(() => {
+    playbackGenerationRef.current += 1;
+    pendingDecodesRef.current = 0;
+    decodeQueueRef.current = Promise.resolve();
+    scheduledSourcesRef.current.forEach(s => {
+      try {
+        s.stop();
+        s.disconnect();
+      } catch {
+        // ignore disconnect error
+      }
+    });
+    scheduledSourcesRef.current = [];
+    if (playbackAudioContextRef.current) {
+      nextPlayTimeRef.current = playbackAudioContextRef.current.currentTime;
+    } else {
+      nextPlayTimeRef.current = 0;
+    }
+    aiSpeakingEndReceivedRef.current = false;
+    setIsAiSpeaking(false);
+    setAiVolume(0);
+  }, []);
+
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       mediaGenerationRef.current += 1;
+      stopAiAudio();
     };
-  }, []);
+  }, [stopAiAudio]);
 
   // 1. Resource Cleanup to Prevent Memory & Socket Leaks
   const stopMicrophone = useCallback(() => {
     mediaGenerationRef.current += 1;
+    setIsMuted(true);
+    isMutedRef.current = true;
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(t => {
         try {
@@ -102,7 +150,7 @@ export function useVoiceStreaming(interviewId?: string) {
     }
     setCandidateVolume(0);
     setIsCandidateSpeaking(false);
-  }, []);
+  }, [stopAiAudio]);
 
   const resetSilenceTimer = useCallback(() => {
     setSilenceDurationSec(0);
@@ -111,10 +159,13 @@ export function useVoiceStreaming(interviewId?: string) {
 
   // 2. Connect to Voice WebSocket Gateway
   const connect = useCallback(async () => {
-    if (!interviewId || wsRef.current) return;
+    if (!interviewId || wsRef.current || connectingRef.current) return;
+    connectingRef.current = true;
+    const generation = ++connectionGenerationRef.current;
 
     setConnectionStatus('CONNECTING');
     setIsFallbackToRest(false);
+    setErrorMessage(null);
 
     let ticket: string | undefined;
     try {
@@ -123,24 +174,62 @@ export function useVoiceStreaming(interviewId?: string) {
         { interviewId },
       );
       ticket = (res as any)?.ticket || (res as any)?.data?.ticket;
-    } catch {
-      // Allow fallback / direct connect in mock/test
+    } catch (err: any) {
+      if (generation !== connectionGenerationRef.current) return;
+      connectingRef.current = false;
+      setConnectionStatus('ERROR');
+      setErrorMessage(err?.message || 'Không thể cấp quyền kết nối giọng nói.');
+      setIsFallbackToRest(true);
+      return;
     }
 
-    if (!isMountedRef.current) return;
+    if (!isMountedRef.current || generation !== connectionGenerationRef.current) return;
+    if (!ticket) {
+      connectingRef.current = false;
+      setConnectionStatus('ERROR');
+      setErrorMessage('Không nhận được vé kết nối giọng nói. Vui lòng thử lại.');
+      setIsFallbackToRest(true);
+      return;
+    }
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
+    const baseWsUrl = import.meta.env.VITE_VOICE_WS_URL || `${protocol}//${host}/voice`;
     const wsUrl = ticket
-      ? `${protocol}//${host}/voice?ticket=${encodeURIComponent(ticket)}`
-      : `${protocol}//${host}/voice`;
+      ? `${baseWsUrl}${baseWsUrl.includes('?') ? '&' : '?'}ticket=${encodeURIComponent(ticket)}`
+      : baseWsUrl;
 
-    const ws = new WebSocket(wsUrl);
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(wsUrl);
+    } catch (err) {
+      connectingRef.current = false;
+      setConnectionStatus('ERROR');
+      setErrorMessage(err instanceof Error ? err.message : 'Không thể mở kết nối giọng nói.');
+      setIsFallbackToRest(true);
+      return;
+    }
     wsRef.current = ws;
     ws.binaryType = 'arraybuffer';
 
+    const connectTimeoutTimer = setTimeout(() => {
+      if (generation !== connectionGenerationRef.current) return;
+      if (connectingRef.current) {
+        setConnectionStatus('ERROR');
+        setIsFallbackToRest(true);
+        try {
+          ws.close();
+        } catch {
+          // ignore
+        }
+      }
+    }, 10000);
+
     ws.onopen = () => {
-      setConnectionStatus('LIVE');
+      if (generation !== connectionGenerationRef.current) {
+        ws.close();
+        return;
+      }
       ws.send(
         JSON.stringify({
           type: VoiceEventType.CONNECT,
@@ -177,9 +266,11 @@ export function useVoiceStreaming(interviewId?: string) {
     };
 
     ws.onmessage = async event => {
+      if (generation !== connectionGenerationRef.current) return;
       if (typeof event.data === 'string') {
         try {
           const msg = JSON.parse(event.data);
+          if (msg.type === VoiceEventType.CONNECTED) clearTimeout(connectTimeoutTimer);
           handleServerJsonEvent(msg);
         } catch (e) {
           // ignore
@@ -187,20 +278,39 @@ export function useVoiceStreaming(interviewId?: string) {
       } else if (event.data instanceof ArrayBuffer) {
         // Play binary audio chunk from AI interviewer
         playAudioChunk(event.data);
+      } else if (event.data instanceof Blob) {
+        const buffer = await event.data.arrayBuffer();
+        playAudioChunk(buffer);
       }
     };
 
     ws.onclose = () => {
-      setConnectionStatus('ENDED');
+      clearTimeout(connectTimeoutTimer);
+      if (generation !== connectionGenerationRef.current) return;
+      wsRef.current = null;
+      connectingRef.current = false;
+      setConnectionStatus(prev => (prev === 'ENDED' ? prev : 'ERROR'));
+      setIsFallbackToRest(true);
+      stopAiAudio();
       stopMicrophone();
+      recordingIdRef.current = null;
+      clearTimeout(recordingTimerRef.current);
+      setRecordingStatus('IDLE');
+      if (pendingTranscriptRef.current) setUncommittedTranscript(pendingTranscriptRef.current);
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
     };
 
     ws.onerror = () => {
+      if (generation !== connectionGenerationRef.current) return;
+      clearTimeout(connectTimeoutTimer);
       setConnectionStatus('ERROR');
       setIsFallbackToRest(true);
       stopMicrophone();
+      recordingIdRef.current = null;
+      clearTimeout(recordingTimerRef.current);
+      setRecordingStatus('IDLE');
+      stopAiAudio();
       if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
       if (silenceTimerRef.current) clearInterval(silenceTimerRef.current);
     };
@@ -208,13 +318,49 @@ export function useVoiceStreaming(interviewId?: string) {
 
   const handleServerJsonEvent = (msg: any) => {
     switch (msg.type) {
+      case 'voice:recording-started':
+        if (msg.recordingId !== recordingIdRef.current) break;
+        clearTimeout(recordingTimerRef.current);
+        void startMicrophone();
+        break;
+      case 'voice:recording-draft':
+        if (msg.recordingId === recordingIdRef.current) {
+          pendingTranscriptRef.current = msg.text || '';
+          setRecordingText(msg.text || '');
+        }
+        break;
+      case 'voice:recording-stopped':
+      case 'voice:recording-error':
+        if (msg.recordingId !== recordingIdRef.current) break;
+        if (typeof msg.text === 'string') {
+          setRecordingText(msg.text);
+          pendingTranscriptRef.current = msg.text;
+        }
+        recordingIdRef.current = null;
+        clearTimeout(recordingTimerRef.current);
+        stopMicrophone();
+        setRecordingStatus('IDLE');
+        if (msg.message) setErrorMessage(msg.message);
+        break;
+      case 'voice:playback-error':
+        stopAiAudio();
+        setErrorMessage(msg.message || 'Không thể phát câu hỏi. Bạn vẫn có thể trả lời.');
+        break;
+      case 'voice:audio-format':
+        playbackCodecRef.current = msg.codec === 'mp3' ? 'mp3' : 'pcm16';
+        break;
       case VoiceEventType.CONNECTED:
+        connectingRef.current = false;
         setConnectionStatus('LIVE');
-        startMicrophone();
+        // Microphone starts only after an explicit recording request.
         break;
 
       case VoiceEventType.AI_SPEAKING_START:
+        if (recordingIdRef.current) break;
+        acceptingPlaybackRef.current = true;
+        stopAiAudio();
         setIsAiSpeaking(true);
+        aiSpeakingEndReceivedRef.current = false;
         setSilenceDurationSec(0);
         setIsProlongedSilence(false);
         if (msg.text) {
@@ -226,13 +372,17 @@ export function useVoiceStreaming(interviewId?: string) {
         break;
 
       case VoiceEventType.AI_SPEAKING_END:
-        setIsAiSpeaking(false);
-        setAiVolume(0);
+        aiSpeakingEndReceivedRef.current = true;
+        if (scheduledSourcesRef.current.length === 0 && pendingDecodesRef.current === 0) {
+          setIsAiSpeaking(false);
+          setAiVolume(0);
+        }
         setSilenceDurationSec(0);
         break;
 
       case VoiceEventType.INTERIM_TRANSCRIPT:
         if (msg.text) {
+          pendingTranscriptRef.current = msg.text;
           setTranscripts(prev => {
             const filtered = prev.filter(t => t.isFinal || t.speaker !== SpeakerRole.USER);
             return [
@@ -245,6 +395,7 @@ export function useVoiceStreaming(interviewId?: string) {
 
       case VoiceEventType.FINAL_TRANSCRIPT:
         if (msg.text) {
+          pendingTranscriptRef.current = '';
           setTranscripts(prev => {
             const filtered = prev.filter(t => t.isFinal);
             return [
@@ -261,35 +412,44 @@ export function useVoiceStreaming(interviewId?: string) {
         break;
 
       case VoiceEventType.INTERRUPT:
-        setIsAiSpeaking(false);
-        setAiVolume(0);
+        stopAiAudio();
         setBargeInCount(prev => prev + 1);
         break;
 
-      case VoiceEventType.CONNECTION_QUALITY:
+      case VoiceEventType.CONNECTION_QUALITY: {
+        const latency =
+          typeof msg.clientTimestamp === 'number'
+            ? Math.max(0, Date.now() - msg.clientTimestamp)
+            : (msg.latencyMs ?? 0);
         setNetworkQuality({
-          latencyMs: msg.latencyMs || 22,
-          jitterMs: msg.jitterMs || 2,
-          packetLossRate: msg.packetLossRate || 0,
-          quality: msg.quality || 'EXCELLENT',
+          latencyMs: latency,
+          jitterMs: msg.jitterMs ?? 0,
+          packetLossRate: msg.packetLossRate ?? 0,
+          quality:
+            latency < 100 ? 'EXCELLENT' : latency < 250 ? 'GOOD' : latency < 500 ? 'FAIR' : 'POOR',
         });
         break;
+      }
 
       case VoiceEventType.FALLBACK_TO_TEXT:
+        setErrorMessage(msg.message || 'Kết nối giọng nói bị gián đoạn.');
+        if (msg.uncommittedTranscript) setUncommittedTranscript(msg.uncommittedTranscript);
         setIsFallbackToRest(true);
+        disconnect();
         break;
 
       case VoiceEventType.QUOTA_EXCEEDED:
+        disconnect();
+        setErrorMessage(msg.message || 'Hạn mức giọng nói đã hết.');
         setConnectionStatus('ERROR');
         setIsFallbackToRest(true);
         stopMicrophone();
         break;
 
       case VoiceEventType.ERROR:
-        if (
-          msg.message?.toLowerCase().includes('quota') ||
-          msg.message?.toLowerCase().includes('limit')
-        ) {
+        {
+          setErrorMessage(msg.message || 'Kết nối giọng nói gặp lỗi.');
+          disconnect();
           setConnectionStatus('ERROR');
           setIsFallbackToRest(true);
           stopMicrophone();
@@ -297,6 +457,8 @@ export function useVoiceStreaming(interviewId?: string) {
         break;
 
       case VoiceEventType.DISCONNECT:
+        if (msg.state === 'COMPLETED') setSessionCompleted(true);
+        disconnect();
         setConnectionStatus('ENDED');
         break;
     }
@@ -306,7 +468,10 @@ export function useVoiceStreaming(interviewId?: string) {
   const startMicrophone = async () => {
     const generation = ++mediaGenerationRef.current;
     try {
-      if (!navigator.mediaDevices?.getUserMedia) return;
+      if (!navigator.mediaDevices?.getUserMedia)
+        throw new Error(
+          'Trình duyệt không hỗ trợ micro. Hãy dùng HTTPS và trình duyệt hỗ trợ thu âm.',
+        );
 
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -330,11 +495,17 @@ export function useVoiceStreaming(interviewId?: string) {
       }
 
       mediaStreamRef.current = stream;
+      isMutedRef.current = false;
+      setIsMuted(false);
 
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioCtx) return;
+      if (!AudioCtx) throw new Error('Trình duyệt không hỗ trợ Web Audio.');
       const audioCtx = new AudioCtx({ sampleRate: 16000 });
       audioContextRef.current = audioCtx;
+      if (audioCtx.state === 'suspended') await audioCtx.resume();
+      if (generation !== mediaGenerationRef.current || !isMountedRef.current) return;
+      if (audioCtx.sampleRate !== 16000)
+        throw new Error('Thiết bị không hỗ trợ thu âm 16 kHz. Vui lòng dùng chế độ nhập chữ.');
 
       const source = audioCtx.createMediaStreamSource(stream);
 
@@ -343,10 +514,15 @@ export function useVoiceStreaming(interviewId?: string) {
       if (audioCtx.audioWorklet) {
         try {
           await audioCtx.audioWorklet.addModule('/worklets/recorderWorkletProcessor.js');
+          if (generation !== mediaGenerationRef.current || !isMountedRef.current) return;
           const workletNode = new AudioWorkletNode(audioCtx, 'recorder-worklet');
           workletNodeRef.current = workletNode;
 
           workletNode.port.onmessage = (event: MessageEvent) => {
+            if (event.data?.type === 'flushed') {
+              captureFlushRef.current?.();
+              return;
+            }
             if (isMutedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
               return;
             const buffer = event.data as ArrayBuffer;
@@ -374,6 +550,7 @@ export function useVoiceStreaming(interviewId?: string) {
           workletLoaded = false;
         }
       }
+      if (generation !== mediaGenerationRef.current || !isMountedRef.current) return;
 
       // Fallback for environments without AudioWorklet support
       if (!workletLoaded && typeof audioCtx.createScriptProcessor === 'function') {
@@ -408,61 +585,215 @@ export function useVoiceStreaming(interviewId?: string) {
         source.connect(processor);
         processor.connect(audioCtx.destination);
       }
+      setRecordingStatus('RECORDING');
     } catch (err) {
       console.warn('Microphone capture initialization failed:', err);
+      if (generation !== mediaGenerationRef.current) return;
+      if (wsRef.current?.readyState === WebSocket.OPEN)
+        wsRef.current.send(
+          JSON.stringify({ type: 'voice:recording-stop', recordingId: recordingIdRef.current }),
+        );
+      recordingIdRef.current = null;
+      stopMicrophone();
+      setRecordingStatus('IDLE');
+      setErrorMessage(
+        err instanceof Error
+          ? err.message
+          : 'Không thể bật micro. Vui lòng kiểm tra quyền truy cập.',
+      );
     }
   };
 
-  // 4. Audio Chunk Playback
-  const playAudioChunk = async (arrayBuffer: ArrayBuffer) => {
+  // 4. Audio Chunk Playback & Browser Autoplay Unlock
+  const initPlaybackAudio = useCallback(() => {
     try {
-      if (!audioContextRef.current) {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (!AudioCtx) return;
-        audioContextRef.current = new AudioCtx({ sampleRate: 24000 });
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      if (!playbackAudioContextRef.current || playbackAudioContextRef.current.state === 'closed') {
+        try {
+          playbackAudioContextRef.current = new AudioCtx({ sampleRate: 24000 });
+        } catch {
+          playbackAudioContextRef.current = new AudioCtx();
+        }
       }
-      const ctx = audioContextRef.current;
+      const ctx = playbackAudioContextRef.current;
       if (ctx.state === 'suspended') {
-        await ctx.resume();
+        ctx.resume().catch(() => {});
       }
-
-      const int16 = new Int16Array(arrayBuffer);
-      let sum = 0;
-      for (let i = 0; i < int16.length; i++) {
-        sum += Math.abs(int16[i]);
-      }
-      setAiVolume(sum / int16.length / 32768.0);
-
-      const audioBuffer = ctx.createBuffer(1, int16.length, 24000);
-      const channelData = audioBuffer.getChannelData(0);
-      for (let i = 0; i < int16.length; i++) {
-        channelData[i] = int16[i] / 32768.0;
-      }
-
+      // Unlock Web Audio engine via 1-sample silent sound
+      const buffer = ctx.createBuffer(1, 1, 24000);
       const source = ctx.createBufferSource();
-      source.buffer = audioBuffer;
+      source.buffer = buffer;
       source.connect(ctx.destination);
-      source.start();
-    } catch {
-      // AudioContext playback fallback
+      source.start(0);
+    } catch (e) {
+      console.warn('[VoiceStreaming] AudioContext unlock warning:', e);
     }
+  }, []);
+
+  const playAudioChunk = (arrayBuffer: ArrayBuffer) => {
+    if (!acceptingPlaybackRef.current) return;
+    const generation = playbackGenerationRef.current;
+    const codec = playbackCodecRef.current;
+    pendingDecodesRef.current += 1;
+    decodeQueueRef.current = decodeQueueRef.current.then(async () => {
+      if (generation !== playbackGenerationRef.current) return;
+      try {
+        if (
+          !playbackAudioContextRef.current ||
+          playbackAudioContextRef.current.state === 'closed'
+        ) {
+          const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+          if (!AudioCtx) return;
+          try {
+            playbackAudioContextRef.current = new AudioCtx({ sampleRate: 24000 });
+          } catch {
+            playbackAudioContextRef.current = new AudioCtx();
+          }
+        }
+        const ctx = playbackAudioContextRef.current;
+        if (ctx.state === 'suspended') {
+          await ctx.resume().catch(() => {});
+        }
+        if (generation !== playbackGenerationRef.current || !isMountedRef.current) return;
+
+        let audioBuffer: AudioBuffer;
+        if (codec === 'mp3') {
+          audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+          if (generation !== playbackGenerationRef.current || !isMountedRef.current) return;
+          setAiVolume(0.2);
+        } else {
+          const sampleCount = Math.floor(arrayBuffer.byteLength / 2);
+          if (sampleCount === 0) return;
+          const int16 = new Int16Array(arrayBuffer, 0, sampleCount);
+          let sum = 0;
+          audioBuffer = ctx.createBuffer(1, sampleCount, 24000);
+          const channelData = audioBuffer.getChannelData(0);
+          for (let i = 0; i < sampleCount; i++) {
+            sum += Math.abs(int16[i]);
+            channelData[i] = int16[i] / 32768.0;
+          }
+          setAiVolume(sum / sampleCount / 32768.0);
+        }
+
+        const source = ctx.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+
+        scheduledSourcesRef.current.push(source);
+        source.onended = () => {
+          scheduledSourcesRef.current = scheduledSourcesRef.current.filter(s => s !== source);
+          if (
+            scheduledSourcesRef.current.length === 0 &&
+            pendingDecodesRef.current === 0 &&
+            aiSpeakingEndReceivedRef.current
+          ) {
+            setIsAiSpeaking(false);
+            setAiVolume(0);
+          }
+        };
+
+        const now = ctx.currentTime;
+        if (nextPlayTimeRef.current < now) {
+          nextPlayTimeRef.current = now;
+        }
+        const startTime = nextPlayTimeRef.current;
+        source.start(startTime);
+        nextPlayTimeRef.current = startTime + audioBuffer.duration;
+      } catch (err) {
+        console.error('[VoiceStreaming] Audio playback error:', err);
+        if (generation === playbackGenerationRef.current) {
+          setErrorMessage(
+            'Không thể phát âm thanh. Vui lòng kiểm tra thiết bị âm thanh và thử lại.',
+          );
+          stopAiAudio();
+        }
+      } finally {
+        if (generation === playbackGenerationRef.current) {
+          pendingDecodesRef.current = Math.max(0, pendingDecodesRef.current - 1);
+          if (
+            pendingDecodesRef.current === 0 &&
+            scheduledSourcesRef.current.length === 0 &&
+            aiSpeakingEndReceivedRef.current
+          ) {
+            setIsAiSpeaking(false);
+            setAiVolume(0);
+          }
+        }
+      }
+    });
   };
 
   // 5. Client Controls
   const triggerBargeIn = () => {
+    acceptingPlaybackRef.current = false;
+    stopAiAudio();
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: VoiceEventType.INTERRUPT }));
-      setIsAiSpeaking(false);
-      setAiVolume(0);
-      setBargeInCount(prev => prev + 1);
     }
   };
 
+  const startRecording = (turnId: string) => {
+    if (recordingIdRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+    triggerBargeIn();
+    setErrorMessage(null);
+    setRecordingText('');
+    pendingTranscriptRef.current = '';
+    const id = crypto.randomUUID();
+    recordingIdRef.current = id;
+    setRecordingStatus('STARTING');
+    wsRef.current.send(JSON.stringify({ type: 'voice:recording-start', turnId, recordingId: id }));
+    recordingTimerRef.current = setTimeout(() => {
+      if (recordingIdRef.current !== id) return;
+      disconnect();
+      setErrorMessage('Không thể bắt đầu nhận diện. Hãy kết nối lại hoặc nhập chữ.');
+    }, 10000);
+  };
+
+  const stopRecording = async () => {
+    const id = recordingIdRef.current;
+    if (!id) return;
+    setRecordingStatus('FINALIZING');
+    if (workletNodeRef.current) {
+      await new Promise<void>(resolve => {
+        const timeout = setTimeout(resolve, 300);
+        captureFlushRef.current = () => {
+          clearTimeout(timeout);
+          resolve();
+        };
+        workletNodeRef.current?.port.postMessage({ type: 'flush' });
+      });
+      captureFlushRef.current = null;
+    }
+    stopMicrophone();
+    if (recordingIdRef.current !== id) return;
+    wsRef.current?.send(JSON.stringify({ type: 'voice:recording-stop', recordingId: id }));
+    recordingTimerRef.current = setTimeout(() => {
+      if (recordingIdRef.current !== id) return;
+      disconnect();
+      setErrorMessage('Nhận diện chưa xác nhận hoàn tất. Hãy kiểm tra bản nháp trước khi gửi.');
+    }, 10000);
+  };
+
+  const replayQuestion = (turnId: string) => {
+    if (recordingIdRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+    triggerBargeIn();
+    wsRef.current.send(JSON.stringify({ type: 'voice:replay', turnId }));
+  };
   const toggleMute = () => {
-    setIsMuted(prev => !prev);
+    if (recordingIdRef.current) void stopRecording();
   };
 
   const disconnect = useCallback(() => {
+    connectionGenerationRef.current += 1;
+    connectingRef.current = false;
+    recordingIdRef.current = null;
+    clearTimeout(recordingTimerRef.current);
+    setRecordingStatus('IDLE');
+    stopAiAudio();
+    if (playbackAudioContextRef.current?.state !== 'closed')
+      playbackAudioContextRef.current?.close().catch(() => {});
+    playbackAudioContextRef.current = null;
     if (wsRef.current) {
       const ws = wsRef.current;
       if (ws.readyState === WebSocket.OPEN) {
@@ -477,6 +808,7 @@ export function useVoiceStreaming(interviewId?: string) {
       ws.onmessage = null;
       ws.onclose = null;
       ws.onerror = null;
+      if (ws.readyState === WebSocket.CONNECTING) ws.close();
       wsRef.current = null;
     }
     stopMicrophone();
@@ -489,7 +821,7 @@ export function useVoiceStreaming(interviewId?: string) {
       silenceTimerRef.current = null;
     }
     setConnectionStatus('ENDED');
-  }, [stopMicrophone]);
+  }, [stopMicrophone, stopAiAudio]);
 
   useEffect(() => {
     return () => {
@@ -498,6 +830,14 @@ export function useVoiceStreaming(interviewId?: string) {
   }, [disconnect]);
 
   return {
+    recordingStatus,
+    recordingText,
+    startRecording,
+    stopRecording,
+    replayQuestion,
+    errorMessage,
+    uncommittedTranscript,
+    sessionCompleted,
     connectionStatus,
     connect,
     disconnect,
@@ -515,5 +855,6 @@ export function useVoiceStreaming(interviewId?: string) {
     networkQuality,
     bargeInCount,
     triggerBargeIn,
+    initPlaybackAudio,
   };
 }

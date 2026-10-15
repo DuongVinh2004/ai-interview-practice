@@ -35,6 +35,8 @@ interface ClientSessionState {
   voiceTicketInterviewId?: string;
   entitlementReservationId?: string;
   isAiSpeaking: boolean;
+  aiSpeakingStartedAt?: number;
+  aiPlaybackEndsAt?: number;
   cancelAiStreaming: boolean;
   consecutiveSpeechFrames: number;
   consecutiveSilenceFrames: number;
@@ -51,6 +53,20 @@ interface ClientSessionState {
   lastCandidateSpeechTime?: number;
   messageCountThisSecond: number;
   lastMessageSecond: number;
+  connecting?: boolean;
+  processingAnswer?: boolean;
+  finalized?: boolean;
+  lastSpokenTurn?: number;
+  syncTimer?: ReturnType<typeof setTimeout>;
+  language?: string;
+  closed?: boolean;
+  recordingId?: string;
+  recordingText?: string;
+  recordingInterim?: string;
+  recordingStopping?: boolean;
+  audioFrameSecond?: number;
+  audioFrameCount?: number;
+  speechGeneration?: number;
 }
 
 @WebSocketGateway({
@@ -212,56 +228,15 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     }
   }
 
-  async handleConnection(client: WebSocket, req?: any) {
+  handleConnection(client: WebSocket, req?: any) {
     this.logger.log('Client connected to Voice Gateway WebSocket.');
 
-    let authenticatedUser: any = null;
-    let userId: string | undefined = undefined;
-    let voiceTicketJti: string | undefined = undefined;
-
-    // Extract & verify JWT or Ticket through canonical AuthService / Ticket validator
-    try {
-      let token: string | undefined;
-      let ticket: string | undefined;
-      if (req?.url) {
-        const parsedUrl = new URL(req.url, 'http://localhost');
-        token = parsedUrl.searchParams.get('token') || undefined;
-        ticket = parsedUrl.searchParams.get('ticket') || undefined;
-      }
-      if (!token && req?.headers?.authorization) {
-        const authHeader = req.headers.authorization as string;
-        if (authHeader.startsWith('Bearer ')) {
-          token = authHeader.substring(7);
-        }
-      }
-      if (ticket) {
-        const ticketAuth = await this.validateVoiceTicket(ticket);
-        if (ticketAuth) {
-          authenticatedUser = ticketAuth;
-          userId = ticketAuth.sub;
-          voiceTicketJti = ticketAuth.jti;
-          this.enforceSingleActiveConnection(userId, client);
-        }
-      } else if (token) {
-        authenticatedUser = await this.authService.validateAccessToken(token);
-        userId = authenticatedUser?.sub;
-        if (userId) {
-          this.enforceSingleActiveConnection(userId, client);
-        }
-      }
-    } catch (err: any) {
-      this.logger.warn(`WebSocket handshake authentication rejected: ${err.message}`);
-    }
-
-    this.activeClients.set(client, {
+    const state: ClientSessionState = {
       ws: client,
-      userId,
-      authenticatedUser,
-      voiceTicketJti,
-      voiceTicketInterviewId:
-        typeof authenticatedUser?.interviewId === 'string'
-          ? authenticatedUser.interviewId
-          : undefined,
+      userId: undefined,
+      authenticatedUser: null,
+      voiceTicketJti: undefined,
+      voiceTicketInterviewId: undefined,
       isAiSpeaking: false,
       cancelAiStreaming: false,
       consecutiveSpeechFrames: 0,
@@ -274,9 +249,48 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       currentTurn: 1,
       messageCountThisSecond: 0,
       lastMessageSecond: Math.floor(Date.now() / 1000),
-    });
+    };
+    this.activeClients.set(client, state);
+
+    // Asynchronously verify JWT or Ticket without delaying the message listener attachment
+    const handshakePromise = (async () => {
+      try {
+        let token: string | undefined;
+        let ticket: string | undefined;
+        if (req?.url) {
+          const parsedUrl = new URL(req.url, 'http://localhost');
+          token = parsedUrl.searchParams.get('token') || undefined;
+          ticket = parsedUrl.searchParams.get('ticket') || undefined;
+        }
+        if (!token && req?.headers?.authorization) {
+          const authHeader = req.headers.authorization as string;
+          if (authHeader.startsWith('Bearer ')) {
+            token = authHeader.substring(7);
+          }
+        }
+        if (ticket) {
+          const ticketAuth = await this.validateVoiceTicket(ticket);
+          if (ticketAuth) {
+            state.authenticatedUser = ticketAuth;
+            state.userId = ticketAuth.sub;
+            state.voiceTicketJti = ticketAuth.jti;
+            state.voiceTicketInterviewId = ticketAuth.interviewId;
+            this.enforceSingleActiveConnection(state.userId, client);
+          }
+        } else if (token) {
+          state.authenticatedUser = await this.authService.validateAccessToken(token);
+          state.userId = state.authenticatedUser?.sub;
+          if (state.userId) {
+            this.enforceSingleActiveConnection(state.userId, client);
+          }
+        }
+      } catch (err: any) {
+        this.logger.warn(`WebSocket handshake authentication rejected: ${err.message}`);
+      }
+    })();
 
     client.on('message', async (data: any, isBinary: boolean) => {
+      await handshakePromise;
       try {
         if (isBinary) {
           await this.handleBinaryAudio(client, Buffer.from(data));
@@ -306,7 +320,7 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
           message: 'Voice session replaced by a newer connection.',
         });
         ws.close(1008, 'Concurrent connection replaced');
-        this.activeClients.delete(ws);
+        void this.handleDisconnect(ws);
       }
     }
   }
@@ -315,6 +329,8 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     this.logger.log('Client disconnected from Voice Gateway.');
     const state = this.activeClients.get(client);
     if (state) {
+      state.closed = true;
+      if (state.syncTimer) clearTimeout(state.syncTimer);
       if (state.sttSubscription) state.sttSubscription.unsubscribe();
       if (state.sttSession) state.sttSession.close();
       if (state.ttsSubscription) state.ttsSubscription.unsubscribe();
@@ -344,6 +360,28 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     }
 
     switch (payload.type) {
+      case 'voice:recording-start':
+        await this.startRecording(client, state, payload);
+        break;
+      case 'voice:recording-stop':
+        await this.stopRecording(client, state, payload);
+        break;
+      case 'voice:replay': {
+        if (!state.voiceSessionId || state.recordingId || state.isAiSpeaking) break;
+        const interview = await this.prisma.interviewSession.findUnique({
+          where: { id: state.interviewId },
+          include: { turns: { include: { question: true, answer: true } } },
+        });
+        const turn = interview?.turns.find(t => t.id === payload.turnId);
+        if (
+          interview?.state === 'ACTIVE' &&
+          turn?.question &&
+          !turn.answer &&
+          turn.turnNumber === interview.currentTurn
+        )
+          await this.streamAiVoiceResponse(client, state, turn.question.content);
+        break;
+      }
       case VoiceEventType.CONNECT:
       case 'voice:connect':
         await this.handleConnectVoice(client, state, payload);
@@ -356,17 +394,15 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
       case VoiceEventType.DISCONNECT:
       case 'voice:disconnect':
-        await this.finalizeVoiceSession(state);
         this.sendJson(client, { type: VoiceEventType.DISCONNECT });
+        await this.handleDisconnect(client);
+        client.close(1000, 'Voice session ended');
         break;
 
       case 'ping':
         this.sendJson(client, {
           type: VoiceEventType.CONNECTION_QUALITY,
-          latencyMs: Math.floor(Math.random() * 20) + 15,
-          jitterMs: Math.floor(Math.random() * 5) + 2,
-          packetLossRate: 0.001,
-          quality: 'EXCELLENT',
+          clientTimestamp: payload.clientTimestamp,
         });
         break;
 
@@ -376,6 +412,8 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
   }
 
   private async handleConnectVoice(client: WebSocket, state: ClientSessionState, payload: any) {
+    if (state.connecting || state.voiceSessionId || state.finalized) return;
+    state.connecting = true;
     state.interviewId = payload.interviewId;
 
     if (state.voiceTicketInterviewId && state.voiceTicketInterviewId !== state.interviewId) {
@@ -472,7 +510,17 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       return;
     }
 
+    if (['COMPLETED', 'CANCELLED', 'FAILED'].includes(interview.state)) {
+      this.sendJson(client, {
+        type: VoiceEventType.ERROR,
+        message: 'Interview is no longer active.',
+      });
+      client.close(1008, 'Interview ended');
+      return;
+    }
     state.currentTurn = interview.currentTurn || 1;
+    state.language = interview.language || 'vi';
+    if (state.closed || client.readyState !== WebSocket.OPEN) return;
 
     const voiceSession = await this.prisma.voiceSession.upsert({
       where: { interviewId: payload.interviewId },
@@ -488,6 +536,10 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     });
 
     state.voiceSessionId = voiceSession.id;
+    if (state.closed || client.readyState !== WebSocket.OPEN) {
+      await this.finalizeVoiceSession(state);
+      return;
+    }
 
     if (paidStreamingEnabled) {
       try {
@@ -522,47 +574,76 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       }
     }
 
-    // Initialize Deepgram STT Stream Session
-    let sttStream: SttStreamSession;
-    try {
-      sttStream = this.deepgramStt.createSttStream(24000);
-    } catch (err: any) {
-      await this.holdVoiceReservationForReconciliation(
-        state,
-        'voice_stt_start_outcome_ambiguous',
-        err,
-      );
-      throw err;
+    if (state.closed || client.readyState !== WebSocket.OPEN) {
+      await this.finalizeVoiceSession(state);
+      return;
     }
-    state.sttSession = sttStream;
-    state.sttSubscription = sttStream.events.subscribe(async event => {
-      if (!event.isFinal) {
-        this.sendJson(client, {
-          type: VoiceEventType.INTERIM_TRANSCRIPT,
-          speaker: SpeakerRole.USER,
-          text: event.text,
-          confidence: event.confidence,
-        });
-      } else {
-        await this.handleCandidateFinalTranscript(client, state, event.text);
-      }
-    });
-
     this.sendJson(client, {
       type: VoiceEventType.CONNECTED,
       sessionId: voiceSession.id,
-      codec: 'opus',
+      codec: 'pcm16',
       sampleRate: 24000,
     });
 
     // Initial question from authoritative turn
-    const activeTurn =
-      interview.turns.find(t => t.turnNumber === state.currentTurn) || interview.turns[0];
-    const initialQuestion =
-      activeTurn?.question?.content ||
-      `Welcome to your live voice technical interview for ${interview.jobRole?.name || 'Software Engineer'}. Let's begin: Could you explain your approach to designing resilient distributed architectures?`;
+    const activeTurn = interview.turns.find(t => t.turnNumber === state.currentTurn);
+    if (
+      activeTurn?.question?.content &&
+      !activeTurn.answer &&
+      (!interview.state || interview.state === 'ACTIVE')
+    ) {
+      state.lastSpokenTurn = state.currentTurn;
+      await this.streamAiVoiceResponse(client, state, activeTurn.question.content);
+    }
+    this.scheduleSessionSync(client, state);
+  }
 
-    await this.streamAiVoiceResponse(client, state, initialQuestion);
+  private scheduleSessionSync(client: WebSocket, state: ClientSessionState) {
+    if (state.closed || state.finalized || client.readyState !== WebSocket.OPEN) return;
+    state.syncTimer = setTimeout(async () => {
+      try {
+        if (Date.now() - state.startedAt.getTime() >= 900_000) {
+          this.sendJson(client, {
+            type: VoiceEventType.FALLBACK_TO_TEXT,
+            message: 'Voice duration limit reached.',
+          });
+          await this.handleDisconnect(client);
+          client.close(1000, 'Session Duration Limit');
+          return;
+        }
+        await this.syncInterviewTurn(client, state);
+      } catch (err: any) {
+        this.logger.warn(`Voice session synchronization failed: ${err.message}`);
+      }
+      this.scheduleSessionSync(client, state);
+    }, 1000);
+    state.syncTimer.unref();
+  }
+
+  private async syncInterviewTurn(client: WebSocket, state: ClientSessionState) {
+    if (state.finalized || state.processingAnswer) return;
+    const interview = await this.prisma.interviewSession.findUnique({
+      where: { id: state.interviewId },
+      include: { turns: { include: { question: true, answer: true } } },
+    });
+    if (!interview || state.finalized || client.readyState !== WebSocket.OPEN) return;
+    if (['COMPLETED', 'CANCELLED', 'FAILED'].includes(interview.state)) {
+      this.sendJson(client, { type: VoiceEventType.DISCONNECT, state: interview.state });
+      await this.handleDisconnect(client);
+      client.close(1000, 'Interview ended');
+      return;
+    }
+    const turn = interview.turns.find(t => t.turnNumber === interview.currentTurn);
+    if (
+      interview.state === 'ACTIVE' &&
+      turn?.question &&
+      !turn.answer &&
+      state.lastSpokenTurn !== turn.turnNumber
+    ) {
+      state.currentTurn = turn.turnNumber;
+      state.lastSpokenTurn = turn.turnNumber;
+      await this.streamAiVoiceResponse(client, state, turn.question.content);
+    }
   }
 
   private async handleBinaryAudio(client: WebSocket, pcmBuffer: Buffer) {
@@ -594,52 +675,42 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
 
     // Audio frame rate limit: max 100 frames/sec (FINDING-006)
     const currentSec = Math.floor(Date.now() / 1000);
-    if (currentSec !== state.lastMessageSecond) {
-      state.lastMessageSecond = currentSec;
-      state.messageCountThisSecond = 1;
+    if (currentSec !== state.audioFrameSecond) {
+      state.audioFrameSecond = currentSec;
+      state.audioFrameCount = 1;
     } else {
-      state.messageCountThisSecond += 1;
-      if (state.messageCountThisSecond > 100) {
+      state.audioFrameCount = (state.audioFrameCount ?? 0) + 1;
+      if (state.audioFrameCount > 100) {
         return; // Drop flood frames
       }
     }
 
-    const MAX_TURN_BUFFER_BYTES = 5 * 1024 * 1024;
-    if (state.audioBytesReceived + pcmBuffer.length > MAX_TURN_BUFFER_BYTES) {
+    const MAX_AUDIO_FRAME_BYTES = 64 * 1024;
+    if (pcmBuffer.length > MAX_AUDIO_FRAME_BYTES || pcmBuffer.length % 2 !== 0) {
       this.sendJson(client, {
         type: VoiceEventType.ERROR,
-        message: 'Audio frame buffer limit exceeded (5 MB maximum).',
+        message: 'Invalid PCM16 audio frame (64 KB maximum, whole samples required).',
       });
       return;
     }
 
+    if (!state.recordingId || state.recordingStopping) return;
     state.audioBytesReceived += pcmBuffer.length;
-    state.audioBuffer.push(pcmBuffer);
+    // STT consumes frames immediately; do not retain raw microphone audio.
 
     // Relay audio chunk to live STT engine
     if (state.sttSession) {
       state.sttSession.sendAudioChunk(pcmBuffer);
     }
-
-    // VAD frame evaluation for barge-in detection
-    const vadResult = this.vad.processFrame(pcmBuffer, {
-      consecutiveSpeechFrames: state.consecutiveSpeechFrames,
-      consecutiveSilenceFrames: state.consecutiveSilenceFrames,
-      isAiSpeaking: state.isAiSpeaking,
-    });
-
-    state.consecutiveSpeechFrames = Math.floor(vadResult.speechDurationMs / 20);
-    state.consecutiveSilenceFrames = Math.floor(vadResult.silenceDurationMs / 20);
-
-    if (vadResult.isBargeIn && state.isAiSpeaking) {
-      this.triggerBargeIn(client, state);
-    }
   }
 
   private triggerBargeIn(client: WebSocket, state: ClientSessionState) {
+    if (!state.isAiSpeaking && (state.aiPlaybackEndsAt ?? 0) <= Date.now()) return;
     state.bargeInCount += 1;
     state.cancelAiStreaming = true;
+    state.speechGeneration = (state.speechGeneration ?? 0) + 1;
     state.isAiSpeaking = false;
+    state.aiPlaybackEndsAt = undefined;
 
     if (state.ttsSession) {
       state.ttsSession.close();
@@ -658,70 +729,112 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     state: ClientSessionState,
     transcriptText: string,
   ) {
-    if (!transcriptText || transcriptText.trim() === '') return;
+    if (!transcriptText.trim() || !state.recordingId || state.closed) return;
+    state.recordingText = [state.recordingText, transcriptText.trim()].filter(Boolean).join(' ');
+    state.recordingInterim = '';
+    this.sendJson(client, {
+      type: 'voice:recording-draft',
+      recordingId: state.recordingId,
+      text: state.recordingText,
+    });
+  }
 
-    if (state.interviewId && state.userId) {
-      // Find authoritative active turn from DB
-      try {
-        const interview = await this.prisma.interviewSession.findUnique({
-          where: { id: state.interviewId },
-          include: {
-            turns: {
-              where: { turnNumber: state.currentTurn },
-              include: { question: true, answer: true },
-            },
-          },
-        });
-
-        const activeTurn = interview?.turns?.[0];
-        if (activeTurn && !activeTurn.answer && this.interviewService) {
-          await this.interviewService.submitAnswer(state.userId, state.interviewId, {
-            turnId: activeTurn.id,
-            answerText: transcriptText.trim(),
-          });
-        }
-        state.currentTurn += 1;
-      } catch (err: any) {
-        this.logger.error(
-          `Auto-submit answer from voice transcript failed, triggering fallback: ${err.message}`,
-        );
-        this.sendJson(client, {
-          type: VoiceEventType.FALLBACK_TO_TEXT,
-          message: 'Voice answer submission failed. Please verify and re-submit via text.',
-          uncommittedTranscript: transcriptText.trim(),
-          turnNumber: state.currentTurn,
-        });
-        return;
-      }
+  private async startRecording(client: WebSocket, state: ClientSessionState, payload: any) {
+    if (!state.userId || !state.voiceSessionId || state.recordingId || state.closed) return;
+    if (typeof payload.recordingId !== 'string' || payload.recordingId.length > 100) return;
+    const interview = await this.prisma.interviewSession.findUnique({
+      where: { id: state.interviewId },
+      include: { turns: { include: { question: true, answer: true } } },
+    });
+    const turn = interview?.turns.find(t => t.id === payload.turnId);
+    if (state.closed || state.recordingId) return;
+    if (
+      interview?.state !== 'ACTIVE' ||
+      !turn?.question ||
+      turn.answer ||
+      turn.turnNumber !== interview.currentTurn
+    ) {
+      this.sendJson(client, {
+        type: 'voice:recording-error',
+        recordingId: payload.recordingId,
+        message: 'Câu hỏi đã thay đổi. Vui lòng kiểm tra lại.',
+      });
+      return;
     }
-
-    if (state.voiceSessionId) {
-      await this.prisma.voiceTranscript.create({
-        data: {
-          voiceSessionId: state.voiceSessionId,
-          speaker: SpeakerRole.USER,
-          text: transcriptText,
-          isFinal: true,
-          startTimeMs: 0,
-          endTimeMs: transcriptText.length * 40,
-          turnNumber: state.currentTurn,
+    this.triggerBargeIn(client, state);
+    state.recordingId = payload.recordingId;
+    state.recordingText = '';
+    state.recordingInterim = '';
+    state.recordingStopping = false;
+    try {
+      const stream = this.deepgramStt.createSttStream(16000, state.language || 'vi');
+      state.sttSession = stream;
+      const id = state.recordingId;
+      state.sttSubscription = stream.events.subscribe({
+        next: event => {
+          if (state.recordingId !== id || state.closed) return;
+          if (event.isFinal) void this.handleCandidateFinalTranscript(client, state, event.text);
+          else {
+            state.recordingInterim = event.text;
+            this.sendJson(client, {
+              type: 'voice:recording-draft',
+              recordingId: id,
+              text: [state.recordingText, event.text].filter(Boolean).join(' '),
+            });
+          }
+        },
+        error: () => {
+          if (state.recordingId !== id) return;
+          this.sendJson(client, {
+            type: 'voice:recording-error',
+            recordingId: id,
+            text: [state.recordingText, state.recordingInterim].filter(Boolean).join(' '),
+            message: 'Nhận diện bị gián đoạn. Hãy kiểm tra bản nháp hoặc nhập chữ.',
+          });
+          state.recordingId = undefined;
+          stream.close();
         },
       });
+      this.sendJson(client, { type: 'voice:recording-started', recordingId: id });
+    } catch {
+      state.recordingId = undefined;
+      this.sendJson(client, {
+        type: 'voice:recording-error',
+        recordingId: payload.recordingId,
+        message: 'Không thể bật nhận diện. Bạn vẫn có thể nhập chữ.',
+      });
     }
+  }
 
+  private async stopRecording(client: WebSocket, state: ClientSessionState, payload: any) {
+    if (!state.recordingId || state.recordingId !== payload.recordingId || state.recordingStopping)
+      return;
+    state.recordingStopping = true;
+    const id = state.recordingId;
+    let message: string | undefined;
+    try {
+      if (state.sttSession?.finish) await state.sttSession.finish();
+      else state.sttSession?.close();
+    } catch {
+      message = 'Chưa xác nhận được toàn bộ nhận diện. Hãy kiểm tra phần cuối bản nháp.';
+    }
+    if (state.recordingId !== id || state.closed) return;
     this.sendJson(client, {
-      type: VoiceEventType.FINAL_TRANSCRIPT,
-      speaker: SpeakerRole.USER,
-      text: transcriptText,
-      turnNumber: state.currentTurn,
+      type: 'voice:recording-stopped',
+      recordingId: id,
+      text: [state.recordingText, state.recordingInterim].filter(Boolean).join(' '),
+      message,
     });
-
-    const aiResponseText = this.generateAiFollowUp(transcriptText, state.currentTurn);
-    await this.streamAiVoiceResponse(client, state, aiResponseText);
+    state.recordingId = undefined;
+    state.sttSubscription?.unsubscribe();
+    state.sttSession?.close();
+    state.sttSession = undefined;
   }
 
   private async streamAiVoiceResponse(client: WebSocket, state: ClientSessionState, text: string) {
+    const generation = (state.speechGeneration = (state.speechGeneration ?? 0) + 1);
     state.isAiSpeaking = true;
+    state.aiSpeakingStartedAt = Date.now();
     state.cancelAiStreaming = false;
 
     if (state.voiceSessionId) {
@@ -738,26 +851,76 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
       });
     }
 
+    if (
+      state.closed ||
+      state.finalized ||
+      state.cancelAiStreaming ||
+      state.speechGeneration !== generation ||
+      client.readyState !== WebSocket.OPEN
+    )
+      return;
     this.sendJson(client, {
       type: VoiceEventType.AI_SPEAKING_START,
       speaker: SpeakerRole.AI,
       text,
     });
 
+    // Close previous TTS session if still running
+    if (state.ttsSession) {
+      state.ttsSubscription?.unsubscribe();
+      try {
+        state.ttsSession.close();
+      } catch {
+        // ignore close error
+      }
+      state.ttsSession = undefined;
+    }
+
     // Create low-latency TTS stream session
-    const ttsSession = this.elevenLabsTts.createStreamingSession();
+    let ttsSession: TtsStreamSession;
+    try {
+      ttsSession = this.elevenLabsTts.createStreamingSession(undefined, state.language);
+    } catch (error: any) {
+      state.isAiSpeaking = false;
+      this.logger.warn(`Voice playback initialization failed: ${error.message}`);
+      this.sendJson(client, {
+        type: 'voice:playback-error',
+        message: 'Không thể phát câu hỏi. Bạn vẫn có thể nhập hoặc ghi âm câu trả lời.',
+      });
+      return;
+    }
     state.ttsSession = ttsSession;
 
-    ttsSession.audioStream.subscribe({
+    state.ttsSubscription?.unsubscribe();
+    state.ttsSubscription = ttsSession.audioStream.subscribe({
       next: (audioChunk: Buffer) => {
-        if (!state.cancelAiStreaming && client.readyState === WebSocket.OPEN) {
+        if (
+          state.ttsSession === ttsSession &&
+          !state.cancelAiStreaming &&
+          client.readyState === WebSocket.OPEN
+        ) {
           state.audioBytesSent += audioChunk.length;
+          this.sendJson(client, { type: 'voice:audio-format', codec: ttsSession.codec || 'pcm16' });
+          state.aiPlaybackEndsAt =
+            Math.max(Date.now(), state.aiPlaybackEndsAt ?? 0) +
+            (ttsSession.codec === 'mp3' ? (text.length / 15) * 1000 : audioChunk.length / 48);
           client.send(audioChunk, { binary: true });
         }
       },
       complete: () => {
+        if (state.ttsSession !== ttsSession) return;
         state.isAiSpeaking = false;
         this.sendJson(client, { type: VoiceEventType.AI_SPEAKING_END });
+      },
+      error: (err: Error) => {
+        if (state.ttsSession !== ttsSession) return;
+        state.isAiSpeaking = false;
+        this.logger.warn(`Voice playback failed: ${err.message}`);
+        this.sendJson(client, {
+          type: 'voice:playback-error',
+          message:
+            'Không thể phát câu hỏi. Vui lòng đọc câu hỏi và nhập câu trả lời, hoặc thử kết nối lại.',
+        });
       },
     });
 
@@ -770,18 +933,10 @@ export class VoiceStreamingGateway implements OnGatewayConnection, OnGatewayDisc
     ttsSession.flush();
   }
 
-  private generateAiFollowUp(candidateAnswer: string, turnNumber: number): string {
-    if (turnNumber === 2) {
-      return `Thank you for detailing that. Now, how would you design the data storage layer and partition strategy for zero-downtime scaling?`;
-    }
-    if (turnNumber === 3) {
-      return `Good points. What telemetry and observability metrics would you instrument to detect cascading failures before they impact end-users?`;
-    }
-    return `Excellent discussion. That concludes our live technical session today. You can now view your comprehensive scoring report!`;
-  }
-
   private async finalizeVoiceSession(state: ClientSessionState) {
-    if (!state.voiceSessionId) return;
+    if (!state.voiceSessionId || state.finalized) return;
+    state.finalized = true;
+    if (state.syncTimer) clearTimeout(state.syncTimer);
 
     const durationSec = Math.max(1, Math.round((Date.now() - state.startedAt.getTime()) / 1000));
 

@@ -1,4 +1,4 @@
-import { Injectable, Logger, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, HttpStatus, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
@@ -15,7 +15,6 @@ import { Judge0Provider } from './providers/judge0.provider';
 import { ExecuteCodeDto, SubmitCodeDto } from './dto/code-execution.dto';
 import { SandboxSecurityValidator, SANDBOX_LIMITS } from './utils/sandbox-security.validator';
 import { EventEmitter2 } from '@nestjs/event-emitter';
-import { Optional } from '@nestjs/common';
 
 @Injectable()
 export class CodeExecutionService {

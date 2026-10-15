@@ -86,11 +86,51 @@ export function toAnthropicTool(
 }
 
 /**
+ * Clean up a JSON schema recursively for strict compliance with Google Gemini REST API.
+ * Google Gemini API schema requirements:
+ * - NO `additionalProperties` field (Gemini rejects this with 400 Unknown name "additionalProperties")
+ * - NO `$schema`, `default`
+ * - All enum values MUST be strings (Gemini rejects numeric enums with TYPE_STRING error)
+ */
+export function sanitizeSchemaForGemini(schema: any): any {
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  if (Array.isArray(schema)) {
+    return schema.map(item => sanitizeSchemaForGemini(item));
+  }
+
+  const cleaned: Record<string, any> = {};
+
+  for (const [key, value] of Object.entries(schema)) {
+    if (key === '$schema' || key === 'default' || key === 'additionalProperties') {
+      continue;
+    }
+    cleaned[key] = sanitizeSchemaForGemini(value);
+  }
+
+  if (Array.isArray(cleaned.enum)) {
+    cleaned.enum = cleaned.enum.map(v => String(v));
+    cleaned.type = 'string';
+  }
+
+  return cleaned;
+}
+
+/**
  * Gemini response schema definition.
  */
 export function toGeminiResponseSchema(zodSchema: z.ZodTypeAny, schemaName: string) {
-  return convertZodToJsonSchema(zodSchema, schemaName);
+  const converted: any = zodToJsonSchema(zodSchema as any, {
+    name: schemaName,
+    $refStrategy: 'none',
+  });
+
+  const rawSchema = converted.definitions?.[schemaName] || converted;
+  return sanitizeSchemaForGemini(rawSchema);
 }
+
 
 export const AI_SCHEMAS = {
   question: {

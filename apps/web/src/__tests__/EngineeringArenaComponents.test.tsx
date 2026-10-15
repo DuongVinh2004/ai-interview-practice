@@ -6,6 +6,8 @@ import { ChallengeCatalogView } from '../features/engineering-arena/ChallengeCat
 import { ArenaEvaluationReportModal } from '../features/engineering-arena/ArenaEvaluationReportModal';
 import { ArenaSkillRadarView } from '../features/engineering-arena/ArenaSkillRadarView';
 import { ArenaCopilotChatPanel } from '../features/engineering-arena/ArenaCopilotChatPanel';
+import { ArenaWorkspaceView } from '../features/engineering-arena/ArenaWorkspaceView';
+import { useEngineeringArena } from '../features/engineering-arena/useEngineeringArena';
 import { ArenaEvaluationResponse } from '@ai-interview/contracts';
 
 const queryClient = new QueryClient({
@@ -27,7 +29,7 @@ describe('Engineering Arena Web Components (F017)', () => {
     const onSelect = vi.fn();
     renderWithProviders(<ChallengeCatalogView onSelectChallenge={onSelect} />);
 
-    expect(screen.getByText('Engineering Arena')).toBeInTheDocument();
+    expect(screen.getByText(/Engineering Arena|Đấu trường Kỹ thuật/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Filter by domain')).toBeInTheDocument();
     expect(screen.getByLabelText('Filter by category')).toBeInTheDocument();
   });
@@ -36,7 +38,7 @@ describe('Engineering Arena Web Components (F017)', () => {
     const onSelect = vi.fn();
     renderWithProviders(<ChallengeCatalogView onSelectChallenge={onSelect} />);
 
-    const radarTabBtn = screen.getByRole('button', { name: /Skill Radar/i });
+    const radarTabBtn = screen.getByRole('button', { name: /Skill Radar|Radar Kỹ năng/i });
     fireEvent.click(radarTabBtn);
 
     expect(screen.getByText(/Engineering Skill Radar & Mastery Growth/i)).toBeInTheDocument();
@@ -179,5 +181,49 @@ describe('Engineering Arena Web Components (F017)', () => {
         screen.getByText('Check the repository user session ownership verification.'),
       ).toBeInTheDocument();
     });
+  });
+
+  it('renders ArenaWorkspaceView when active session is present in store', () => {
+    useEngineeringArena.setState({
+      session: {
+        id: 'session-123',
+        userId: 'user-123',
+        challengeSlug: 'fix-user-profile-bola',
+        challengeTitle: 'Fix Broken Object Level Authorization (BOLA) in Profile API',
+        challengeDomain: 'SECURITY' as any,
+        challengeCategory: 'SECURITY_REMEDIATION' as any,
+        state: 'READY' as any,
+        sandboxMode: 'DETERMINISTIC' as any,
+        aiAssistanceMode: 'HINTS_ONLY' as any,
+        files: [
+          {
+            path: 'src/profile.controller.ts',
+            name: 'profile.controller.ts',
+            isDirectory: false,
+            isEditable: true,
+          },
+        ],
+        initialFileContents: {
+          'src/profile.controller.ts': 'export class ProfileController {}',
+        },
+        startedAt: new Date().toISOString(),
+      },
+      fileContents: {
+        'src/profile.controller.ts': 'export class ProfileController {}',
+      },
+      activeFilePath: 'src/profile.controller.ts',
+    });
+
+    renderWithProviders(<ArenaWorkspaceView />);
+
+    expect(screen.queryByText(/No active workspace/i)).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Fix Broken Object Level Authorization (BOLA) in Profile API'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText('src/profile.controller.ts').length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: /Run Tests/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Submit Solution/i })).toBeInTheDocument();
   });
 });

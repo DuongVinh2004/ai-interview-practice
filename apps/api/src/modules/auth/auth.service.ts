@@ -513,18 +513,20 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, 10);
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash,
-        tokenVersion: { increment: 1 },
-      },
-    });
+    await this.prisma.$transaction(async tx => {
+      await tx.user.update({
+        where: { id: userId },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+        },
+      });
 
-    // Revoke all refresh tokens on password change
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, isRevoked: false },
-      data: { isRevoked: true },
+      // Revoke all refresh tokens on password change
+      await tx.refreshToken.updateMany({
+        where: { userId, isRevoked: false },
+        data: { isRevoked: true },
+      });
     });
   }
 
@@ -753,13 +755,12 @@ export class AuthService {
       );
     }
 
-    // One-time consumption (F-013)
-    if (payload.jti && this.prisma.mfaChallenge?.updateMany) {
-      const consumed = await this.prisma.mfaChallenge.updateMany({
-        where: { jti: payload.jti, consumed: false },
-        data: { consumed: true },
+    // Validate challenge token state without premature consumption (F-013)
+    if (payload.jti && this.prisma.mfaChallenge?.findUnique) {
+      const challenge = await this.prisma.mfaChallenge.findUnique({
+        where: { jti: payload.jti },
       });
-      if (consumed.count === 0) {
+      if (challenge && challenge.consumed) {
         throw new DomainException(
           ErrorCode.MFA_INVALID_SESSION,
           'MFA challenge token already used or expired',
@@ -799,19 +800,35 @@ export class AuthService {
       );
     }
 
-    // Mark single-use recovery code as consumed atomically
-    const updateResult = await this.prisma.recoveryCode.updateMany({
-      where: { id: matchedCode.id, isUsed: false },
-      data: { isUsed: true, usedAt: new Date() },
-    });
+    // Mark single-use recovery code and challenge token as consumed atomically
+    await this.prisma.$transaction(async tx => {
+      if (payload.jti && tx.mfaChallenge?.updateMany) {
+        const consumed = await tx.mfaChallenge.updateMany({
+          where: { jti: payload.jti, consumed: false },
+          data: { consumed: true },
+        });
+        if (consumed.count === 0) {
+          throw new DomainException(
+            ErrorCode.MFA_INVALID_SESSION,
+            'MFA challenge token already used or expired',
+            HttpStatus.UNAUTHORIZED,
+          );
+        }
+      }
 
-    if (updateResult.count === 0) {
-      throw new DomainException(
-        ErrorCode.MFA_INVALID_CODE,
-        'Invalid or already used recovery code',
-        HttpStatus.UNAUTHORIZED,
-      );
-    }
+      const updateResult = await tx.recoveryCode.updateMany({
+        where: { id: matchedCode.id, isUsed: false },
+        data: { isUsed: true, usedAt: new Date() },
+      });
+
+      if (updateResult.count === 0) {
+        throw new DomainException(
+          ErrorCode.MFA_INVALID_CODE,
+          'Invalid or already used recovery code',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+    });
 
     await this.prisma.auditLog.create({
       data: {
@@ -1008,6 +1025,7 @@ export class AuthService {
     tx: {
       refreshToken: { updateMany: (args: any) => Promise<unknown> };
       auditLog: { create: (args: any) => Promise<unknown> };
+      user?: { update: (args: any) => Promise<unknown> };
     },
     storedToken: any,
     reason: string,
@@ -1016,6 +1034,12 @@ export class AuthService {
       where: { familyId: storedToken.familyId, isRevoked: false },
       data: { isRevoked: true },
     });
+    if (tx.user) {
+      await tx.user.update({
+        where: { id: storedToken.userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    }
     await tx.auditLog.create({
       data: {
         userId: storedToken.userId,

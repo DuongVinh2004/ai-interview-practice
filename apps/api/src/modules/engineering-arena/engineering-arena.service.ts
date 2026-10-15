@@ -19,6 +19,7 @@ import {
   ArenaChallengeCategory,
 } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
+import { BENCHMARK_CHALLENGES } from './fixtures/benchmark-challenges';
 
 @Injectable()
 export class EngineeringArenaService {
@@ -69,9 +70,16 @@ export class EngineeringArenaService {
     const workspaceHandle = `ws-${uuidv4()}`;
 
     // Provision runtime workspace
+    const fixture = BENCHMARK_CHALLENGES.find(b => b.manifest.slug === challenge.slug);
     const initialFiles: Record<string, string> = {};
     for (const visibleFile of manifest.visibleFiles || []) {
-      initialFiles[visibleFile] = `// ${visibleFile} initial boilerplate\n`;
+      initialFiles[visibleFile] =
+        fixture?.visibleFiles[visibleFile] ?? `// ${visibleFile} initial boilerplate\n`;
+    }
+    if (fixture?.hiddenFiles) {
+      for (const [hiddenPath, content] of Object.entries(fixture.hiddenFiles)) {
+        initialFiles[hiddenPath] = content;
+      }
     }
     await this.workspaceRuntime.provision({
       sessionId: `pending-${workspaceHandle}`,
@@ -113,6 +121,11 @@ export class EngineeringArenaService {
       };
     });
 
+    const visibleInitialFiles: Record<string, string> = {};
+    for (const visibleFile of manifest.visibleFiles || []) {
+      visibleInitialFiles[visibleFile] = initialFiles[visibleFile] ?? '';
+    }
+
     return {
       id: session.id,
       userId: session.userId,
@@ -124,7 +137,7 @@ export class EngineeringArenaService {
       sandboxMode: session.sandboxMode,
       aiAssistanceMode: session.aiAssistanceMode,
       files: fileTree,
-      initialFileContents: {},
+      initialFileContents: visibleInitialFiles,
       startedAt: session.startedAt.toISOString(),
       expiresAt: session.expiresAt?.toISOString(),
     };

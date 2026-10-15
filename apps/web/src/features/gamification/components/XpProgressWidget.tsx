@@ -47,14 +47,14 @@ export function XpProgressWidget() {
       {/* Streak Badge */}
       <Link
         to="/flashcards"
-        className="flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-orange-50/90 hover:bg-orange-100 text-orange-800 border border-orange-200/90 text-xs font-bold transition-all hover:scale-105 active:scale-95 shadow-2xs dark:bg-orange-950/40 dark:border-orange-900/60 dark:text-orange-300 group shrink-0"
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-50/90 hover:bg-orange-100 text-orange-800 border border-orange-200/90 text-xs font-bold transition-all hover:scale-105 active:scale-95 shadow-2xs dark:bg-orange-950/40 dark:border-orange-900/60 dark:text-orange-300 group shrink-0"
         title={
           language === 'vi'
             ? `Chuỗi học tập: ${profile.streak.currentStreak} ngày liên tục`
             : `Active Streak: ${profile.streak.currentStreak} days`
         }
       >
-        <Flame className="h-3.5 w-3.5 text-orange-500 fill-orange-500 shrink-0 group-hover:scale-110 transition-transform" />
+        <Flame className="h-3 w-3 text-orange-500 fill-orange-500 shrink-0 group-hover:scale-110 transition-transform" />
         <span>{profile.streak.currentStreak}</span>
         {profile.streak.freezeCount > 0 && (
           <span
@@ -65,7 +65,7 @@ export function XpProgressWidget() {
                 : `${profile.streak.freezeCount} Streak Freezes available`
             }
           >
-            <Shield className="h-3 w-3 fill-cyan-100 dark:fill-cyan-950" />
+            <Shield className="h-2.5 w-2.5 fill-cyan-100 dark:fill-cyan-950" />
           </span>
         )}
       </Link>

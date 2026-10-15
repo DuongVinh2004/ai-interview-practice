@@ -118,14 +118,26 @@ export function RegisterPage() {
                 id="password"
                 label={t.auth.passwordLabel}
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Min 8 chars, 1 uppercase, 1 number"
+                placeholder={
+                  language === 'vi'
+                    ? 'Tối thiểu 8 ký tự, 1 chữ hoa, 1 số'
+                    : 'Min 8 chars, 1 uppercase, 1 number'
+                }
                 leftIcon={<Lock className="h-4 w-4" />}
                 rightIcon={
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="text-slate-400 hover:text-slate-600 focus:outline-none"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={
+                      showPassword
+                        ? language === 'vi'
+                          ? 'Ẩn mật khẩu'
+                          : 'Hide password'
+                        : language === 'vi'
+                          ? 'Hiện mật khẩu'
+                          : 'Show password'
+                    }
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>

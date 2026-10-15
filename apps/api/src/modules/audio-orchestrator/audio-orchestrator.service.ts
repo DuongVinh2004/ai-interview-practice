@@ -8,6 +8,7 @@ import {
 } from './interfaces/audio-provider.interface';
 import { OpenAiAudioProvider } from './providers/openai-audio.provider';
 import { MockAudioProvider } from './providers/mock-audio.provider';
+import { NineRouterAudioProvider } from './providers/ninerouter-audio.provider';
 import { CircuitBreaker } from '../ai-orchestrator/resilience/circuit-breaker';
 import { AudioVoice, AiRunStatus, ErrorCode } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
@@ -37,6 +38,7 @@ export class AudioOrchestratorService {
     private readonly openAiAudioProvider: OpenAiAudioProvider,
     private readonly mockAudioProvider: MockAudioProvider,
     private readonly entitlementReservations: EntitlementReservationService,
+    @Optional() private readonly nineRouterAudioProvider?: NineRouterAudioProvider,
     @Optional() private readonly distributedBudget?: DistributedBudgetService,
   ) {
     this.circuitBreaker = new CircuitBreaker({
@@ -47,6 +49,9 @@ export class AudioOrchestratorService {
 
     this.providersMap.set('openai', this.openAiAudioProvider);
     this.providersMap.set('mock', this.mockAudioProvider);
+    if (this.nineRouterAudioProvider) {
+      this.providersMap.set('ninerouter', this.nineRouterAudioProvider);
+    }
 
     this.dailyBudgetUsd = this.configService.get<number>('ai.dailyBudgetUsd', 50.0);
     this.maxProviderCallCostUsd = this.configService.get<number>('ai.maxProviderCallCostUsd', 2.0);
@@ -71,6 +76,10 @@ export class AudioOrchestratorService {
 
     if (configured === 'openai') {
       return ['openai', 'mock'];
+    }
+
+    if (configured === 'ninerouter') {
+      return ['ninerouter', 'mock'];
     }
 
     const priority = this.configService.get<string>('ai.providerPriority', 'openai,mock');
