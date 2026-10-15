@@ -16,8 +16,7 @@ export class TransformInterceptor<T> implements NestInterceptor<T, ResponseWrapp
   intercept(context: ExecutionContext, next: CallHandler): Observable<ResponseWrapper<T> | T> {
     const request = context.switchToHttp().getRequest<Request>();
     const isSse =
-      request?.headers?.accept?.includes('text/event-stream') ||
-      request?.url?.includes('/events');
+      request?.headers?.accept?.includes('text/event-stream') || request?.url?.includes('/events');
     if (isSse) {
       return next.handle();
     }

@@ -17,8 +17,33 @@
 
 ---
 
+## 📸 Product Experience & Visual Showcase
+
+<p align="center">
+  <img src="docs/images/voice-interview-dark.png" alt="AI Technical Interview Studio - Dark Theme" width="100%" />
+</p>
+
+<p align="center">
+  <em>🎙️ <b>Enterprise AI Voice Interview Studio</b> — Real-time conversational technical interview with live speech-to-text drafting, adaptive AI follow-up questioning, energy-based silence detection, and sub-500ms voice streaming.</em>
+</p>
+
+<br />
+
+|                                               🎙️ Real-Time Voice Waveform & Streaming                                                |                                                     🛡️ Privacy & Audio Consent Gate                                                      |
+| :----------------------------------------------------------------------------------------------------------------------------------: | :--------------------------------------------------------------------------------------------------------------------------------------: |
+|                    <img src="docs/images/voice-interview-recording.png" alt="Live Voice Waveform" width="100%" />                    |                  <img src="docs/images/voice-interview-onboarding.png" alt="Privacy and Audio Consent" width="100%" />                   |
+| **Active Speech VAD & Real-Time Draft**<br/><sub>Energy-based voice activity detection with barge-in interruption & live timer</sub> | **Enterprise Privacy & Security First**<br/><sub>Explicit microphone permissions, non-retention guarantees, and 24h local recovery</sub> |
+
+|                                                  ☀️ High-Contrast Light Theme                                                  |                                                  📱 Responsive Mobile Layout                                                   |
+| :----------------------------------------------------------------------------------------------------------------------------: | :----------------------------------------------------------------------------------------------------------------------------: |
+|                   <img src="docs/images/voice-interview-light.png" alt="Light Theme Studio" width="100%" />                    |                 <img src="docs/images/voice-interview-mobile.png" alt="Mobile Responsive View" width="100%" />                 |
+| **Accessibility-Grade Dual Pane Layout**<br/><sub>Clean typography, collapsible guidance drawers, and keyboard shortcuts</sub> | **Seamless Mobile Experience**<br/><sub>Adaptive single-column flow with full voice recording & live review capabilities</sub> |
+
+---
+
 ## 📑 Table of Contents
 
+- [Product Experience & Visual Showcase](#-product-experience--visual-showcase)
 - [Architectural Overview](#-architectural-overview)
 - [Flagship Features](#-flagship-features)
   - [1. Real-Time Low-Latency Voice Interview (F001)](#1-real-time-low-latency-voice-interview-f001)
@@ -84,6 +109,10 @@ The platform is designed as a **clean modular monolith** with strict domain boun
 ## 🌟 Flagship Features
 
 ### 1. Real-Time Low-Latency Voice Interview ([F001](docs/features/F001-VOICE-REALTIME-INTERVIEW.md))
+
+<p align="center">
+  <img src="docs/images/voice-interview-recording.png" alt="Real-time Voice Interview Streaming Session" width="95%" />
+</p>
 
 - **Multimodal Audio Streaming**: Full-duplex WebSocket communication streaming PCM16 audio chunks (20ms frames at 16kHz).
 - **Voice Activity Detection (VAD)**: Real-time energy-based silence detection with automatic barge-in interruption handling.

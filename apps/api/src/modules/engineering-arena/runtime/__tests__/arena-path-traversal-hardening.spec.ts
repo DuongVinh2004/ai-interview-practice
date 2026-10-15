@@ -23,25 +23,31 @@ describe('Arena Path Traversal Hardening', () => {
     '\\etc\\passwd',
   ];
 
-  it.each(maliciousPaths)('DeterministicLocalWorkspaceRuntime rejects malicious path "%s"', async path => {
-    await expect(
-      localRuntime.provision({
-        sessionId: 'test-session',
-        workspaceHandle: 'ws-test',
-        files: { [path]: 'malicious content' },
-        manifest: {} as any,
-      }),
-    ).rejects.toThrow(/Security violation/);
-  });
+  it.each(maliciousPaths)(
+    'DeterministicLocalWorkspaceRuntime rejects malicious path "%s"',
+    async path => {
+      await expect(
+        localRuntime.provision({
+          sessionId: 'test-session',
+          workspaceHandle: 'ws-test',
+          files: { [path]: 'malicious content' },
+          manifest: {} as any,
+        }),
+      ).rejects.toThrow(/Security violation/);
+    },
+  );
 
-  it.each(maliciousPaths)('DockerSandboxWorkspaceRuntime rejects malicious path "%s"', async path => {
-    await expect(
-      dockerRuntime.provision({
-        sessionId: 'test-session',
-        workspaceHandle: 'ws-test',
-        files: { [path]: 'malicious content' },
-        manifest: {} as any,
-      }),
-    ).rejects.toThrow(/Security violation/);
-  });
+  it.each(maliciousPaths)(
+    'DockerSandboxWorkspaceRuntime rejects malicious path "%s"',
+    async path => {
+      await expect(
+        dockerRuntime.provision({
+          sessionId: 'test-session',
+          workspaceHandle: 'ws-test',
+          files: { [path]: 'malicious content' },
+          manifest: {} as any,
+        }),
+      ).rejects.toThrow(/Security violation/);
+    },
+  );
 });

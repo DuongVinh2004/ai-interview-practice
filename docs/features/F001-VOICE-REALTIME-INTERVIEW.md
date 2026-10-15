@@ -2,6 +2,10 @@
 
 ## 1. Tổng quan (Overview)
 
+<p align="center">
+  <img src="../images/voice-interview-dark.png" alt="Giao diện phòng phỏng vấn giọng nói AI" width="100%" />
+</p>
+
 ### Mô tả tính năng chi tiết
 
 Tính năng Full-Duplex Live Voice Streaming Interview cung cấp trải nghiệm phỏng vấn bằng giọng nói theo thời gian thực với AI. Thay vì tương tác text-based truyền thống, người dùng có thể trò chuyện trực tiếp với AI Interviewer. Hệ thống hỗ trợ khả năng full-duplex, nghĩa là cả hai bên (người dùng và AI) có thể nói và nghe cùng một lúc, với khả năng turn detection (nhận diện lượt lời) và interruption handling (xử lý ngắt lời) thông minh.

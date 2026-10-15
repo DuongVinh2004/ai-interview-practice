@@ -25,17 +25,11 @@ export class NineRouterAudioProvider implements AudioProviderInterface {
   }
 
   private getSttModel(): string {
-    return this.configService.get<string>(
-      'ai.ninerouterSttModel',
-      'groq/whisper-large-v3-turbo',
-    );
+    return this.configService.get<string>('ai.ninerouterSttModel', 'groq/whisper-large-v3-turbo');
   }
 
   private getTtsModel(): string {
-    return this.configService.get<string>(
-      'ai.ninerouterTtsModel',
-      'edge-tts/vi-VN-HoaiMyNeural',
-    );
+    return this.configService.get<string>('ai.ninerouterTtsModel', 'edge-tts/vi-VN-HoaiMyNeural');
   }
 
   private getHeaders(contentType?: string): Record<string, string> {
@@ -72,7 +66,11 @@ export class NineRouterAudioProvider implements AudioProviderInterface {
     try {
       const formData = new FormData();
       formData.append('model', sttModel);
-      formData.append('file', new Blob([new Uint8Array(audioBuffer)], { type: mimeType }), filename);
+      formData.append(
+        'file',
+        new Blob([new Uint8Array(audioBuffer)], { type: mimeType }),
+        filename,
+      );
       if (language) {
         formData.append('language', language);
       }
@@ -96,8 +94,7 @@ export class NineRouterAudioProvider implements AudioProviderInterface {
 
       const data = (await response.json()) as any;
       const latencyMs = Date.now() - startTime;
-      const durationSeconds =
-        data.duration || Math.max(1, Math.round(audioBuffer.length / 16000));
+      const durationSeconds = data.duration || Math.max(1, Math.round(audioBuffer.length / 16000));
 
       return {
         text: (data.text || '').trim(),
@@ -120,11 +117,7 @@ export class NineRouterAudioProvider implements AudioProviderInterface {
     }
   }
 
-  async synthesize(
-    text: string,
-    voice?: AudioVoice,
-    speed: number = 1.0,
-  ): Promise<AudioTtsResult> {
+  async synthesize(text: string, voice?: AudioVoice, speed: number = 1.0): Promise<AudioTtsResult> {
     const startTime = Date.now();
 
     if (!text || text.trim().length === 0) {

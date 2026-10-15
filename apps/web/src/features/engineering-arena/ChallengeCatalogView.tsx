@@ -92,13 +92,21 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
               className="w-full sm:w-auto rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:outline-none"
             >
               <option value="">{isVi ? 'Tất cả danh mục' : 'All Categories'}</option>
-              <option value={ChallengeCategory.BUG_FIX}>{isVi ? 'Sửa lỗi (Bug Fix)' : 'Bug Fix'}</option>
-              <option value={ChallengeCategory.REFACTORING}>{isVi ? 'Tái cấu trúc (Refactoring)' : 'Refactoring'}</option>
+              <option value={ChallengeCategory.BUG_FIX}>
+                {isVi ? 'Sửa lỗi (Bug Fix)' : 'Bug Fix'}
+              </option>
+              <option value={ChallengeCategory.REFACTORING}>
+                {isVi ? 'Tái cấu trúc (Refactoring)' : 'Refactoring'}
+              </option>
               <option value={ChallengeCategory.FEATURE_IMPLEMENTATION}>
                 {isVi ? 'Phát triển tính năng' : 'Feature Implementation'}
               </option>
-              <option value={ChallengeCategory.PERFORMANCE_OPTIMIZATION}>{isVi ? 'Tối ưu hiệu năng' : 'Performance'}</option>
-              <option value={ChallengeCategory.SECURITY_REMEDIATION}>{isVi ? 'Bảo mật' : 'Security'}</option>
+              <option value={ChallengeCategory.PERFORMANCE_OPTIMIZATION}>
+                {isVi ? 'Tối ưu hiệu năng' : 'Performance'}
+              </option>
+              <option value={ChallengeCategory.SECURITY_REMEDIATION}>
+                {isVi ? 'Bảo mật' : 'Security'}
+              </option>
             </select>
           </div>
 
@@ -132,7 +140,9 @@ export const ChallengeCatalogView: React.FC<ChallengeCatalogViewProps> = ({
                         {challenge.domain}
                       </span>
                       <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        {isVi ? `Độ khó: ${challenge.difficulty}/5` : `Difficulty ${challenge.difficulty}/5`}
+                        {isVi
+                          ? `Độ khó: ${challenge.difficulty}/5`
+                          : `Difficulty ${challenge.difficulty}/5`}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-2 line-clamp-1">

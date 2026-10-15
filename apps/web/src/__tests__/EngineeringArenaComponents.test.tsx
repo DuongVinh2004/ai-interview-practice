@@ -220,9 +220,7 @@ describe('Engineering Arena Web Components (F017)', () => {
     expect(
       screen.getByText('Fix Broken Object Level Authorization (BOLA) in Profile API'),
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByText('src/profile.controller.ts').length,
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText('src/profile.controller.ts').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Run Tests/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Submit Solution/i })).toBeInTheDocument();
   });

@@ -23,25 +23,33 @@ const productionBase = {
 describe('validateEnv production mock-provider boundary', () => {
   it('preserves router settings through validation and Nest process-environment loading', async () => {
     const isolatedEnv = { ...process.env };
-    for (const name of ['NINEROUTER_URL', 'NINEROUTER_KEY', 'NINEROUTER_STT_MODEL', 'NINEROUTER_TTS_MODEL']) {
+    for (const name of [
+      'NINEROUTER_URL',
+      'NINEROUTER_KEY',
+      'NINEROUTER_STT_MODEL',
+      'NINEROUTER_TTS_MODEL',
+    ]) {
       delete isolatedEnv[name];
     }
     const envReplacement = jest.replaceProperty(process, 'env', isolatedEnv);
     try {
       const module = await Test.createTestingModule({
-        imports: [ConfigModule.forRoot({
-          ignoreEnvFile: true,
-          ignoreEnvVars: true,
-          validate: () => validateEnv({
-            ...productionBase,
-            NODE_ENV: 'test',
-            NINEROUTER_URL: 'http://127.0.0.1:20128',
-            NINEROUTER_KEY: 'synthetic-router-key',
-            NINEROUTER_STT_MODEL: 'test/stt',
-            NINEROUTER_TTS_MODEL: 'edge-tts/vi-VN-HoaiMyNeural',
+        imports: [
+          ConfigModule.forRoot({
+            ignoreEnvFile: true,
+            ignoreEnvVars: true,
+            validate: () =>
+              validateEnv({
+                ...productionBase,
+                NODE_ENV: 'test',
+                NINEROUTER_URL: 'http://127.0.0.1:20128',
+                NINEROUTER_KEY: 'synthetic-router-key',
+                NINEROUTER_STT_MODEL: 'test/stt',
+                NINEROUTER_TTS_MODEL: 'edge-tts/vi-VN-HoaiMyNeural',
+              }),
+            load: [aiConfig],
           }),
-          load: [aiConfig],
-        })],
+        ],
       }).compile();
       try {
         const config = module.get(ConfigService);

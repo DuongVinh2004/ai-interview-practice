@@ -123,9 +123,7 @@ describe('Auth Security Hardening', () => {
     mockPrisma.user.findUnique.mockResolvedValue({
       id: userId,
       mfaEnabled: true,
-      recoveryCodes: [
-        { id: 'rc-1', codeHash: realHash, isUsed: false },
-      ],
+      recoveryCodes: [{ id: 'rc-1', codeHash: realHash, isUsed: false }],
     });
 
     // Provide wrong code

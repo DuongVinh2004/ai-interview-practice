@@ -31,14 +31,14 @@ export function AdminUsersPage() {
       await apiClient(`/admin/users/${targetUserId}/lock`, {
         method: 'POST',
         body: JSON.stringify({
-          reason: isVi ? 'Tài khoản bị tạm khóa bởi quản trị viên' : 'Account suspended by administrator',
+          reason: isVi
+            ? 'Tài khoản bị tạm khóa bởi quản trị viên'
+            : 'Account suspended by administrator',
         }),
       });
       refetch();
     } catch (err: any) {
-      setErrorMessage(
-        err.message || (isVi ? 'Khóa tài khoản thất bại.' : 'Failed to lock user.'),
-      );
+      setErrorMessage(err.message || (isVi ? 'Khóa tài khoản thất bại.' : 'Failed to lock user.'));
     }
   };
 

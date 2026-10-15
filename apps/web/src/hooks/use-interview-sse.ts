@@ -133,7 +133,10 @@ export function useInterviewSse({
               try {
                 const payload = JSON.parse(rawJson);
                 const event =
-                  payload && payload.data && typeof payload.data === 'object' && (payload.data.type || payload.data.sessionId)
+                  payload &&
+                  payload.data &&
+                  typeof payload.data === 'object' &&
+                  (payload.data.type || payload.data.sessionId)
                     ? payload.data
                     : payload;
                 const eventType = event?.type;

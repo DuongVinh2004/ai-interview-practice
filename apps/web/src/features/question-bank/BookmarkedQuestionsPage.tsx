@@ -81,9 +81,7 @@ export function BookmarkedQuestionsPage() {
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-8 text-center dark:border-rose-900/50 dark:bg-rose-950/30">
           <AlertCircle className="mx-auto h-8 w-8 text-rose-500" />
           <h3 className="mt-2 text-base font-semibold text-rose-800 dark:text-rose-200">
-            {isVi
-              ? 'Không thể tải danh sách câu hỏi đã lưu'
-              : 'Failed to load saved questions'}
+            {isVi ? 'Không thể tải danh sách câu hỏi đã lưu' : 'Failed to load saved questions'}
           </h3>
           <Button
             variant="outline"

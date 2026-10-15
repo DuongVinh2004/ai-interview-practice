@@ -963,7 +963,9 @@ export class InterviewService {
             content: turn.question.content,
             difficulty: turn.question.difficulty as DifficultyLevel,
             keyFocus: turn.question.keyFocus,
-            createdAt: turn.question.createdAt ? turn.question.createdAt.toISOString() : new Date().toISOString(),
+            createdAt: turn.question.createdAt
+              ? turn.question.createdAt.toISOString()
+              : new Date().toISOString(),
           }
         : null,
       answer: turn.answer
@@ -971,7 +973,9 @@ export class InterviewService {
             id: turn.answer.id,
             turnId: turn.answer.turnId,
             content: turn.answer.content,
-            submittedAt: turn.answer.submittedAt ? turn.answer.submittedAt.toISOString() : new Date().toISOString(),
+            submittedAt: turn.answer.submittedAt
+              ? turn.answer.submittedAt.toISOString()
+              : new Date().toISOString(),
             evaluation: turn.answer.evaluation
               ? {
                   id: turn.answer.evaluation.id,
@@ -982,7 +986,9 @@ export class InterviewService {
                   improvements: turn.answer.evaluation.improvements,
                   conciseFeedback: turn.answer.evaluation.conciseFeedback,
                   evidence: turn.answer.evaluation.evidence,
-                  createdAt: turn.answer.evaluation.createdAt ? turn.answer.evaluation.createdAt.toISOString() : new Date().toISOString(),
+                  createdAt: turn.answer.evaluation.createdAt
+                    ? turn.answer.evaluation.createdAt.toISOString()
+                    : new Date().toISOString(),
                 }
               : null,
           }

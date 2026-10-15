@@ -9,10 +9,7 @@ export default defineConfig({
   fullyParallel: false,
   retries: 0,
   workers: 1,
-  reporter: [
-    ['list'],
-    ['json', { outputFile: 'playwright-staging-results.json' }],
-  ],
+  reporter: [['list'], ['json', { outputFile: 'playwright-staging-results.json' }]],
   use: {
     baseURL: 'https://vinh-ai-interview.duckdns.org',
     trace: 'retain-on-failure',

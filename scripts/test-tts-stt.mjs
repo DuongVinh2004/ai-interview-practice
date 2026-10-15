@@ -44,7 +44,7 @@ try {
   });
 
   if (!ttsRes.ok) {
-    console.error(`TTS Thất bại [${ttsRes.status}]:`, await ttsRes.text());
+    console.error('TTS Thất bại [%s]: %s', ttsRes.status, await ttsRes.text());
   } else {
     const audioBuf = await ttsRes.arrayBuffer();
     const durationMs = Date.now() - startTime;

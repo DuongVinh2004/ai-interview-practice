@@ -172,18 +172,14 @@ export function QuestionFilterSidebar({
           <option value="conceptual">
             {isVi ? 'Lý thuyết / Khái niệm' : 'Conceptual / Theory'}
           </option>
-          <option value="coding">
-            {isVi ? 'Lập trình & Thuật toán' : 'Coding & Algorithms'}
-          </option>
+          <option value="coding">{isVi ? 'Lập trình & Thuật toán' : 'Coding & Algorithms'}</option>
           <option value="system_design">
             {isVi ? 'Thiết kế hệ thống (System Design)' : 'System Design'}
           </option>
           <option value="behavioral">
             {isVi ? 'Phỏng vấn hành vi (STAR)' : 'Behavioral (STAR)'}
           </option>
-          <option value="scenario">
-            {isVi ? 'Tình huống thực tế' : 'Practical Scenario'}
-          </option>
+          <option value="scenario">{isVi ? 'Tình huống thực tế' : 'Practical Scenario'}</option>
           <option value="debugging">
             {isVi ? 'Gỡ lỗi / Tối ưu mã nguồn' : 'Debugging / Optimization'}
           </option>

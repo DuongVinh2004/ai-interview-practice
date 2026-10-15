@@ -162,12 +162,12 @@ export function LoginPage() {
           </CardTitle>
           <CardDescription>
             {mfaRequired
-              ? (language === 'vi'
-                  ? 'Cung cấp mã xác thực để hoàn tất đăng nhập'
-                  : 'Provide verification code to complete sign in')
-              : (language === 'vi'
-                  ? 'Nhập thông tin đăng nhập để truy cập bảng điều khiển'
-                  : 'Enter your credentials to access your training dashboard')}
+              ? language === 'vi'
+                ? 'Cung cấp mã xác thực để hoàn tất đăng nhập'
+                : 'Provide verification code to complete sign in'
+              : language === 'vi'
+                ? 'Nhập thông tin đăng nhập để truy cập bảng điều khiển'
+                : 'Enter your credentials to access your training dashboard'}
           </CardDescription>
         </CardHeader>
 
@@ -187,8 +187,12 @@ export function LoginPage() {
                   className="block text-xs font-semibold text-slate-700 mb-1.5"
                 >
                   {useRecoveryCode
-                    ? (language === 'vi' ? 'Mã khôi phục dự phòng' : 'Backup Recovery Code')
-                    : (language === 'vi' ? 'Mã xác thực 6 chữ số' : '6-digit Authenticator Code')}
+                    ? language === 'vi'
+                      ? 'Mã khôi phục dự phòng'
+                      : 'Backup Recovery Code'
+                    : language === 'vi'
+                      ? 'Mã xác thực 6 chữ số'
+                      : '6-digit Authenticator Code'}
                 </label>
                 <input
                   id="mfa-code-input"
@@ -198,9 +202,7 @@ export function LoginPage() {
                   value={mfaCode}
                   onChange={e => setMfaCode(e.target.value)}
                   placeholder={
-                    useRecoveryCode
-                      ? t.mfa.recoveryCodePlaceholder
-                      : t.mfa.verifyCodePlaceholder
+                    useRecoveryCode ? t.mfa.recoveryCodePlaceholder : t.mfa.verifyCodePlaceholder
                   }
                   className="w-full h-11 px-3 py-2 bg-white border border-slate-300 rounded-lg text-base font-mono tracking-widest text-center focus:ring-2 focus:ring-emerald-500 focus:outline-none"
                   maxLength={useRecoveryCode ? 16 : 6}

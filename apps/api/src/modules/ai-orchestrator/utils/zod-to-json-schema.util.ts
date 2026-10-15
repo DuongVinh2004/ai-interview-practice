@@ -131,7 +131,6 @@ export function toGeminiResponseSchema(zodSchema: z.ZodTypeAny, schemaName: stri
   return sanitizeSchemaForGemini(rawSchema);
 }
 
-
 export const AI_SCHEMAS = {
   question: {
     name: 'generate_interview_question',

@@ -275,7 +275,9 @@ export function QuestionDetailPage() {
           </span>
 
           <span className="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
-            {isVi ? `Độ khó: Cấp độ ${question.difficulty}/5` : `Difficulty: Level ${question.difficulty}/5`}
+            {isVi
+              ? `Độ khó: Cấp độ ${question.difficulty}/5`
+              : `Difficulty: Level ${question.difficulty}/5`}
           </span>
 
           {question.jobRole && (
@@ -351,7 +353,8 @@ export function QuestionDetailPage() {
               {question.answer.explanationBody && (
                 <div className="mt-4 border-l-2 border-indigo-300 pl-4 dark:border-indigo-700">
                   <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
-                    <Info className="h-4 w-4" /> {isVi ? 'Giải thích chi tiết' : 'Detailed Explanation'}
+                    <Info className="h-4 w-4" />{' '}
+                    {isVi ? 'Giải thích chi tiết' : 'Detailed Explanation'}
                   </h4>
                   <p className="mt-1.5 text-sm leading-6 text-slate-700 dark:text-slate-300 whitespace-pre-wrap">
                     {question.answer.explanationBody}

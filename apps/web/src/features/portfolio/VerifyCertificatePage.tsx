@@ -102,7 +102,8 @@ export const VerifyCertificatePage: React.FC = () => {
           </h1>
 
           <p className="text-sm opacity-90 mt-2 max-w-md mx-auto">
-            {cert?.message || (isVi ? 'Kết quả xác thực chứng chỉ' : 'Certificate verification result')}
+            {cert?.message ||
+              (isVi ? 'Kết quả xác thực chứng chỉ' : 'Certificate verification result')}
           </p>
         </div>
 
@@ -151,7 +152,9 @@ export const VerifyCertificatePage: React.FC = () => {
                 </span>
                 <span className="text-sm font-semibold text-slate-700 mt-1 flex items-center gap-1.5">
                   <Calendar className="h-4 w-4 text-slate-400" />
-                  {cert.issuedAt ? new Date(cert.issuedAt).toLocaleDateString(isVi ? 'vi-VN' : 'en-US') : 'N/A'}
+                  {cert.issuedAt
+                    ? new Date(cert.issuedAt).toLocaleDateString(isVi ? 'vi-VN' : 'en-US')
+                    : 'N/A'}
                 </span>
               </div>
 

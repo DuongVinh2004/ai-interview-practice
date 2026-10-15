@@ -39,48 +39,48 @@ export class InterviewQueueReconciliationCron {
 
     try {
       const [answersAwaitingDispatch, questionsAwaitingDispatch] = await Promise.all([
-      this.prisma.interviewTurn.findMany({
-        where: {
-          status: 'ANSWER_SUBMITTED',
-          answer: { isNot: null },
-          session: { state: SessionState.EVALUATING },
-        },
-        include: { answer: true, session: { select: { id: true } } },
-        take: 100,
-      }),
-      this.prisma.interviewTurn.findMany({
-        where: {
-          status: 'PENDING',
-          session: { state: SessionState.ACTIVE },
-        },
-        include: { session: { select: { id: true, currentTurn: true } } },
-        take: 100,
-      }),
-    ]);
+        this.prisma.interviewTurn.findMany({
+          where: {
+            status: 'ANSWER_SUBMITTED',
+            answer: { isNot: null },
+            session: { state: SessionState.EVALUATING },
+          },
+          include: { answer: true, session: { select: { id: true } } },
+          take: 100,
+        }),
+        this.prisma.interviewTurn.findMany({
+          where: {
+            status: 'PENDING',
+            session: { state: SessionState.ACTIVE },
+          },
+          include: { session: { select: { id: true, currentTurn: true } } },
+          take: 100,
+        }),
+      ]);
 
-    for (const turn of answersAwaitingDispatch) {
-      if (!turn.answer) continue;
-      try {
-        await this.evaluationQueue.add(
-          JobName.EVALUATE_ANSWER,
-          {
-            sessionId: turn.session.id,
-            turnId: turn.id,
-            turnNumber: turn.turnNumber,
-            answerId: turn.answer.id,
-          },
-          {
-            jobId: `eval-${turn.session.id}-turn-${turn.turnNumber}`,
-            attempts: 3,
-            backoff: { type: 'exponential', delay: 1000 },
-          },
-        );
-      } catch (error: any) {
-        this.logger.warn(
-          `Evaluation dispatch reconciliation failed for turn ${turn.id}: ${error.message}`,
-        );
+      for (const turn of answersAwaitingDispatch) {
+        if (!turn.answer) continue;
+        try {
+          await this.evaluationQueue.add(
+            JobName.EVALUATE_ANSWER,
+            {
+              sessionId: turn.session.id,
+              turnId: turn.id,
+              turnNumber: turn.turnNumber,
+              answerId: turn.answer.id,
+            },
+            {
+              jobId: `eval-${turn.session.id}-turn-${turn.turnNumber}`,
+              attempts: 3,
+              backoff: { type: 'exponential', delay: 1000 },
+            },
+          );
+        } catch (error: any) {
+          this.logger.warn(
+            `Evaluation dispatch reconciliation failed for turn ${turn.id}: ${error.message}`,
+          );
+        }
       }
-    }
 
       for (const turn of questionsAwaitingDispatch) {
         if (turn.session.currentTurn !== turn.turnNumber) continue;

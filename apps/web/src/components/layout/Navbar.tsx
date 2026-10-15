@@ -218,7 +218,10 @@ export function Navbar() {
 
           {/* Desktop Navigation Links */}
           {isAuthenticated && (
-            <nav className="hidden xl:flex items-center gap-1 sm:gap-1.5" aria-label="Main Navigation">
+            <nav
+              className="hidden xl:flex items-center gap-1 sm:gap-1.5"
+              aria-label="Main Navigation"
+            >
               {/* 1. Dashboard */}
               <Link
                 to="/"

@@ -76,14 +76,10 @@ export function FeedbackModal({ isOpen, onClose, onSubmit, isSubmitting }: Feedb
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
             >
               <option value={QuestionFeedbackReason.INCORRECT_ANSWER}>
-                {isVi
-                  ? 'Đáp án hoặc mã nguồn chưa chính xác'
-                  : 'Inaccurate solution or code'}
+                {isVi ? 'Đáp án hoặc mã nguồn chưa chính xác' : 'Inaccurate solution or code'}
               </option>
               <option value={QuestionFeedbackReason.TYPO_ERROR}>
-                {isVi
-                  ? 'Lỗi chính tả / cú pháp đề bài'
-                  : 'Typo or description syntax error'}
+                {isVi ? 'Lỗi chính tả / cú pháp đề bài' : 'Typo or description syntax error'}
               </option>
               <option value={QuestionFeedbackReason.POOR_EXPLANATION}>
                 {isVi

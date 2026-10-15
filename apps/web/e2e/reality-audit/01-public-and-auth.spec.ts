@@ -7,7 +7,9 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
     });
     page.on('response', response => {
       if (response.status() >= 500) {
-        console.error(`[browser http ${response.status()}] ${response.request().method()} ${response.url()}`);
+        console.error(
+          `[browser http ${response.status()}] ${response.request().method()} ${response.url()}`,
+        );
       }
     });
   });
@@ -26,17 +28,23 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
 
     // 3. Register Page
     await page.goto('/register');
-    await expect(page.getByRole('heading', { name: /(sign up|tạo tài khoản|đăng ký)/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /(sign up|tạo tài khoản|đăng ký)/i }).first(),
+    ).toBeVisible();
     await expect(page.locator('#fullName')).toBeVisible();
 
     // 4. Pricing Page
     await page.goto('/pricing');
-    await expect(page.getByRole('heading', { name: /(pricing|bảng giá|gói)/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /(pricing|bảng giá|gói)/i }).first(),
+    ).toBeVisible();
     await expect(page.getByText(/(free|pro|enterprise)/i).first()).toBeVisible();
 
     // 5. Question Bank Landing
     await page.goto('/question-bank');
-    await expect(page.getByRole('heading', { name: /(question bank|ngân hàng câu hỏi)/i }).first()).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: /(question bank|ngân hàng câu hỏi)/i }).first(),
+    ).toBeVisible();
 
     // 6. Safe 404 Route Catch-All
     await page.goto('/this-is-a-non-existent-route-for-audit-404');
@@ -44,15 +52,25 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
 
     // 7. Safe 403 Forbidden Page
     await page.goto('/403');
-    await expect(page.getByText(/(403|truy cập bị từ chối|forbidden|access denied)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(403|truy cập bị từ chối|forbidden|access denied)/i).first(),
+    ).toBeVisible();
 
     // 8. Public Share Token (Invalid)
     await page.goto('/share/invalid-audit-token-nonexistent');
-    await expect(page.getByText(/(không tìm thấy|not found|hết hạn|invalid|lỗi)/i).first()).toBeVisible();
+    await expect(
+      page.getByText(/(không tìm thấy|not found|hết hạn|invalid|lỗi)/i).first(),
+    ).toBeVisible();
 
     // 9. Certificate Verification (Invalid / Non-UUID)
     await page.goto('/verify/invalid-audit-cert-nonexistent');
-    await expect(page.getByText(/(Verification Issue|Certificate Expired|không hợp lệ|invalid|không tìm thấy|not found)/i).first()).toBeVisible({ timeout: 15000 });
+    await expect(
+      page
+        .getByText(
+          /(Verification Issue|Certificate Expired|không hợp lệ|invalid|không tìm thấy|not found)/i,
+        )
+        .first(),
+    ).toBeVisible({ timeout: 15000 });
   });
 
   test('Domain B: Authentication Flow, Session Lifecycle & Invalidation', async ({ page }) => {
@@ -61,7 +79,9 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
     await page.fill('#email', 'candidate@example.com');
     await page.fill('#password', 'WrongPassword!999');
     await page.click('button[type="submit"]');
-    await expect(page.locator('[role="alert"], .text-red-600, .text-rose-600, .bg-red-50').first()).toBeVisible({
+    await expect(
+      page.locator('[role="alert"], .text-red-600, .text-rose-600, .bg-red-50').first(),
+    ).toBeVisible({
       timeout: 10000,
     });
     await expect(page).toHaveURL(/\/login/);
@@ -87,7 +107,9 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
     const userMenuBtn = page.locator('button[aria-label="User Profile Menu"]').first();
     await expect(userMenuBtn).toBeVisible({ timeout: 10000 });
     await userMenuBtn.click();
-    const logoutBtn = page.locator('button:has-text("Đăng xuất"), button:has-text("Sign Out")').first();
+    const logoutBtn = page
+      .locator('button:has-text("Đăng xuất"), button:has-text("Sign Out")')
+      .first();
     await expect(logoutBtn).toBeVisible({ timeout: 5000 });
     await logoutBtn.click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10000 });
@@ -109,7 +131,9 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
     await page.fill('#email', 'candidate@example.com');
     await page.fill('#password', 'SecurePass@123');
     await page.click('button[type="submit"]');
-    await expect(page.locator('[role="alert"], .bg-red-50, .text-red-600, .text-rose-600').first()).toBeVisible({
+    await expect(
+      page.locator('[role="alert"], .bg-red-50, .text-red-600, .text-rose-600').first(),
+    ).toBeVisible({
       timeout: 10000,
     });
 
@@ -130,7 +154,12 @@ test.describe('Domain A, B, C — Public Routes, Authentication & Registration A
     await page.goto('/profile');
     await expect(page).toHaveURL('/profile');
     await expect(page.getByTestId('profile-page')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator(`text="${fullName}"`).or(page.locator(`input[value="${fullName}"]`)).first()).toBeVisible();
+    await expect(
+      page
+        .locator(`text="${fullName}"`)
+        .or(page.locator(`input[value="${fullName}"]`))
+        .first(),
+    ).toBeVisible();
 
     await page.reload();
     await expect(page.getByTestId('profile-page')).toBeVisible({ timeout: 15000 });
