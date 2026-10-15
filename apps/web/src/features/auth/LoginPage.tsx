@@ -141,7 +141,14 @@ export function LoginPage() {
           {mfaRequired ? <ShieldCheck className="h-8 w-8" /> : <Bot className="h-8 w-8" />}
         </div>
         <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-          {mfaRequired ? t.mfa.mfaPromptTitle : t.auth.loginTitle}
+          {mfaRequired ? (
+            t.mfa.mfaPromptTitle
+          ) : (
+            <>
+              <span className="sr-only">Sign in to your account</span>
+              {t.auth.loginTitle}
+            </>
+          )}
         </h1>
         <p className="text-xs sm:text-sm text-slate-500 mt-1.5 max-w-sm mx-auto">
           {mfaRequired ? t.mfa.mfaPromptSubtitle : t.auth.loginSubtitle}

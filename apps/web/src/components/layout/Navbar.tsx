@@ -514,7 +514,7 @@ export function Navbar() {
           {isAuthenticated && upgradeSuggestion.hasHigherPlan && (
             <Link
               to={`/pricing?plan=${upgradeSuggestion.targetPlanSlug}`}
-              className="hidden md:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-400/60 hover:border-emerald-500 text-slate-800 shadow-2xs hover:shadow-xs transition-all duration-200 group dark:text-white shrink-0 hover:scale-105 active:scale-95"
+              className="hidden xl:inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-teal-500/15 border border-amber-400/60 hover:border-emerald-500 text-slate-800 shadow-2xs hover:shadow-xs transition-all duration-200 group dark:text-white shrink-0 hover:scale-105 active:scale-95"
               title={upgradeSuggestion.headerPillLabel}
             >
               <Sparkles className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 group-hover:rotate-12 transition-transform" />
@@ -542,7 +542,7 @@ export function Navbar() {
           {isAuthenticated ? (
             <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
               {/* Gamification Level & Streak Widget */}
-              <div className="hidden sm:block shrink-0">
+              <div className="hidden 2xl:block shrink-0">
                 <XpProgressWidget />
               </div>
 

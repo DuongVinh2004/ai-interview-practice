@@ -64,6 +64,7 @@ export function AdminUsersPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold text-slate-900">
+            <span className="sr-only">User Administration</span>
             {isVi ? 'Quản lý Người dùng' : 'User Administration'}
           </h1>
           <p className="text-sm text-slate-500">
