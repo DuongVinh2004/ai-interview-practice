@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { PushSubscriptionDto, NotificationPreferenceDto } from '@ai-interview/contracts';
@@ -8,7 +9,10 @@ export class PushNotificationService {
   private readonly logger = new Logger(PushNotificationService.name);
   private isConfigured = false;
 
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly configService?: ConfigService,
+  ) {
     this.initVapid();
   }
 
@@ -17,10 +21,24 @@ export class PushNotificationService {
   }
 
   initVapid(): void {
-    const isProd = process.env.NODE_ENV === 'production';
-    const publicKey = process.env.VAPID_PUBLIC_KEY;
-    const privateKey = process.env.VAPID_PRIVATE_KEY;
-    const subject = process.env.VAPID_SUBJECT || 'mailto:support@ai-interview.com';
+    const nodeEnv =
+      this.configService?.get<string>('app.nodeEnv') ||
+      this.configService?.get<string>('NODE_ENV') ||
+      process.env.NODE_ENV;
+    const isProd = nodeEnv === 'production';
+    const publicKey =
+      this.configService?.get<string>('vapid.publicKey') ||
+      this.configService?.get<string>('VAPID_PUBLIC_KEY') ||
+      process.env.VAPID_PUBLIC_KEY;
+    const privateKey =
+      this.configService?.get<string>('vapid.privateKey') ||
+      this.configService?.get<string>('VAPID_PRIVATE_KEY') ||
+      process.env.VAPID_PRIVATE_KEY;
+    const subject =
+      this.configService?.get<string>('vapid.subject') ||
+      this.configService?.get<string>('VAPID_SUBJECT') ||
+      process.env.VAPID_SUBJECT ||
+      'mailto:support@ai-interview.com';
 
     if (!publicKey || !privateKey) {
       this.isConfigured = false;
@@ -193,6 +211,14 @@ export class PushNotificationService {
     await this.sendToUser(userId, {
       title: '🔥 Giữ vững chuỗi ngày học tập!',
       body: `Bạn đang có chuỗi ${currentStreak} ngày liên tiếp. Hãy hoàn thành 1 bài luyện tập hôm nay để không bị gián đoạn!`,
+      url: '/flashcards',
+    });
+  }
+
+  async sendDailyPracticeReminder(userId: string): Promise<void> {
+    await this.sendToUser(userId, {
+      title: '⏰ Đến giờ luyện tập hôm nay!',
+      body: 'Dành 5-10 phút ôn flashcard để duy trì kiến thức và giữ vững phong độ phỏng vấn nhé!',
       url: '/flashcards',
     });
   }

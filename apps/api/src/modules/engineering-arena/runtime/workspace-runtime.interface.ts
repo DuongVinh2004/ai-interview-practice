@@ -28,6 +28,7 @@ export interface WorkspaceRunCommandParams {
   manifest: ArenaChallengeManifest;
   modifiedFiles?: ArenaWorkspaceFileUpdate[];
   timeoutSeconds?: number;
+  onLogChunk?: (chunk: { type: 'stdout' | 'stderr' | 'status'; data: string }) => void;
 }
 
 export interface WorkspaceRunResult {

@@ -1,16 +1,19 @@
-import { Inject, Injectable, HttpStatus } from '@nestjs/common';
+import { Inject, Injectable, Optional, HttpStatus } from '@nestjs/common';
 import { ArenaChallengeRepository } from './repositories/arena-challenge.repository';
 import { ArenaSessionRepository } from './repositories/arena-session.repository';
 import { ArenaSessionStateMachine } from './state-machine/arena-session-state-machine';
 import { WORKSPACE_RUNTIME, WorkspaceRuntime } from './runtime/workspace-runtime.interface';
 import { ArenaEvaluationService } from './services/arena-evaluation.service';
 import { ArenaSseService } from './services/arena-sse.service';
+import { ArenaAntiCheatService } from './services/arena-anti-cheat.service';
 import {
   ArenaSessionState,
   ErrorCode,
   StartArenaSessionRequest,
   ArenaChallengeManifest,
   ArenaFileNode,
+  ArenaAnalyzeAntiCheatRequest,
+  ArenaAntiCheatReport,
 } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
 import {
@@ -29,6 +32,7 @@ export class EngineeringArenaService {
     @Inject(WORKSPACE_RUNTIME) private readonly workspaceRuntime: WorkspaceRuntime,
     private readonly evaluationService: ArenaEvaluationService,
     private readonly sseService: ArenaSseService,
+    @Optional() private readonly antiCheatService?: ArenaAntiCheatService,
   ) {}
 
   async listChallenges(filters?: { domain?: string; category?: string }) {
@@ -193,18 +197,25 @@ export class EngineeringArenaService {
       );
     }
 
+    let chunkCount = 0;
     const runResult = await this.workspaceRuntime.runAllowedCommand({
       workspaceHandle: session.workspaceHandle,
       commandId: body.commandId,
       manifest,
       modifiedFiles: body.modifiedFiles,
+      onLogChunk: chunk => {
+        chunkCount++;
+        this.sseService.emitLog(sessionId, chunk.type as any, chunk.data);
+      },
     });
 
-    if (runResult.stdout) {
-      this.sseService.emitLog(sessionId, 'stdout', runResult.stdout);
-    }
-    if (runResult.stderr) {
-      this.sseService.emitLog(sessionId, 'stderr', runResult.stderr);
+    if (chunkCount === 0) {
+      if (runResult.stdout) {
+        this.sseService.emitLog(sessionId, 'stdout', runResult.stdout);
+      }
+      if (runResult.stderr) {
+        this.sseService.emitLog(sessionId, 'stderr', runResult.stderr);
+      }
     }
     this.sseService.emitLog(
       sessionId,
@@ -249,6 +260,33 @@ export class EngineeringArenaService {
     userId: string,
     body: { explanation?: string; finalFiles: Array<{ path: string; content: string }> },
   ) {
-    return this.evaluationService.submitAndEvaluate(sessionId, userId, body);
+    const evaluation = await this.evaluationService.submitAndEvaluate(sessionId, userId, body);
+    this.sseService.completeSession(sessionId, 0);
+    return evaluation;
+  }
+
+  async analyzeAntiCheat(
+    sessionId: string,
+    userId: string,
+    body?: ArenaAnalyzeAntiCheatRequest,
+  ): Promise<ArenaAntiCheatReport> {
+    const session = await this.sessionRepo.findSessionById(sessionId, userId);
+    if (!session) {
+      throw new DomainException(
+        ErrorCode.RESOURCE_NOT_FOUND,
+        `Arena session '${sessionId}' not found or access denied.`,
+        HttpStatus.NOT_FOUND,
+      );
+    }
+
+    if (!this.antiCheatService) {
+      throw new DomainException(
+        ErrorCode.VALIDATION_ERROR,
+        'Anti-cheat service unavailable.',
+        HttpStatus.SERVICE_UNAVAILABLE,
+      );
+    }
+
+    return this.antiCheatService.analyzeSession(sessionId, body);
   }
 }

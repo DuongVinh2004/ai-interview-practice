@@ -19,14 +19,36 @@ export class StripeProvider implements BillingProvider {
   private readonly logger = new Logger(StripeProvider.name);
   private readonly apiKey: string;
   private readonly webhookSecret: string;
+  private readonly isLiveMode: boolean;
 
   constructor(
     private readonly configService: ConfigService,
     @Optional() private readonly prisma?: PrismaService,
     @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {
-    this.apiKey = this.configService.get<string>('STRIPE_SECRET_KEY', '');
-    this.webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET', '');
+    this.apiKey =
+      this.configService.get<string>('billing.stripeSecretKey') ||
+      this.configService.get<string>('STRIPE_SECRET_KEY', '');
+    this.webhookSecret =
+      this.configService.get<string>('billing.stripeWebhookSecret') ||
+      this.configService.get<string>('STRIPE_WEBHOOK_SECRET', '');
+    const liveConfig =
+      this.configService.get<string | boolean>('billing.stripeLiveMode') ??
+      this.configService.get<string | boolean>('STRIPE_LIVE_MODE', false);
+    this.isLiveMode = liveConfig === true || liveConfig === 'true';
+
+    if (this.isLiveMode) {
+      this.logger.log('StripeProvider running in LIVE mode (STRIPE_LIVE_MODE=true)');
+      if (this.apiKey && this.apiKey.startsWith('sk_test_')) {
+        this.logger.warn(
+          'STRIPE_LIVE_MODE is enabled but STRIPE_SECRET_KEY is a test key (sk_test_*)',
+        );
+      }
+    }
+  }
+
+  isLive(): boolean {
+    return this.isLiveMode;
   }
 
   async createCheckoutSession(
@@ -39,8 +61,8 @@ export class StripeProvider implements BillingProvider {
     const cancelUrl = req.cancelUrl || 'https://ai-interview.dev/billing';
 
     if (!this.apiKey) {
-      if (process.env.NODE_ENV === 'production') {
-        this.logger.error('Stripe API Key missing in production environment');
+      if (process.env.NODE_ENV === 'production' || this.isLiveMode) {
+        this.logger.error('Stripe API Key missing in production or live mode environment');
         throw new BadRequestException('Payment processing is currently unavailable in production');
       }
       this.logger.warn('Stripe API Key missing. Falling back to dev mock checkout session.');
@@ -245,6 +267,12 @@ export class StripeProvider implements BillingProvider {
     this.logger.log(
       `Handling verified Stripe webhook event: ${eventType} (ID: ${eventId || 'n/a'})`,
     );
+
+    if (this.isLiveMode && event.livemode === false) {
+      this.logger.warn(
+        `Received Stripe test event ${eventId || ''} while STRIPE_LIVE_MODE is enabled`,
+      );
+    }
 
     if (this.prisma && eventId) {
       const existingEvent = await this.prisma.stripeEvent.findUnique({
@@ -453,6 +481,50 @@ export class StripeProvider implements BillingProvider {
                 await tx.subscription.updateMany({
                   where: { providerSubId },
                   data: { status: 'PAST_DUE' },
+                });
+              }
+              break;
+            }
+
+            case 'customer.subscription.updated': {
+              const updatedProviderSubId = data?.id;
+              if (updatedProviderSubId) {
+                const stripeStatus = String(data.status || '').toLowerCase();
+                let targetStatus: string = 'ACTIVE';
+                if (stripeStatus === 'past_due') targetStatus = 'PAST_DUE';
+                else if (stripeStatus === 'canceled') targetStatus = 'CANCELED';
+                else if (stripeStatus === 'unpaid') targetStatus = 'UNPAID';
+                else if (stripeStatus === 'trialing') targetStatus = 'TRIALING';
+
+                const updatePayload: Record<string, any> = {
+                  status: targetStatus,
+                  cancelAtPeriodEnd: Boolean(data.cancel_at_period_end),
+                };
+
+                if (data.current_period_end) {
+                  updatePayload.currentPeriodEnd = new Date(data.current_period_end * 1000);
+                }
+                if (data.current_period_start) {
+                  updatePayload.currentPeriodStart = new Date(data.current_period_start * 1000);
+                }
+                if (data.canceled_at) {
+                  updatePayload.canceledAt = new Date(data.canceled_at * 1000);
+                }
+
+                const planSlug =
+                  data.metadata?.planSlug || data.items?.data?.[0]?.price?.metadata?.planSlug;
+                if (planSlug) {
+                  const newPlan = await tx.subscriptionPlan.findUnique({
+                    where: { slug: planSlug },
+                  });
+                  if (newPlan) {
+                    updatePayload.planId = newPlan.id;
+                  }
+                }
+
+                await tx.subscription.updateMany({
+                  where: { providerSubId: updatedProviderSubId },
+                  data: updatePayload,
                 });
               }
               break;

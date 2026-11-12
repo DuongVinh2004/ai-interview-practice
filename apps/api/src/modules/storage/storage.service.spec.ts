@@ -566,6 +566,40 @@ describe('StorageService (Module B1 / SEC-005)', () => {
       ).rejects.toThrow("MIME type 'application/x-sh' is not allowed for category 'documents'.");
     });
 
+    it('rejects createUploadIntent when declared size exceeds category byte limit before URL is generated', async () => {
+      await expect(
+        service.createUploadIntent(ownerUserId, {
+          filename: 'oversized-declared.pdf',
+          mimeType: 'application/pdf',
+          category: 'documents',
+          sizeBytes: 6 * 1024 * 1024, // 6MB > 5MB limit
+        } as any),
+      ).rejects.toThrow(/exceeds the maximum allowed 5242880 bytes/);
+    });
+
+    it('rejects createUploadIntent when declared size is zero or negative', async () => {
+      await expect(
+        service.createUploadIntent(ownerUserId, {
+          filename: 'zero-byte.pdf',
+          mimeType: 'application/pdf',
+          category: 'documents',
+          sizeBytes: 0,
+        } as any),
+      ).rejects.toThrow(/must be greater than 0 bytes/);
+    });
+
+    it('permits createUploadIntent when declared size is within category byte cap', async () => {
+      const intent = await service.createUploadIntent(ownerUserId, {
+        filename: 'valid-size.pdf',
+        mimeType: 'application/pdf',
+        category: 'documents',
+        sizeBytes: 1024 * 1024, // 1MB <= 5MB
+      } as any);
+
+      expect(intent.uploadUrl).toBeDefined();
+      expect(intent.key).toContain('documents/');
+    });
+
     it('rejects confirmUpload when actual object size exceeds category byte limit (5MB for documents)', async () => {
       const intent = await service.createUploadIntent(ownerUserId, {
         filename: 'oversized.pdf',

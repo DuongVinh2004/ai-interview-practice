@@ -9,6 +9,7 @@ import {
 import * as bcrypt from 'bcrypt';
 import { questionBankDrafts } from './question-bank-draft-data';
 import { seedArenaChallenges } from './seeds/arena-challenges.seed';
+import { seedUserLevelsAndBadges } from './seeds/gamification.seed';
 
 const prisma = new PrismaClient();
 
@@ -745,6 +746,9 @@ async function main() {
 
   // 11. Seed Engineering Arena Benchmark Challenges (F017)
   await seedArenaChallenges();
+
+  // 12. Seed User Levels and Badge Definitions
+  await seedUserLevelsAndBadges(prisma);
 
   console.log('🎉 Database seed completed successfully!');
 }

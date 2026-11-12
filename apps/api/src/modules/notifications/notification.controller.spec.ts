@@ -22,6 +22,7 @@ describe('NotificationController', () => {
 
   const mockStreakCron = {
     triggerManualRun: jest.fn().mockResolvedValue(42),
+    handleDailyPracticeReminders: jest.fn().mockResolvedValue(5),
   };
 
   beforeEach(async () => {
@@ -66,5 +67,53 @@ describe('NotificationController', () => {
     const result = await controller.triggerStreakCheck();
     expect(streakCron.triggerManualRun).toHaveBeenCalled();
     expect(result).toEqual({ triggeredCount: 42 });
+  });
+
+  it('correctly executes triggerPracticeReminder and returns count', async () => {
+    const result = await controller.triggerPracticeReminder({ time: '20:00' });
+    expect(streakCron.handleDailyPracticeReminders).toHaveBeenCalledWith('20:00');
+    expect(result).toEqual({ triggeredCount: 5 });
+  });
+
+  it('correctly passes subscription payload to pushService.subscribe on POST /notifications/subscribe', async () => {
+    const userId = 'user-uuid-123';
+    const dto = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/test-token',
+      keys: { p256dh: 'p256-test-key', auth: 'auth-test-key' },
+      device: 'Desktop Chrome',
+    };
+    const result = await controller.subscribeDirect(userId, dto);
+    expect(pushService.subscribe).toHaveBeenCalledWith('user-uuid-123', dto);
+    expect(result).toEqual({ success: true });
+  });
+
+  it('correctly passes subscription payload on POST /notifications/push/subscribe fallback', async () => {
+    const userId = 'user-uuid-123';
+    const dto = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/test-token-2',
+      keys: { p256dh: 'p256-test-key-2', auth: 'auth-test-key-2' },
+    };
+    const result = await controller.subscribe(userId, dto);
+    expect(pushService.subscribe).toHaveBeenCalledWith('user-uuid-123', dto);
+    expect(result).toEqual({ success: true });
+  });
+
+  it('correctly passes endpoint to pushService.unsubscribe', async () => {
+    const body = { endpoint: 'https://fcm.googleapis.com/fcm/send/test-token' };
+    const result = await controller.unsubscribeDirect(body);
+    expect(pushService.unsubscribe).toHaveBeenCalledWith(body.endpoint);
+    expect(result).toEqual({ success: true });
+  });
+
+  it('correctly sends test push notification with welcome payload', async () => {
+    const userId = 'user-uuid-123';
+    await controller.sendTestPush(userId);
+    expect(pushService.sendToUser).toHaveBeenCalledWith(
+      'user-uuid-123',
+      expect.objectContaining({
+        title: expect.stringContaining('Thông báo thử nghiệm'),
+        url: '/dashboard',
+      }),
+    );
   });
 });

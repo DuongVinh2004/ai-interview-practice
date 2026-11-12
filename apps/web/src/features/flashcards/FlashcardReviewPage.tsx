@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, Sparkles, Smartphone, Layout } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Sparkles, Smartphone, Layout, WifiOff } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Spinner } from '../../components/ui/Spinner';
 import { FlashcardItem } from '../../components/flashcards/FlashcardItem';
@@ -10,6 +10,7 @@ import { useGamificationStore } from '../../stores/gamification.store';
 import { ConfettiCelebration } from '../../components/common/Confetti';
 import { FSRSRating } from '@ai-interview/contracts';
 import { useI18nStore } from '../../stores/i18n.store';
+import { queueOfflineReview, syncOfflineReviews } from './offline-sync';
 
 export function FlashcardReviewPage() {
   const navigate = useNavigate();
@@ -23,6 +24,31 @@ export function FlashcardReviewPage() {
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [completedCount, setCompletedCount] = useState(0);
   const [useSwipeMode, setUseSwipeMode] = useState(true);
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined' ? navigator.onLine : true,
+  );
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncOfflineReviews(reviewCard);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      syncOfflineReviews(reviewCard);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [reviewCard]);
 
   useEffect(() => {
     setStartTime(Date.now());
@@ -59,7 +85,16 @@ export function FlashcardReviewPage() {
     addXpLocally(5, isVi ? 'Ôn tập Flashcard' : 'Flashcard Drill');
 
     const durationMs = Date.now() - startTime;
-    await reviewCard({ cardId: currentCard.id, rating, durationMs });
+    if (!isOnline) {
+      queueOfflineReview({ cardId: currentCard.id, rating, durationMs });
+    } else {
+      try {
+        await reviewCard({ cardId: currentCard.id, rating, durationMs });
+      } catch (err) {
+        console.warn('[Offline Mode] Review recorded locally, failed to sync immediately:', err);
+        queueOfflineReview({ cardId: currentCard.id, rating, durationMs });
+      }
+    }
     setCompletedCount(prev => prev + 1);
     setCurrentIndex(prev => prev + 1);
   };
@@ -133,7 +168,7 @@ export function FlashcardReviewPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 p-4 sm:p-6" data-testid="flashcard-review-page">
       {/* Top Controls */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <button
           type="button"
           onClick={() => navigate('/flashcards')}
@@ -142,6 +177,18 @@ export function FlashcardReviewPage() {
           <ArrowLeft className="w-4 h-4 mr-1" />
           <span>{isVi ? 'Thoát buổi học' : 'Exit Drill'}</span>
         </button>
+
+        {!isOnline && (
+          <div
+            data-testid="offline-indicator"
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold animate-pulse"
+          >
+            <WifiOff className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span>
+              {isVi ? 'Đang offline — học từ bộ nhớ đệm' : 'Offline — studying from cache'}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center space-x-3">
           {/* Mode Switcher */}

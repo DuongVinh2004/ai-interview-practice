@@ -17,6 +17,10 @@ import {
   MfaVerifyRequestDto,
   MfaRecoveryVerifyRequestDto,
   MfaDisableRequestDto,
+  ForgotPasswordRequestDto,
+  ResetPasswordRequestDto,
+  VerifyEmailRequestDto,
+  ResendVerificationRequestDto,
 } from './dto/auth.dto';
 
 const refreshThrottleLimit = Number(process.env.AUTH_REFRESH_THROTTLE_LIMIT || 60);
@@ -112,6 +116,46 @@ export class AuthController {
   async changePassword(@CurrentUser('sub') userId: string, @Body() dto: ChangePasswordRequestDto) {
     await this.authService.changePassword(userId, dto);
     return { message: 'Password changed successfully' };
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Request password reset link via email' })
+  @ApiResponse({ status: 200, description: 'Password reset email triggered if user exists' })
+  async forgotPassword(@Body() dto: ForgotPasswordRequestDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password with single-use token' })
+  @ApiResponse({ status: 200, description: 'Password successfully reset' })
+  async resetPassword(@Body() dto: ResetPasswordRequestDto) {
+    return this.authService.resetPassword(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @Post('verify-email')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify email address with token' })
+  @ApiResponse({ status: 200, description: 'Email verified successfully' })
+  async verifyEmail(@Body() dto: VerifyEmailRequestDto) {
+    return this.authService.verifyEmail(dto);
+  }
+
+  @Public()
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @Post('resend-verification')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Resend email verification link' })
+  @ApiResponse({ status: 200, description: 'Verification email sent if account is unverified' })
+  async resendVerification(@Body() dto: ResendVerificationRequestDto) {
+    return this.authService.resendVerification(dto);
   }
 
   // --- MFA (TOTP 2FA & Recovery Codes) Endpoints ---

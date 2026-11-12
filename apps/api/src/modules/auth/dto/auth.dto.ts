@@ -95,3 +95,45 @@ export class MfaDisableRequestDto {
   @IsNotEmpty()
   code!: string;
 }
+
+export class ForgotPasswordRequestDto {
+  @ApiProperty({ example: 'candidate@example.com' })
+  @IsEmail({}, { message: 'Invalid email address' })
+  email!: string;
+}
+
+export class ResetPasswordRequestDto {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Reset token received via email',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Reset token is required' })
+  token!: string;
+
+  @ApiProperty({ example: 'NewPassword123' })
+  @IsString()
+  @MinLength(8, { message: 'New password must be at least 8 characters' })
+  @MaxLength(100)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, {
+    message:
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+  })
+  newPassword!: string;
+}
+
+export class VerifyEmailRequestDto {
+  @ApiProperty({
+    example: '550e8400-e29b-41d4-a716-446655440000',
+    description: 'Verification token received via email',
+  })
+  @IsString()
+  @IsNotEmpty({ message: 'Verification token is required' })
+  token!: string;
+}
+
+export class ResendVerificationRequestDto {
+  @ApiProperty({ example: 'candidate@example.com' })
+  @IsEmail({}, { message: 'Invalid email address' })
+  email!: string;
+}

@@ -15,15 +15,14 @@ export class GeminiVisionProvider implements VisionProvider {
   private readonly modelName: string;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey =
-      this.configService.get<string>('vision.geminiApiKey') ||
-      this.configService.get<string>('ai.geminiApiKey') ||
-      process.env.GEMINI_API_KEY ||
-      '';
+    const configKey =
+      this.configService.get<string>('vision.geminiApiKey') ??
+      this.configService.get<string>('ai.geminiApiKey');
+    const apiKey = configKey !== undefined ? configKey : process.env.GEMINI_API_KEY || '';
     this.modelName =
-      this.configService.get<string>('vision.geminiVisionModel') || 'gemini-2.0-flash';
+      this.configService.get<string>('vision.geminiVisionModel') || 'gemini-1.5-flash';
 
-    if (apiKey && !apiKey.includes('mock')) {
+    if (apiKey && !apiKey.includes('mock') && apiKey.trim().length > 0) {
       this.client = new GoogleGenerativeAI(apiKey);
     }
   }
@@ -43,9 +42,19 @@ export class GeminiVisionProvider implements VisionProvider {
       },
     });
 
-    const cleanBase64 = options.imageBase64.includes('base64,')
-      ? options.imageBase64.split('base64,')[1]
-      : options.imageBase64;
+    const rawImage = (options.imageUrl || options.imageBase64 || '').trim();
+    let cleanBase64 = rawImage;
+    if (rawImage.includes('base64,')) {
+      cleanBase64 = rawImage.split('base64,')[1];
+    } else if (rawImage.startsWith('http://') || rawImage.startsWith('https://')) {
+      try {
+        const fetchRes = await fetch(rawImage);
+        const arrayBuf = await fetchRes.arrayBuffer();
+        cleanBase64 = Buffer.from(arrayBuf).toString('base64');
+      } catch (err) {
+        this.logger.warn(`Failed to fetch image from URL: ${err}`);
+      }
+    }
 
     const imagePart = {
       inlineData: {
@@ -96,7 +105,12 @@ Output strict JSON:
     const result = await model.generateContent([prompt, imagePart]);
     const response = await result.response;
     const text = response.text();
-    const parsed = JSON.parse(text);
+    const cleanJson = text
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    const parsed = JSON.parse(cleanJson);
 
     return {
       usageTokens: response.usageMetadata?.totalTokenCount,

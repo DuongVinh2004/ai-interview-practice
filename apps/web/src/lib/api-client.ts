@@ -84,10 +84,15 @@ export async function apiClient<T = any>(
   }
 
   if (!response.ok) {
-    const errorData = data as ApiErrorResponse;
+    const errorData = data as ApiErrorResponse & { error?: { message?: string } | string };
+    const resolvedMessage =
+      errorData.message ||
+      (typeof errorData.error === 'object' ? errorData.error?.message : errorData.error) ||
+      'An error occurred during the request';
+
     throw new ApiError(
       errorData.code || ErrorCode.INTERNAL_SERVER_ERROR,
-      errorData.message || 'An error occurred during the request',
+      resolvedMessage,
       response.status,
       errorData.errors,
     );

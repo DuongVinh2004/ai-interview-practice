@@ -364,7 +364,39 @@ export function InterviewRoomPage() {
   // Keyboard shortcuts and Focus Mode
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Focus mode toggle: F11 or Ctrl+Shift+F / Cmd+Shift+F
+      const activeElement = document.activeElement;
+      const target = e.target as HTMLElement | null;
+      const isInputFocused =
+        activeElement instanceof HTMLInputElement ||
+        activeElement instanceof HTMLTextAreaElement ||
+        (activeElement instanceof HTMLElement && activeElement.isContentEditable) ||
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target instanceof HTMLElement && target.isContentEditable);
+
+      // Focus mode toggle: F key (when not focusing text input/textarea/contenteditable)
+      if (
+        (e.key === 'F' || e.key === 'f') &&
+        !e.ctrlKey &&
+        !e.metaKey &&
+        !e.altKey &&
+        !e.shiftKey
+      ) {
+        if (!isInputFocused) {
+          e.preventDefault();
+          toggleFocusMode();
+          return;
+        }
+      }
+
+      // Exit focus mode with Escape
+      if (e.key === 'Escape' && useFocusModeStore.getState().isFocusMode) {
+        e.preventDefault();
+        useFocusModeStore.getState().setFocusMode(false);
+        return;
+      }
+
+      // Legacy Focus mode toggle: F11 or Ctrl+Shift+F / Cmd+Shift+F
       if (
         e.key === 'F11' ||
         ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'F' || e.key === 'f'))

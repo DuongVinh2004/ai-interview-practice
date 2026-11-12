@@ -58,6 +58,7 @@ export class DesignAnalyzerService {
       provider: this.visionProvider,
       options: {
         imageBase64: targetImageUrl,
+        imageUrl: targetImageUrl,
         canvasData: targetState,
         problemTitle: session?.initialPrompt || undefined,
       },

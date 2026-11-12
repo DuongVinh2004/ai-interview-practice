@@ -100,7 +100,7 @@ describe('Deterministic Migration-Set Hash & Safety (CD-001 / PRD-1301..1303)', 
   it('verifies exact match with infra check-migration-safety output', async () => {
     const migrationSet = collectMigrationSet();
     expect(migrationSet.migrationSetSha256).toBe(
-      '644f4d689a25696332a86a697350a4573344c80ed2227334e62a5a1b832a57f7',
+      '35c20f84044146701317c397b4ffd30c06422c65e2aac019e8a62573634b724f',
     );
   });
 });

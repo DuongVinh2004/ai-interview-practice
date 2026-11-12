@@ -5,6 +5,8 @@ export const EmailTemplateTypeSchema = z.enum([
   'interview_completion',
   'streak_warning',
   'payment_receipt',
+  'password_reset',
+  'email_verification',
 ]);
 export type EmailTemplateType = z.infer<typeof EmailTemplateTypeSchema>;
 

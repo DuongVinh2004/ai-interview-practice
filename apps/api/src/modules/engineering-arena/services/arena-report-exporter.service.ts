@@ -3,7 +3,7 @@ import { PrismaService } from '../../platform/prisma/prisma.service';
 import { ArenaAntiCheatService } from './arena-anti-cheat.service';
 import { ArenaPatchExporterService, PatchExportResult } from './arena-patch-exporter.service';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
-import { ErrorCode, ArenaChallengeManifest } from '@ai-interview/contracts';
+import { ErrorCode, ArenaChallengeManifest, PlagiarismReport } from '@ai-interview/contracts';
 
 export interface ExecutiveCandidateDossier {
   evaluationId: string;
@@ -30,8 +30,10 @@ export interface ExecutiveCandidateDossier {
   };
   integrityCheck: {
     riskScore: number;
+    forensicRiskScore: number;
     isSuspicious: boolean;
     flagsCount: number;
+    plagiarismReport?: PlagiarismReport;
   };
   rubricCriteria: Array<{
     key: string;
@@ -143,8 +145,10 @@ export class ArenaReportExporterService {
       },
       integrityCheck: {
         riskScore: antiCheatReport.riskScore,
+        forensicRiskScore: antiCheatReport.riskScore,
         isSuspicious: antiCheatReport.isSuspicious,
         flagsCount: antiCheatReport.flags.length,
+        plagiarismReport: antiCheatReport.plagiarismReport,
       },
       rubricCriteria: ((evaluation.rubricFeedbackJson as any)?.criteriaFeedback || []).map(
         (c: any) => ({

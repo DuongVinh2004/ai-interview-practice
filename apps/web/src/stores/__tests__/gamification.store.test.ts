@@ -9,8 +9,8 @@ describe('useGamificationStore', () => {
         totalXp: 50,
         currentLevel: 1,
         currentLevelMinXp: 0,
-        nextLevelXp: 100,
-        levelProgressPercent: 50,
+        nextLevelXp: 282,
+        levelProgressPercent: 18,
         levelTitle: 'Junior Developer',
         levelTitleVi: 'Lập trình viên Sơ cấp',
         dailyXp: 50,
@@ -37,28 +37,28 @@ describe('useGamificationStore', () => {
   it('should add XP locally and update level progress correctly', () => {
     const { addXpLocally } = useGamificationStore.getState();
 
-    // Adding 30 XP (50 + 30 = 80 XP, still level 1)
-    addXpLocally(30, 'Test XP');
+    // Adding 91 XP (50 + 91 = 141 XP, still level 1, 141/282 = 50%)
+    addXpLocally(91, 'Test XP');
 
     const state = useGamificationStore.getState();
-    expect(state.profile?.totalXp).toBe(80);
+    expect(state.profile?.totalXp).toBe(141);
     expect(state.profile?.currentLevel).toBe(1);
-    expect(state.profile?.levelProgressPercent).toBe(80);
+    expect(state.profile?.levelProgressPercent).toBe(50);
     expect(state.pendingXpDeltas.length).toBe(1);
-    expect(state.pendingXpDeltas[0].amount).toBe(30);
+    expect(state.pendingXpDeltas[0].amount).toBe(91);
   });
 
-  it('should trigger level-up when crossing the 100 XP threshold', () => {
+  it('should trigger level-up when crossing the 282 XP threshold based on 100 * Level^1.5', () => {
     const { addXpLocally } = useGamificationStore.getState();
 
-    // Adding 60 XP (50 + 60 = 110 XP -> level 2)
-    addXpLocally(60, 'Interview Complete');
+    // Adding 250 XP (50 + 250 = 300 XP -> level 2)
+    addXpLocally(250, 'Interview Complete');
 
     const state = useGamificationStore.getState();
-    expect(state.profile?.totalXp).toBe(110);
+    expect(state.profile?.totalXp).toBe(300);
     expect(state.profile?.currentLevel).toBe(2);
-    expect(state.profile?.currentLevelMinXp).toBe(100);
-    expect(state.profile?.nextLevelXp).toBe(400);
+    expect(state.profile?.currentLevelMinXp).toBe(282);
+    expect(state.profile?.nextLevelXp).toBe(519);
   });
 
   it('should toggle sound mute state', () => {

@@ -80,6 +80,7 @@ export const emailConfig = registerAs('email', () => ({
 export const billingConfig = registerAs('billing', () => ({
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+  stripeLiveMode: process.env.STRIPE_LIVE_MODE === 'true',
   payosClientId: process.env.PAYOS_CLIENT_ID || '',
   payosApiKey: process.env.PAYOS_API_KEY || '',
   payosChecksumKey: process.env.PAYOS_CHECKSUM_KEY || '',
@@ -97,4 +98,10 @@ export const visionConfig = registerAs('vision', () => ({
   provider: process.env.VISION_PROVIDER || 'mock',
   openaiApiKey: process.env.OPENAI_API_KEY || '',
   geminiApiKey: process.env.GEMINI_API_KEY || '',
+}));
+
+export const vapidConfig = registerAs('vapid', () => ({
+  publicKey: process.env.VAPID_PUBLIC_KEY || '',
+  privateKey: process.env.VAPID_PRIVATE_KEY || '',
+  subject: process.env.VAPID_SUBJECT || 'mailto:support@ai-interview.com',
 }));

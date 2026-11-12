@@ -96,6 +96,15 @@ export const TenantDashboardPage: React.FC = () => {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => navigate('/b2b/challenges')}
+              className="gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
+              data-testid="custom-challenges-btn"
+            >
+              <Building className="h-4 w-4 text-indigo-400" /> Custom Challenges
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setIsApiKeyModalOpen(true)}
               className="gap-2 bg-white/10 border-white/20 text-white hover:bg-white/20"
               data-testid="open-api-keys-btn"

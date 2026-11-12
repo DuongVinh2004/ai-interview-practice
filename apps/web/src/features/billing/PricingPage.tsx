@@ -13,6 +13,7 @@ import {
 import { Badge } from '../../components/ui/Badge';
 import { Spinner } from '../../components/ui/Spinner';
 import { VietQrCheckoutModal } from '../../components/billing/VietQrCheckoutModal';
+import { PaymentMethodModal, PaymentMethod } from '../../components/billing/PaymentMethodModal';
 import { Check, Sparkles, Zap, Shield, Rocket, QrCode } from 'lucide-react';
 import { PLAN_TIERS, PlanTierSlug } from '../../lib/plan-tier.utils';
 
@@ -33,6 +34,31 @@ export function PricingPage() {
   const [selectedPlanSlug, setSelectedPlanSlug] = useState<string | null>(null);
   const [payosData, setPayosData] = useState<any | null>(null);
   const [showVietQrModal, setShowVietQrModal] = useState<boolean>(false);
+  const [selectedPlanForModal, setSelectedPlanForModal] = useState<any | null>(null);
+  const [showPaymentMethodModal, setShowPaymentMethodModal] = useState<boolean>(false);
+
+  const handleOpenPaymentModal = (plan: any) => {
+    if (!isAuthenticated) {
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
+      return;
+    }
+    if (plan.slug === 'free') return;
+    setSelectedPlanForModal(plan);
+    setShowPaymentMethodModal(true);
+  };
+
+  const handleConfirmPaymentMethod = async (method: PaymentMethod) => {
+    if (!selectedPlanForModal) return;
+    const planSlug = selectedPlanForModal.slug;
+    setShowPaymentMethodModal(false);
+    if (method === 'stripe') {
+      await handleSelectPlan(planSlug);
+    } else {
+      await handlePayosCheckout(planSlug);
+    }
+  };
 
   const handleSelectPlan = async (planSlug: string) => {
     if (!isAuthenticated) {
@@ -301,7 +327,7 @@ export function PricingPage() {
                   <Button
                     variant={isPopular ? 'primary' : 'outline'}
                     size="md"
-                    onClick={() => handleSelectPlan(plan.slug)}
+                    onClick={() => handleOpenPaymentModal(plan)}
                     disabled={
                       isCurrent || isLower || (isCreatingCheckout && selectedPlanSlug === plan.slug)
                     }
@@ -345,6 +371,27 @@ export function PricingPage() {
           );
         })}
       </div>
+
+      {/* Payment Method Selection Modal */}
+      {showPaymentMethodModal && selectedPlanForModal && (
+        <PaymentMethodModal
+          isOpen={showPaymentMethodModal}
+          onClose={() => {
+            setShowPaymentMethodModal(false);
+            setSelectedPlanForModal(null);
+          }}
+          planName={selectedPlanForModal.nameVi || selectedPlanForModal.name}
+          planSlug={selectedPlanForModal.slug}
+          priceFormatted={
+            billingCycle === 'yearly' && selectedPlanForModal.priceYearly > 0
+              ? `${selectedPlanForModal.priceYearly.toLocaleString('vi-VN')}đ/năm`
+              : `${(billingCycle === 'yearly' ? selectedPlanForModal.priceYearly / 12 : selectedPlanForModal.priceMonthly).toLocaleString('vi-VN')}đ/tháng`
+          }
+          billingCycle={billingCycle}
+          onConfirm={handleConfirmPaymentMethod}
+          isLoading={isCreatingCheckout || isCreatingPayosCheckout}
+        />
+      )}
 
       {/* VietQR Checkout Modal */}
       {showVietQrModal && payosData && (

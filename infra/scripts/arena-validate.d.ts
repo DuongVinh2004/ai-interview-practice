@@ -15,5 +15,11 @@ export interface ChallengeValidationResult {
   totalDurationMs?: number;
 }
 
-export function validateChallengeDir(dirPath: string): ChallengeValidationResult;
+export declare const SECRET_PATTERNS: RegExp[];
+export declare const NETWORK_PATTERNS: RegExp[];
+export declare const VALID_RUNTIMES: string[];
+
+export function validateChallengeDir(dirPath: string): Promise<ChallengeValidationResult>;
 export function findChallengeDirs(baseDir: string): string[];
+export function seedChallengePack(dirPath: string): Promise<boolean>;
+export function parseArgs(): { targetDir: string | null; seed: boolean; json: boolean };

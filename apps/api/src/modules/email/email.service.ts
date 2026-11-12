@@ -78,6 +78,46 @@ export class EmailService {
     return this.emailQueue.add('payment_receipt', { to, ...data });
   }
 
+  async sendPasswordResetEmail(
+    to: string,
+    data: {
+      userName: string;
+      resetUrl: string;
+      expiresInMinutes?: number;
+      language?: 'vi' | 'en';
+    },
+  ) {
+    this.logger.log(`Enqueuing password reset email to ${to}`);
+    return this.emailQueue.add(
+      'password_reset',
+      { to, ...data },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+      },
+    );
+  }
+
+  async sendEmailVerificationEmail(
+    to: string,
+    data: {
+      userName: string;
+      verificationUrl: string;
+      expiresInHours?: number;
+      language?: 'vi' | 'en';
+    },
+  ) {
+    this.logger.log(`Enqueuing email verification email to ${to}`);
+    return this.emailQueue.add(
+      'email_verification',
+      { to, ...data },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+      },
+    );
+  }
+
   async sendCustomEmail(to: string, subject: string, html: string, text?: string) {
     this.logger.log(`Enqueuing custom email to ${to}: ${subject}`);
     return this.emailQueue.add('custom', { to, subject, html, text });

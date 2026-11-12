@@ -10,6 +10,11 @@ export interface PendingXpItem {
   reason: string;
 }
 
+const getXpThresholdForLevel = (level: number): number => {
+  if (level <= 1) return 0;
+  return Math.floor(100 * Math.pow(level, 1.5));
+};
+
 const DEFAULT_BASELINE_PROFILE: GamificationProfileDto = {
   userId: '',
   totalXp: 0,
@@ -17,7 +22,7 @@ const DEFAULT_BASELINE_PROFILE: GamificationProfileDto = {
   levelTitle: 'Novice Candidate',
   levelTitleVi: 'Ứng viên Tập sự',
   currentLevelMinXp: 0,
-  nextLevelXp: 100,
+  nextLevelXp: 282,
   levelProgressPercent: 0,
   dailyXp: 0,
   dailyLoginClaimed: false,
@@ -134,12 +139,18 @@ export const useGamificationStore = create<GamificationState>((set, get) => {
       set(state => {
         const currentProfile = state.profile || DEFAULT_BASELINE_PROFILE;
         const newTotalXp = currentProfile.totalXp + amount;
-        const newLevel = Math.floor(Math.sqrt(newTotalXp / 100)) + 1;
-        const currentLevelMinXp = 100 * Math.pow(newLevel - 1, 2);
-        const nextLevelXp = 100 * Math.pow(newLevel, 2);
+
+        let newLevel = 1;
+        while (getXpThresholdForLevel(newLevel + 1) <= newTotalXp) {
+          newLevel++;
+        }
+        const currentLevelMinXp = getXpThresholdForLevel(newLevel);
+        const nextLevelXp = getXpThresholdForLevel(newLevel + 1);
         const progressPercent = Math.min(
           100,
-          Math.round(((newTotalXp - currentLevelMinXp) / (nextLevelXp - currentLevelMinXp)) * 100),
+          Math.round(
+            ((newTotalXp - currentLevelMinXp) / Math.max(1, nextLevelXp - currentLevelMinXp)) * 100,
+          ),
         );
 
         const isLevelUp = newLevel > currentProfile.currentLevel;

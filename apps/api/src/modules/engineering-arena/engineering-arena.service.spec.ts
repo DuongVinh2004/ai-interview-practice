@@ -4,6 +4,7 @@ import { ArenaChallengeRepository } from './repositories/arena-challenge.reposit
 import { ArenaSessionRepository } from './repositories/arena-session.repository';
 import { ArenaEvaluationService } from './services/arena-evaluation.service';
 import { ArenaSseService } from './services/arena-sse.service';
+import { ArenaAntiCheatService } from './services/arena-anti-cheat.service';
 import { WORKSPACE_RUNTIME } from './runtime/workspace-runtime.interface';
 import { ArenaAiAssistanceMode } from '@ai-interview/contracts';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
@@ -33,6 +34,12 @@ describe('EngineeringArenaService', () => {
   let sseService: {
     emitLog: jest.Mock;
     getSessionStream: jest.Mock;
+    flushBuffer: jest.Mock;
+    completeSession: jest.Mock;
+    clearSession: jest.Mock;
+  };
+  let antiCheatService: {
+    analyzeSession: jest.Mock;
   };
 
   const mockManifest = {
@@ -133,6 +140,19 @@ describe('EngineeringArenaService', () => {
     sseService = {
       emitLog: jest.fn(),
       getSessionStream: jest.fn().mockReturnValue({ subscribe: jest.fn() }),
+      flushBuffer: jest.fn().mockReturnValue([]),
+      completeSession: jest.fn().mockReturnValue([]),
+      clearSession: jest.fn(),
+    };
+
+    antiCheatService = {
+      analyzeSession: jest.fn().mockResolvedValue({
+        sessionId: 's1',
+        isSuspicious: false,
+        riskScore: 0,
+        flags: [],
+        analyzedAt: new Date().toISOString(),
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -143,6 +163,7 @@ describe('EngineeringArenaService', () => {
         { provide: WORKSPACE_RUNTIME, useValue: workspaceRuntime },
         { provide: ArenaEvaluationService, useValue: evaluationService },
         { provide: ArenaSseService, useValue: sseService },
+        { provide: ArenaAntiCheatService, useValue: antiCheatService },
       ],
     }).compile();
 
@@ -204,6 +225,37 @@ describe('EngineeringArenaService', () => {
       expect(result.status).toBe('PASSED');
       expect(workspaceRuntime.runAllowedCommand).toHaveBeenCalled();
     });
+
+    it('streams real-time execution log chunks via sseService during command execution', async () => {
+      sessionRepo.findSessionById.mockResolvedValue({
+        id: 's-stream-1',
+        userId: 'u1',
+        workspaceHandle: 'ws-1',
+        state: ArenaSessionLifecycleState.READY,
+        challengeVersion: { manifestJson: mockManifest },
+      });
+
+      workspaceRuntime.runAllowedCommand.mockImplementation(async (params: any) => {
+        params.onLogChunk?.({ type: 'stdout', data: 'Chunk 1\n' });
+        params.onLogChunk?.({ type: 'stdout', data: 'Chunk 2\n' });
+        return {
+          commandId: 'test',
+          exitCode: 0,
+          stdout: 'Chunk 1\nChunk 2\n',
+          stderr: '',
+          durationMs: 40,
+          testsTotal: 1,
+          testsPassed: 1,
+          testsFailed: 0,
+          testResults: [],
+          snapshotHash: 'hash',
+        };
+      });
+
+      await service.runCommand('s-stream-1', 'u1', { commandId: 'test' });
+      expect(sseService.emitLog).toHaveBeenCalledWith('s-stream-1', 'stdout', 'Chunk 1\n');
+      expect(sseService.emitLog).toHaveBeenCalledWith('s-stream-1', 'stdout', 'Chunk 2\n');
+    });
   });
 
   describe('getSessionSseStream', () => {
@@ -235,6 +287,30 @@ describe('EngineeringArenaService', () => {
       expect(evaluationService.submitAndEvaluate).toHaveBeenCalledWith('s1', 'u1', {
         explanation: 'fixed',
         finalFiles: [],
+      });
+    });
+  });
+
+  describe('analyzeAntiCheat', () => {
+    it('delegates to antiCheatService when caller owns session', async () => {
+      sessionRepo.findSessionById.mockResolvedValue({ id: 's1', userId: 'u1' });
+
+      const report = await service.analyzeAntiCheat('s1', 'u1', {
+        candidateFiles: [{ path: 'solution.ts', content: 'code' }],
+      });
+
+      expect(report.sessionId).toBe('s1');
+      expect(antiCheatService.analyzeSession).toHaveBeenCalledWith('s1', {
+        candidateFiles: [{ path: 'solution.ts', content: 'code' }],
+      });
+    });
+
+    it('throws 404 when session not found or access denied', async () => {
+      sessionRepo.findSessionById.mockResolvedValue(null);
+
+      await expect(service.analyzeAntiCheat('s-unknown', 'u1')).rejects.toMatchObject({
+        code: 'RESOURCE_NOT_FOUND',
+        status: 404,
       });
     });
   });

@@ -6,7 +6,7 @@ import { BillingService } from './billing.service';
 import { Public } from '../auth/decorators/public.decorator';
 
 @ApiTags('Billing & Subscriptions')
-@Controller('billing/webhooks')
+@Controller(['billing/webhooks', 'billing/webhook'])
 export class BillingWebhookController {
   constructor(
     private readonly stripeProvider: StripeProvider,

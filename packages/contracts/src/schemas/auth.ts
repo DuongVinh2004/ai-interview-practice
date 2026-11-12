@@ -133,3 +133,35 @@ export const MfaDisableDtoSchema = z.object({
 });
 
 export type MfaDisableDto = z.infer<typeof MfaDisableDtoSchema>;
+
+export const ForgotPasswordDtoSchema = z.object({
+  email: z.string().email('Invalid email address').max(255),
+});
+
+export type ForgotPasswordDto = z.infer<typeof ForgotPasswordDtoSchema>;
+
+export const ResetPasswordDtoSchema = z.object({
+  token: z.string().min(1, 'Reset token is required'),
+  newPassword: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(100)
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/,
+      'Password must contain at least one uppercase letter, one lowercase letter, and one number',
+    ),
+});
+
+export type ResetPasswordDto = z.infer<typeof ResetPasswordDtoSchema>;
+
+export const VerifyEmailDtoSchema = z.object({
+  token: z.string().min(1, 'Verification token is required'),
+});
+
+export type VerifyEmailDto = z.infer<typeof VerifyEmailDtoSchema>;
+
+export const ResendVerificationDtoSchema = z.object({
+  email: z.string().email('Invalid email address').max(255),
+});
+
+export type ResendVerificationDto = z.infer<typeof ResendVerificationDtoSchema>;

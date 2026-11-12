@@ -137,4 +137,56 @@ export class StreakReminderCron {
 
     return atRiskStreaks.length;
   }
+
+  /**
+   * Run hourly to send daily practice reminders based on user-configured reminderTime
+   */
+  @Cron(CronExpression.EVERY_HOUR)
+  async handleDailyPracticeReminders(overrideTime?: string): Promise<number> {
+    const now = new Date();
+    const currentTime = overrideTime || `${now.getHours().toString().padStart(2, '0')}:00`;
+    const hourPrefix = currentTime.split(':')[0];
+    const todayStr = now.toISOString().split('T')[0];
+    const lockKey = `cron:lock:practice-reminder:${todayStr}:${hourPrefix}`;
+    const LOCK_TTL_SECONDS = 3500; // ~1 hour distributed lock
+
+    const acquired = await this.acquireDistributedLock(lockKey, LOCK_TTL_SECONDS);
+    if (!acquired) {
+      this.logger.log(
+        `[REL-003] Practice reminder lock for ${todayStr} ${hourPrefix}:00 held by another replica. Skipping.`,
+      );
+      return 0;
+    }
+
+    this.logger.log(
+      `Executing daily practice reminders for target hour ${hourPrefix}:00 on ${todayStr}...`,
+    );
+
+    try {
+      const preferences = await this.prisma.notificationPreference.findMany({
+        where: {
+          dailyReminder: true,
+          OR: [{ reminderTime: currentTime }, { reminderTime: { startsWith: hourPrefix } }],
+        },
+      });
+
+      let sentCount = 0;
+      for (const pref of preferences) {
+        try {
+          await this.pushService.sendDailyPracticeReminder(pref.userId);
+          sentCount++;
+        } catch (err: any) {
+          this.logger.warn(
+            `Failed to send practice reminder to user ${pref.userId}: ${err.message}`,
+          );
+        }
+      }
+
+      this.logger.log(`Successfully sent daily practice reminders. Total sent: ${sentCount}`);
+      return sentCount;
+    } catch (err: any) {
+      this.logger.error(`Error in practice reminder cron: ${err.message}`, err.stack);
+      return 0;
+    }
+  }
 }

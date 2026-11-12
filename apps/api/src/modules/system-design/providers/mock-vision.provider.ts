@@ -92,6 +92,150 @@ export class MockVisionProvider implements MultimodalProvider, VisionProvider {
 
     const isVi = options.language === 'vi';
 
+    if (options.canvasData !== undefined && options.canvasData !== null) {
+      let canvas: any = options.canvasData;
+      if (typeof canvas === 'string') {
+        try {
+          canvas = JSON.parse(canvas);
+        } catch {
+          canvas = {};
+        }
+      }
+
+      const nodes: any[] = Array.isArray(canvas)
+        ? canvas
+        : Array.isArray(canvas?.nodes)
+          ? canvas.nodes
+          : Array.isArray(canvas?.elements)
+            ? canvas.elements
+            : [];
+
+      const annotationsList: any[] = Array.isArray(canvas?.annotations) ? canvas.annotations : [];
+
+      const rawJson = JSON.stringify(canvas).toLowerCase();
+
+      // Case 4: Empty diagram (no nodes)
+      if (nodes.length === 0) {
+        return {
+          overallScore: 1.0,
+          requirementsScore: 1.0,
+          highLevelScore: 1.0,
+          componentDetailScore: 1.0,
+          scalabilityScore: 1.0,
+          dataModelScore: 1.0,
+          summary: isVi
+            ? 'Sơ đồ rỗng, chưa có thành phần nào.'
+            : 'Empty diagram with no components.',
+          feedback: isVi
+            ? 'Vui lòng bổ sung các thành phần kiến trúc cơ bản.'
+            : 'Please add architectural components.',
+          detectedComponents: [],
+          strengths: [],
+          bottlenecks: isVi
+            ? ['Sơ đồ không có bất kỳ nút (node) nào']
+            : ['Diagram contains no nodes'],
+          recommendations: isVi
+            ? ['Thêm Load Balancer, Web Services và Database']
+            : ['Add Load Balancer, Services, and DB'],
+          annotations: [],
+        };
+      }
+
+      const hasDb =
+        nodes.some(n =>
+          /database|db|postgres|mysql|mongo|storage|rds|dynamo/.test(
+            `${n.type || ''} ${n.label || ''} ${n.name || ''}`.toLowerCase(),
+          ),
+        ) || /"type":\s*"database"|"database"|"postgres"|"mysql"/.test(rawJson);
+
+      const hasSpof =
+        Boolean(canvas?.hasSpof) ||
+        nodes.some(
+          n =>
+            Boolean(n.hasSpof) ||
+            /spof|single point/.test(
+              `${n.type || ''} ${n.label || ''} ${n.name || ''}`.toLowerCase(),
+            ),
+        ) ||
+        (!nodes.some(n =>
+          /load_balancer|load balancer|lb|gateway|alb|nginx/.test(
+            `${n.type || ''} ${n.label || ''} ${n.name || ''}`.toLowerCase(),
+          ),
+        ) &&
+          nodes.length > 0 &&
+          !nodes.some(n => /cache/.test(`${n.type || ''} ${n.label || ''}`.toLowerCase())));
+
+      const hasTradeoff =
+        annotationsList.some(a =>
+          /trade-off|tradeoff|cap theorem|availability|consistency/.test(
+            `${a.text || ''} ${a.label || ''} ${a.description || ''}`.toLowerCase(),
+          ),
+        ) || /trade-off|tradeoff|cap theorem/.test(rawJson);
+
+      // Rubric scores (scale 1.0 - 5.0)
+      const dataModelScore = hasDb ? 4.0 : 1.5;
+      const scalabilityScore = hasSpof ? 2.0 : 4.2;
+      const highLevelScore = hasTradeoff ? 4.2 : 3.8;
+      const requirementsScore = 3.8;
+      const componentDetailScore = 3.8;
+      const overallScore = Number(
+        (
+          (requirementsScore +
+            highLevelScore +
+            componentDetailScore +
+            scalabilityScore +
+            dataModelScore) /
+          5
+        ).toFixed(1),
+      );
+
+      return {
+        overallScore,
+        requirementsScore,
+        highLevelScore,
+        componentDetailScore,
+        scalabilityScore,
+        dataModelScore,
+        summary: isVi
+          ? 'Đánh giá kiến trúc hệ thống dựa trên topology các thành phần trên sơ đồ.'
+          : 'System design evaluated based on canvas topology and component distribution.',
+        feedback: isVi
+          ? 'Kiến trúc được phân tích dựa trên sự hiện diện của Load Balancer, Services, Caching, Storage và phân tích Trade-off.'
+          : 'Architecture analyzed based on LB, services, caching, storage tiers, and trade-off considerations.',
+        detectedComponents: nodes.map(n => n.label || n.name || n.type || 'Component'),
+        strengths: hasTradeoff
+          ? [
+              isVi
+                ? 'Có phân tích trade-off kiến trúc rõ ràng'
+                : 'Explicit architecture trade-off analysis',
+            ]
+          : [isVi ? 'Phân chia thành phần rõ ràng' : 'Clear component boundaries'],
+        bottlenecks: !hasDb
+          ? [isVi ? 'Thiếu tầng lưu trữ dữ liệu (Database)' : 'Missing database persistence layer']
+          : hasSpof
+            ? [
+                isVi
+                  ? 'Tồn tại điểm nghẽn đơn lẻ (Single Point of Failure)'
+                  : 'Single point of failure detected',
+              ]
+            : [],
+        recommendations: !hasDb
+          ? [
+              isVi
+                ? 'Bổ sung cơ sở dữ liệu quan hệ hoặc phân tán'
+                : 'Add relational or distributed database',
+            ]
+          : hasSpof
+            ? [
+                isVi
+                  ? 'Thêm Load Balancer và cụm dịch vụ dự phòng'
+                  : 'Add redundant instances and load balancer',
+              ]
+            : [],
+        annotations: [],
+      };
+    }
+
     return {
       overallScore: 8.5,
       requirementsScore: 8.5,

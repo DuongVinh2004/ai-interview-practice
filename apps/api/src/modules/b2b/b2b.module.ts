@@ -3,26 +3,32 @@ import { TenantService } from './services/tenant.service';
 import { CohortService } from './services/cohort.service';
 import { AssignmentService } from './services/assignment.service';
 import { CohortAnalyticsService } from './services/cohort-analytics.service';
+import { B2bChallengeService } from './services/b2b-challenge.service';
 import { TenantRoleGuard } from './guards/tenant-role.guard';
 import { TenantContextMiddleware } from './middleware/tenant-context.middleware';
 import { TenantController } from './controllers/tenant.controller';
 import { CohortController } from './controllers/cohort.controller';
 import { AssignmentController } from './controllers/assignment.controller';
 import { CohortAnalyticsController } from './controllers/cohort-analytics.controller';
+import { B2bChallengeController } from './controllers/b2b-challenge.controller';
 import { CohortAccessPolicy } from './policies/cohort-access.policy';
+import { EngineeringArenaModule } from '../engineering-arena/engineering-arena.module';
 
 @Module({
+  imports: [EngineeringArenaModule],
   controllers: [
     TenantController,
     CohortController,
     AssignmentController,
     CohortAnalyticsController,
+    B2bChallengeController,
   ],
   providers: [
     TenantService,
     CohortService,
     AssignmentService,
     CohortAnalyticsService,
+    B2bChallengeService,
     TenantRoleGuard,
     TenantContextMiddleware,
     CohortAccessPolicy,
@@ -32,6 +38,7 @@ import { CohortAccessPolicy } from './policies/cohort-access.policy';
     CohortService,
     AssignmentService,
     CohortAnalyticsService,
+    B2bChallengeService,
     TenantRoleGuard,
     CohortAccessPolicy,
   ],

@@ -56,6 +56,7 @@ export const EnvSchema = z.object({
   FEATURE_QUESTION_BANK: z.string().optional().default('true'),
   STRIPE_SECRET_KEY: z.string().optional().default(''),
   STRIPE_WEBHOOK_SECRET: z.string().optional().default(''),
+  STRIPE_LIVE_MODE: z.enum(['true', 'false']).optional().default('false'),
   JUDGE0_API_URL: z.string().optional().default(''),
   JUDGE0_API_KEY: z.string().optional().default(''),
   VOICE_STT_PROVIDER: z.string().optional().default('mock'),
@@ -83,6 +84,9 @@ export const EnvSchema = z.object({
   VISION_PROVIDER: z.string().optional().default('mock'),
   ARENA_WORKSPACE_RUNTIME: z.enum(['docker', 'deterministic']).optional().default('docker'),
   ARENA_DETERMINISTIC_FALLBACK: z.enum(['true', 'false']).optional().default('false'),
+  VAPID_PUBLIC_KEY: z.string().optional().default(''),
+  VAPID_PRIVATE_KEY: z.string().optional().default(''),
+  VAPID_SUBJECT: z.string().optional().default('mailto:support@ai-interview.com'),
 });
 
 export type EnvConfig = z.infer<typeof EnvSchema>;

@@ -16,6 +16,65 @@ export interface NetworkQuality {
   quality: 'EXCELLENT' | 'GOOD' | 'FAIR' | 'POOR';
 }
 
+const RECORDER_WORKLET_CODE = `
+class RecorderWorkletProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this.bufferSize = 2048;
+    this._bytesWritten = 0;
+    this._buffer = new Int16Array(this.bufferSize);
+    this.stopped = false;
+    this.port.onmessage = event => {
+      if (event.data?.type === 'flush') {
+        this.stopped = true;
+        if (this._bytesWritten > 0) {
+          const tail = this._buffer.slice(0, this._bytesWritten);
+          this.port.postMessage(tail.buffer, [tail.buffer]);
+          this._bytesWritten = 0;
+        }
+        this.port.postMessage({ type: 'flushed' });
+      } else if (event.data?.type === 'start') {
+        this.stopped = false;
+        this._bytesWritten = 0;
+      }
+    };
+  }
+  process(inputs) {
+    if (this.stopped) return true;
+    if (!inputs || inputs.length === 0) return true;
+    const input = inputs[0];
+    if (!input || input.length === 0) return true;
+    const channelData = input[0];
+    if (!channelData || channelData.length === 0) return true;
+    const numChannels = input.length;
+    for (let i = 0; i < channelData.length; i++) {
+      let sample = channelData[i];
+      if (numChannels > 1) {
+        let sum = sample;
+        for (let ch = 1; ch < numChannels; ch++) {
+          if (input[ch] && input[ch][i] !== undefined) {
+            sum += input[ch][i];
+          }
+        }
+        sample = sum / numChannels;
+      }
+      if (!Number.isFinite(sample)) {
+        sample = 0;
+      }
+      const clamped = Math.max(-1, Math.min(1, sample));
+      this._buffer[this._bytesWritten++] = clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff;
+      if (this._bytesWritten >= this.bufferSize) {
+        this.port.postMessage(this._buffer.buffer, [this._buffer.buffer]);
+        this._buffer = new Int16Array(this.bufferSize);
+        this._bytesWritten = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor('recorder-worklet', RecorderWorkletProcessor);
+`;
+
 export function useVoiceStreaming(interviewId?: string) {
   const [connectionStatus, setConnectionStatus] = useState<
     'DISCONNECTED' | 'CONNECTING' | 'LIVE' | 'ENDED' | 'ERROR'
@@ -63,9 +122,8 @@ export function useVoiceStreaming(interviewId?: string) {
   const aiSpeakingEndReceivedRef = useRef(false);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
-  const scriptProcessorRef = useRef<ScriptProcessorNode | null>(null);
-  const pingIntervalRef = useRef<any>(null);
-  const silenceTimerRef = useRef<any>(null);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const silenceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isMountedRef = useRef(true);
   const mediaGenerationRef = useRef(0);
 
@@ -134,15 +192,6 @@ export function useVoiceStreaming(interviewId?: string) {
         // ignore
       }
       workletNodeRef.current = null;
-    }
-    if (scriptProcessorRef.current) {
-      try {
-        scriptProcessorRef.current.onaudioprocess = null;
-        scriptProcessorRef.current.disconnect();
-      } catch {
-        // ignore
-      }
-      scriptProcessorRef.current = null;
     }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close().catch(() => {});
@@ -272,7 +321,7 @@ export function useVoiceStreaming(interviewId?: string) {
           const msg = JSON.parse(event.data);
           if (msg.type === VoiceEventType.CONNECTED) clearTimeout(connectTimeoutTimer);
           handleServerJsonEvent(msg);
-        } catch (e) {
+        } catch {
           // ignore
         }
       } else if (event.data instanceof ArrayBuffer) {
@@ -464,7 +513,7 @@ export function useVoiceStreaming(interviewId?: string) {
     }
   };
 
-  // 3. Microphone Capture with AudioWorkletNode & ScriptProcessor fallback
+  // 3. Microphone Capture with AudioWorkletNode (Plan B3)
   const startMicrophone = async () => {
     const generation = ++mediaGenerationRef.current;
     try {
@@ -509,84 +558,68 @@ export function useVoiceStreaming(interviewId?: string) {
 
       const source = audioCtx.createMediaStreamSource(stream);
 
-      // Attempt to load AudioWorkletProcessor
+      // AudioWorkletNode replaces legacy ScriptProcessorNode for ultra-low latency capture (Plan B3)
+      if (!audioCtx.audioWorklet) {
+        throw new Error('Trình duyệt không hỗ trợ AudioWorklet ghi âm.');
+      }
+
       let workletLoaded = false;
-      if (audioCtx.audioWorklet) {
+      try {
+        await audioCtx.audioWorklet.addModule('/worklets/recorderWorkletProcessor.js');
+        workletLoaded = true;
+      } catch {
         try {
-          await audioCtx.audioWorklet.addModule('/worklets/recorderWorkletProcessor.js');
-          if (generation !== mediaGenerationRef.current || !isMountedRef.current) return;
-          const workletNode = new AudioWorkletNode(audioCtx, 'recorder-worklet');
-          workletNodeRef.current = workletNode;
-
-          workletNode.port.onmessage = (event: MessageEvent) => {
-            if (event.data?.type === 'flushed') {
-              captureFlushRef.current?.();
-              return;
-            }
-            if (isMutedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
-              return;
-            const buffer = event.data as ArrayBuffer;
-            const int16 = new Int16Array(buffer);
-            let sum = 0;
-            for (let i = 0; i < int16.length; i++) {
-              sum += Math.abs(int16[i]);
-            }
-            const avg = sum / int16.length / 32768.0;
-            setCandidateVolume(avg);
-            const speaking = avg > 0.03;
-            setIsCandidateSpeaking(speaking);
-            if (speaking) {
-              setSilenceDurationSec(0);
-              setIsProlongedSilence(false);
-            }
-
-            wsRef.current.send(buffer);
-          };
-
-          source.connect(workletNode);
-          workletNode.connect(audioCtx.destination);
+          const blob = new Blob([RECORDER_WORKLET_CODE], { type: 'application/javascript' });
+          const blobUrl = URL.createObjectURL(blob);
+          await audioCtx.audioWorklet.addModule(blobUrl);
+          URL.revokeObjectURL(blobUrl);
           workletLoaded = true;
         } catch {
           workletLoaded = false;
         }
       }
+
       if (generation !== mediaGenerationRef.current || !isMountedRef.current) return;
-
-      // Fallback for environments without AudioWorklet support
-      if (!workletLoaded && typeof audioCtx.createScriptProcessor === 'function') {
-        const processor = audioCtx.createScriptProcessor(4096, 1, 1);
-        scriptProcessorRef.current = processor;
-
-        processor.onaudioprocess = e => {
-          if (isMutedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
-            return;
-
-          const inputData = e.inputBuffer.getChannelData(0);
-          const pcm16 = new Int16Array(inputData.length);
-          let sum = 0;
-          for (let i = 0; i < inputData.length; i++) {
-            const s = Math.max(-1, Math.min(1, inputData[i]));
-            pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-            sum += Math.abs(s);
-          }
-
-          const avgVolume = sum / inputData.length;
-          setCandidateVolume(avgVolume);
-          const speaking = avgVolume > 0.03;
-          setIsCandidateSpeaking(speaking);
-          if (speaking) {
-            setSilenceDurationSec(0);
-            setIsProlongedSilence(false);
-          }
-
-          wsRef.current.send(pcm16.buffer);
-        };
-
-        source.connect(processor);
-        processor.connect(audioCtx.destination);
+      if (!workletLoaded) {
+        throw new Error('Không thể tải AudioWorklet ghi âm.');
       }
+
+      const workletNode = new AudioWorkletNode(audioCtx, 'recorder-worklet');
+      workletNodeRef.current = workletNode;
+      workletNode.port.postMessage({ type: 'start' });
+
+      workletNode.port.onmessage = (event: MessageEvent) => {
+        if (event.data?.type === 'flushed') {
+          captureFlushRef.current?.();
+          return;
+        }
+        if (isMutedRef.current || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN)
+          return;
+        const buffer = event.data as ArrayBuffer;
+        const int16 = new Int16Array(buffer);
+        let sum = 0;
+        for (let i = 0; i < int16.length; i++) {
+          sum += Math.abs(int16[i]);
+        }
+        const avg = sum / int16.length / 32768.0;
+        setCandidateVolume(avg);
+        const speaking = avg > 0.03;
+        setIsCandidateSpeaking(speaking);
+        if (speaking) {
+          setSilenceDurationSec(0);
+          setIsProlongedSilence(false);
+        }
+
+        wsRef.current.send(buffer);
+      };
+
+      const silentGain = audioCtx.createGain();
+      silentGain.gain.value = 0;
+      source.connect(workletNode);
+      workletNode.connect(silentGain);
+      silentGain.connect(audioCtx.destination);
       setRecordingStatus('RECORDING');
-    } catch (err) {
+    } catch (err: any) {
       console.warn('Microphone capture initialization failed:', err);
       if (generation !== mediaGenerationRef.current) return;
       if (wsRef.current?.readyState === WebSocket.OPEN)
@@ -596,10 +629,20 @@ export function useVoiceStreaming(interviewId?: string) {
       recordingIdRef.current = null;
       stopMicrophone();
       setRecordingStatus('IDLE');
+      const isPermissionDenied =
+        err?.name === 'NotAllowedError' ||
+        err?.name === 'PermissionDeniedError' ||
+        /permission denied/i.test(err?.message || '');
       setErrorMessage(
-        err instanceof Error
-          ? err.message
-          : 'Không thể bật micro. Vui lòng kiểm tra quyền truy cập.',
+        isPermissionDenied
+          ? err?.message &&
+            err.message !== 'Permission denied' &&
+            err.message !== 'permission denied'
+            ? err.message
+            : 'Quyền truy cập micro bị từ chối. Vui lòng cấp quyền trong cài đặt trình duyệt để tiếp tục.'
+          : err instanceof Error
+            ? err.message
+            : 'Không thể bật micro. Vui lòng kiểm tra quyền truy cập.',
       );
     }
   };
@@ -621,11 +664,13 @@ export function useVoiceStreaming(interviewId?: string) {
         ctx.resume().catch(() => {});
       }
       // Unlock Web Audio engine via 1-sample silent sound
-      const buffer = ctx.createBuffer(1, 1, 24000);
-      const source = ctx.createBufferSource();
-      source.buffer = buffer;
-      source.connect(ctx.destination);
-      source.start(0);
+      if (typeof ctx.createBuffer === 'function' && typeof ctx.createBufferSource === 'function') {
+        const buffer = ctx.createBuffer(1, 1, 24000);
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0);
+      }
     } catch (e) {
       console.warn('[VoiceStreaming] AudioContext unlock warning:', e);
     }
@@ -735,6 +780,10 @@ export function useVoiceStreaming(interviewId?: string) {
 
   const startRecording = (turnId: string) => {
     if (recordingIdRef.current || wsRef.current?.readyState !== WebSocket.OPEN) return;
+    initPlaybackAudio();
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume().catch(() => {});
+    }
     triggerBargeIn();
     setErrorMessage(null);
     setRecordingText('');

@@ -7,8 +7,10 @@ import { useI18nStore } from '../../stores/i18n.store';
 import { useFocusModeStore } from '../../stores/focus-mode.store';
 import { LevelUpModal } from '../../features/gamification/components/LevelUpModal';
 import { BadgeUnlockToast } from '../../features/gamification/components/BadgeUnlockToast';
+import { XpPopup } from '../../features/gamification/components/XpPopup';
 import { PwaInstallPrompt } from '../../features/pwa/components/PwaInstallPrompt';
 import { PushNotificationPrompt } from '../../features/notifications/PushNotificationPrompt';
+import { PushPermissionBanner } from '../../features/notifications/PushPermissionBanner';
 
 export function AppLayout() {
   const { t, language } = useI18nStore();
@@ -26,6 +28,7 @@ export function AppLayout() {
 
       {!isFocusMode && <OfflineBanner />}
       {!isFocusMode && <Navbar />}
+      {!isFocusMode && <PushPermissionBanner />}
 
       {/* Floating Exit Focus Mode Button */}
       {isFocusMode && (
@@ -101,6 +104,7 @@ export function AppLayout() {
       {/* Plan C Overlays & Modals */}
       <LevelUpModal />
       <BadgeUnlockToast />
+      <XpPopup />
       <PwaInstallPrompt />
       <PushNotificationPrompt />
     </div>

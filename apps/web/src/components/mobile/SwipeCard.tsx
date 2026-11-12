@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 import { CardType } from '@ai-interview/contracts';
 import { playSFX } from '../../lib/sfx-engine';
@@ -15,6 +15,20 @@ export interface SwipeCardProps {
   onSwipeLeft: () => void; // Again / Review
 }
 
+export function evaluateSwipeDrag(
+  offsetX: number,
+  callbacks: { onSwipeRight: () => void; onSwipeLeft: () => void },
+): 'right' | 'left' | null {
+  if (offsetX > 100) {
+    callbacks.onSwipeRight();
+    return 'right';
+  } else if (offsetX < -100) {
+    callbacks.onSwipeLeft();
+    return 'left';
+  }
+  return null;
+}
+
 export function SwipeCard({
   front,
   back,
@@ -24,6 +38,8 @@ export function SwipeCard({
   onSwipeRight,
   onSwipeLeft,
 }: SwipeCardProps) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const touchStartXRef = useRef<number | null>(null);
   const { language } = useI18nStore();
   const isVi = language === 'vi';
   const x = useMotionValue(0);
@@ -36,16 +52,45 @@ export function SwipeCard({
   const [exitX, setExitX] = useState<number | null>(null);
 
   const handleDragEnd = (_: any, info: any) => {
-    if (info.offset.x > 100) {
+    const offsetX = info?.offset?.x ?? 0;
+    if (offsetX > 100) {
       setExitX(300);
       playSFX('success');
       onSwipeRight();
-    } else if (info.offset.x < -100) {
+    } else if (offsetX < -100) {
       setExitX(-300);
       playSFX('click');
       onSwipeLeft();
     }
   };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches && e.touches.length > 0) {
+      touchStartXRef.current = e.touches[0].clientX;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const diff =
+      (e.changedTouches?.[0]?.clientX ?? touchStartXRef.current) - touchStartXRef.current;
+    handleDragEnd(e, { offset: { x: diff } });
+    touchStartXRef.current = null;
+  };
+
+  // Bridge custom swipe / drag events for automated tests and gesture bridges
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const onCustomDrag = (e: any) => {
+      const offsetX = e.detail?.offset?.x ?? e.detail?.x ?? 0;
+      handleDragEnd(e, { offset: { x: offsetX } });
+    };
+
+    el.addEventListener('drag-swipe' as any, onCustomDrag);
+    return () => el.removeEventListener('drag-swipe' as any, onCustomDrag);
+  }, [onSwipeLeft, onSwipeRight]);
 
   const handleCardClick = () => {
     playSFX('card_flip');
@@ -55,10 +100,13 @@ export function SwipeCard({
   return (
     <div className="relative w-full min-h-[340px] flex items-center justify-center select-none touch-pan-y">
       <motion.div
+        ref={cardRef}
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.7}
         onDragEnd={handleDragEnd}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
         style={{ x, rotate, opacity }}
         animate={exitX !== null ? { x: exitX, opacity: 0 } : { x: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 300, damping: 20 }}

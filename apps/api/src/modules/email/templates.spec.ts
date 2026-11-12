@@ -3,6 +3,8 @@ import { WelcomeEmail } from './templates/WelcomeEmail';
 import { InterviewCompletionEmail } from './templates/InterviewCompletionEmail';
 import { StreakWarningEmail } from './templates/StreakWarningEmail';
 import { PaymentReceiptEmail } from './templates/PaymentReceiptEmail';
+import { PasswordResetEmail } from './templates/PasswordResetEmail';
+import { EmailVerificationEmail } from './templates/EmailVerificationEmail';
 
 describe('React Email Templates Rendering (Module B2)', () => {
   it('renders WelcomeEmail in Vietnamese and English', async () => {
@@ -72,5 +74,57 @@ describe('React Email Templates Rendering (Module B2)', () => {
     expect(htmlVnd).toContain('INV-VN-2026');
     expect(htmlVnd).toContain('1.990.000 VND');
     expect(htmlVnd).toContain('VietQR (PayOS)');
+  });
+
+  it('renders PasswordResetEmail in Vietnamese and English', async () => {
+    const htmlVi = renderEmail(
+      PasswordResetEmail({
+        userName: 'Minh Tran',
+        resetUrl: 'https://ai-interview.dev/reset-password?token=xyz123',
+        expiresInMinutes: 60,
+        language: 'vi',
+      }),
+    );
+    expect(htmlVi).toContain('Minh Tran');
+    expect(htmlVi).toContain('Đặt Lại Mật Khẩu');
+    expect(htmlVi).toContain('xyz123');
+
+    const htmlEn = renderEmail(
+      PasswordResetEmail({
+        userName: 'Jane Doe',
+        resetUrl: 'https://ai-interview.dev/reset-password?token=abc456',
+        expiresInMinutes: 30,
+        language: 'en',
+      }),
+    );
+    expect(htmlEn).toContain('Jane Doe');
+    expect(htmlEn).toContain('Password Reset');
+    expect(htmlEn).toContain('abc456');
+  });
+
+  it('renders EmailVerificationEmail in Vietnamese and English', async () => {
+    const htmlVi = renderEmail(
+      EmailVerificationEmail({
+        userName: 'Minh Tran',
+        verificationUrl: 'https://ai-interview.dev/verify-email?token=ver123',
+        expiresInHours: 24,
+        language: 'vi',
+      }),
+    );
+    expect(htmlVi).toContain('Minh Tran');
+    expect(htmlVi).toContain('Xác thực');
+    expect(htmlVi).toContain('ver123');
+
+    const htmlEn = renderEmail(
+      EmailVerificationEmail({
+        userName: 'Jane Doe',
+        verificationUrl: 'https://ai-interview.dev/verify-email?token=ver456',
+        expiresInHours: 48,
+        language: 'en',
+      }),
+    );
+    expect(htmlEn).toContain('Jane Doe');
+    expect(htmlEn).toContain('Verify');
+    expect(htmlEn).toContain('ver456');
   });
 });

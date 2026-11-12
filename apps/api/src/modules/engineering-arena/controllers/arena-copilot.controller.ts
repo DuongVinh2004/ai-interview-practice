@@ -1,6 +1,10 @@
 import { Controller, Post, Body, UseGuards, HttpStatus, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
-import { ArenaCopilotService, CopilotQueryRequest } from '../services/arena-copilot.service';
+import {
+  ArenaCopilotService,
+  CopilotQueryRequest,
+  CopilotPatchProposalRequest,
+} from '../services/arena-copilot.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
@@ -17,5 +21,15 @@ export class ArenaCopilotController {
   @ApiResponse({ status: HttpStatus.OK, description: 'Copilot guidance response' })
   async askCopilot(@CurrentUser('id') userId: string, @Body() body: CopilotQueryRequest) {
     return this.copilotService.askCopilot(userId, body);
+  }
+
+  @Post('propose-patch')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Request controlled patch proposal for user review without direct workspace mutation',
+  })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Proposed patch diff and explanation' })
+  async proposePatch(@CurrentUser('id') userId: string, @Body() body: CopilotPatchProposalRequest) {
+    return this.copilotService.proposePatch(userId, body);
   }
 }

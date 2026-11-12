@@ -84,5 +84,123 @@ describe('BadgeService (Plan C Gamification)', () => {
         expect.objectContaining({ userId }),
       );
     });
+
+    it('should unlock badge with eq operator (code_all_tests_passed)', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+
+      prismaMock.badgeDefinition.findMany.mockResolvedValue([
+        {
+          id: 'badge-polyglot',
+          slug: 'polyglot-coder',
+          name: 'Code Wizard',
+          nameVi: 'Phù Thủy Mã Nguồn',
+          description: 'Desc',
+          descriptionVi: 'Desc VI',
+          iconUrl: '💻',
+          category: 'CODING',
+          xpReward: 50,
+          isSecret: false,
+          criteria: { metric: 'code_all_tests_passed', op: 'eq', value: true },
+          unlocks: [],
+        },
+      ]);
+
+      prismaMock.userBadgeUnlock.create.mockResolvedValue({
+        id: 'unlock-2',
+        userId,
+        badgeId: 'badge-polyglot',
+        unlockedAt: new Date(),
+      });
+
+      const unlocked = await service.checkAndUnlockBadges(userId, 'code_all_tests_passed', true);
+
+      expect(unlocked.length).toBe(1);
+      expect(unlocked[0].slug).toBe('polyglot-coder');
+      expect(xpServiceMock.awardXp).toHaveBeenCalledWith(
+        userId,
+        50,
+        expect.any(String),
+        expect.stringContaining('Phù Thủy Mã Nguồn'),
+      );
+    });
+
+    it('should unlock badge with between operator', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+
+      prismaMock.badgeDefinition.findMany.mockResolvedValue([
+        {
+          id: 'badge-between',
+          slug: 'score-master',
+          name: 'Score Master',
+          nameVi: 'Bậc Thầy Điểm Số',
+          description: 'Score between 80 and 100',
+          descriptionVi: 'Điểm từ 80 đến 100',
+          iconUrl: '🌟',
+          category: 'INTERVIEW',
+          xpReward: 75,
+          isSecret: false,
+          criteria: { metric: 'overall_score', op: 'between', value: [80, 100] },
+          unlocks: [],
+        },
+      ]);
+
+      prismaMock.userBadgeUnlock.create.mockResolvedValue({
+        id: 'unlock-3',
+        userId,
+        badgeId: 'badge-between',
+        unlockedAt: new Date(),
+      });
+
+      const unlocked = await service.checkAndUnlockBadges(userId, 'overall_score', 85);
+      expect(unlocked.length).toBe(1);
+      expect(unlocked[0].slug).toBe('score-master');
+    });
+
+    it('should not unlock when criteria is not met or badge already unlocked', async () => {
+      const userId = '11111111-1111-1111-1111-111111111111';
+
+      prismaMock.badgeDefinition.findMany.mockResolvedValue([
+        {
+          id: 'badge-streak-7',
+          slug: 'streak-7',
+          name: '7-Day Scholar',
+          nameVi: 'Học Giả 7 Ngày',
+          description: 'Desc',
+          descriptionVi: 'Desc VI',
+          iconUrl: '⚡',
+          category: 'STREAK',
+          xpReward: 100,
+          isSecret: false,
+          criteria: { metric: 'current_streak', op: 'gte', value: 7 },
+          unlocks: [],
+        },
+        {
+          id: 'badge-already-unlocked',
+          slug: 'first-blood',
+          name: 'First Blood',
+          nameVi: 'Khởi Đầu Nan',
+          description: 'Desc',
+          descriptionVi: 'Desc VI',
+          iconUrl: '🎯',
+          category: 'INTERVIEW',
+          xpReward: 50,
+          isSecret: false,
+          criteria: { metric: 'completed_interviews', op: 'gte', value: 1 },
+          unlocks: [{ id: 'prev-unlock', unlockedAt: new Date() }],
+        },
+      ]);
+
+      // Test value not meeting criteria (5 < 7)
+      const unlockedFail = await service.checkAndUnlockBadges(userId, 'current_streak', 5);
+      expect(unlockedFail.length).toBe(0);
+
+      // Test already unlocked badge
+      const unlockedAlready = await service.checkAndUnlockBadges(
+        userId,
+        'completed_interviews',
+        10,
+      );
+      expect(unlockedAlready.length).toBe(0);
+    });
   });
 });

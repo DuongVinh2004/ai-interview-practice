@@ -15,15 +15,22 @@ export class OpenAiVisionProvider implements VisionProvider {
   private readonly model: string;
 
   constructor(private readonly configService: ConfigService) {
-    const apiKey =
-      this.configService.get<string>('vision.openaiApiKey') ||
-      this.configService.get<string>('ai.openaiApiKey') ||
-      process.env.OPENAI_API_KEY ||
-      '';
+    const configKey =
+      this.configService.get<string>('vision.openaiApiKey') ??
+      this.configService.get<string>('ai.openaiApiKey');
+    const apiKey = configKey !== undefined ? configKey : process.env.OPENAI_API_KEY || '';
+    const baseURL =
+      this.configService.get<string>('vision.openaiBaseUrl') ||
+      this.configService.get<string>('ai.openaiBaseUrl') ||
+      process.env.OPENAI_BASE_URL;
     this.model = this.configService.get<string>('vision.openaiVisionModel') || 'gpt-4o';
 
-    if (apiKey && !apiKey.includes('mock')) {
-      this.client = new OpenAI({ apiKey, timeout: 35000 });
+    if (apiKey && !apiKey.includes('mock') && apiKey.trim().length > 0) {
+      this.client = new OpenAI({
+        apiKey,
+        ...(baseURL ? { baseURL } : {}),
+        timeout: 35000,
+      });
     }
   }
 
@@ -64,6 +71,28 @@ Provide structured JSON response with:
   [{ x: number (percentage 0-100), y: number (percentage 0-100), width: number, height: number, label: string, severity: "critical" | "warning" | "suggestion" | "good", suggestion: string }]
 `;
 
+    const rawImage = (options.imageUrl || options.imageBase64 || '').trim();
+    let formattedImageUrl: string;
+    if (
+      rawImage.startsWith('data:') ||
+      rawImage.startsWith('http://') ||
+      rawImage.startsWith('https://')
+    ) {
+      formattedImageUrl = rawImage;
+    } else if (rawImage.startsWith('s3://')) {
+      const withoutScheme = rawImage.replace(/^s3:\/\//, '');
+      const slashIndex = withoutScheme.indexOf('/');
+      if (slashIndex !== -1) {
+        const bucket = withoutScheme.substring(0, slashIndex);
+        const key = withoutScheme.substring(slashIndex + 1);
+        formattedImageUrl = `https://${bucket}.s3.amazonaws.com/${key}`;
+      } else {
+        formattedImageUrl = `https://s3.amazonaws.com/${withoutScheme}`;
+      }
+    } else {
+      formattedImageUrl = `data:image/png;base64,${rawImage}`;
+    }
+
     const response = await this.client.chat.completions.create({
       model: this.model,
       response_format: { type: 'json_object' },
@@ -75,9 +104,7 @@ Provide structured JSON response with:
             {
               type: 'image_url',
               image_url: {
-                url: options.imageBase64.startsWith('data:')
-                  ? options.imageBase64
-                  : `data:image/png;base64,${options.imageBase64}`,
+                url: formattedImageUrl,
                 detail: 'high',
               },
             },
@@ -87,23 +114,64 @@ Provide structured JSON response with:
     });
 
     const content = response.choices[0]?.message?.content || '{}';
-    const parsed = JSON.parse(content);
+    const cleanJson = content
+      .trim()
+      .replace(/^```(?:json)?\s*/i, '')
+      .replace(/\s*```$/i, '')
+      .trim();
+    let parsed: any;
+    try {
+      parsed = JSON.parse(cleanJson);
+    } catch {
+      this.logger.warn('Failed to parse OpenAI Vision response as JSON, falling back to defaults');
+      parsed = {};
+    }
+
+    const parseScore = (val: any, fallback = 8.0): number => {
+      const num = Number(val);
+      return Number.isFinite(num) && num >= 0 && num <= 10 ? num : fallback;
+    };
+
+    const overallScore = parseScore(parsed.overallScore, 8.0);
+    const requirementsScore = parseScore(parsed.requirementsScore, overallScore);
+    const highLevelScore = parseScore(parsed.highLevelScore, overallScore);
+    const componentDetailScore = parseScore(parsed.componentDetailScore, overallScore);
+    const scalabilityScore = parseScore(parsed.scalabilityScore, overallScore);
+    const dataModelScore = parseScore(parsed.dataModelScore, overallScore);
+
+    const annotations = Array.isArray(parsed.annotations)
+      ? parsed.annotations.map((a: any) => ({
+          x: Number(a.x) || 0,
+          y: Number(a.y) || 0,
+          width: Number(a.width) || 10,
+          height: Number(a.height) || 10,
+          label: String(a.label || 'Architecture Note'),
+          severity: ['critical', 'warning', 'suggestion', 'good', 'info', 'error'].includes(
+            a.severity,
+          )
+            ? a.severity
+            : 'suggestion',
+          suggestion: a.suggestion || a.comment || '',
+          comment: a.comment || a.suggestion || '',
+          componentName: a.componentName || a.label || undefined,
+        }))
+      : [];
 
     return {
       usageTokens: response.usage?.total_tokens,
-      overallScore: Number(parsed.overallScore) || 8.0,
-      requirementsScore: Number(parsed.requirementsScore) || 8.0,
-      highLevelScore: Number(parsed.highLevelScore) || 8.0,
-      componentDetailScore: Number(parsed.componentDetailScore) || 8.0,
-      scalabilityScore: Number(parsed.scalabilityScore) || 8.0,
-      dataModelScore: Number(parsed.dataModelScore) || 8.0,
+      overallScore,
+      requirementsScore,
+      highLevelScore,
+      componentDetailScore,
+      scalabilityScore,
+      dataModelScore,
       summary: parsed.summary || 'Architecture diagram evaluated.',
       feedback: parsed.feedback || '',
-      detectedComponents: parsed.detectedComponents || [],
-      strengths: parsed.strengths || [],
-      bottlenecks: parsed.bottlenecks || [],
-      recommendations: parsed.recommendations || [],
-      annotations: parsed.annotations || [],
+      detectedComponents: Array.isArray(parsed.detectedComponents) ? parsed.detectedComponents : [],
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+      bottlenecks: Array.isArray(parsed.bottlenecks) ? parsed.bottlenecks : [],
+      recommendations: Array.isArray(parsed.recommendations) ? parsed.recommendations : [],
+      annotations,
     };
   }
 }

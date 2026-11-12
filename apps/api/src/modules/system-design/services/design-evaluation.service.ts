@@ -53,6 +53,7 @@ export class DesignEvaluationService {
     }
 
     const latestSnapshot = session.snapshots[0];
+    const imageInput = latestSnapshot?.imageUrl || 'data:image/png;base64,mock';
     const visionResult = await this.visionEntitlements.evaluate({
       userId,
       idempotencyKey,
@@ -60,7 +61,8 @@ export class DesignEvaluationService {
       interviewId,
       provider: this.visionProvider,
       options: {
-        imageBase64: latestSnapshot?.imageUrl || 'data:image/png;base64,mock',
+        imageBase64: imageInput,
+        imageUrl: imageInput,
         canvasData: latestSnapshot?.canvasStateJson,
         problemTitle: session.initialPrompt || undefined,
       },
@@ -172,6 +174,7 @@ export class DesignEvaluationService {
       provider: this.visionProvider,
       options: {
         imageBase64: dto.imageUrl,
+        imageUrl: dto.imageUrl,
         canvasData: dto.canvasData,
         problemTitle: session.initialPrompt || 'Distributed System Design',
         language: dto.language || 'vi',
@@ -229,6 +232,13 @@ export class DesignEvaluationService {
     return {
       id: evalRecord.id,
       sessionId: evalRecord.sessionId,
+      scores: {
+        requirements: evalRecord.requirementsScore ?? visionResult.requirementsScore,
+        highLevelArchitecture: evalRecord.highLevelScore ?? visionResult.highLevelScore,
+        componentDetail: evalRecord.componentDetailScore ?? visionResult.componentDetailScore,
+        scalability: evalRecord.scalabilityScore ?? visionResult.scalabilityScore,
+        dataModel: evalRecord.dataModelScore ?? visionResult.dataModelScore,
+      },
       overallScore: evalRecord.overallScore,
       requirementsScore: evalRecord.requirementsScore ?? visionResult.requirementsScore,
       highLevelScore: evalRecord.highLevelScore ?? visionResult.highLevelScore,

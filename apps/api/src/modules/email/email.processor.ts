@@ -7,6 +7,8 @@ import { WelcomeEmail } from './templates/WelcomeEmail';
 import { InterviewCompletionEmail } from './templates/InterviewCompletionEmail';
 import { StreakWarningEmail } from './templates/StreakWarningEmail';
 import { PaymentReceiptEmail } from './templates/PaymentReceiptEmail';
+import { PasswordResetEmail } from './templates/PasswordResetEmail';
+import { EmailVerificationEmail } from './templates/EmailVerificationEmail';
 
 @Processor('email')
 export class EmailProcessor extends WorkerHost {
@@ -99,6 +101,40 @@ export class EmailProcessor extends WorkerHost {
             lang === 'vi'
               ? `🧾 Biên lai thanh toán thành công - Gói ${job.data.planName || 'Dịch vụ'}`
               : `🧾 Payment Confirmation & Receipt - ${job.data.planName || 'Plan'}`;
+        }
+        break;
+
+      case 'password_reset':
+        html = renderEmail(
+          PasswordResetEmail({
+            userName: job.data.userName || 'Developer',
+            resetUrl: job.data.resetUrl,
+            expiresInMinutes: job.data.expiresInMinutes || 60,
+            language: lang,
+          }),
+        );
+        if (!job.data?.subject) {
+          subject =
+            lang === 'vi'
+              ? '🔒 Đặt lại mật khẩu tài khoản AI Interview Practice'
+              : '🔒 Reset your AI Interview Practice password';
+        }
+        break;
+
+      case 'email_verification':
+        html = renderEmail(
+          EmailVerificationEmail({
+            userName: job.data.userName || 'Developer',
+            verificationUrl: job.data.verificationUrl,
+            expiresInHours: job.data.expiresInHours || 24,
+            language: lang,
+          }),
+        );
+        if (!job.data?.subject) {
+          subject =
+            lang === 'vi'
+              ? '✉️ Xác thực địa chỉ email tài khoản AI Interview Practice'
+              : '✉️ Verify your AI Interview Practice email';
         }
         break;
 

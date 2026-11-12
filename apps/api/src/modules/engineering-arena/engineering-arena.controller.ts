@@ -14,7 +14,8 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { EngineeringArenaService } from './engineering-arena.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { StartArenaSessionRequest } from '@ai-interview/contracts';
+import { StartArenaSessionRequest, ArenaAnalyzeAntiCheatRequest } from '@ai-interview/contracts';
+import { SseTokenSecurityGuard } from '../platform/sse/sse-token-security.guard';
 
 @ApiTags('Engineering Arena')
 @ApiBearerAuth()
@@ -52,9 +53,17 @@ export class EngineeringArenaController {
     return this.arenaService.getSession(sessionId, userId);
   }
 
+  @UseGuards(SseTokenSecurityGuard)
   @Sse('sessions/:id/stream')
   @ApiOperation({ summary: 'Subscribe to real-time SSE execution logs for session' })
   streamSessionLogs(@CurrentUser('id') userId: string, @Param('id') sessionId: string) {
+    return this.arenaService.getSessionSseStream(sessionId, userId);
+  }
+
+  @UseGuards(SseTokenSecurityGuard)
+  @Sse('sessions/:id/events')
+  @ApiOperation({ summary: 'Alias: Subscribe to real-time SSE execution logs for session' })
+  streamSessionEvents(@CurrentUser('id') userId: string, @Param('id') sessionId: string) {
     return this.arenaService.getSessionSseStream(sessionId, userId);
   }
 
@@ -80,5 +89,17 @@ export class EngineeringArenaController {
     @Body() body: { explanation?: string; finalFiles: Array<{ path: string; content: string }> },
   ) {
     return this.arenaService.submitSolution(sessionId, userId, body);
+  }
+
+  @Post('sessions/:id/anti-cheat/analyze')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Run anti-cheat and forensic plagiarism analysis for session' })
+  @ApiResponse({ status: HttpStatus.OK, description: 'Anti-cheat forensic report' })
+  async analyzeAntiCheat(
+    @CurrentUser('id') userId: string,
+    @Param('id') sessionId: string,
+    @Body() body?: ArenaAnalyzeAntiCheatRequest,
+  ) {
+    return this.arenaService.analyzeAntiCheat(sessionId, userId, body);
   }
 }

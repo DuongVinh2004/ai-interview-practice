@@ -1,8 +1,9 @@
-import { Inject, Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { Inject, Injectable, Optional, HttpStatus, Logger } from '@nestjs/common';
 import { ArenaSessionRepository } from '../repositories/arena-session.repository';
 import { WORKSPACE_RUNTIME, WorkspaceRuntime } from '../runtime/workspace-runtime.interface';
 import { ArenaScoringEngine } from '../scoring/arena-scoring-engine';
 import { ArenaSessionStateMachine } from '../state-machine/arena-session-state-machine';
+import { ArenaAntiCheatService } from './arena-anti-cheat.service';
 import {
   ArenaSessionState,
   ArenaSubmitSolutionRequest,
@@ -21,6 +22,7 @@ export class ArenaEvaluationService {
   constructor(
     private readonly sessionRepo: ArenaSessionRepository,
     @Inject(WORKSPACE_RUNTIME) private readonly workspaceRuntime: WorkspaceRuntime,
+    @Optional() private readonly antiCheatService?: ArenaAntiCheatService,
   ) {}
 
   async submitAndEvaluate(
@@ -141,6 +143,18 @@ export class ArenaEvaluationService {
       skillEvidences,
     });
 
+    let forensicRiskScore: number | undefined;
+    if (this.antiCheatService) {
+      try {
+        const antiCheatReport = await this.antiCheatService.analyzeSession(sessionId, {
+          candidateFiles: request.finalFiles,
+        });
+        forensicRiskScore = antiCheatReport.riskScore;
+      } catch (err) {
+        this.logger.warn(`Failed to execute anti-cheat analysis on session ${sessionId}: ${err}`);
+      }
+    }
+
     return {
       id: evaluation.id,
       sessionId,
@@ -149,6 +163,7 @@ export class ArenaEvaluationService {
       aiFeedbackSummary,
       rubricCriteriaFeedback,
       skillEvidences,
+      forensicRiskScore,
       evaluatedAt: evaluation.createdAt.toISOString(),
     };
   }

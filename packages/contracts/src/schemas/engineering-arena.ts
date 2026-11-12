@@ -8,6 +8,7 @@ import {
   ArenaActionEventType,
   ArenaAiAssistanceMode,
   ArenaSandboxMode,
+  ArenaCollaborativeRole,
 } from '../enums';
 
 // ---------------------------------------------------------------------------
@@ -248,6 +249,148 @@ export const ArenaEvaluationResponseSchema = z.object({
     }),
   ),
   skillEvidences: z.array(ArenaSkillEvidenceDtoSchema),
+  forensicRiskScore: z.number().min(0).max(100).optional(),
   evaluatedAt: z.string().datetime(),
 });
 export type ArenaEvaluationResponse = z.infer<typeof ArenaEvaluationResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Anti-Cheat & Forensic Plagiarism Schemas
+// ---------------------------------------------------------------------------
+
+export const CodeSimilarityMatchSchema = z.object({
+  targetSessionId: z.string().optional(),
+  targetFile: z.string().min(1),
+  sourceFile: z.string().min(1),
+  similarityScore: z.number().min(0).max(1),
+  matchedFingerprints: z.number().int().min(0),
+  totalFingerprints: z.number().int().min(0),
+  matchedLines: z.array(z.tuple([z.number().int(), z.number().int()])).optional(),
+  evidence: z.string().optional(),
+});
+export type CodeSimilarityMatch = z.infer<typeof CodeSimilarityMatchSchema>;
+
+export const PlagiarismReportSchema = z.object({
+  sessionId: z.string(),
+  isPlagiarized: z.boolean(),
+  highestSimilarityScore: z.number().min(0).max(1),
+  forensicRiskScore: z.number().min(0).max(100).default(0),
+  matches: z.array(CodeSimilarityMatchSchema).default([]),
+  analyzedAt: z.string().datetime(),
+});
+export type PlagiarismReport = z.infer<typeof PlagiarismReportSchema>;
+
+export const ArenaAntiCheatFlagSchema = z.object({
+  ruleId: z.string(),
+  description: z.string(),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+export type ArenaAntiCheatFlag = z.infer<typeof ArenaAntiCheatFlagSchema>;
+
+export const ArenaAntiCheatReportSchema = z.object({
+  sessionId: z.string(),
+  isSuspicious: z.boolean(),
+  riskScore: z.number().min(0).max(100),
+  flags: z.array(ArenaAntiCheatFlagSchema),
+  plagiarismReport: PlagiarismReportSchema.optional(),
+  analyzedAt: z.string().datetime(),
+});
+export type ArenaAntiCheatReport = z.infer<typeof ArenaAntiCheatReportSchema>;
+
+export const ArenaAnalyzeAntiCheatRequestSchema = z.object({
+  candidateFiles: z
+    .array(
+      z.object({
+        path: z.string().min(1),
+        content: z.string(),
+      }),
+    )
+    .optional(),
+  comparisonSnippets: z
+    .array(
+      z.object({
+        sourceId: z.string().optional(),
+        file: z.string().min(1),
+        content: z.string(),
+      }),
+    )
+    .optional(),
+  kGramSize: z.number().int().min(2).max(100).optional(),
+  windowSize: z.number().int().min(1).max(50).optional(),
+});
+export type ArenaAnalyzeAntiCheatRequest = z.infer<typeof ArenaAnalyzeAntiCheatRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// 3.3 Collaborative Engineering Arena (Multiplayer / Mentor Room) Schemas
+// ---------------------------------------------------------------------------
+
+export const ArenaJoinRoomRequestSchema = z.object({
+  roomId: z.string().min(1),
+  role: z.nativeEnum(ArenaCollaborativeRole).default(ArenaCollaborativeRole.HOST),
+  passcode: z.string().optional(),
+});
+export type ArenaJoinRoomRequest = z.infer<typeof ArenaJoinRoomRequestSchema>;
+
+export const ArenaCollaborativeParticipantSchema = z.object({
+  socketId: z.string(),
+  userId: z.string(),
+  displayName: z.string(),
+  avatarUrl: z.string().optional(),
+  role: z.nativeEnum(ArenaCollaborativeRole),
+  color: z.string(),
+  joinedAt: z.string().datetime(),
+});
+export type ArenaCollaborativeParticipant = z.infer<typeof ArenaCollaborativeParticipantSchema>;
+
+export const ArenaRoomPresenceSchema = z.object({
+  roomId: z.string(),
+  hostUserId: z.string(),
+  participants: z.array(ArenaCollaborativeParticipantSchema),
+  activeFile: z.string().optional(),
+  updatedAt: z.string().datetime(),
+});
+export type ArenaRoomPresence = z.infer<typeof ArenaRoomPresenceSchema>;
+
+export const ArenaCursorCoordinatePayloadSchema = z.object({
+  roomId: z.string(),
+  userId: z.string(),
+  file: z.string().min(1),
+  line: z.number().int().min(1),
+  column: z.number().int().min(1),
+  selectionEndLine: z.number().int().min(1).optional(),
+  selectionEndColumn: z.number().int().min(1).optional(),
+  timestamp: z.number(),
+});
+export type ArenaCursorCoordinatePayload = z.infer<typeof ArenaCursorCoordinatePayloadSchema>;
+
+export const ArenaCodeChangePayloadSchema = z.object({
+  roomId: z.string(),
+  userId: z.string(),
+  file: z.string().min(1),
+  content: z.string(),
+  patch: z.string().optional(),
+  version: z.number().int().min(0),
+  timestamp: z.number(),
+});
+export type ArenaCodeChangePayload = z.infer<typeof ArenaCodeChangePayloadSchema>;
+
+export const ArenaSharedTestBroadcastSchema = z.object({
+  roomId: z.string(),
+  triggeredBy: z.object({
+    userId: z.string(),
+    displayName: z.string(),
+    role: z.nativeEnum(ArenaCollaborativeRole),
+  }),
+  commandId: z.string(),
+  status: z.nativeEnum(ArenaRunStatus),
+  stdout: z.string().default(''),
+  stderr: z.string().default(''),
+  durationMs: z.number().int().default(0),
+  testsTotal: z.number().int().default(0),
+  testsPassed: z.number().int().default(0),
+  testsFailed: z.number().int().default(0),
+  testResults: z.array(ArenaTestResultSchema).default([]),
+  timestamp: z.number(),
+});
+export type ArenaSharedTestBroadcast = z.infer<typeof ArenaSharedTestBroadcastSchema>;

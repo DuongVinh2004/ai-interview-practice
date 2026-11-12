@@ -349,6 +349,58 @@ describe('Stripe Webhook Handlers & Deduplication (P1-005, P2-001)', () => {
     });
   });
 
+  it('processes customer.subscription.updated to sync status, cancelAtPeriodEnd, and period boundaries', async () => {
+    const eventPayload = {
+      id: 'evt_sub_updated_456',
+      type: 'customer.subscription.updated',
+      data: {
+        object: {
+          id: 'sub_stripe_sync_1',
+          status: 'active',
+          cancel_at_period_end: true,
+          current_period_start: 1_700_000_000,
+          current_period_end: 1_702_592_000,
+          canceled_at: 1_701_000_000,
+          metadata: {
+            planSlug: 'pro',
+          },
+        },
+      },
+    };
+    const payloadStr = JSON.stringify(eventPayload);
+    const signature = signPayload(payloadStr);
+
+    mockPrisma.stripeEvent.findUnique.mockResolvedValue(null);
+    mockPrisma.stripeEvent.create.mockResolvedValue({
+      id: eventPayload.id,
+      processed: false,
+    });
+    mockPrisma.stripeEvent.update.mockResolvedValue({
+      id: eventPayload.id,
+      processed: true,
+    });
+    mockPrisma.subscriptionPlan.findUnique.mockResolvedValue({
+      id: 'plan-pro-uuid',
+      slug: 'pro',
+    });
+    mockPrisma.subscription.updateMany.mockResolvedValue({ count: 1 });
+
+    const result = await stripeProvider.handleWebhook(eventPayload, signature, payloadStr);
+
+    expect(result.handled).toBe(true);
+    expect(mockPrisma.subscription.updateMany).toHaveBeenCalledWith({
+      where: { providerSubId: 'sub_stripe_sync_1' },
+      data: expect.objectContaining({
+        status: 'ACTIVE',
+        cancelAtPeriodEnd: true,
+        currentPeriodStart: new Date(1_700_000_000 * 1000),
+        currentPeriodEnd: new Date(1_702_592_000 * 1000),
+        canceledAt: new Date(1_701_000_000 * 1000),
+        planId: 'plan-pro-uuid',
+      }),
+    });
+  });
+
   describe('Redirect URL Allowlist Validator (P2-001)', () => {
     const validator = new IsAllowedRedirectUrlConstraint();
 
@@ -361,6 +413,42 @@ describe('Stripe Webhook Handlers & Deduplication (P1-005, P2-001)', () => {
     it('accepts allowed origins from configured whitelist', () => {
       expect(validator.validate('https://ai-interview.dev/billing/success')).toBe(true);
       expect(validator.validate('http://localhost:3000/dashboard')).toBe(true);
+    });
+  });
+
+  describe('Stripe Live Mode Configuration (Plan B4)', () => {
+    it('defaults to test mode when STRIPE_LIVE_MODE is not configured', () => {
+      expect(stripeProvider.isLive()).toBe(false);
+    });
+
+    it('initializes in live mode when STRIPE_LIVE_MODE is set to true', () => {
+      const liveConfigService = {
+        get: jest.fn((k: string) => {
+          if (k === 'STRIPE_LIVE_MODE') return 'true';
+          if (k === 'STRIPE_SECRET_KEY') return 'sk_live_valid123';
+          return null;
+        }),
+      };
+      const liveProvider = new StripeProvider(liveConfigService as any);
+      expect(liveProvider.isLive()).toBe(true);
+    });
+
+    it('throws BadRequestException in live mode when API key is missing', async () => {
+      const unconfiguredLiveConfig = {
+        get: jest.fn((k: string) => {
+          if (k === 'STRIPE_LIVE_MODE') return 'true';
+          if (k === 'STRIPE_SECRET_KEY') return '';
+          return null;
+        }),
+      };
+      const liveProvider = new StripeProvider(unconfiguredLiveConfig as any);
+
+      await expect(
+        liveProvider.createCheckoutSession('user-1', 'test@example.com', {
+          planSlug: 'pro',
+          billingCycle: 'monthly',
+        }),
+      ).rejects.toThrow('Payment processing is currently unavailable in production');
     });
   });
 });

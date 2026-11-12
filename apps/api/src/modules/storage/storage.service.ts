@@ -60,6 +60,7 @@ interface UploadIntentData {
   mimeType: string;
   category: string;
   isPublic?: boolean;
+  maxBytes?: number;
   expiresAt: number;
 }
 
@@ -223,13 +224,35 @@ export class StorageService {
       );
     }
 
+    // Enforce quota byte cap at presign time before granting URL (PRD-1003 / SEC-001)
+    const declaredSize =
+      (dto as any).sizeBytes ?? (dto as any).fileSize ?? (dto as any).contentLength;
+    if (typeof declaredSize === 'number') {
+      if (declaredSize <= 0) {
+        this.metricsService?.storageQuotaRejectionsTotal.inc({ reason: 'invalid_file_size' });
+        throw new DomainException(
+          ErrorCode.VALIDATION_ERROR,
+          'Declared file size must be greater than 0 bytes.',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+      if (declaredSize > policy.maxBytes) {
+        this.metricsService?.storageQuotaRejectionsTotal.inc({ reason: 'byte_cap_exceeded' });
+        throw new DomainException(
+          ErrorCode.VALIDATION_ERROR,
+          `Declared file size (${declaredSize} bytes) exceeds the maximum allowed ${policy.maxBytes} bytes for category '${category}'.`,
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+    }
+
     const extension = path.extname(dto.filename);
     const sanitizedBase = path.basename(dto.filename, extension).replace(/[^a-zA-Z0-9_-]/g, '_');
     const key = `${category}/${userId}/${uuidv4()}-${sanitizedBase}${extension}`;
 
     const uploadUrl = await this.provider.generatePresignedUploadUrl(key, dto.mimeType);
 
-    // Save single-use expiring upload intent bound to authenticated userId
+    // Save single-use expiring upload intent bound to authenticated userId and category maxBytes
     await this.saveIntent(key, {
       key,
       userId,
@@ -237,6 +260,7 @@ export class StorageService {
       mimeType: dto.mimeType,
       category,
       isPublic: category === 'public',
+      maxBytes: policy.maxBytes,
       expiresAt: Date.now() + this.INTENT_TTL_SECONDS * 1000,
     });
 
@@ -337,11 +361,12 @@ export class StorageService {
 
     // 6. Enforce category byte cap (SEC-001 / PRD-1003)
     const categoryPolicy = CATEGORY_POLICIES[intent.category as StorageCategory];
-    if (categoryPolicy && metadata.size > categoryPolicy.maxBytes) {
+    const maxAllowedBytes = intent.maxBytes ?? categoryPolicy?.maxBytes;
+    if (maxAllowedBytes && metadata.size > maxAllowedBytes) {
       this.metricsService?.storageQuotaRejectionsTotal.inc({ reason: 'byte_cap_exceeded' });
       throw new DomainException(
         ErrorCode.VALIDATION_ERROR,
-        `Uploaded file size (${metadata.size} bytes) exceeds the maximum allowed ${categoryPolicy.maxBytes} bytes for category '${intent.category}'.`,
+        `Uploaded file size (${metadata.size} bytes) exceeds the maximum allowed ${maxAllowedBytes} bytes for category '${intent.category}'.`,
         HttpStatus.BAD_REQUEST,
       );
     }

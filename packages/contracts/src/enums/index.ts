@@ -248,6 +248,9 @@ export enum AuditAction {
   INVOICE_PAID = 'INVOICE_PAID',
   FILE_UPLOADED = 'FILE_UPLOADED',
   FILE_DELETED = 'FILE_DELETED',
+  PASSWORD_RESET_REQUESTED = 'PASSWORD_RESET_REQUESTED',
+  PASSWORD_RESET_COMPLETED = 'PASSWORD_RESET_COMPLETED',
+  EMAIL_VERIFIED = 'EMAIL_VERIFIED',
   PAYMENT_LINK_CREATED = 'PAYMENT_LINK_CREATED',
   PAYOS_WEBHOOK_RECEIVED = 'PAYOS_WEBHOOK_RECEIVED',
   DIAGRAM_EVALUATED = 'DIAGRAM_EVALUATED',
@@ -313,6 +316,7 @@ export enum ErrorCode {
   QUESTION_BANK_INVALID_TRANSITION = 'QUESTION_BANK_INVALID_TRANSITION',
   QUESTION_BANK_REVIEWER_EQUALS_AUTHOR = 'QUESTION_BANK_REVIEWER_EQUALS_AUTHOR',
   CONSENT_REQUIRED = 'CONSENT_REQUIRED',
+  INVALID_OR_EXPIRED_TOKEN = 'INVALID_OR_EXPIRED_TOKEN',
   INTERNAL_SERVER_ERROR = 'INTERNAL_SERVER_ERROR',
 }
 
@@ -461,3 +465,31 @@ export enum ArenaSandboxMode {
   STAGE_B_CONTAINER = 'STAGE_B_CONTAINER',
   STAGE_C_MICROVM = 'STAGE_C_MICROVM',
 }
+
+export enum ArenaCollaborativeRole {
+  HOST = 'HOST',
+  MENTOR = 'MENTOR',
+  PAIR_CODER = 'PAIR_CODER',
+}
+
+export const ArenaCollaborativeEvent = {
+  // Client -> Server
+  JOIN_ROOM: 'arena:join-room',
+  LEAVE_ROOM: 'arena:leave-room',
+  CURSOR_MOVE: 'arena:cursor-move',
+  CODE_CHANGE: 'arena:code-change',
+  RUN_TESTS: 'arena:run-tests',
+
+  // Server -> Client
+  ROOM_JOINED: 'arena:room-joined',
+  PRESENCE_SYNC: 'arena:presence-sync',
+  USER_JOINED: 'arena:user-joined',
+  USER_LEFT: 'arena:user-left',
+  CURSOR_BROADCAST: 'arena:cursor-broadcast',
+  CODE_BROADCAST: 'arena:code-broadcast',
+  TEST_RUN_STATUS: 'arena:test-status',
+  ERROR: 'arena:error',
+} as const;
+
+export type ArenaCollaborativeEvent =
+  (typeof ArenaCollaborativeEvent)[keyof typeof ArenaCollaborativeEvent];

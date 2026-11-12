@@ -1,10 +1,12 @@
-import { Injectable, HttpStatus, Logger } from '@nestjs/common';
+import { Injectable, HttpStatus, Logger, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { PrismaService } from '../platform/prisma/prisma.service';
 import { DomainException } from '../platform/filters/all-exceptions.filter';
+import { EmailService } from '../email/email.service';
 import {
   UserRole,
   UserStatus,
@@ -16,7 +18,15 @@ import {
   MfaEnableResponse,
   JwtPayload,
 } from '@ai-interview/contracts';
-import { RegisterRequestDto, LoginRequestDto, ChangePasswordRequestDto } from './dto/auth.dto';
+import {
+  RegisterRequestDto,
+  LoginRequestDto,
+  ChangePasswordRequestDto,
+  ForgotPasswordRequestDto,
+  ResetPasswordRequestDto,
+  VerifyEmailRequestDto,
+  ResendVerificationRequestDto,
+} from './dto/auth.dto';
 import { TotpUtil } from './utils/totp.util';
 
 type InternalAuthResponse = AuthResponse & { refreshToken?: string };
@@ -30,6 +40,8 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    @Optional() private readonly emailService?: EmailService,
+    @Optional() private readonly eventEmitter?: EventEmitter2,
   ) {}
 
   async validateAccessToken(token: string): Promise<JwtPayload> {
@@ -177,6 +189,12 @@ export class AuthService {
         resource: 'user',
         resourceId: user.id,
       },
+    });
+
+    this.eventEmitter?.emit('auth.registered', {
+      userId: user.id,
+      email: user.email,
+      fullName: dto.fullName.trim(),
     });
 
     return this.generateAuthResponse(user);
@@ -1021,6 +1039,14 @@ export class AuthService {
     return crypto.createHash('sha256').update(token).digest('hex');
   }
 
+  private getFrontendUrl(): string {
+    return (
+      this.configService.get<string>('app.frontendUrl') ||
+      process.env.FRONTEND_URL ||
+      'https://ai-interview.dev'
+    ).replace(/\/$/, '');
+  }
+
   private async revokeRefreshTokenFamily(
     tx: {
       refreshToken: { updateMany: (args: any) => Promise<unknown> };
@@ -1049,6 +1075,205 @@ export class AuthService {
         details: { reason, familyId: storedToken.familyId },
       },
     });
+  }
+
+  async forgotPassword(dto: ForgotPasswordRequestDto): Promise<{ message: string }> {
+    const genericMessage =
+      'If an account exists with this email, a password reset link has been sent.';
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase().trim() },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      return { message: genericMessage };
+    }
+
+    await this.prisma.passwordResetToken.updateMany({
+      where: { userId: user.id, isUsed: false },
+      data: { isUsed: true },
+    });
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const resetUrl = `${this.getFrontendUrl()}/reset-password?token=${rawToken}`;
+
+    if (this.emailService) {
+      await this.emailService.sendPasswordResetEmail(user.email, {
+        userName: user.profile?.fullName || 'Developer',
+        resetUrl,
+        expiresInMinutes: 60,
+      });
+    }
+
+    await this.prisma.auditLog.create({
+      data: {
+        userId: user.id,
+        action: AuditAction.PASSWORD_RESET_REQUESTED,
+        resource: 'user',
+        resourceId: user.id,
+      },
+    });
+
+    return { message: genericMessage };
+  }
+
+  async resetPassword(dto: ResetPasswordRequestDto): Promise<{ message: string }> {
+    const tokenHash = this.hashToken(dto.token);
+
+    const resetToken = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+      include: { user: true },
+    });
+
+    if (!resetToken || resetToken.isUsed || resetToken.expiresAt < new Date()) {
+      throw new DomainException(
+        ErrorCode.INVALID_OR_EXPIRED_TOKEN,
+        'Password reset link is invalid or has expired',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.$transaction(async (tx: any) => {
+      await tx.user.update({
+        where: { id: resetToken.userId },
+        data: {
+          passwordHash,
+          tokenVersion: { increment: 1 },
+        },
+      });
+
+      await tx.refreshToken.updateMany({
+        where: { userId: resetToken.userId },
+        data: { isRevoked: true },
+      });
+
+      await tx.passwordResetToken.update({
+        where: { id: resetToken.id },
+        data: {
+          isUsed: true,
+          usedAt: new Date(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: resetToken.userId,
+          action: AuditAction.PASSWORD_RESET_COMPLETED,
+          resource: 'user',
+          resourceId: resetToken.userId,
+        },
+      });
+    });
+
+    return {
+      message: 'Password has been reset successfully. Please log in with your new password.',
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailRequestDto): Promise<{ message: string }> {
+    const tokenHash = this.hashToken(dto.token);
+
+    const verificationToken = await this.prisma.emailVerificationToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (
+      !verificationToken ||
+      verificationToken.isUsed ||
+      verificationToken.expiresAt < new Date()
+    ) {
+      throw new DomainException(
+        ErrorCode.INVALID_OR_EXPIRED_TOKEN,
+        'Verification token is invalid or has expired',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    await this.prisma.$transaction(async (tx: any) => {
+      await tx.user.update({
+        where: { id: verificationToken.userId },
+        data: {
+          isEmailVerified: true,
+          emailVerifiedAt: new Date(),
+        },
+      });
+
+      await tx.emailVerificationToken.update({
+        where: { id: verificationToken.id },
+        data: {
+          isUsed: true,
+          usedAt: new Date(),
+        },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          userId: verificationToken.userId,
+          action: AuditAction.EMAIL_VERIFIED,
+          resource: 'user',
+          resourceId: verificationToken.userId,
+        },
+      });
+    });
+
+    return { message: 'Email has been verified successfully.' };
+  }
+
+  async resendVerification(dto: ResendVerificationRequestDto): Promise<{ message: string }> {
+    const genericMessage =
+      'If an unverified account exists with this email, a verification link has been sent.';
+
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.toLowerCase().trim() },
+      include: { profile: true },
+    });
+
+    if (!user || user.isEmailVerified) {
+      return { message: genericMessage };
+    }
+
+    await this.prisma.emailVerificationToken.updateMany({
+      where: { userId: user.id, isUsed: false },
+      data: { isUsed: true },
+    });
+
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+
+    await this.prisma.emailVerificationToken.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        expiresAt,
+      },
+    });
+
+    const verificationUrl = `${this.getFrontendUrl()}/verify-email?token=${rawToken}`;
+
+    if (this.emailService) {
+      await this.emailService.sendEmailVerificationEmail(user.email, {
+        userName: user.profile?.fullName || 'Developer',
+        verificationUrl,
+        expiresInHours: 24,
+      });
+    }
+
+    return { message: genericMessage };
   }
 
   private mapToUserDto(user: any): UserDto {

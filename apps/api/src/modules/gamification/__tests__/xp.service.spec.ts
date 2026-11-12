@@ -47,40 +47,44 @@ describe('XpService (Plan C Gamification)', () => {
   });
 
   describe('calculateLevel', () => {
-    it('should correctly calculate levels and thresholds based on formula', () => {
-      // Level 1: 0 - 99 XP
+    it('should correctly calculate levels and thresholds based on formula 100 * Level^1.5', () => {
+      // Level 1: 0 - 281 XP
       const lvl1 = service.calculateLevel(0);
       expect(lvl1.level).toBe(1);
       expect(lvl1.currentLevelMinXp).toBe(0);
-      expect(lvl1.nextLevelXp).toBe(100);
+      expect(lvl1.nextLevelXp).toBe(282);
       expect(lvl1.progressPercent).toBe(0);
 
-      const lvl1Half = service.calculateLevel(50);
+      const lvl1Half = service.calculateLevel(141);
       expect(lvl1Half.level).toBe(1);
       expect(lvl1Half.progressPercent).toBe(50);
 
-      // Level 2: 100 - 399 XP
-      const lvl2 = service.calculateLevel(100);
+      // Level 2: 282 - 518 XP
+      const lvl2 = service.calculateLevel(282);
       expect(lvl2.level).toBe(2);
-      expect(lvl2.currentLevelMinXp).toBe(100);
-      expect(lvl2.nextLevelXp).toBe(400);
+      expect(lvl2.currentLevelMinXp).toBe(282);
+      expect(lvl2.nextLevelXp).toBe(519);
       expect(lvl2.progressPercent).toBe(0);
 
-      const lvl2Mid = service.calculateLevel(250);
-      expect(lvl2Mid.level).toBe(2);
-      expect(lvl2Mid.progressPercent).toBe(50);
-
-      // Level 3: 400 - 899 XP
-      const lvl3 = service.calculateLevel(400);
+      // Level 3: 519 - 799 XP
+      const lvl3 = service.calculateLevel(519);
       expect(lvl3.level).toBe(3);
-      expect(lvl3.currentLevelMinXp).toBe(400);
-      expect(lvl3.nextLevelXp).toBe(900);
+      expect(lvl3.currentLevelMinXp).toBe(519);
+      expect(lvl3.nextLevelXp).toBe(800);
 
-      // Level 5: 1600 XP
-      const lvl5 = service.calculateLevel(1600);
+      // Level 5: 1118 XP
+      const lvl5 = service.calculateLevel(1118);
       expect(lvl5.level).toBe(5);
       expect(lvl5.levelTitle).toBe('Senior Specialist');
       expect(lvl5.levelTitleVi).toBe('Chuyên viên Cấp cao');
+
+      // Level 10: 3162 XP
+      const lvl10 = service.calculateLevel(3162);
+      expect(lvl10.level).toBe(10);
+
+      // Level 50: 35355 XP
+      const lvl50 = service.calculateLevel(35355);
+      expect(lvl50.level).toBe(50);
     });
   });
 
@@ -91,7 +95,7 @@ describe('XpService (Plan C Gamification)', () => {
       prismaMock.xpTransaction.create.mockResolvedValue({
         id: 'tx-1',
         userId,
-        amount: 150,
+        amount: 300,
         source: XpSource.INTERVIEW_COMPLETE,
       });
 
@@ -103,13 +107,13 @@ describe('XpService (Plan C Gamification)', () => {
 
       prismaMock.userXp.upsert.mockResolvedValue({
         userId,
-        totalXp: 150,
+        totalXp: 300,
         currentLevel: 2,
       });
 
       const result = await service.awardXp(
         userId,
-        150,
+        300,
         XpSource.INTERVIEW_COMPLETE,
         'Completed Interview',
       );
@@ -121,7 +125,7 @@ describe('XpService (Plan C Gamification)', () => {
         'gamification.xp_awarded',
         expect.objectContaining({
           userId,
-          amount: 150,
+          amount: 300,
           isLevelUp: true,
         }),
       );

@@ -9,6 +9,9 @@ import { useAuthStore } from './stores/auth.store';
 
 const LoginPage = lazy(() => import('./features/auth/LoginPage'));
 const RegisterPage = lazy(() => import('./features/auth/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('./features/auth/ForgotPasswordPage'));
+const ResetPasswordPage = lazy(() => import('./features/auth/ResetPasswordPage'));
+const VerifyEmailPage = lazy(() => import('./features/auth/VerifyEmailPage'));
 const DashboardPage = lazy(() => import('./features/dashboard/DashboardPage'));
 const SetupInterviewPage = lazy(() => import('./features/setup/SetupInterviewPage'));
 const InterviewRoomPage = lazy(() => import('./features/interview/InterviewRoomPage'));
@@ -68,6 +71,11 @@ const EngineeringArenaPage = lazy(() =>
     default: module.EngineeringArenaPage,
   })),
 );
+const CollaborativeArenaRoomPage = lazy(() =>
+  import('./features/engineering-arena/CollaborativeArenaRoomPage').then(module => ({
+    default: module.CollaborativeArenaRoomRoute,
+  })),
+);
 const MentorBookingPage = lazy(() =>
   import('./features/mentor/MentorBookingPage').then(module => ({
     default: module.MentorBookingPage,
@@ -91,6 +99,11 @@ const CohortListPage = lazy(() =>
 );
 const CohortDetailPage = lazy(() =>
   import('./features/b2b/CohortDetailPage').then(module => ({ default: module.CohortDetailPage })),
+);
+const ChallengeAuthoringPage = lazy(() =>
+  import('./features/b2b/ChallengeAuthoringPage').then(module => ({
+    default: module.ChallengeAuthoringPage,
+  })),
 );
 const QuestionBankLandingPage = lazy(() =>
   import('./features/question-bank/QuestionBankLandingPage').then(module => ({
@@ -151,6 +164,9 @@ export function App() {
               {/* Public Routes */}
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
+              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/verify-email" element={<VerifyEmailPage />} />
               <Route path="/pricing" element={<PricingPage />} />
               <Route path="/question-bank" element={<QuestionBankLandingPage />} />
               <Route path="/question-bank/:slug" element={<QuestionDetailPage />} />
@@ -167,6 +183,10 @@ export function App() {
                 <Route path="/skills/progress" element={<SkillGraphPage />} />
                 <Route path="/readiness" element={<ReadinessPage />} />
                 <Route path="/arena" element={<EngineeringArenaPage />} />
+                <Route
+                  path="/arena/collaborative/:roomId"
+                  element={<CollaborativeArenaRoomPage />}
+                />
                 <Route path="/gamification/badges" element={<BadgesShowcasePage />} />
                 <Route path="/gamification/leaderboard" element={<LeaderboardPage />} />
                 <Route path="/flashcards" element={<FlashcardDecksPage />} />
@@ -181,6 +201,8 @@ export function App() {
                 <Route path="/b2b/dashboard" element={<TenantDashboardPage />} />
                 <Route path="/b2b/cohorts" element={<CohortListPage />} />
                 <Route path="/b2b/cohorts/:id" element={<CohortDetailPage />} />
+                <Route path="/b2b/challenges" element={<ChallengeAuthoringPage />} />
+                <Route path="/b2b/challenges/authoring" element={<ChallengeAuthoringPage />} />
                 <Route path="/billing" element={<BillingDashboardPage />} />
                 <Route path="/billing/success" element={<CheckoutSuccessPage />} />
               </Route>

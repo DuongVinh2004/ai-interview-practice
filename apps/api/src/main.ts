@@ -2,7 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import { WsAdapter } from '@nestjs/platform-ws';
+import { CompositeWebSocketAdapter } from './modules/platform/websocket/composite-ws.adapter';
 import helmet from 'helmet';
 import compression from 'compression';
 
@@ -15,7 +15,7 @@ async function bootstrap() {
     rawBody: true,
   });
 
-  app.useWebSocketAdapter(new WsAdapter(app));
+  app.useWebSocketAdapter(new CompositeWebSocketAdapter(app));
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('app.port', 3001);

@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { useEngineeringArena } from './useEngineeringArena';
 import { ArenaEvaluationReportModal } from './ArenaEvaluationReportModal';
 import { ArenaCopilotChatPanel } from './ArenaCopilotChatPanel';
+import { useArenaExecutionStream } from './useArenaExecutionStream';
+import { useFocusModeHotkey } from '../../hooks/useFocusModeHotkey';
 
 interface ArenaWorkspaceViewProps {
   onBackToCatalog?: () => void;
 }
 
 export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackToCatalog }) => {
+  const { isFocusMode, toggleFocusMode } = useFocusModeHotkey();
   const {
     session,
     fileContents,
@@ -24,10 +27,17 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
     askCopilot,
   } = useEngineeringArena();
 
+  const { logs, isConnected, clearLogs } = useArenaExecutionStream(session?.id || null);
+
   const [explanation, setExplanation] = useState('');
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const [showCopilot, setShowCopilot] = useState(false);
+
+  const handleRunTests = async (cmdId = 'test') => {
+    clearLogs();
+    await runCommand(cmdId);
+  };
 
   if (!session) {
     return (
@@ -66,7 +76,11 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-slate-900 text-slate-100">
+    <div
+      className={`flex flex-col ${
+        isFocusMode ? 'fixed inset-0 z-50 h-screen' : 'h-[calc(100vh-4rem)]'
+      } bg-slate-900 text-slate-100`}
+    >
       {/* Top Action Bar */}
       <div className="flex items-center justify-between px-4 py-3 bg-slate-950 border-b border-slate-800">
         <div className="flex items-center gap-3">
@@ -90,6 +104,18 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
 
         <div className="flex items-center gap-3">
           <button
+            onClick={toggleFocusMode}
+            title={isFocusMode ? 'Exit Focus Mode (Esc)' : 'Enter Focus Mode (F)'}
+            className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+              isFocusMode
+                ? 'bg-emerald-600 text-white border-emerald-500'
+                : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
+            }`}
+          >
+            {isFocusMode ? '⤢ Exit Focus' : '⤢ Focus'}
+          </button>
+
+          <button
             onClick={() => setShowCopilot(prev => !prev)}
             className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
               showCopilot
@@ -101,7 +127,7 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
           </button>
 
           <button
-            onClick={() => runCommand('test')}
+            onClick={() => handleRunTests('test')}
             disabled={isRunningCommand || isSubmitting || isCompleted}
             className="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 disabled:opacity-50"
           >
@@ -187,7 +213,15 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
         {/* Right / Bottom: Test Runner Output Console */}
         <div className="w-96 bg-slate-950 flex flex-col border-r border-slate-800">
           <div className="px-4 py-2 border-b border-slate-800 flex items-center justify-between text-xs font-bold text-slate-400 uppercase">
-            <span>Execution Terminal</span>
+            <div className="flex items-center gap-2">
+              <span>Execution Terminal</span>
+              {isConnected && (
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse mr-1"></span>
+                  LIVE
+                </span>
+              )}
+            </div>
             {latestRun && (
               <span
                 className={latestRun.status === 'PASSED' ? 'text-emerald-400' : 'text-rose-400'}
@@ -198,7 +232,25 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
           </div>
 
           <div className="flex-1 p-4 overflow-y-auto font-mono text-xs text-slate-300 bg-slate-950 whitespace-pre-wrap">
-            {latestRun ? (
+            {isRunningCommand && logs.length > 0 ? (
+              <div>
+                <div className="text-slate-500 mb-2">// Real-time sandbox container execution:</div>
+                {logs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={
+                      log.type === 'stderr'
+                        ? 'text-rose-400'
+                        : log.type === 'status'
+                          ? 'text-amber-400'
+                          : 'text-slate-300'
+                    }
+                  >
+                    {log.payload}
+                  </div>
+                ))}
+              </div>
+            ) : latestRun ? (
               <>
                 <div className="text-slate-500 mb-2">
                   // Exit code: {latestRun.exitCode} | Duration: {latestRun.durationMs}ms
@@ -206,6 +258,23 @@ export const ArenaWorkspaceView: React.FC<ArenaWorkspaceViewProps> = ({ onBackTo
                 <div>{latestRun.stdout}</div>
                 {latestRun.stderr && <div className="text-rose-400 mt-2">{latestRun.stderr}</div>}
               </>
+            ) : logs.length > 0 ? (
+              <div>
+                {logs.map((log, idx) => (
+                  <div
+                    key={idx}
+                    className={
+                      log.type === 'stderr'
+                        ? 'text-rose-400'
+                        : log.type === 'status'
+                          ? 'text-amber-400'
+                          : 'text-slate-300'
+                    }
+                  >
+                    {log.payload}
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="text-slate-600 italic">
                 Click "Run Tests" to execute the test suite in an isolated sandbox.

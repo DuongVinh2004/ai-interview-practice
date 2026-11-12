@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env node
+#!/usr/bin/env node
 /**
  * Production Configuration & Pre-Deployment Secrets Validator
  *
@@ -124,6 +124,22 @@ if (env.FEATURE_BILLING === 'true') {
   checkField('PAYOS_API_KEY', val => val.length >= 16, true);
 } else {
   console.log('⚪ Feature Billing: DISABLED (Payment gateway check skipped)');
+}
+
+if (env.FEATURE_WEB_PUSH === 'true' || env.VAPID_PUBLIC_KEY) {
+  console.log('⚙️  Feature Web Push (VAPID): ENABLED / CONFIGURED');
+  checkField('VAPID_PUBLIC_KEY', val => val.length >= 65, true);
+  checkField('VAPID_PRIVATE_KEY', val => val.length >= 32, true);
+  checkField('VAPID_SUBJECT', val => val.startsWith('mailto:') || val.startsWith('https://'));
+} else {
+  console.log('⚪ Feature Web Push: DISABLED (VAPID check skipped)');
+}
+
+if (env.FEATURE_EMAIL === 'true' || env.RESEND_API_KEY) {
+  console.log('⚙️  Feature Transactional Email: ENABLED / CONFIGURED');
+  checkField('RESEND_API_KEY', val => (isProduction ? val.startsWith('re_') : val.length >= 10), true);
+} else {
+  console.log('⚪ Feature Transactional Email: DISABLED (Resend check skipped)');
 }
 
 console.log('\n============================================================');

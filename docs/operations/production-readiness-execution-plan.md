@@ -1775,7 +1775,7 @@ Chỉ đánh dấu `PRODUCTION_READY = GO` khi tất cả ô dưới đây hoàn
 - [ ] Format/lint/typecheck/tests/build PASS.
 - [ ] E2E retries 0 PASS.
 - [ ] Migration checks/deploy tests PASS.
-- [ ] Actionlint/ShellCheck/Terraform validation PASS.
+- [x] Actionlint/ShellCheck/Terraform validation PASS.
 - [ ] Gitleaks/Semgrep/SCA/IaC/image scans PASS.
 - [ ] Actions and build/scanner images immutably pinned.
 - [ ] SBOMs generated and checksummed.
@@ -1789,10 +1789,10 @@ Chỉ đánh dấu `PRODUCTION_READY = GO` khi tất cả ô dưới đây hoàn
 - [ ] Staging Terraform plan approved.
 - [ ] Production Terraform plan approved.
 - [ ] No unexpected persistent replacement.
-- [ ] Private ECS tasks and HTTPS ALB verified.
-- [ ] RDS/Redis encryption/auth/Multi-AZ verified.
-- [ ] S3 versioning/KMS/public block/lifecycle verified.
-- [ ] API/worker/web task roles separated.
+- [x] Private ECS tasks and HTTPS ALB verified.
+- [x] RDS/Redis encryption/auth/Multi-AZ verified.
+- [x] S3 versioning/KMS/public block/lifecycle verified.
+- [x] API/worker/web task roles separated.
 - [ ] GitHub environments/reviewers/restrictions verified.
 - [ ] AWS OIDC and least-privilege deploy role verified.
 - [ ] Secrets presence/source validated without value exposure.

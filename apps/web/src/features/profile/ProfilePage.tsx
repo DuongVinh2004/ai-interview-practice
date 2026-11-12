@@ -23,6 +23,7 @@ import {
   Check,
   Lock,
 } from 'lucide-react';
+import { NotificationSettingsPanel } from '../notifications/NotificationSettingsPanel';
 
 export function ProfilePage() {
   const { user, setUser, setAuth, logout } = useAuthStore();
@@ -610,6 +611,9 @@ export function ProfilePage() {
           </Card>
         </div>
       </div>
+
+      {/* Push Notification Preferences Panel */}
+      <NotificationSettingsPanel />
 
       {/* Industry Competency Benchmarks Section */}
       <Card className="shadow-sm border-slate-200">

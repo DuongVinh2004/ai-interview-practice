@@ -252,4 +252,159 @@ describe('Voice connection recovery', () => {
     expect(result.current.isAiSpeaking).toBe(false);
     unmount();
   });
+  it('initializes AudioWorkletNode and streams audio chunks on recording start', async () => {
+    const track = { stop: vi.fn() };
+    const stream = {
+      getTracks: vi.fn(() => [track]),
+    };
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getUserMedia: vi.fn().mockResolvedValue(stream) },
+    });
+
+    let workletMessageCallback: ((evt: any) => void) | null = null;
+    const workletPort = {
+      postMessage: vi.fn(),
+      set onmessage(cb: any) {
+        workletMessageCallback = cb;
+      },
+      get onmessage() {
+        return workletMessageCallback;
+      },
+    };
+    class FakeAudioWorkletNode {
+      port = workletPort;
+      connect = vi.fn();
+      disconnect = vi.fn();
+    }
+    vi.stubGlobal('AudioWorkletNode', FakeAudioWorkletNode);
+
+    const sourceNode = { connect: vi.fn() };
+    const gainNode = { gain: { value: 0 }, connect: vi.fn() };
+    const context = {
+      state: 'running',
+      sampleRate: 16000,
+      destination: {},
+      audioWorklet: {
+        addModule: vi.fn().mockResolvedValue(undefined),
+      },
+      createMediaStreamSource: vi.fn(() => sourceNode),
+      createGain: vi.fn(() => gainNode),
+      resume: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    vi.stubGlobal('AudioContext', function () {
+      return context;
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceStreaming('interview'));
+    await act(async () => {
+      await result.current.connect();
+    });
+    act(() => {
+      FakeSocket.sockets[0].open();
+      FakeSocket.sockets[0].message({ type: VoiceEventType.CONNECTED });
+    });
+
+    await act(async () => {
+      result.current.startRecording('turn1');
+    });
+
+    const socket = FakeSocket.sockets[0];
+    const request = socket.send.mock.calls
+      .map(call => JSON.parse(call[0]))
+      .find(value => value.type === 'voice:recording-start');
+
+    await act(async () => {
+      socket.message({
+        type: 'voice:recording-started',
+        recordingId: request.recordingId,
+      });
+    });
+
+    expect(context.audioWorklet.addModule).toHaveBeenCalledWith(
+      '/worklets/recorderWorkletProcessor.js',
+    );
+    expect(result.current.recordingStatus).toBe('RECORDING');
+
+    // Simulate audio data from AudioWorklet
+    const fakePcm = new Int16Array(2048);
+    for (let i = 0; i < fakePcm.length; i++) fakePcm[i] = 1000;
+    act(() => {
+      workletMessageCallback?.({ data: fakePcm.buffer });
+    });
+
+    expect(socket.send).toHaveBeenCalledWith(fakePcm.buffer);
+
+    unmount();
+  });
+
+  it('resumes suspended AudioContext on startRecording for Safari autoplay compliance', async () => {
+    const resumeSpy = vi.fn().mockResolvedValue(undefined);
+    const fakeContext = {
+      state: 'suspended',
+      sampleRate: 24000,
+      destination: {},
+      createBuffer: vi.fn(() => ({})),
+      createBufferSource: vi.fn(() => ({
+        buffer: null,
+        connect: vi.fn(),
+        start: vi.fn(),
+      })),
+      resume: resumeSpy,
+      close: vi.fn().mockResolvedValue(undefined),
+    };
+    vi.stubGlobal('AudioContext', function () {
+      return fakeContext;
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceStreaming('interview'));
+    await act(async () => {
+      await result.current.connect();
+    });
+    act(() => {
+      FakeSocket.sockets[0].open();
+      FakeSocket.sockets[0].message({ type: VoiceEventType.CONNECTED });
+    });
+
+    act(() => {
+      result.current.startRecording('turn-safari');
+    });
+
+    expect(resumeSpy).toHaveBeenCalled();
+    unmount();
+  });
+
+  it('gracefully handles NotAllowedError when user denies microphone access', async () => {
+    const notAllowedError = new Error('Permission denied');
+    notAllowedError.name = 'NotAllowedError';
+
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getUserMedia: vi.fn().mockRejectedValue(notAllowedError) },
+    });
+
+    const { result, unmount } = renderHook(() => useVoiceStreaming('interview'));
+    await act(async () => {
+      await result.current.connect();
+    });
+    await act(async () => {
+      FakeSocket.sockets[0].open();
+      FakeSocket.sockets[0].message({ type: VoiceEventType.CONNECTED });
+    });
+
+    act(() => result.current.startRecording('turn-denied'));
+    const request = FakeSocket.sockets[0].send.mock.calls
+      .map(call => JSON.parse(call[0]))
+      .find(value => value.type === 'voice:recording-start');
+
+    await act(async () => {
+      FakeSocket.sockets[0].message({
+        type: 'voice:recording-started',
+        recordingId: request.recordingId,
+      });
+    });
+
+    expect(result.current.errorMessage).toContain('Quyền truy cập micro bị từ chối');
+    expect(result.current.connectionStatus).toBe('LIVE');
+    unmount();
+  });
 });

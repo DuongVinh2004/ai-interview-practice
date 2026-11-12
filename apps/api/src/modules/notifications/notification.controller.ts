@@ -29,10 +29,22 @@ export class NotificationController {
     return this.pushService.updatePreferences(userId, dto);
   }
 
+  @Post('subscribe')
+  @HttpCode(HttpStatus.OK)
+  async subscribeDirect(@CurrentUser('sub') userId: string, @Body() dto: PushSubscriptionDto) {
+    return this.pushService.subscribe(userId, dto);
+  }
+
   @Post('push/subscribe')
   @HttpCode(HttpStatus.OK)
   async subscribe(@CurrentUser('sub') userId: string, @Body() dto: PushSubscriptionDto) {
     return this.pushService.subscribe(userId, dto);
+  }
+
+  @Post('unsubscribe')
+  @HttpCode(HttpStatus.OK)
+  async unsubscribeDirect(@Body() body: { endpoint: string }) {
+    return this.pushService.unsubscribe(body.endpoint);
   }
 
   @Post('push/unsubscribe')
@@ -57,6 +69,15 @@ export class NotificationController {
   @HttpCode(HttpStatus.OK)
   async triggerStreakCheck() {
     const count = await this.streakCron.triggerManualRun();
+    return { triggeredCount: count };
+  }
+
+  @Post('cron/trigger-practice-reminder')
+  @UseGuards(RolesGuard, MfaStepUpGuard)
+  @Roles(UserRole.ADMIN)
+  @HttpCode(HttpStatus.OK)
+  async triggerPracticeReminder(@Body() body?: { time?: string }) {
+    const count = await this.streakCron.handleDailyPracticeReminders(body?.time);
     return { triggeredCount: count };
   }
 }

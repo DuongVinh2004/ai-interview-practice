@@ -48,6 +48,8 @@ export {
   ArenaActionEventType,
   ArenaAiAssistanceMode,
   ArenaSandboxMode,
+  ArenaCollaborativeRole,
+  ArenaCollaborativeEvent,
 } from './enums/index';
 
 export * from './schemas/common';

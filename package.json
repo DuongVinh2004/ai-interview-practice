@@ -28,7 +28,8 @@
     "db:studio": "pnpm --filter api db:studio",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
-    "arena:validate": "node infra/scripts/arena-validate.mjs"
+    "arena:validate": "node infra/scripts/arena-validate.mjs",
+    "arena:seed": "node infra/scripts/arena-seed.mjs"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^8.25.0",
@@ -43,18 +44,14 @@
   "pnpm": {
     "overrides": {
       "compression": "^1.8.2",
-      "multer": "^2.4.0",
+      "multer": "^2.5.0",
+      "body-parser": "^2.4.0",
       "proxy-addr": "^2.0.8",
       "brace-expansion@1": "^1.1.21",
       "brace-expansion@5": "^5.0.12",
       "js-yaml@4": "^4.3.2",
       "js-yaml@5": "^5.4.3",
       "argparse": "2.0.1"
-    },
-    "auditConfig": {
-      "ignoreCves": [
-        "GHSA-hp3w-g68c-fv3c"
-      ]
     }
   }
 }

@@ -124,4 +124,33 @@ describe('AuthController browser session boundary', () => {
       expect.objectContaining({ httpOnly: true, secure: true, path: '/api/v1/auth' }),
     );
   });
+
+  it('delegates forgot-password, reset-password, verify-email and resend-verification to authService', async () => {
+    authService.forgotPassword = jest.fn().mockResolvedValue({ message: 'reset email sent' });
+    authService.resetPassword = jest.fn().mockResolvedValue({ message: 'password reset' });
+    authService.verifyEmail = jest.fn().mockResolvedValue({ message: 'email verified' });
+    authService.resendVerification = jest.fn().mockResolvedValue({ message: 'verification sent' });
+
+    const forgotRes = await controller.forgotPassword({ email: 'test@example.com' });
+    expect(authService.forgotPassword).toHaveBeenCalledWith({ email: 'test@example.com' });
+    expect(forgotRes.message).toBe('reset email sent');
+
+    const resetRes = await controller.resetPassword({
+      token: 'tok-123',
+      newPassword: 'NewPassword123',
+    });
+    expect(authService.resetPassword).toHaveBeenCalledWith({
+      token: 'tok-123',
+      newPassword: 'NewPassword123',
+    });
+    expect(resetRes.message).toBe('password reset');
+
+    const verifyRes = await controller.verifyEmail({ token: 'tok-xyz' });
+    expect(authService.verifyEmail).toHaveBeenCalledWith({ token: 'tok-xyz' });
+    expect(verifyRes.message).toBe('email verified');
+
+    const resendRes = await controller.resendVerification({ email: 'test@example.com' });
+    expect(authService.resendVerification).toHaveBeenCalledWith({ email: 'test@example.com' });
+    expect(resendRes.message).toBe('verification sent');
+  });
 });

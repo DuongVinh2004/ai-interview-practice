@@ -65,6 +65,35 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
     const startTime = Date.now();
     const snapshotHash = this.computeSnapshotHash(ws.files);
 
+    // Handle simulated timeout for testing / long-running loops
+    const timeoutSec = params.timeoutSeconds ?? cmdDef.timeoutSeconds ?? 15;
+    if (
+      cmdDef.command.includes('while') ||
+      cmdDef.id.includes('loop') ||
+      cmdDef.command.includes('sleep')
+    ) {
+      const timeoutStderr = `Command execution timed out after ${timeoutSec}s (killed with SIGKILL)`;
+      if (params.onLogChunk) {
+        params.onLogChunk({
+          type: 'status',
+          data: `[ProcessMonitor] Execution timed out after ${timeoutSec}s. Process killed.`,
+        });
+        params.onLogChunk({ type: 'stderr', data: timeoutStderr });
+      }
+      return {
+        commandId: cmdDef.id,
+        exitCode: 124,
+        stdout: '',
+        stderr: timeoutStderr,
+        durationMs: timeoutSec * 1000,
+        testsTotal: 0,
+        testsPassed: 0,
+        testsFailed: 1,
+        testResults: [],
+        snapshotHash,
+      };
+    }
+
     // Deterministic simulation based on file contents
     const testResults: ArenaTestResult[] = [];
     let testsPassed = 0;
@@ -72,6 +101,14 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
     let stdout = '';
     let stderr = '';
     let exitCode = 0;
+
+    // Stream initial starting status if callback registered
+    if (params.onLogChunk) {
+      params.onLogChunk({
+        type: 'status',
+        data: `[Runner] Executing command '${cmdDef.id}': ${cmdDef.command}`,
+      });
+    }
 
     // Check if files contain common mock bug keywords or fixes
     let hasFix = true;
@@ -112,6 +149,19 @@ export class DeterministicLocalWorkspaceRuntime implements WorkspaceRuntime {
     }
 
     const durationMs = Date.now() - startTime;
+
+    if (params.onLogChunk) {
+      if (stdout) {
+        params.onLogChunk({ type: 'stdout', data: stdout });
+      }
+      if (stderr) {
+        params.onLogChunk({ type: 'stderr', data: stderr });
+      }
+      params.onLogChunk({
+        type: 'status',
+        data: `[Runner] Command completed with exit code ${exitCode}`,
+      });
+    }
 
     return {
       commandId: cmdDef.id,

@@ -304,6 +304,14 @@ export function LoginPage() {
                     error={errors.password?.message}
                     {...register('password')}
                   />
+                  <div className="flex justify-end pt-1">
+                    <Link
+                      to="/forgot-password"
+                      className="text-xs font-medium text-emerald-600 hover:text-emerald-700 hover:underline"
+                    >
+                      {language === 'vi' ? 'Quên mật khẩu?' : 'Forgot password?'}
+                    </Link>
+                  </div>
                 </div>
 
                 <Button

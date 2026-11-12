@@ -1,4 +1,4 @@
-import { ConflictException, HttpStatus, Injectable } from '@nestjs/common';
+import { ConflictException, HttpStatus, Injectable, Optional } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { BillingMetric, ErrorCode } from '@ai-interview/contracts';
 import {
@@ -11,6 +11,7 @@ import {
   VisionProvider,
 } from '../interfaces/vision-provider.interface';
 import { DomainException } from '../../platform/filters/all-exceptions.filter';
+import { VisionBudgetService } from './vision-budget.service';
 
 /**
  * The single paid-call boundary for all system-design vision providers.
@@ -19,7 +20,10 @@ import { DomainException } from '../../platform/filters/all-exceptions.filter';
  */
 @Injectable()
 export class VisionEntitlementService {
-  constructor(private readonly reservations: EntitlementReservationService) {}
+  constructor(
+    private readonly reservations: EntitlementReservationService,
+    @Optional() private readonly visionBudgetService?: VisionBudgetService,
+  ) {}
 
   async evaluate(input: {
     userId: string;
@@ -31,8 +35,22 @@ export class VisionEntitlementService {
     options: VisionEvaluationOptions;
   }): Promise<VisionEvaluationResult> {
     const key = this.requireIdempotencyKey(input.idempotencyKey);
+
+    if (this.visionBudgetService) {
+      await this.visionBudgetService.checkBudget(0.01);
+    }
+
     if (input.provider.name.toLowerCase().includes('mock')) {
-      return input.provider.evaluateDiagram(input.options);
+      const result = await input.provider.evaluateDiagram(input.options);
+      if (this.visionBudgetService) {
+        await this.visionBudgetService.recordVisionRun({
+          provider: input.provider.name,
+          model: 'mock-vision',
+          costEstimate: 0.001,
+          metadata: { operationType: input.operationType, interviewId: input.interviewId },
+        });
+      }
+      return result;
     }
 
     const estimatedQuantity = this.estimateTokens(input.options);
@@ -63,6 +81,16 @@ export class VisionEntitlementService {
         provider: input.provider.name,
         billingMetric: BillingMetric.AI_TOKEN,
       });
+      if (this.visionBudgetService) {
+        const costEstimate = (result.usageTokens || estimatedQuantity) * 0.00001;
+        await this.visionBudgetService.recordVisionRun({
+          provider: input.provider.name,
+          model: (result as any).model || 'vision-default',
+          costEstimate,
+          totalTokens: result.usageTokens,
+          metadata: { operationType: input.operationType, interviewId: input.interviewId },
+        });
+      }
       return result;
     } catch (error: any) {
       await this.resolveProviderFailure(reservation.id, error);

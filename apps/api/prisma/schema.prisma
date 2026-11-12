@@ -68,12 +68,16 @@ model User {
   mfaSecret    String?       @map("mfa_secret") @db.VarChar(255)
   mfaEnabled   Boolean       @default(false) @map("mfa_enabled")
   tokenVersion Int           @default(0) @map("token_version")
+  isEmailVerified Boolean     @default(false) @map("is_email_verified")
+  emailVerifiedAt DateTime?   @map("email_verified_at")
   createdAt    DateTime      @default(now()) @map("created_at")
   updatedAt    DateTime      @updatedAt @map("updated_at")
 
   profile         UserProfile?
   refreshTokens   RefreshToken[]
   recoveryCodes   RecoveryCode[]
+  passwordResetTokens PasswordResetToken[]
+  emailVerificationTokens EmailVerificationToken[]
   sessions        InterviewSession[]
   auditLogs       AuditLog[]
   idempotencies   IdempotencyRecord[]
@@ -152,6 +156,36 @@ model RefreshToken {
   @@index([userId])
   @@index([familyId])
   @@map("refresh_tokens")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  isUsed    Boolean   @default(false) @map("is_used")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+model EmailVerificationToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash") @db.VarChar(255)
+  expiresAt DateTime  @map("expires_at")
+  isUsed    Boolean   @default(false) @map("is_used")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("email_verification_tokens")
 }
 
 model JobRole {
@@ -1878,6 +1912,16 @@ model XpTransaction {
 
   @@index([userId, createdAt(sort: Desc)])
   @@map("xp_transactions")
+}
+
+model UserLevel {
+  level       Int      @id
+  xpThreshold Int      @map("xp_threshold")
+  title       String   @db.VarChar(100)
+  titleVi     String   @map("title_vi") @db.VarChar(100)
+  iconUrl     String?  @map("icon_url") @db.VarChar(255)
+
+  @@map("user_levels")
 }
 
 model BadgeDefinition {

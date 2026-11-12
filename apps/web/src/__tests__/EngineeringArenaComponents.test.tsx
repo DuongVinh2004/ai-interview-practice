@@ -8,7 +8,7 @@ import { ArenaSkillRadarView } from '../features/engineering-arena/ArenaSkillRad
 import { ArenaCopilotChatPanel } from '../features/engineering-arena/ArenaCopilotChatPanel';
 import { ArenaWorkspaceView } from '../features/engineering-arena/ArenaWorkspaceView';
 import { useEngineeringArena } from '../features/engineering-arena/useEngineeringArena';
-import { ArenaEvaluationResponse } from '@ai-interview/contracts';
+import { ArenaEvaluationResponse, ArenaRunStatus } from '@ai-interview/contracts';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -223,5 +223,58 @@ describe('Engineering Arena Web Components (F017)', () => {
     expect(screen.getAllByText('src/profile.controller.ts').length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: /Run Tests/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Submit Solution/i })).toBeInTheDocument();
+  });
+
+  it('renders live execution terminal status and stream logs when running command', () => {
+    useEngineeringArena.setState({
+      session: {
+        id: 'session-stream-test',
+        userId: 'user-123',
+        challengeSlug: 'fix-user-profile-bola',
+        challengeTitle: 'Fix Broken Object Level Authorization (BOLA) in Profile API',
+        challengeDomain: 'SECURITY' as any,
+        challengeCategory: 'SECURITY_REMEDIATION' as any,
+        state: 'ACTIVE' as any,
+        sandboxMode: 'STAGE_B_CONTAINER' as any,
+        aiAssistanceMode: 'HINTS_ONLY' as any,
+        files: [
+          {
+            path: 'src/profile.controller.ts',
+            name: 'profile.controller.ts',
+            isDirectory: false,
+            isEditable: true,
+          },
+        ],
+        initialFileContents: {
+          'src/profile.controller.ts': 'export class ProfileController {}',
+        },
+        startedAt: new Date().toISOString(),
+      },
+      fileContents: {
+        'src/profile.controller.ts': 'export class ProfileController {}',
+      },
+      activeFilePath: 'src/profile.controller.ts',
+      latestRun: {
+        id: 'run-live',
+        sessionId: 'session-stream-test',
+        commandId: 'test',
+        status: ArenaRunStatus.PASSED,
+        exitCode: 0,
+        stdout: 'PASS src/profile.spec.ts\n  √ authorization check enforced',
+        stderr: '',
+        durationMs: 120,
+        testsTotal: 1,
+        testsPassed: 1,
+        testsFailed: 0,
+        testResults: [],
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    renderWithProviders(<ArenaWorkspaceView />);
+
+    expect(screen.getByText('Execution Terminal')).toBeInTheDocument();
+    expect(screen.getByText('PASSED')).toBeInTheDocument();
+    expect(screen.getByText(/authorization check enforced/i)).toBeInTheDocument();
   });
 });

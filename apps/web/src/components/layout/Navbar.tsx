@@ -8,6 +8,7 @@ import { apiClient } from '../../lib/api-client';
 import { Button } from '../ui/Button';
 import { XpProgressWidget } from '../../features/gamification/components/XpProgressWidget';
 import { useGamificationStore } from '../../stores/gamification.store';
+import { useFocusModeStore } from '../../stores/focus-mode.store';
 import { getNextUpgradePlan } from '../../lib/plan-tier.utils';
 import {
   Bot,
@@ -42,12 +43,14 @@ import {
   TrendingUp,
   Boxes,
   Cpu,
+  Maximize2,
 } from 'lucide-react';
 
 export function Navbar() {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { language, setLanguage, t } = useI18nStore();
   const { sfxMuted, toggleSfx } = useGamificationStore();
+  const { toggleFocusMode } = useFocusModeStore();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -539,10 +542,23 @@ export function Navbar() {
             <span>{language === 'vi' ? 'VI' : 'EN'}</span>
           </button>
 
+          {/* Focus Mode Toggle */}
+          <button
+            type="button"
+            onClick={toggleFocusMode}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors whitespace-nowrap shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            title={language === 'vi' ? 'Bật Chế độ tập trung (Focus Mode)' : 'Toggle Focus Mode'}
+            aria-label="Toggle Focus Mode"
+            data-testid="focus-mode-toggle"
+          >
+            <Maximize2 className="h-3 w-3 text-slate-500 dark:text-slate-400" />
+            <span className="hidden md:inline">{language === 'vi' ? 'Tập trung' : 'Focus'}</span>
+          </button>
+
           {isAuthenticated ? (
             <div className="flex items-center gap-2.5 sm:gap-3.5 shrink-0">
-              {/* Gamification Level & Streak Widget */}
-              <div className="hidden 2xl:block shrink-0">
+              {/* Gamification Level & Streak Widget (XpBar on Navbar) */}
+              <div className="hidden lg:block shrink-0">
                 <XpProgressWidget />
               </div>
 

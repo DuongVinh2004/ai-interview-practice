@@ -17,7 +17,9 @@ import { ChallengeValidatorService } from './validator/challenge-validator.servi
 import { B2bArenaTenantGuard } from './guards/b2b-arena.guard';
 import { ArenaChallengeRepository } from './repositories/arena-challenge.repository';
 import { ArenaSessionRepository } from './repositories/arena-session.repository';
+import { ArenaCollaborativeGateway } from './gateways/arena-collaborative.gateway';
 import { PrismaModule } from '../platform/prisma/prisma.module';
+import { AuthModule } from '../auth/auth.module';
 import { WORKSPACE_RUNTIME } from './runtime/workspace-runtime.interface';
 
 export function selectWorkspaceRuntime(
@@ -47,7 +49,7 @@ export function selectWorkspaceRuntime(
 }
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, AuthModule],
   controllers: [EngineeringArenaController, ArenaAdminController, ArenaCopilotController],
   providers: [
     EngineeringArenaService,
@@ -59,6 +61,7 @@ export function selectWorkspaceRuntime(
     ArenaPatchExporterService,
     ArenaReportExporterService,
     ArenaSseService,
+    ArenaCollaborativeGateway,
     DeterministicLocalWorkspaceRuntime,
     DockerSandboxWorkspaceRuntime,
     ChallengeValidatorService,
@@ -81,6 +84,7 @@ export function selectWorkspaceRuntime(
     ArenaPatchExporterService,
     ArenaReportExporterService,
     ArenaSseService,
+    ArenaCollaborativeGateway,
     DeterministicLocalWorkspaceRuntime,
     DockerSandboxWorkspaceRuntime,
     ChallengeValidatorService,

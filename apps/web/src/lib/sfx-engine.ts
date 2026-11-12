@@ -1,18 +1,50 @@
+import { Howl } from 'howler';
+
 /**
- * SFX Engine (Web Audio API Synthesizer + Fallback)
+ * SFX Engine (Howler.js Audio Sprite + Web Audio API Synthesizer Fallback)
  * Zero-latency, zero-asset failure, 100% offline-ready sound synthesizer for UI micro-interactions.
  */
 
 export type SoundEffectType =
   'click' | 'success' | 'error' | 'level_up' | 'xp_coin' | 'streak' | 'card_flip';
 
-class SfxEngine {
+export class SfxEngine {
   private audioCtx: AudioContext | null = null;
   private isMuted: boolean = false;
   private volume: number = 0.5;
+  private howlerSprite: Howl | null = null;
+  private howlerLoaded: boolean = false;
 
   constructor() {
     this.initFromStorage();
+    this.initHowler();
+  }
+
+  private initHowler() {
+    if (typeof window === 'undefined') return;
+    try {
+      this.howlerSprite = new Howl({
+        src: ['/sfx/ui-sprite.mp3', '/sfx/ui-sprite.webm'],
+        sprite: {
+          click: [0, 150],
+          success: [200, 800],
+          error: [1100, 500],
+          level_up: [1700, 1500],
+          xp_coin: [3300, 400],
+          streak: [3700, 600],
+          card_flip: [4300, 300],
+        },
+        volume: this.volume,
+        onload: () => {
+          this.howlerLoaded = true;
+        },
+        onloaderror: () => {
+          this.howlerLoaded = false;
+        },
+      });
+    } catch {
+      this.howlerLoaded = false;
+    }
   }
 
   private initFromStorage() {
@@ -59,6 +91,9 @@ class SfxEngine {
   public setIsMuted(muted: boolean): void {
     this.isMuted = muted;
     try {
+      if (this.howlerSprite) {
+        this.howlerSprite.mute(muted);
+      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('ai-interview-sfx-muted', String(muted));
       }
@@ -74,6 +109,9 @@ class SfxEngine {
   public setVolume(vol: number): void {
     this.volume = Math.max(0, Math.min(1, vol));
     try {
+      if (this.howlerSprite) {
+        this.howlerSprite.volume(this.volume);
+      }
       if (typeof window !== 'undefined') {
         localStorage.setItem('ai-interview-sfx-volume', String(this.volume));
       }
@@ -84,6 +122,15 @@ class SfxEngine {
 
   public play(type: SoundEffectType): void {
     if (this.isMuted || this.volume <= 0) return;
+
+    if (this.howlerLoaded && this.howlerSprite) {
+      try {
+        this.howlerSprite.play(type);
+        return;
+      } catch {
+        // Fallback to oscillator
+      }
+    }
 
     const ctx = this.getAudioContext();
     if (!ctx) return;

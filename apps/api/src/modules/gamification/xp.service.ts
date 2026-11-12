@@ -39,21 +39,31 @@ export class XpService {
   ) {}
 
   /**
-   * Level Formula: Level = floor(sqrt(totalXp / 100)) + 1
-   * Level 1: 0 - 99 XP
-   * Level 2: 100 - 399 XP
-   * Level 3: 400 - 899 XP
-   * Level 4: 900 - 1599 XP
-   * Level 5: 1600 - 2499 XP
+   * Minimum total XP threshold required to reach a specific level.
+   * Formula: XP = 100 * (Level^1.5)
+   * Level 1: 0 XP
+   * Level 2: 282 XP
+   * Level 3: 519 XP
+   * Level 10: 3162 XP
+   * Level 50: 35355 XP
+   */
+  getXpForLevel(level: number): number {
+    if (level <= 1) return 0;
+    return Math.floor(100 * Math.pow(level, 1.5));
+  }
+
+  /**
+   * Level Formula: Level progression based on XP = 100 * (Level^1.5)
    */
   calculateLevel(totalXp: number): LevelInfo {
     const safeXp = Math.max(0, totalXp);
-    const level = Math.floor(Math.sqrt(safeXp / 100)) + 1;
+    let level = 1;
+    while (this.getXpForLevel(level + 1) <= safeXp) {
+      level++;
+    }
 
-    // Minimum XP for this current level: 100 * (level - 1)^2
-    const currentLevelMinXp = 100 * Math.pow(level - 1, 2);
-    // Minimum XP required to hit next level: 100 * level^2
-    const nextLevelXp = 100 * Math.pow(level, 2);
+    const currentLevelMinXp = this.getXpForLevel(level);
+    const nextLevelXp = this.getXpForLevel(level + 1);
 
     const xpInCurrentLevel = safeXp - currentLevelMinXp;
     const xpSpanForLevel = nextLevelXp - currentLevelMinXp;

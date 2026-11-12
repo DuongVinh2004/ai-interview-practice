@@ -302,4 +302,43 @@ describe('Contracts Validation Schemas', () => {
     expect(TenantRole.TENANT_ADMIN).toBe('TENANT_ADMIN');
     expect(AssignmentStatus.PUBLISHED).toBe('PUBLISHED');
   });
+
+  it('validates password reset and email verification schemas correctly', async () => {
+    const {
+      ForgotPasswordDtoSchema,
+      ResetPasswordDtoSchema,
+      VerifyEmailDtoSchema,
+      ResendVerificationDtoSchema,
+      EmailTemplateTypeSchema,
+    } = await import('../index');
+
+    // Forgot password
+    expect(ForgotPasswordDtoSchema.safeParse({ email: 'user@example.com' }).success).toBe(true);
+    expect(ForgotPasswordDtoSchema.safeParse({ email: 'not-an-email' }).success).toBe(false);
+
+    // Reset password
+    expect(
+      ResetPasswordDtoSchema.safeParse({
+        token: 'secure-token-123',
+        newPassword: 'StrongPassword123',
+      }).success,
+    ).toBe(true);
+    expect(
+      ResetPasswordDtoSchema.safeParse({
+        token: '',
+        newPassword: 'short',
+      }).success,
+    ).toBe(false);
+
+    // Verify email
+    expect(VerifyEmailDtoSchema.safeParse({ token: 'verify-token-abc' }).success).toBe(true);
+    expect(VerifyEmailDtoSchema.safeParse({ token: '' }).success).toBe(false);
+
+    // Resend verification
+    expect(ResendVerificationDtoSchema.safeParse({ email: 'test@example.com' }).success).toBe(true);
+
+    // Email templates enum
+    expect(EmailTemplateTypeSchema.safeParse('password_reset').success).toBe(true);
+    expect(EmailTemplateTypeSchema.safeParse('email_verification').success).toBe(true);
+  });
 });

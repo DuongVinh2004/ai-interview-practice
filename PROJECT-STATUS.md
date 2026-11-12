@@ -1,6 +1,6 @@
 # Trạng thái Dự án — AI Interview Practice
 
-> **Cập nhật lần cuối**: 2026-08-24  
+> **Cập nhật lần cuối**: 2026-10-26  
 > **Repo**: [DuongVinh2004/ai-interview-practice](https://github.com/DuongVinh2004/ai-interview-practice)
 
 Tài liệu này là **single source of truth** cho trạng thái triển khai dự án. Tất cả tính năng dưới đây đã có **code thật + automated tests verified** trong monorepo.
@@ -55,6 +55,10 @@ Tài liệu này là **single source of truth** cho trạng thái triển khai d
 - [x] MFA Step-Up Guard for sensitive admin operations
 - [x] RBAC: `CANDIDATE`, `ADMIN` roles
 - [x] Password change with token invalidation
+- [x] Password reset flow (Forgot password, SHA-256 single-use tokens, 1h expiry, tokenVersion revocation)
+- [x] Email verification flow (Verification token, 24h expiry, resend endpoint, `is_email_verified` tracking)
+- [x] Frontend Auth pages: `ForgotPasswordPage`, `ResetPasswordPage`, `VerifyEmailPage`
+- [x] React Email templates: `PasswordResetEmail` and `EmailVerificationEmail` (Bilingual VI/EN)
 
 ### Interview Core (Epic E04)
 
@@ -154,18 +158,82 @@ Tài liệu này là **single source of truth** cho trạng thái triển khai d
 - [x] **F003 — System Design Whiteboard**: Interactive node/edge whiteboard editor, latency/throughput architecture evaluator, auto-assessment rubric (`SystemDesignModule`).
 - [x] **F012 — Mentor Co-Pilot**: Real-time interviewer assist feed, suggested follow-up probing generator, candidate response rubric overlay (`MentorModule`).
 - [x] **F011 — B2B Multi-Tenant Platform**: Tenant workspace isolation, domain routing, tenant role guard (`TENANT_ADMIN`, `INTERVIEWER`), hashed API key authentication, assignment management (`B2bModule`).
+- [x] **F015 — Curated Question Bank & 5-Stage Governance**: Content curation, reviewer author check, safe projection, ledger quota consumption (`QuestionBankModule`).
+- [x] **F016 — Saved Interview Configurations**: Blueprint templates, configuration serialization, quick-start session launcher (`InterviewConfigurationModule`).
+- [x] **F017 — Engineering Arena & Forensic Anti-Cheat**: Multi-file sandbox workspaces, AST diff analysis, deterministic local/docker runtime, automated benchmark validation (`EngineeringArenaModule`).
+
+---
+
+## ⚡ ĐÃ HOÀN THÀNH — Plan B Production Integrations
+
+### Sprint B1 & B2
+
+- [x] **Module B1 — Cloud Object Storage (AWS S3 & Cloudflare R2)**: Presigned URL upload/download, bucket segregation (`public`, `documents`, `temp`), quota checks, direct-to-cloud browser upload hook (`useCloudUpload`), `StorageModule`.
+- [x] **Module B2 — Transactional Email & Account Recovery System**:
+  - Resend API provider & deterministic Mock provider with fail-closed production safety.
+  - Asynchronous BullMQ worker queue (`email`) with exponential backoff retries.
+  - React Email templates (VI & EN): `WelcomeEmail`, `InterviewCompletionEmail`, `StreakWarningEmail`, `PaymentReceiptEmail`, `PasswordResetEmail`, `EmailVerificationEmail`.
+  - Secure anti-enumeration account recovery: SHA-256 token hashing, 60-minute expiry, `tokenVersion` increment invalidating all active JWTs.
+  - Endpoints: `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/verify-email`, `POST /auth/resend-verification`.
+  - Web UI: `ForgotPasswordPage.tsx`, `ResetPasswordPage.tsx`, `VerifyEmailPage.tsx` with full i18n & automated test suite.
+
+### Sprint B3 — Voice Pipeline (Deepgram STT & ElevenLabs TTS)
+
+- [x] **Module B3 — Production Voice Streaming Infrastructure**:
+  - `DeepgramSttProvider`: WebSocket real-time audio chunk streaming, fallback resilience.
+  - `ElevenLabsTtsProvider`: Natural low-latency voice synthesis, chunked sentence audio playback with `SentenceChunkerService`.
+  - Fail-closed audio routing, silence detection, token rate limiting.
+
+### Sprint B4 — Payment Gateway (PayOS VietQR & Stripe Webhook)
+
+- [x] **Module B4 — Multi-Provider Payment Gateway**:
+  - PayOS VietQR payment flow with real-time QR code generation and checkout verification (`VietQrCheckoutModal.tsx`).
+  - Stripe webhook raw body signature validation (`STRIPE_WEBHOOK_SECRET`), atomic event processing, idempotent subscription state synchronization.
+
+### Sprint B5 — Vision AI (Multimodal System Design Architecture)
+
+- [x] **Module B5 — Multimodal Vision Analysis**:
+  - Dual Vision providers: OpenAI GPT-4o Vision & Google Gemini 2.0 Flash Vision for whiteboard diagram inspection.
+  - Fail-closed architecture diagram analysis, invariant validation, component relationship evaluation.
+
+---
+
+## 🎮 KẾ HOẠCH PLAN C — Gamification, Engagement & PWA (Partial Complete)
+
+### Đã hoàn thành (Completed)
+
+- [x] **C1 — Gamification Engine**:
+  - Level progression, XP points system, Achievement Badges, and Streak tracking engine (`gamification.store.ts`, `XpBar.tsx`, `XpPopup.tsx`, `LevelUpModal.tsx`, `BadgeUnlockToast.tsx`).
+  - Database schema & API integration with daily bonus logic.
+- [x] **C2 — SFX Engine**:
+  - Zero-latency Web Audio API synthesizer fallback + Howler.js audio sprite system (`sfx-engine.ts`).
+  - Offline silent audio sprite placeholders (`apps/web/public/sfx/ui-sprite.mp3`, `ui-sprite.webm`) matching exact sprite duration map.
+- [x] **C3 — Focus Mode Store & UI**:
+  - Fullscreen distraction-free interview and coding arena workspace (`useFocusModeStore.ts`, `useFocusModeHotkey.ts`).
+  - Hotkey controls: phím `F` toggle focus mode (bỏ qua khi đang nhập liệu input/textarea/contenteditable), phím `Escape` thoát focus mode tức thì.
+  - Tích hợp trên `ArenaWorkspaceView.tsx`, `InterviewRoomPage.tsx`, và floating exit trigger trên `AppLayout.tsx`.
+
+### Đang triển khai / Còn lại (Remaining - Chỉ còn bước ngoại vi của Human Owner)
+
+- [x] **C4 — PWA Local Implementation & Validation**:
+  - Đã hoàn thành 100%: Bộ icon đầy đủ chuẩn PWA manifest (`pwa-192x192.png`, `pwa-512x512.png`, `apple-touch-icon.png`, `masked-icon.svg`, `favicon.ico`), cấu hình VitePWA plugin với Workbox runtime caching (`CacheFirst` fonts, `NetworkFirst` flashcards API), offline review queue và auto-sync. Toàn bộ test suite tự động kiểm định đạt 100% green.
+  - _Chờ ngoại vi (External)_: Cài đặt và kiểm nghiệm trên thiết bị di động thật sau khi triển khai HTTPS production domain.
+- [x] **C5 — Web Push Local Implementation & Tooling**:
+  - Đã hoàn thành 100%: Backend push notification service + cron job reminder, frontend banner xin quyền (`PushPermissionBanner.tsx`) tự động ẩn/hiện và lưu dismiss 7 ngày, panel cài đặt (`NotificationSettingsPanel.tsx`), CLI generator VAPID keys (`infra/scripts/generate-vapid-keys.mjs`), và script kiểm tra cấu hình pre-deployment (`infra/scripts/validate-production-config.mjs`). Toàn bộ test suite tự động đạt 100% green.
+  - _Chờ ngoại vi (External)_: Cấu hình VAPID keys chính thức trên production server và người dùng thật bấm nút cho phép thông báo trên trình duyệt.
 
 ---
 
 ## 🧪 Test Integrity & Verification Matrix (Verified 100% Green)
 
-| Package                            | Test Suites    | Tests Count   | Status             |
-| ---------------------------------- | -------------- | ------------- | ------------------ |
-| `@ai-interview/api` (Backend)      | 107 suites     | 573 tests     | ✅ PASS (100%)     |
-| `@ai-interview/web` (Frontend)     | 44 suites      | 141 tests     | ✅ PASS (100%)     |
-| `@ai-interview/contracts` (Shared) | 1 suite        | 10 tests      | ✅ PASS (100%)     |
-| **Monorepo Total**                 | **151 suites** | **714 tests** | **✅ PASS (100%)** |
-| Typecheck (`pnpm type-check`)      | 5 packages     | 0 errors      | ✅ PASS (100%)     |
+| Package                            | Test Suites    | Tests Count     | Status             |
+| ---------------------------------- | -------------- | --------------- | ------------------ |
+| `@ai-interview/api` (Backend)      | 177 suites     | 1,131 tests     | ✅ PASS (100%)     |
+| `@ai-interview/web` (Frontend)     | 71 suites      | 283 tests       | ✅ PASS (100%)     |
+| `@ai-interview/contracts` (Shared) | 2 suites       | 25 tests        | ✅ PASS (100%)     |
+| **Monorepo Total**                 | **250 suites** | **1,439 tests** | **✅ PASS (100%)** |
+| Typecheck (`pnpm type-check`)      | 5 packages     | 0 errors        | ✅ PASS (100%)     |
+| Production Dependency Audit        | 100% audited   | 0 CVEs          | ✅ PASS (100%)     |
 
 ---
 
@@ -174,8 +242,8 @@ Tài liệu này là **single source of truth** cho trạng thái triển khai d
 | Thư mục / File                                                 | Mô tả                                                      | Trạng thái                   |
 | :------------------------------------------------------------- | :--------------------------------------------------------- | :--------------------------- |
 | [`docs/INDEX.md`](docs/INDEX.md)                               | **Master Catalog & Search Index** cho toàn bộ dự án        | ✅ Active                    |
-| [`docs/features/`](docs/features/)                             | 16 feature specs (F001–F016) + Feature Index               | ✅ Active — 16/16 hoàn thành |
-| [`docs/adr/`](docs/adr/)                                       | Architecture Decision Records 0001–0009                    | ✅ Active                    |
+| [`docs/features/`](docs/features/)                             | 17 feature specs (F001–F017) + Feature Index               | ✅ Active — 17/17 hoàn thành |
+| [`docs/adr/`](docs/adr/)                                       | Architecture Decision Records 0001–0010                    | ✅ Active                    |
 | [`docs/roadmap/`](docs/roadmap/)                               | Kế hoạch phát triển tương lai (Plan B, Plan C)             | 📋 Ready for execution       |
 | [`docs/archive/`](docs/archive/)                               | **Kho lưu trữ tổng hợp bugfixes, audit & completed waves** | 🗃️ Master Archive            |
 | [`docs/archive/scorecards/`](docs/archive/scorecards/)         | Báo cáo nghiệm thu & Release Gates (151 suites green)      | ✅ Certified                 |
