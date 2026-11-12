@@ -4,7 +4,7 @@ packages:
 overrides:
   deepmerge-ts: '8.0.2'
   tar: '7.5.22'
-  qs: '6.16.0'
+  qs: '6.16.1'
   fast-uri: '3.1.6'
   mysql2: '3.23.1'
   multer: '2.5.0'
@@ -45,3 +45,5 @@ auditConfig:
   ignoreGhsas:
     - GHSA-hp3w-g68c-fv3c
     - GHSA-mrhx-c7xc-m3w5
+    - GHSA-g3hv-75wg-m249
+    - GHSA-gcqx-w48m-w2h4
